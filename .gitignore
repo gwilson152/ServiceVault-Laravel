@@ -1,0 +1,142 @@
+# Application Files
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+.env.local
+.env.testing
+.env.staging
+.phpactor.json
+.phpunit.result.cache
+
+# IDE Files
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+
+# Authentication & Credentials
+/auth.json
+composer.phar
+phar.readonly
+
+# Node.js & Build Files
+/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.npm
+.yarn-integrity
+
+# Laravel Build & Generated Files
+/public/build
+/public/hot
+/public/storage
+/public/mix-manifest.json
+/storage/*.key
+/storage/pail
+/storage/app/public/*
+!/storage/app/public/.gitkeep
+
+# Dependencies
+/vendor
+
+# Vagrant & Homestead
+Homestead.json
+Homestead.yaml
+.vagrant
+
+# OS Files
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Backup & Temporary Files
+*.backup
+*.tmp
+*.cache
+*.pid
+*.seed
+*.pid.lock
+
+# Service Vault Specific
+/storage/logs/*.log
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/framework/cache/*
+!/storage/logs/.gitkeep
+!/storage/framework/sessions/.gitkeep
+!/storage/framework/views/.gitkeep
+!/storage/framework/cache/.gitkeep
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Testing
+/coverage
+.nyc_output
+.jest
+
+# Database
+*.sqlite
+*.sqlite-journal
+database/*.sqlite*
+
+# Redis
+dump.rdb
+
+# Profiling & Debugging
+.xdebug
+*.prof
+
+# License Server Integration
+/storage/licenses/*.key
+/storage/certificates/*.pem
+
+# User Uploads (excluding sample files)
+/storage/app/uploads/*
+!/storage/app/uploads/.gitkeep
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Documentation Build
+/docs/_site
+/docs/.sass-cache
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*

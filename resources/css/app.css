@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Service Vault Authentication & Theme Support */
+:root {
+  /* Primary Theme Colors */
+  --color-primary: theme('colors.blue.600');
+  --color-secondary: theme('colors.gray.600');
+  --color-accent: theme('colors.indigo.600');
+  
+  /* Timer-specific Colors */
+  --color-timer-running: theme('colors.green.500');
+  --color-timer-paused: theme('colors.yellow.500');
+  --color-timer-stopped: theme('colors.gray.500');
+  
+  /* Authentication Colors */
+  --color-auth-background: theme('colors.gray.50');
+  --color-auth-card: theme('colors.white');
+  --color-auth-border: theme('colors.gray.200');
+  
+  /* Account Brand Colors (dynamic) */
+  --color-brand-primary: var(--account-primary, var(--color-primary));
+  --color-brand-secondary: var(--account-secondary, var(--color-secondary));
+}
+
+[data-theme="dark"] {
+  --color-primary: theme('colors.blue.400');
+  --color-secondary: theme('colors.gray.400');
+  --color-auth-background: theme('colors.gray.900');
+  --color-auth-card: theme('colors.gray.800');
+  --color-auth-border: theme('colors.gray.700');
+}

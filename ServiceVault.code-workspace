@@ -1,0 +1,120 @@
+{
+    "folders": [
+        {
+            "name": "Service Vault Laravel",
+            "path": "."
+        }
+    ],
+    "settings": {
+        "php.validate.executablePath": "/usr/bin/php",
+        "php.executablePath": "/usr/bin/php",
+        "intelephense.files.maxSize": 5000000,
+        "files.associations": {
+            "*.blade.php": "blade",
+            ".env.*": "dotenv"
+        },
+        "emmet.includeLanguages": {
+            "blade": "html",
+            "vue": "html"
+        },
+        "blade.format.enable": true,
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.rulers": [120],
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "[php]": {
+            "editor.defaultFormatter": "DEVSENSE.phptools-vscode",
+            "editor.tabSize": 4
+        },
+        "[blade]": {
+            "editor.defaultFormatter": "shufo.vscode-blade-formatter",
+            "editor.tabSize": 4
+        },
+        "[javascript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode",
+            "editor.tabSize": 2
+        },
+        "[typescript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode", 
+            "editor.tabSize": 2
+        },
+        "[vue]": {
+            "editor.defaultFormatter": "Vue.volar",
+            "editor.tabSize": 2
+        },
+        "[json]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode",
+            "editor.tabSize": 2
+        },
+        "[css]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode",
+            "editor.tabSize": 2
+        },
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "explorer.fileNesting.enabled": true,
+        "explorer.fileNesting.patterns": {
+            "*.php": "${capture}.blade.php",
+            "composer.json": "composer.lock",
+            "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml",
+            ".env": ".env.*",
+            "artisan": "server.php",
+            "*.vue": "${capture}.vue.js, ${capture}.vue.ts",
+            "*.controller.php": "${capture}.request.php, ${capture}.resource.php"
+        },
+        "sqltools.connections": [
+            {
+                "name": "Service Vault PostgreSQL",
+                "driver": "PostgreSQL",
+                "server": "postgres1.drivenw.local",
+                "port": 5432,
+                "database": "servicevault_development",
+                "username": "service_vault",
+                "password": "drv@13LLC!!!",
+                "connectionTimeout": 30
+            }
+        ],
+        "todo-tree.regex.regex": "((//|#|<!--|;|/\\*|^)\\s*($TAGS)|^\\s*- \\[ \\])",
+        "todo-tree.general.tags": [
+            "TODO",
+            "FIXME",
+            "HACK",
+            "NOTE",
+            "BUG",
+            "XXX",
+            "[ ]",
+            "[x]"
+        ],
+        "rest-client.environmentVariables": {
+            "local": {
+                "baseUrl": "http://localhost:8000",
+                "apiUrl": "http://localhost:8000/api"
+            }
+        },
+        "phpunit.php": "/usr/bin/php",
+        "phpunit.phpunit": "./vendor/bin/phpunit",
+        "phpunit.args": [
+            "--colors=always"
+        ],
+        "laravel-pint.enable": true,
+        "laravel-pint.configPath": "./pint.json"
+    },
+    "extensions": {
+        "recommendations": [
+            "DEVSENSE.phptools-vscode",
+            "bmewburn.vscode-intelephense-client",
+            "shufo.vscode-blade-formatter",
+            "codingyu.laravel-goto-view",
+            "amiralizadeh9480.laravel-extra-intellisense",
+            "ryannaddy.laravel-artisan",
+            "Vue.volar",
+            "bradlc.vscode-tailwindcss",
+            "esbenp.prettier-vscode",
+            "cweijan.vscode-database-client2",
+            "mtxr.sqltools",
+            "mtxr.sqltools-driver-pg",
+            "eamodio.gitlens"
+        ]
+    }
+}

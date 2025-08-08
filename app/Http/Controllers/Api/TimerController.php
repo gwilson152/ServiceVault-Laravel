@@ -1,0 +1,615 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Events\TimerStarted;
+use App\Events\TimerStopped;
+use App\Events\TimerUpdated;
+use App\Events\TimerDeleted;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreTimerRequest;
+use App\Http\Requests\UpdateTimerRequest;
+use App\Http\Resources\TimerResource;
+use App\Models\Timer;
+use App\Services\TimerService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+
+class TimerController extends Controller
+{
+    protected TimerService $timerService;
+
+    public function __construct(TimerService $timerService)
+    {
+        $this->timerService = $timerService;
+        
+        $this->authorizeResource(Timer::class, 'timer');
+    }
+
+    /**
+     * Display a listing of the user's timers.
+     */
+    public function index(Request $request): AnonymousResourceCollection
+    {
+        $query = Timer::with(['project', 'task', 'billingRate'])
+            ->where('user_id', $request->user()->id);
+
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Filter by project
+        if ($request->has('project_id')) {
+            $query->where('project_id', $request->input('project_id'));
+        }
+
+        // Filter by date range
+        if ($request->has('start_date')) {
+            $query->whereDate('started_at', '>=', $request->input('start_date'));
+        }
+        if ($request->has('end_date')) {
+            $query->whereDate('started_at', '<=', $request->input('end_date'));
+        }
+
+        // Include cross-device timers if requested
+        if ($request->boolean('include_all_devices')) {
+            $query->orWhere(function ($q) use ($request) {
+                $q->where('user_id', $request->user()->id)
+                  ->where('is_synced', true);
+            });
+        }
+
+        $timers = $query->orderBy('started_at', 'desc')
+            ->paginate($request->input('per_page', 15));
+
+        return TimerResource::collection($timers);
+    }
+
+    /**
+     * Get active timers for the current user (for real-time sync)
+     */
+    public function active(Request $request): AnonymousResourceCollection
+    {
+        $timers = Timer::with(['project', 'task', 'billingRate'])
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'running')
+            ->get();
+
+        // Store in cache for cross-device sync
+        Cache::put(
+            "user.{$request->user()->id}.active_timers",
+            $timers->pluck('id')->toArray(),
+            now()->addMinutes(5)
+        );
+
+        return TimerResource::collection($timers);
+    }
+
+    /**
+     * Store a newly created timer.
+     */
+    public function store(StoreTimerRequest $request): JsonResponse
+    {
+        DB::beginTransaction();
+        try {
+            // Stop any running timers if single timer mode is enabled
+            if ($request->boolean('stop_others', true)) {
+                $this->timerService->stopAllUserTimers($request->user()->id, $request->input('device_id'));
+            }
+
+            $timer = Timer::create([
+                'user_id' => $request->user()->id,
+                'project_id' => $request->input('project_id'),
+                'task_id' => $request->input('task_id'),
+                'billing_rate_id' => $request->input('billing_rate_id'),
+                'description' => $request->input('description'),
+                'status' => 'running',
+                'started_at' => now(),
+                'device_id' => $request->input('device_id'),
+                'is_synced' => true,
+                'metadata' => [
+                    'client_ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'started_via' => 'api',
+                ],
+            ]);
+
+            // Broadcast timer started event for real-time sync
+            broadcast(new TimerStarted($timer))->toOthers();
+
+            // Update Redis state for cross-device sync
+            $this->timerService->updateRedisState($timer);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Timer started successfully',
+                'data' => new TimerResource($timer->load(['project', 'task', 'billingRate'])),
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to start timer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Display the specified timer.
+     */
+    public function show(Timer $timer): TimerResource
+    {
+        return new TimerResource($timer->load(['project', 'task', 'billingRate', 'timeEntry']));
+    }
+
+    /**
+     * Update the specified timer (including while running).
+     */
+    public function update(UpdateTimerRequest $request, Timer $timer): JsonResponse
+    {
+        DB::beginTransaction();
+        try {
+            $originalStatus = $timer->status;
+            $originalBillingRateId = $timer->billing_rate_id;
+
+            // Allow updating description, billing rate, and other fields while timer is running
+            $timer->fill($request->validated());
+
+            // Handle status changes
+            if ($request->has('status') && $request->input('status') !== $originalStatus) {
+                if ($request->input('status') === 'paused') {
+                    $timer->paused_at = now();
+                    $timer->total_paused_duration = $timer->total_paused_duration ?? 0;
+                } elseif ($request->input('status') === 'running' && $originalStatus === 'paused') {
+                    $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
+                    $timer->total_paused_duration = ($timer->total_paused_duration ?? 0) + $pausedDuration;
+                    $timer->paused_at = null;
+                }
+            }
+
+            // Track billing rate changes in metadata
+            if ($request->has('billing_rate_id') && $request->input('billing_rate_id') !== $originalBillingRateId) {
+                $timer->metadata = array_merge($timer->metadata ?? [], [
+                    'billing_rate_changed' => true,
+                    'billing_rate_changed_at' => now()->toIso8601String(),
+                    'previous_billing_rate_id' => $originalBillingRateId,
+                ]);
+            }
+            
+            $timer->save();
+
+            // Load billing rate for calculated amount
+            $timer->load('billingRate');
+
+            // Broadcast update for real-time sync (includes calculated amount)
+            broadcast(new TimerUpdated($timer))->toOthers();
+
+            // Update Redis state
+            $this->timerService->updateRedisState($timer);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Timer updated successfully',
+                'data' => new TimerResource($timer->load(['project', 'task', 'billingRate'])),
+                'running_amount' => $timer->calculated_amount,
+                'hourly_rate' => $timer->billingRate ? $timer->billingRate->rate : null,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to update timer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Stop a running timer and optionally convert to time entry
+     */
+    public function stop(Request $request, Timer $timer): JsonResponse
+    {
+        $this->authorize('update', $timer);
+
+        DB::beginTransaction();
+        try {
+            $result = $this->timerService->stopTimer($timer, [
+                'convert_to_entry' => $request->boolean('convert_to_entry', true),
+                'round_to' => $request->input('round_to', 15), // Round to 15 minutes by default
+                'notes' => $request->input('notes'),
+            ]);
+
+            // Broadcast timer stopped event
+            broadcast(new TimerStopped($timer))->toOthers();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Timer stopped successfully',
+                'data' => [
+                    'timer' => new TimerResource($timer->fresh()),
+                    'time_entry' => $result['time_entry'] ?? null,
+                    'duration' => $result['duration'],
+                    'billed_amount' => $result['billed_amount'] ?? null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to stop timer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Pause a running timer
+     */
+    public function pause(Timer $timer): JsonResponse
+    {
+        $this->authorize('update', $timer);
+
+        if ($timer->status !== 'running') {
+            return response()->json([
+                'message' => 'Timer is not running',
+            ], 400);
+        }
+
+        $timer->update([
+            'status' => 'paused',
+            'paused_at' => now(),
+        ]);
+
+        // Broadcast update
+        broadcast(new TimerUpdated($timer))->toOthers();
+
+        // Update Redis state
+        $this->timerService->updateRedisState($timer);
+
+        return response()->json([
+            'message' => 'Timer paused successfully',
+            'data' => new TimerResource($timer),
+        ]);
+    }
+
+    /**
+     * Resume a paused timer
+     */
+    public function resume(Timer $timer): JsonResponse
+    {
+        $this->authorize('update', $timer);
+
+        if ($timer->status !== 'paused') {
+            return response()->json([
+                'message' => 'Timer is not paused',
+            ], 400);
+        }
+
+        $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
+        
+        $timer->update([
+            'status' => 'running',
+            'paused_at' => null,
+            'total_paused_duration' => ($timer->total_paused_duration ?? 0) + $pausedDuration,
+        ]);
+
+        // Broadcast update
+        broadcast(new TimerUpdated($timer))->toOthers();
+
+        // Update Redis state
+        $this->timerService->updateRedisState($timer);
+
+        return response()->json([
+            'message' => 'Timer resumed successfully',
+            'data' => new TimerResource($timer),
+        ]);
+    }
+
+    /**
+     * Commit a timer - stop it and convert to time entry immediately
+     */
+    public function commit(Request $request, Timer $timer): JsonResponse
+    {
+        $this->authorize('update', $timer);
+
+        DB::beginTransaction();
+        try {
+            // Update description if provided
+            if ($request->has('description')) {
+                $timer->description = $request->input('description');
+                $timer->save();
+            }
+
+            // Stop and convert to time entry
+            $result = $this->timerService->stopTimer($timer, [
+                'convert_to_entry' => true,
+                'round_to' => $request->input('round_to', 15),
+                'notes' => $request->input('notes'),
+                'manual_duration' => $request->input('manual_duration'), // Allow manual duration override
+            ]);
+
+            // Broadcast timer stopped event
+            broadcast(new TimerStopped($timer))->toOthers();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Timer committed successfully',
+                'data' => [
+                    'timer' => new TimerResource($timer->fresh()),
+                    'time_entry' => $result['time_entry'],
+                    'duration' => $result['duration'],
+                    'billed_amount' => $result['billed_amount'] ?? null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to commit timer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Adjust timer duration manually
+     */
+    public function adjustDuration(Request $request, Timer $timer): JsonResponse
+    {
+        $this->authorize('update', $timer);
+
+        $request->validate([
+            'duration' => 'required|integer|min:0', // Duration in seconds
+            'adjustment_type' => 'in:set,add,subtract', // How to apply the adjustment
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $adjustmentType = $request->input('adjustment_type', 'set');
+            $duration = $request->input('duration');
+
+            switch ($adjustmentType) {
+                case 'add':
+                    // Add time to the timer by adjusting started_at
+                    $timer->started_at = $timer->started_at->subSeconds($duration);
+                    break;
+                case 'subtract':
+                    // Subtract time from the timer
+                    $timer->started_at = $timer->started_at->addSeconds($duration);
+                    break;
+                case 'set':
+                default:
+                    // Set exact duration by calculating new started_at
+                    $currentDuration = $timer->duration;
+                    $difference = $duration - $currentDuration;
+                    $timer->started_at = $timer->started_at->subSeconds($difference);
+                    break;
+            }
+
+            $timer->metadata = array_merge($timer->metadata ?? [], [
+                'manually_adjusted' => true,
+                'adjusted_at' => now()->toIso8601String(),
+                'adjusted_by' => $request->user()->id,
+            ]);
+
+            $timer->save();
+
+            // Broadcast update
+            broadcast(new TimerUpdated($timer))->toOthers();
+
+            // Update Redis state
+            $this->timerService->updateRedisState($timer);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Timer duration adjusted successfully',
+                'data' => new TimerResource($timer->load(['project', 'task', 'billingRate'])),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to adjust timer duration',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync timer state across devices
+     */
+    public function sync(Request $request): JsonResponse
+    {
+        $deviceId = $request->input('device_id');
+        $userId = $request->user()->id;
+
+        // Get current state from Redis
+        $currentState = $this->timerService->getRedisState($userId);
+
+        // Get active timers from database
+        $activeTimers = Timer::where('user_id', $userId)
+            ->where('status', 'running')
+            ->get();
+
+        // Reconcile any conflicts
+        $reconciledTimers = $this->timerService->reconcileTimerConflicts(
+            $activeTimers,
+            $currentState,
+            $deviceId
+        );
+
+        return response()->json([
+            'message' => 'Timer state synchronized',
+            'data' => [
+                'timers' => TimerResource::collection($reconciledTimers),
+                'device_id' => $deviceId,
+                'synced_at' => now(),
+            ],
+        ]);
+    }
+
+    /**
+     * Get current timer status with running calculations
+     */
+    public function current(Request $request): JsonResponse
+    {
+        $timer = Timer::with(['project', 'task', 'billingRate'])
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', ['running', 'paused'])
+            ->latest('started_at')
+            ->first();
+
+        if (!$timer) {
+            return response()->json([
+                'message' => 'No active timer',
+                'data' => null,
+            ]);
+        }
+
+        // Calculate real-time values
+        $currentDuration = $timer->duration;
+        $currentAmount = $timer->calculated_amount;
+        
+        return response()->json([
+            'data' => new TimerResource($timer),
+            'calculations' => [
+                'duration_seconds' => $currentDuration,
+                'duration_formatted' => $timer->duration_formatted,
+                'running_amount' => $currentAmount,
+                'hourly_rate' => $timer->billingRate ? $timer->billingRate->rate : null,
+                'estimated_hourly_earnings' => $currentAmount ? ($currentAmount / ($currentDuration / 3600)) : 0,
+            ],
+        ]);
+    }
+
+    /**
+     * Get timer statistics for the user
+     */
+    public function statistics(Request $request): JsonResponse
+    {
+        $stats = $this->timerService->getUserStatistics(
+            $request->user()->id,
+            $request->input('start_date', now()->startOfMonth()),
+            $request->input('end_date', now()->endOfMonth())
+        );
+
+        return response()->json([
+            'data' => $stats,
+        ]);
+    }
+
+    /**
+     * Remove the specified timer from storage (can be called from timer overlay).
+     */
+    public function destroy(Request $request, Timer $timer): JsonResponse
+    {
+        // Force delete option for timer overlay
+        $forceDelete = $request->boolean('force', false);
+
+        // Only allow deletion of non-running timers unless force delete
+        if (!$forceDelete && $timer->status === 'running') {
+            return response()->json([
+                'message' => 'Cannot delete a running timer. Please stop it first or use force delete.',
+            ], 400);
+        }
+
+        // Check if timer has been converted to time entry
+        if ($timer->time_entry_id && !$forceDelete) {
+            return response()->json([
+                'message' => 'Cannot delete a timer that has been converted to a time entry.',
+            ], 400);
+        }
+
+        // If force deleting a running timer, stop it first
+        if ($forceDelete && $timer->status === 'running') {
+            $timer->stop();
+        }
+
+        // Broadcast deletion event before deleting
+        broadcast(new TimerDeleted($timer))->toOthers();
+
+        $timer->delete();
+
+        // Clear from Redis if exists
+        $this->timerService->removeFromRedis($timer);
+
+        return response()->json([
+            'message' => 'Timer deleted successfully',
+            'was_forced' => $forceDelete,
+        ]);
+    }
+
+    /**
+     * Bulk operations on timers
+     */
+    public function bulk(Request $request): JsonResponse
+    {
+        $request->validate([
+            'timer_ids' => 'required|array',
+            'timer_ids.*' => 'exists:timers,id',
+            'action' => 'required|in:stop,delete,pause,resume',
+        ]);
+
+        $timers = Timer::whereIn('id', $request->input('timer_ids'))
+            ->where('user_id', $request->user()->id)
+            ->get();
+
+        $results = [];
+
+        foreach ($timers as $timer) {
+            try {
+                switch ($request->input('action')) {
+                    case 'stop':
+                        $this->timerService->stopTimer($timer);
+                        $results[] = ['id' => $timer->id, 'status' => 'stopped'];
+                        break;
+                    case 'delete':
+                        if ($timer->status !== 'running' && !$timer->time_entry_id) {
+                            $timer->delete();
+                            $results[] = ['id' => $timer->id, 'status' => 'deleted'];
+                        } else {
+                            $results[] = ['id' => $timer->id, 'status' => 'skipped', 'reason' => 'Timer is running or converted'];
+                        }
+                        break;
+                    case 'pause':
+                        if ($timer->status === 'running') {
+                            $timer->update(['status' => 'paused', 'paused_at' => now()]);
+                            $results[] = ['id' => $timer->id, 'status' => 'paused'];
+                        }
+                        break;
+                    case 'resume':
+                        if ($timer->status === 'paused') {
+                            $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
+                            $timer->update([
+                                'status' => 'running',
+                                'paused_at' => null,
+                                'total_paused_duration' => ($timer->total_paused_duration ?? 0) + $pausedDuration,
+                            ]);
+                            $results[] = ['id' => $timer->id, 'status' => 'resumed'];
+                        }
+                        break;
+                }
+
+                // Broadcast updates for each timer
+                broadcast(new TimerUpdated($timer))->toOthers();
+            } catch (\Exception $e) {
+                $results[] = ['id' => $timer->id, 'status' => 'error', 'message' => $e->getMessage()];
+            }
+        }
+
+        return response()->json([
+            'message' => 'Bulk operation completed',
+            'results' => $results,
+        ]);
+    }
+}

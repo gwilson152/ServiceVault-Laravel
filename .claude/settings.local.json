@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan make:model:*)",
+      "Bash(php artisan make:migration:*)",
+      "Bash(mv:*)",
+      "Bash(php artisan make:resource:*)",
+      "Bash(php artisan make:event:*)",
+      "Bash(php artisan make:controller:*)",
+      "Bash(composer:*)",
+      "Bash(php artisan breeze:install:*)",
+      "Bash(npm install:*)",
+      "Bash(php artisan:*)",
+      "Bash(rm:*)",
+      "Bash(npm run build:*)"
+    ],
+    "deny": []
+  }
+}
