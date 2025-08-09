@@ -190,19 +190,34 @@ const filteredWidgets = computed(() => {
 
 // Methods
 const getWidgetClasses = (widget) => {
-  // Default responsive grid classes
+  // Default grid item classes
   const baseClasses = 'widget-item'
   
   // Add size-based classes if layout information is available
   const layoutItem = props.dashboardLayout.find(item => item.i === widget.id)
   if (layoutItem) {
-    const widthClass = `w-${Math.min(12, Math.max(1, layoutItem.w))}/12`
-    const heightClass = `min-h-${layoutItem.h * 20}`
-    return `${baseClasses} ${widthClass} ${heightClass}`
+    // Map widget width to column span based on intended size:
+    // 12-col system: w=4 (33%), w=6 (50%), w=8 (66%), w=12 (100%)
+    // New Grid system: 1-3 cols max for wider widgets
+    let colSpanClass = ''
+    
+    if (layoutItem.w >= 8) {
+      // Large widgets (w=8+) - take full width on all screens
+      colSpanClass = 'col-span-full'
+    } else if (layoutItem.w >= 6) {
+      // Medium widgets (w=6) - take 2 columns on tablet+, full on mobile
+      colSpanClass = 'col-span-full md:col-span-2'
+    } else {
+      // Small widgets (w=4 or less) - take 1 column on desktop, full width on smaller screens
+      colSpanClass = 'col-span-full md:col-span-1'
+    }
+    
+    const heightClass = `min-h-[${layoutItem.h * 80}px]`
+    return `${baseClasses} ${colSpanClass} ${heightClass}`
   }
   
-  // Default responsive sizing
-  return `${baseClasses} w-full md:w-1/2 lg:w-1/3 xl:w-1/4`
+  // Default: full width on mobile, 1 column on larger screens
+  return `${baseClasses} col-span-full md:col-span-1`
 }
 
 const switchAccount = () => {
@@ -259,7 +274,7 @@ onMounted(() => {
 <style scoped>
 .widget-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   align-items: start;
 }
@@ -270,15 +285,36 @@ onMounted(() => {
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .widget-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
-@media (min-width: 1280px) {
-  .widget-grid {
-    grid-template-columns: repeat(4, 1fr);
+/* Widget spanning classes work with the grid */
+.widget-item.col-span-1 {
+  grid-column: span 1;
+}
+
+.widget-item.col-span-2 {
+  grid-column: span 2;
+}
+
+.widget-item.col-span-3 {
+  grid-column: span 3;
+}
+
+.widget-item.col-span-full {
+  grid-column: 1 / -1;
+}
+
+/* Responsive column spanning */
+@media (min-width: 768px) {
+  .widget-item.md\\:col-span-1 {
+    grid-column: span 1;
+  }
+  .widget-item.md\\:col-span-2 {
+    grid-column: span 2;
   }
 }
 
