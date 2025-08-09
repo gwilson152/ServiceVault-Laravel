@@ -5,7 +5,9 @@ Functional specifications and user guides for Service Vault features.
 ## Core Features
 - **[Account Management](account-management.md)** - Hierarchical account system
 - **[User Management](user-management.md)** - Multi-tenant user system
-- **[Time Tracking](time-tracking.md)** - Timer and time entry system
+- **[Time Tracking](time-tracking.md)** - Timer and time entry system with admin oversight ✅ UPDATED
+- **[Service Tickets](service-tickets.md)** - Comprehensive ticket workflow system ✅ NEW
+- **[Widget-Based Dashboard](widget-dashboard.md)** - Dynamic dashboard with auto-discovery ✅ NEW
 - **[Project Organization](project-organization.md)** - Projects, tasks, categories
 
 ## Advanced Features
@@ -15,9 +17,11 @@ Functional specifications and user guides for Service Vault features.
 - **[Multi-tenant Theming](theming.md)** - Brand customization
 
 ## Timer System
-- **[Timer Controls](timer-controls.md)** - Start, stop, pause functionality
+- **[Timer Controls](timer-controls.md)** - Start, stop, pause functionality with admin oversight ✅ UPDATED
 - **[Cross-device Sync](timer-sync.md)** - Real-time synchronization
 - **[Conflict Resolution](timer-conflicts.md)** - Multiple timer handling
+- **[Admin Timer Management](admin-timer-management.md)** - Cross-user timer oversight ✅ NEW
+- **[Multi-Timer Support](multi-timer-support.md)** - Concurrent timer management ✅ NEW
 - **[Time Entry Management](time-entry-management.md)** - Manual time entry
 
 ## Reporting & Analytics
@@ -27,7 +31,8 @@ Functional specifications and user guides for Service Vault features.
 - **[User Activity](user-activity.md)** - User engagement tracking
 
 ## Administrative Features
-- **[Role Templates](role-templates.md)** - Pre-configured permission sets
+- **[Role Templates](role-templates.md)** - Pre-configured permission sets with widget access ✅ UPDATED
+- **[Widget Management](widget-management.md)** - Dashboard widget configuration ✅ NEW
 - **[Account Settings](account-settings.md)** - Account-level configuration
 - **[System Settings](system-settings.md)** - Global system settings
 - **[User Preferences](user-preferences.md)** - Personal customization

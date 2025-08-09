@@ -8,10 +8,11 @@ Service Vault follows Laravel 12 best practices with a **CLI-first approach** fo
 
 ### ABAC Permission System ✅ COMPLETE
 
--   **PermissionService**: Comprehensive ABAC logic with caching
+-   **PermissionService**: Comprehensive ABAC logic with caching and super admin support
 -   **Laravel Gates**: System and account-level permissions in AppServiceProvider
--   **CheckPermission Middleware**: Route-level authorization
+-   **CheckPermission Middleware**: Route-level authorization (alias: `check_permission`)
 -   **Model Policies**: AccountPolicy, TimerPolicy, TimeEntryPolicy
+-   **Base Controller**: Enhanced with `AuthorizesRequests` and `ValidatesRequests` traits
 
 ### API Development ✅ PARTIAL
 
@@ -79,6 +80,67 @@ Generate API resources for consistent responses:
 ```bash
 php artisan make:resource ModelNameResource
 php artisan make:resource ModelNameCollection
+```
+
+## Authorization & Middleware Standards
+
+### CheckPermission Middleware Usage
+
+Use the `check_permission` middleware for route-level authorization:
+
+```php
+// ✅ Correct - Individual routes with specific permissions
+Route::get('admin/timers/all-active', [TimerController::class, 'allActive'])
+    ->middleware(['auth:web,sanctum', 'check_permission:admin.read'])
+    ->name('admin.timers.all-active');
+
+Route::post('admin/timers/{timer}/stop', [TimerController::class, 'adminStopTimer'])
+    ->middleware(['auth:web,sanctum', 'check_permission:admin.write'])
+    ->name('admin.timers.stop');
+```
+
+```php
+// ❌ Incorrect - Group-level without parameters
+Route::middleware(['auth:web,sanctum', CheckPermission::class])->group(function () {
+    // This will cause "Too few arguments" errors
+});
+```
+
+### Base Controller Standards
+
+All controllers extend the enhanced base controller:
+
+```php
+// app/Http/Controllers/Controller.php
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Routing\Controller as BaseController;
+
+abstract class Controller extends BaseController
+{
+    use AuthorizesRequests, ValidatesRequests;
+}
+```
+
+This provides:
+- `$this->authorize()` method for policy checks
+- `$this->validate()` method for request validation
+
+### Permission Service Standards
+
+The PermissionService now supports super admin privileges:
+
+```php
+public function hasSystemPermission(User $user, string $permission): bool
+{
+    // Super admins have all permissions
+    if ($user->isSuperAdmin()) {
+        return true;
+    }
+    
+    // Check specific permissions from role templates
+    return /* check role permissions */;
+}
 ```
 
 ## Migration Standards

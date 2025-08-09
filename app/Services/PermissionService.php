@@ -175,6 +175,11 @@ class PermissionService
      */
     public function hasSystemPermission(User $user, string $permission): bool
     {
+        // Check if user is super admin first (like User::hasPermission() does)
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         $cacheKey = "user_system_permissions:{$user->id}";
 
         $systemPermissions = Cache::remember($cacheKey, 300, function () use ($user) {

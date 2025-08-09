@@ -1,6 +1,10 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DynamicDashboardController;
+use App\Http\Controllers\Dashboard\AdminDashboardController;
+use App\Http\Controllers\Dashboard\EmployeeDashboardController;
+use App\Http\Controllers\Dashboard\ManagerDashboardController;
+use App\Http\Controllers\Portal\CustomerPortalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SetupController;
 use Illuminate\Foundation\Application;
@@ -13,6 +17,19 @@ Route::prefix('setup')->group(function () {
     Route::post('/', [SetupController::class, 'store'])->name('setup.store');
 });
 
+// Public invitation routes (no authentication required)
+Route::prefix('invitations')->name('invitations.')->group(function () {
+    Route::get('accept/{token}', function ($token) {
+        return Inertia::render('Invitations/Accept', ['token' => $token]);
+    })->name('accept.form');
+    
+    Route::get('api/{token}', [App\Http\Controllers\UserInvitationController::class, 'showByToken'])
+        ->name('api.show');
+    
+    Route::post('api/{token}/accept', [App\Http\Controllers\UserInvitationController::class, 'accept'])
+        ->name('api.accept');
+});
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -22,23 +39,49 @@ Route::get('/', function () {
     ]);
 });
 
-// Default dashboard route redirects based on user role
-Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+// Dynamic dashboard route - serves widgets based on user permissions
+Route::get('/dashboard', [DynamicDashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
-// Role-based dashboard routes
+// Admin Dashboard Routes
+Route::middleware(['auth', 'verified', 'dashboard.role:admin'])->prefix('dashboard/admin')->name('dashboard.admin.')->group(function () {
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('index');
+    Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
+    Route::get('/accounts', [AdminDashboardController::class, 'accounts'])->name('accounts');
+    Route::get('/role-templates', [AdminDashboardController::class, 'roleTemplates'])->name('role-templates');
+    Route::get('/domain-mappings', [AdminDashboardController::class, 'domainMappings'])->name('domain-mappings');
+    Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');
+});
+
+// Manager Dashboard Routes  
+Route::middleware(['auth', 'verified', 'dashboard.role:manager'])->prefix('dashboard/manager')->name('dashboard.manager.')->group(function () {
+    Route::get('/', [ManagerDashboardController::class, 'index'])->name('index');
+    Route::get('/team', [ManagerDashboardController::class, 'team'])->name('team');
+    Route::get('/approvals', [ManagerDashboardController::class, 'approvals'])->name('approvals');
+    Route::get('/projects', [ManagerDashboardController::class, 'projects'])->name('projects');
+    Route::get('/analytics', [ManagerDashboardController::class, 'analytics'])->name('analytics');
+});
+
+// Employee Dashboard Routes
+Route::middleware(['auth', 'verified', 'dashboard.role:employee'])->prefix('dashboard/employee')->name('dashboard.employee.')->group(function () {
+    Route::get('/', [EmployeeDashboardController::class, 'index'])->name('index');
+    Route::get('/timers', [EmployeeDashboardController::class, 'timers'])->name('timers');
+    Route::get('/time-entries', [EmployeeDashboardController::class, 'timeEntries'])->name('time-entries');
+    Route::get('/analytics', [EmployeeDashboardController::class, 'analytics'])->name('analytics');
+});
+
+// Customer Portal Routes
+Route::middleware(['auth', 'verified', 'dashboard.role:portal'])->prefix('portal')->name('portal.')->group(function () {
+    Route::get('/', [CustomerPortalController::class, 'index'])->name('index');
+    Route::get('/projects', [CustomerPortalController::class, 'projects'])->name('projects');
+    Route::get('/time-tracking', [CustomerPortalController::class, 'timeTracking'])->name('time-tracking');
+    Route::get('/billing', [CustomerPortalController::class, 'billing'])->name('billing');
+    Route::get('/settings', [CustomerPortalController::class, 'settings'])->name('settings');
+});
+
+// Legacy route compatibility (these will redirect to appropriate dashboard)
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Admin Dashboard
-    Route::get('/dashboard/admin', [DashboardController::class, 'admin'])->name('dashboard.admin');
-    
-    // Manager Dashboard
-    Route::get('/dashboard/manager', [DashboardController::class, 'manager'])->name('dashboard.manager');
-    
-    // Employee Dashboard
-    Route::get('/dashboard/employee', [DashboardController::class, 'employee'])->name('dashboard.employee');
-    
-    // Customer Portal
-    Route::get('/portal', [DashboardController::class, 'portal'])->name('portal.dashboard');
-    
     // Timer management (frontend routes)
     Route::get('/timers', function () {
         return Inertia::render('Timer/Index');

@@ -1,17 +1,67 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import MultiTimerFAB from '@/Components/Timer/MultiTimerFAB.vue';
+import SimpleTimerFAB from '@/Components/Timer/SimpleTimerFAB.vue';
+import TimerStatus from '@/Components/Timer/TimerStatus.vue';
 import { Link } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
+const page = usePage();
+
+// Check if user has any timer permissions at all
+const hasTimerPermissions = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    
+    // Super admins always have all permissions
+    if (user.is_super_admin) return true;
+    
+    // Check for basic timer permissions
+    const basicTimerPermissions = [
+        'time.track',
+        'timers.create',
+        'timers.manage.own'
+    ];
+    
+    return basicTimerPermissions.some(permission => 
+        user.permissions?.includes(permission)
+    );
+});
+
+// Check if user has advanced timer permissions for multi-timer features
+const hasAdvancedTimerPermissions = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    
+    // Super admins always have all permissions
+    if (user.is_super_admin) return true;
+    
+    // Check for advanced timer permissions
+    const advancedPermissions = [
+        'admin.read',
+        'timers.view.all',
+        'timers.manage.team',
+        'managers.oversight'
+    ];
+    
+    return advancedPermissions.some(permission => 
+        user.permissions?.includes(permission)
+    );
+});
 </script>
 
 <template>
     <div>
+        <!-- Timer System (Permission-Based) -->
+        <MultiTimerFAB v-if="hasAdvancedTimerPermissions" />
+        <SimpleTimerFAB v-else-if="hasTimerPermissions" />
+        
         <div class="min-h-screen bg-gray-100">
             <nav
                 class="border-b border-gray-100 bg-white"
@@ -39,10 +89,25 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Dashboard
                                 </NavLink>
+                                <NavLink
+                                    :href="route('timers.web.index')"
+                                    :active="route().current('timers.*')"
+                                >
+                                    Timers
+                                </NavLink>
+                                <NavLink
+                                    :href="route('time-entries.index')"
+                                    :active="route().current('time-entries.*')"
+                                >
+                                    Time Entries
+                                </NavLink>
                             </div>
                         </div>
 
                         <div class="hidden sm:ms-6 sm:flex sm:items-center">
+                            <!-- Timer Status -->
+                            <TimerStatus />
+                            
                             <!-- Settings Dropdown -->
                             <div class="relative ms-3">
                                 <Dropdown align="right" width="48">
@@ -145,6 +210,18 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('dashboard')"
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('timers.web.index')"
+                            :active="route().current('timers.*')"
+                        >
+                            Timers
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('time-entries.index')"
+                            :active="route().current('time-entries.*')"
+                        >
+                            Time Entries
                         </ResponsiveNavLink>
                     </div>
 

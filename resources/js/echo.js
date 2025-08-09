@@ -25,10 +25,21 @@ window.Pusher = Pusher
 // })
 
 // Temporary mock for development until broadcasting is implemented
+const createMockChannel = () => ({
+    listen: (event, callback) => createMockChannel(),
+    stopListening: () => createMockChannel(),
+    subscribed: (callback) => {
+        // Simulate successful connection after a delay
+        setTimeout(() => callback && callback(), 100)
+        return createMockChannel()
+    },
+    error: (callback) => createMockChannel()
+})
+
 window.Echo = {
-    channel: () => ({ listen: () => {}, stopListening: () => {} }),
-    private: () => ({ listen: () => {}, stopListening: () => {} }),
-    join: () => ({ listen: () => {}, stopListening: () => {} }),
+    channel: () => createMockChannel(),
+    private: () => createMockChannel(),
+    join: () => createMockChannel(),
     leave: () => {},
 }
 

@@ -3,7 +3,7 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
 use App\Http\Controllers\Api\TimerController;
-use App\Http\Middleware\CheckPermission;
+use App\Http\Controllers\Api\TimeEntryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -70,6 +70,32 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::post('timers/bulk', [TimerController::class, 'bulk'])
         ->name('timers.bulk');
+    
+    // Service ticket timer endpoints
+    Route::get('service-tickets/{serviceTicketId}/timers', [TimerController::class, 'forServiceTicket'])
+        ->name('service-tickets.timers');
+    
+    Route::get('service-tickets/{serviceTicketId}/timers/active', [TimerController::class, 'activeForServiceTicket'])
+        ->name('service-tickets.timers.active');
+
+    // Time Entry routes with approval workflow
+    Route::apiResource('time-entries', TimeEntryController::class);
+    
+    // Time entry approval workflow endpoints
+    Route::post('time-entries/{timeEntry}/approve', [TimeEntryController::class, 'approve'])
+        ->name('time-entries.approve');
+    
+    Route::post('time-entries/{timeEntry}/reject', [TimeEntryController::class, 'reject'])
+        ->name('time-entries.reject');
+    
+    Route::post('time-entries/bulk/approve', [TimeEntryController::class, 'bulkApprove'])
+        ->name('time-entries.bulk-approve');
+    
+    Route::post('time-entries/bulk/reject', [TimeEntryController::class, 'bulkReject'])
+        ->name('time-entries.bulk-reject');
+    
+    Route::get('time-entries/stats/approvals', [TimeEntryController::class, 'approvalStats'])
+        ->name('time-entries.approval-stats');
 
     // Account routes (hierarchical selector support)
     Route::apiResource('accounts', AccountController::class);
@@ -85,18 +111,61 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::get('domain-mappings/validate/requirements', [DomainMappingController::class, 'validateRequirements'])
         ->name('domain-mappings.validate-requirements');
+
+    // User invitation routes (admin/manager access)
+    Route::apiResource('user-invitations', App\Http\Controllers\UserInvitationController::class);
+
+    // Service Ticket routes (comprehensive ticket management system)
+    Route::apiResource('service-tickets', App\Http\Controllers\Api\ServiceTicketController::class);
+    
+    // Service ticket workflow and assignment endpoints
+    Route::post('service-tickets/{serviceTicket}/transition', [App\Http\Controllers\Api\ServiceTicketController::class, 'transitionStatus'])
+        ->name('service-tickets.transition');
+    
+    Route::post('service-tickets/{serviceTicket}/assign', [App\Http\Controllers\Api\ServiceTicketController::class, 'assign'])
+        ->name('service-tickets.assign');
+    
+    Route::get('service-tickets/stats/dashboard', [App\Http\Controllers\Api\ServiceTicketController::class, 'statistics'])
+        ->name('service-tickets.statistics');
+    
+    Route::get('service-tickets/my/assigned', [App\Http\Controllers\Api\ServiceTicketController::class, 'myTickets'])
+        ->name('service-tickets.my-tickets');
+    
+    // Team assignment endpoints
+    Route::post('service-tickets/{serviceTicket}/team/add', [App\Http\Controllers\Api\ServiceTicketController::class, 'addTeamMember'])
+        ->name('service-tickets.team.add');
+    
+    Route::delete('service-tickets/{serviceTicket}/team/{teamMember}', [App\Http\Controllers\Api\ServiceTicketController::class, 'removeTeamMember'])
+        ->name('service-tickets.team.remove');
+    
+    Route::get('service-tickets/{serviceTicket}/team', [App\Http\Controllers\Api\ServiceTicketController::class, 'getTeamMembers'])
+        ->name('service-tickets.team.list');
+    
+    Route::post('service-tickets/{serviceTicket}/team/bulk', [App\Http\Controllers\Api\ServiceTicketController::class, 'bulkAssignTeam'])
+        ->name('service-tickets.team.bulk-assign');
 });
 
-// Protected routes requiring specific permissions
-Route::middleware(['auth:web,sanctum', CheckPermission::class])->group(function () {
+// Admin-only routes
+Route::prefix('admin')->middleware(['auth:web,sanctum'])->group(function () {
+    // Timer management endpoints
+    Route::get('timers/all-active', [TimerController::class, 'allActive'])
+        ->middleware('check_permission:admin.read')
+        ->name('admin.timers.all-active');
     
-    // Admin-only routes
-    Route::prefix('admin')->group(function () {
-        // Future admin routes
-    });
+    Route::post('timers/{timer}/pause', [TimerController::class, 'adminPauseTimer'])
+        ->middleware('check_permission:admin.write')
+        ->name('admin.timers.pause');
     
-    // Manager-only routes  
-    Route::prefix('manager')->group(function () {
-        // Future manager routes
-    });
+    Route::post('timers/{timer}/resume', [TimerController::class, 'adminResumeTimer'])
+        ->middleware('check_permission:admin.write')
+        ->name('admin.timers.resume');
+    
+    Route::post('timers/{timer}/stop', [TimerController::class, 'adminStopTimer'])
+        ->middleware('check_permission:admin.write')
+        ->name('admin.timers.stop');
+});
+
+// Manager-only routes  
+Route::prefix('manager')->middleware(['auth:web,sanctum'])->group(function () {
+    // Future manager routes
 });

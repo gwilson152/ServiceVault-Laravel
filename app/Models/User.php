@@ -28,6 +28,7 @@ class User extends Authenticatable
         'timezone',
         'locale',
         'last_active_at',
+        'last_login_at',
         'is_active',
     ];
 
@@ -53,6 +54,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'preferences' => 'array',
             'last_active_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
@@ -83,6 +85,52 @@ class User extends Authenticatable
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'role_user');
+    }
+
+    /**
+     * Role templates assigned to this user (ABAC system).
+     */
+    public function roleTemplates()
+    {
+        return $this->belongsToMany(RoleTemplate::class, 'role_template_user');
+    }
+    
+    /**
+     * Check if user has a specific permission through their role templates
+     */
+    public function hasPermission(string $permission): bool
+    {
+        return $this->roleTemplates()->get()->some(function ($roleTemplate) use ($permission) {
+            // Super Admin always has all permissions
+            if ($roleTemplate->isSuperAdmin()) {
+                return true;
+            }
+            
+            return in_array($permission, $roleTemplate->getAllPermissions());
+        });
+    }
+    
+    /**
+     * Check if user is Super Admin
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->roleTemplates()->get()->some(function ($roleTemplate) {
+            return $roleTemplate->isSuperAdmin();
+        });
+    }
+    
+    /**
+     * Check if user has any of the specified permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

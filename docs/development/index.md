@@ -4,7 +4,7 @@ Development standards, tools, and workflows for Service Vault.
 
 ## Current Status
 
--   **[Progress Report](progress-report.md)** - Phase 4 status and achievements ✅ NEW
+-   **[Progress Report](progress-report.md)** - Phase 12 status and achievements ✅ UPDATED
 
 ## Getting Started
 
@@ -27,13 +27,16 @@ Development standards, tools, and workflows for Service Vault.
 ## Frontend Development
 
 -   **[Vue.js Integration](vue-integration.md)** - Inertia.js + Vue.js 3.5+ setup
+-   **[Widget Development](widget-development.md)** - Creating and configuring dashboard widgets ✅ NEW
+-   **[Component Guidelines](component-guidelines.md)** - Vue component standards with widget architecture ✅ UPDATED
 -   **[Theme Development](theme-development.md)** - CSS custom properties, Tailwind integration
--   **[Component Guidelines](component-guidelines.md)** - Vue component standards
 
 ## API Development
 
--   **[API Standards](api-standards.md)** - RESTful API patterns, resources
--   **[Authentication](api-authentication.md)** - Laravel Sanctum, API tokens
+-   **[API Standards](api-standards.md)** - RESTful API patterns, resources with widget endpoints ✅ UPDATED
+-   **[Authentication](api-authentication.md)** - Laravel Sanctum, API tokens with admin abilities ✅ UPDATED
+-   **[Widget APIs](widget-api-development.md)** - Developing widget data and configuration endpoints ✅ NEW
+-   **[Admin APIs](admin-api-development.md)** - Cross-user management and oversight APIs ✅ NEW
 -   **[Testing APIs](api-testing.md)** - API testing with REST Client
 
 ## Quality Assurance

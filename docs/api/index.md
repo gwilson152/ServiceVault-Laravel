@@ -11,8 +11,10 @@ RESTful API specifications, authentication, and integration guides.
 ## Core Resources
 - **[Accounts API](accounts.md)** - Account management endpoints
 - **[Users API](users.md)** - User management and profiles
-- **[Timers API](timers.md)** - Timer control and synchronization
+- **[Timers API](timers.md)** - Timer control and synchronization with admin oversight ✅ UPDATED
 - **[Time Entries API](time-entries.md)** - Time tracking data
+- **[Service Tickets API](service-tickets.md)** - Ticket workflow and management ✅ NEW
+- **[Widgets API](widgets.md)** - Widget registry and dashboard APIs ✅ NEW
 - **[Projects API](projects.md)** - Project and task management
 
 ## Billing & Invoicing
@@ -23,6 +25,8 @@ RESTful API specifications, authentication, and integration guides.
 ## Administration
 - **[Permissions API](permissions.md)** - Role and permission management
 - **[Settings API](settings.md)** - System and account settings
+- **[Admin Timer Management API](admin-timers.md)** - Cross-user timer oversight ✅ NEW
+- **[Widget Management API](widget-management.md)** - Widget configuration and discovery ✅ NEW
 - **[Themes API](themes.md)** - Theme configuration
 
 ## Real-time APIs

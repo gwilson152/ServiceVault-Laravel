@@ -1,6 +1,6 @@
 # Timers API
 
-Service Vault supports multiple concurrent timers per user with real-time cross-device synchronization via Redis state management.
+Service Vault supports multiple concurrent timers per user with real-time cross-device synchronization via Redis state management, plus comprehensive admin oversight capabilities.
 
 ## Overview
 
@@ -9,6 +9,8 @@ Service Vault supports multiple concurrent timers per user with real-time cross-
 - **Cross-Device Sync**: Redis-based state synchronization across devices
 - **Conflict Resolution**: Automatic handling of timer state conflicts
 - **Real-Time Updates**: WebSocket broadcasting for live timer updates
+- **Admin Oversight**: Permission-based monitoring and control of all user timers ✅ NEW
+- **Cross-User Management**: Administrators can pause, resume, and stop any user's timer ✅ NEW
 
 ### Timer States
 - **stopped**: Timer is not running (initial state)
@@ -26,6 +28,12 @@ All timer endpoints require authentication. Supported methods:
 - `timers:write` - Create and update timers  
 - `timers:delete` - Delete timers
 - `timers:sync` - Cross-device timer synchronization
+
+### Admin Token Abilities (Phase 12) ✅ NEW
+- `admin.read` - View admin features and all user timers
+- `timers.view.all` - Monitor all active timers across users
+- `timers.manage.team` - Manage team member timers
+- `managers.oversight` - Manager oversight capabilities
 
 ## Endpoints
 
@@ -413,6 +421,175 @@ Content-Type: application/json
             }
         ],
         "time_entries_created": 2
+    }
+}
+```
+
+## Admin Timer Management (Phase 12) ✅ NEW
+
+### Get All Active Timers (Admin Only)
+```http
+GET /api/admin/timers/all-active
+Authorization: Bearer {admin_token}
+```
+
+**Required Permissions**: `admin.read` or `timers.view.all`
+
+**Response:**
+```json
+{
+    "data": [
+        {
+            "id": 1,
+            "user": {
+                "id": 123,
+                "name": "John Doe",
+                "email": "john@company.com"
+            },
+            "description": "Working on authentication",
+            "status": "running",
+            "started_at": "2024-12-01T09:00:00Z",
+            "current_session_duration": 7200,
+            "total_duration": 14400,
+            "account": {
+                "id": 456,
+                "name": "ACME Corp"
+            },
+            "service_ticket": {
+                "id": 789,
+                "title": "User Authentication System"
+            },
+            "billing_rate": {
+                "id": 101,
+                "rate": 75.00,
+                "currency": "USD"
+            },
+            "current_value": 300.00
+        }
+    ],
+    "meta": {
+        "total_timers": 5,
+        "total_users_with_timers": 3,
+        "total_active_duration": 25200,
+        "total_active_value": 1050.00
+    }
+}
+```
+
+### Admin Pause Timer
+```http
+POST /api/admin/timers/{timer_id}/pause
+Authorization: Bearer {admin_token}
+```
+
+**Required Permissions**: `admin.read` and `timers.manage.team`
+
+**Response:**
+```json
+{
+    "data": {
+        "id": 1,
+        "status": "paused",
+        "paused_at": "2024-12-01T11:00:00Z",
+        "paused_by_admin": true,
+        "admin_user": {
+            "id": 999,
+            "name": "Admin User"
+        }
+    }
+}
+```
+
+### Admin Resume Timer
+```http
+POST /api/admin/timers/{timer_id}/resume
+Authorization: Bearer {admin_token}
+```
+
+**Required Permissions**: `admin.read` and `timers.manage.team`
+
+**Response:**
+```json
+{
+    "data": {
+        "id": 1,
+        "status": "running",
+        "resumed_at": "2024-12-01T11:30:00Z",
+        "resumed_by_admin": true,
+        "admin_user": {
+            "id": 999,
+            "name": "Admin User"
+        }
+    }
+}
+```
+
+### Admin Stop Timer
+```http
+POST /api/admin/timers/{timer_id}/stop
+Authorization: Bearer {admin_token}
+Content-Type: application/json
+
+{
+    "create_time_entry": true,
+    "admin_note": "Timer stopped for end of shift"
+}
+```
+
+**Required Permissions**: `admin.read` and `timers.manage.team`
+
+**Response:**
+```json
+{
+    "data": {
+        "timer": {
+            "id": 1,
+            "status": "stopped",
+            "stopped_at": "2024-12-01T17:00:00Z",
+            "stopped_by_admin": true,
+            "admin_user": {
+                "id": 999,
+                "name": "Admin User"
+            },
+            "admin_note": "Timer stopped for end of shift"
+        },
+        "time_entry": {
+            "id": 202,
+            "description": "Working on authentication",
+            "duration": 28800,
+            "total_value": 600.00,
+            "created_by_admin": true
+        }
+    }
+}
+```
+
+### Admin Timer Statistics
+```http
+GET /api/admin/timers/statistics
+Authorization: Bearer {admin_token}
+```
+
+**Response:**
+```json
+{
+    "data": {
+        "active_timers_count": 15,
+        "users_with_active_timers": 8,
+        "total_active_duration": 72000,
+        "total_active_value": 3750.00,
+        "average_timer_duration": 4800,
+        "longest_running_timer": {
+            "id": 123,
+            "duration": 14400,
+            "user": "John Doe"
+        },
+        "today_stats": {
+            "timers_started": 25,
+            "timers_completed": 18,
+            "total_time_tracked": 144000,
+            "total_value_generated": 7200.00
+        }
     }
 }
 ```

@@ -21,6 +21,7 @@ class Timer extends Model
         'project_id',
         'task_id',
         'billing_rate_id',
+        'service_ticket_id',
         'time_entry_id',
         'description',
         'ticket_number',
@@ -91,6 +92,14 @@ class Timer extends Model
     public function billingRate(): BelongsTo
     {
         return $this->belongsTo(BillingRate::class);
+    }
+
+    /**
+     * Get the service ticket associated with the timer.
+     */
+    public function serviceTicket(): BelongsTo
+    {
+        return $this->belongsTo(ServiceTicket::class);
     }
 
     /**
@@ -223,6 +232,14 @@ class Timer extends Model
     }
 
     /**
+     * Scope a query to only include timers for a specific service ticket.
+     */
+    public function scopeForServiceTicket($query, $serviceTicketId)
+    {
+        return $query->where('service_ticket_id', $serviceTicketId);
+    }
+
+    /**
      * Scope a query to only include timers within a date range.
      */
     public function scopeDateRange($query, $startDate, $endDate)
@@ -297,6 +314,7 @@ class Timer extends Model
             'project_id' => $this->project_id,
             'task_id' => $this->task_id,
             'billing_rate_id' => $this->billing_rate_id,
+            'service_ticket_id' => $this->service_ticket_id,
             'description' => $this->description,
             'started_at' => $this->started_at,
             'ended_at' => $this->stopped_at,

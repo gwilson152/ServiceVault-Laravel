@@ -22,6 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
+        
+        // Register middleware aliases
+        $middleware->alias([
+            'dashboard.role' => \App\Http\Middleware\DashboardRoleMiddleware::class,
+            'check_permission' => \App\Http\Middleware\CheckPermission::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

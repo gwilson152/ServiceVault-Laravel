@@ -16,28 +16,34 @@ class AuthRedirectService
         
         // Check for admin roles first
         if ($this->hasAdminRole($userRoles)) {
-            return route('dashboard.admin');
+            return route('dashboard.admin.index');
         }
         
         // Check for manager roles
         if ($this->hasManagerRole($userRoles)) {
-            return route('dashboard.manager');
+            return route('dashboard.manager.index');
         }
         
         // Check for customer/client roles
         if ($this->hasCustomerRole($userRoles)) {
-            return route('portal.dashboard');
+            return route('portal.index');
         }
         
         // Default to employee dashboard
-        return route('dashboard.employee');
+        return route('dashboard.employee.index');
     }
     
     private function hasAdminRole($roles): bool
     {
         return $roles->some(function ($role) {
-            $permissions = $role->roleTemplate->permissions ?? [];
-            return in_array('system.manage', $permissions) || 
+            // Check if it's Super Admin (always has admin permissions)
+            if ($role->roleTemplate->isSuperAdmin()) {
+                return true;
+            }
+            
+            $permissions = $role->roleTemplate->getAllPermissions();
+            return in_array('admin.manage', $permissions) || 
+                   in_array('system.manage', $permissions) || 
                    in_array('accounts.create', $permissions);
         });
     }
@@ -45,8 +51,14 @@ class AuthRedirectService
     private function hasManagerRole($roles): bool
     {
         return $roles->some(function ($role) {
-            $permissions = $role->roleTemplate->permissions ?? [];
-            return in_array('team.manage', $permissions) || 
+            // Super Admin has all permissions including manager permissions
+            if ($role->roleTemplate->isSuperAdmin()) {
+                return true;
+            }
+            
+            $permissions = $role->roleTemplate->getAllPermissions();
+            return in_array('teams.manage', $permissions) || 
+                   in_array('team.manage', $permissions) ||
                    in_array('projects.manage', $permissions);
         });
     }
@@ -54,8 +66,14 @@ class AuthRedirectService
     private function hasCustomerRole($roles): bool
     {
         return $roles->some(function ($role) {
-            $permissions = $role->roleTemplate->permissions ?? [];
+            // Super Admin should not be treated as customer
+            if ($role->roleTemplate->isSuperAdmin()) {
+                return false;
+            }
+            
+            $permissions = $role->roleTemplate->getAllPermissions();
             return in_array('portal.access', $permissions) && 
+                   !in_array('time.track', $permissions) &&
                    !in_array('timers.create', $permissions);
         });
     }

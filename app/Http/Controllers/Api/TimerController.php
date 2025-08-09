@@ -34,7 +34,7 @@ class TimerController extends Controller
     {
         $this->authorize('viewAny', Timer::class);
         
-        $query = Timer::with(['project', 'task', 'billingRate'])
+        $query = Timer::with(['project', 'task', 'billingRate', 'serviceTicket'])
             ->where('user_id', $request->user()->id);
 
         // Filter by status
@@ -45,6 +45,11 @@ class TimerController extends Controller
         // Filter by project
         if ($request->has('project_id')) {
             $query->where('project_id', $request->input('project_id'));
+        }
+
+        // Filter by service ticket
+        if ($request->has('service_ticket_id')) {
+            $query->where('service_ticket_id', $request->input('service_ticket_id'));
         }
 
         // Filter by date range
@@ -74,7 +79,7 @@ class TimerController extends Controller
      */
     public function active(Request $request): AnonymousResourceCollection
     {
-        $timers = Timer::with(['project', 'task', 'billingRate'])
+        $timers = Timer::with(['project', 'task', 'billingRate', 'serviceTicket'])
             ->where('user_id', $request->user()->id)
             ->where('status', 'running')
             ->get();
@@ -106,6 +111,7 @@ class TimerController extends Controller
                 'project_id' => $request->input('project_id'),
                 'task_id' => $request->input('task_id'),
                 'billing_rate_id' => $request->input('billing_rate_id'),
+                'service_ticket_id' => $request->input('service_ticket_id'),
                 'description' => $request->input('description'),
                 'status' => 'running',
                 'started_at' => now(),
@@ -593,6 +599,80 @@ class TimerController extends Controller
     }
 
     /**
+     * Get all timers for a specific service ticket
+     */
+    public function forServiceTicket(Request $request, int $serviceTicketId): AnonymousResourceCollection
+    {
+        $request->validate([
+            'include_all_statuses' => 'boolean',
+        ]);
+        
+        $query = Timer::with(['user', 'billingRate', 'serviceTicket'])
+            ->where('service_ticket_id', $serviceTicketId);
+
+        // By default, only show active timers
+        if (!$request->boolean('include_all_statuses', false)) {
+            $query->whereIn('status', ['running', 'paused']);
+        }
+
+        // Filter by status if specified
+        if ($request->has('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        $timers = $query->orderBy('started_at', 'desc')->get();
+
+        return TimerResource::collection($timers);
+    }
+
+    /**
+     * Get active timers for a service ticket (real-time dashboard)
+     */
+    public function activeForServiceTicket(Request $request, int $serviceTicketId): JsonResponse
+    {
+        $timers = Timer::with(['user', 'billingRate', 'serviceTicket'])
+            ->where('service_ticket_id', $serviceTicketId)
+            ->where('status', 'running')
+            ->get();
+
+        $totalDuration = 0;
+        $totalAmount = 0;
+        $timerData = [];
+
+        foreach ($timers as $timer) {
+            $currentDuration = $timer->duration;
+            $currentAmount = $timer->calculated_amount;
+            
+            $totalAmount += $currentAmount ?? 0;
+            $totalDuration += $currentDuration;
+
+            $timerData[] = [
+                'timer' => new TimerResource($timer),
+                'user' => [
+                    'id' => $timer->user->id,
+                    'name' => $timer->user->name,
+                ],
+                'calculations' => [
+                    'duration_seconds' => $currentDuration,
+                    'duration_formatted' => $timer->duration_formatted,
+                    'running_amount' => $currentAmount,
+                    'hourly_rate' => $timer->billingRate ? $timer->billingRate->rate : null,
+                ],
+            ];
+        }
+        
+        return response()->json([
+            'data' => $timerData,
+            'totals' => [
+                'active_timers_count' => $timers->count(),
+                'total_running_amount' => round($totalAmount, 2),
+                'total_duration' => $totalDuration,
+                'total_duration_formatted' => $this->formatDuration($totalDuration),
+            ],
+        ]);
+    }
+
+    /**
      * Bulk operations on timers
      */
     public function bulk(Request $request): JsonResponse
@@ -654,5 +734,168 @@ class TimerController extends Controller
             'message' => 'Bulk operation completed',
             'results' => $results,
         ]);
+    }
+
+    /**
+     * Get all active timers across all users (Admin only)
+     */
+    public function allActive(Request $request): JsonResponse
+    {
+        // Check admin permissions
+        $user = $request->user();
+        if (!$user->isSuperAdmin() && !$user->hasPermission('admin.read')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $timers = Timer::with(['user', 'billingRate', 'serviceTicket', 'project'])
+            ->whereIn('status', ['running', 'paused'])
+            ->orderBy('started_at', 'desc')
+            ->get();
+
+        $totalDuration = 0;
+        $totalAmount = 0;
+        $timerData = [];
+
+        foreach ($timers as $timer) {
+            $currentDuration = $timer->duration;
+            $currentAmount = $timer->calculated_amount;
+            
+            $totalAmount += $currentAmount ?? 0;
+            $totalDuration += $currentDuration;
+
+            $timerData[] = [
+                'timer' => new TimerResource($timer),
+                'user' => [
+                    'id' => $timer->user->id,
+                    'name' => $timer->user->name,
+                    'email' => $timer->user->email,
+                ],
+                'calculations' => [
+                    'duration_seconds' => $currentDuration,
+                    'duration_formatted' => $timer->duration_formatted,
+                    'running_amount' => $currentAmount,
+                    'hourly_rate' => $timer->billingRate ? $timer->billingRate->rate : null,
+                ],
+            ];
+        }
+        
+        return response()->json([
+            'data' => $timerData,
+            'totals' => [
+                'active_timers' => $timers->count(),
+                'total_amount' => round($totalAmount, 2),
+                'total_duration' => $totalDuration,
+                'total_duration_formatted' => $this->formatDuration($totalDuration),
+            ],
+        ]);
+    }
+
+    /**
+     * Admin action: Pause any user's timer
+     */
+    public function adminPauseTimer(Request $request, Timer $timer): JsonResponse
+    {
+        // Check admin permissions
+        $user = $request->user();
+        if (!$user->isSuperAdmin() && !$user->hasPermission('admin.write')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($timer->status !== 'running') {
+            return response()->json(['message' => 'Timer is not running'], 400);
+        }
+
+        $timer->update([
+            'status' => 'paused',
+            'paused_at' => now(),
+        ]);
+
+        // Broadcast update to the timer owner
+        broadcast(new TimerUpdated($timer))->toOthers();
+
+        // Update Redis state
+        $this->timerService->updateRedisState($timer);
+
+        return response()->json([
+            'message' => 'Timer paused successfully',
+            'data' => new TimerResource($timer),
+        ]);
+    }
+
+    /**
+     * Admin action: Resume any user's timer
+     */
+    public function adminResumeTimer(Request $request, Timer $timer): JsonResponse
+    {
+        // Check admin permissions
+        $user = $request->user();
+        if (!$user->isSuperAdmin() && !$user->hasPermission('admin.write')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($timer->status !== 'paused') {
+            return response()->json(['message' => 'Timer is not paused'], 400);
+        }
+
+        $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
+        
+        $timer->update([
+            'status' => 'running',
+            'paused_at' => null,
+            'total_paused_duration' => ($timer->total_paused_duration ?? 0) + $pausedDuration,
+        ]);
+
+        // Broadcast update to the timer owner
+        broadcast(new TimerUpdated($timer))->toOthers();
+
+        // Update Redis state
+        $this->timerService->updateRedisState($timer);
+
+        return response()->json([
+            'message' => 'Timer resumed successfully',
+            'data' => new TimerResource($timer),
+        ]);
+    }
+
+    /**
+     * Admin action: Stop any user's timer
+     */
+    public function adminStopTimer(Request $request, Timer $timer): JsonResponse
+    {
+        // Check admin permissions
+        $user = $request->user();
+        if (!$user->isSuperAdmin() && !$user->hasPermission('admin.write')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        DB::beginTransaction();
+        try {
+            $result = $this->timerService->stopTimer($timer, [
+                'convert_to_entry' => true,
+                'notes' => 'Stopped by administrator: ' . $user->name,
+            ]);
+
+            // Broadcast timer stopped event to the timer owner
+            broadcast(new TimerStopped($timer))->toOthers();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Timer stopped successfully',
+                'data' => [
+                    'timer' => new TimerResource($timer->fresh()),
+                    'time_entry' => $result['time_entry'] ?? null,
+                    'duration' => $result['duration'],
+                    'billed_amount' => $result['billed_amount'] ?? null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to stop timer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }
