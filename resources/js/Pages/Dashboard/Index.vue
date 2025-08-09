@@ -198,26 +198,26 @@ const getWidgetClasses = (widget) => {
   if (layoutItem) {
     // Map widget width to column span based on intended size:
     // 12-col system: w=4 (33%), w=6 (50%), w=8 (66%), w=12 (100%)
-    // New Grid system: 1-3 cols max for wider widgets
+    // Grid system: 1-4 cols depending on screen size
     let colSpanClass = ''
     
     if (layoutItem.w >= 8) {
-      // Large widgets (w=8+) - take full width on all screens
-      colSpanClass = 'col-span-full'
+      // Large widgets (w=8+) - span 2-3 columns depending on screen size
+      colSpanClass = 'col-span-1 lg:col-span-2 xl:col-span-3'
     } else if (layoutItem.w >= 6) {
-      // Medium widgets (w=6) - take 2 columns on tablet+, full on mobile
-      colSpanClass = 'col-span-full md:col-span-2'
+      // Medium widgets (w=6) - span 2 columns on larger screens
+      colSpanClass = 'col-span-1 lg:col-span-2'
     } else {
-      // Small widgets (w=4 or less) - take 1 column on desktop, full width on smaller screens
-      colSpanClass = 'col-span-full md:col-span-1'
+      // Small widgets (w=4 or less) - span 1 column
+      colSpanClass = 'col-span-1'
     }
     
     const heightClass = `min-h-[${layoutItem.h * 80}px]`
     return `${baseClasses} ${colSpanClass} ${heightClass}`
   }
   
-  // Default: full width on mobile, 1 column on larger screens
-  return `${baseClasses} col-span-full md:col-span-1`
+  // Default: single column
+  return `${baseClasses} col-span-1`
 }
 
 const switchAccount = () => {
@@ -275,19 +275,25 @@ onMounted(() => {
 .widget-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 1rem 1.5rem; /* row-gap column-gap */
   align-items: start;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1200px) {
   .widget-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1440px) {
   .widget-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1920px) {
+  .widget-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -309,12 +315,15 @@ onMounted(() => {
 }
 
 /* Responsive column spanning */
-@media (min-width: 768px) {
-  .widget-item.md\\:col-span-1 {
-    grid-column: span 1;
-  }
-  .widget-item.md\\:col-span-2 {
+@media (min-width: 1200px) {
+  .widget-item.lg\\:col-span-2 {
     grid-column: span 2;
+  }
+}
+
+@media (min-width: 1440px) {
+  .widget-item.xl\\:col-span-3 {
+    grid-column: span 3;
   }
 }
 
