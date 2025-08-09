@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('settings', function (Blueprint $table) {
             $table->id();
+            $table->string('key')->unique()->index();
+            $table->text('value')->nullable();
+            $table->string('type', 50)->default('system');
+            $table->string('description')->nullable();
+            $table->boolean('is_public')->default(false);
             $table->timestamps();
         });
     }

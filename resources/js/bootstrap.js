@@ -13,6 +13,18 @@ if (token) {
     window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
 }
 
+// Configure axios for Sanctum
+window.axios.defaults.withCredentials = true;
+
+// Initialize CSRF cookie for API requests
+window.initializeCSRF = async () => {
+    try {
+        await axios.get('/sanctum/csrf-cookie');
+    } catch (error) {
+        console.error('Failed to initialize CSRF cookie:', error);
+    }
+};
+
 // Add response interceptor for error handling
 window.axios.interceptors.response.use(
     response => response,

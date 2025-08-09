@@ -12,7 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            //
+            $table->foreignId('current_account_id')->nullable()->constrained('accounts');
+            $table->json('preferences')->nullable();
+            $table->string('timezone', 50)->default('UTC');
+            $table->string('locale', 10)->default('en');
+            $table->timestamp('last_active_at')->nullable();
+            $table->boolean('is_active')->default(true);
         });
     }
 
@@ -22,7 +27,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            //
+            $table->dropForeign(['current_account_id']);
+            $table->dropColumn([
+                'current_account_id',
+                'preferences', 
+                'timezone',
+                'locale',
+                'last_active_at',
+                'is_active'
+            ]);
         });
     }
 };

@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('account_user', function (Blueprint $table) {
+        Schema::create('role_templates', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('account_id')->constrained('accounts')->onDelete('cascade');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('name')->unique();
+            $table->json('permissions');
+            $table->boolean('is_system_role')->default(false);
+            $table->boolean('is_default')->default(false);
+            $table->text('description')->nullable();
             $table->timestamps();
-            
-            // Ensure unique account-user combinations
-            $table->unique(['account_id', 'user_id']);
         });
     }
 
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('account_user');
+        Schema::dropIfExists('role_templates');
     }
 };

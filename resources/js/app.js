@@ -17,6 +17,11 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
+        // Initialize CSRF cookie for API requests
+        if (window.initializeCSRF) {
+            window.initializeCSRF();
+        }
+        
         return createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)

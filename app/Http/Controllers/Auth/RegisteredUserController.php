@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\DomainAssignmentService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -40,6 +42,22 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'timezone' => 'UTC',
+            'locale' => 'en',
+            'is_active' => true,
+        ]);
+
+        // Assign user to account and role based on domain mapping
+        $assignmentService = new DomainAssignmentService();
+        $assignmentResult = $assignmentService->assignUserBasedOnDomain($user);
+        
+        // Log assignment result
+        Log::info('User registration assignment', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'assignment_method' => $assignmentResult['method'],
+            'account_name' => $assignmentResult['account']->name,
+            'role_template' => $assignmentResult['role_template']->name,
         ]);
 
         event(new Registered($user));
@@ -48,4 +66,5 @@ class RegisteredUserController extends Controller
 
         return redirect(route('dashboard', absolute: false));
     }
+
 }

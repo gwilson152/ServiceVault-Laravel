@@ -179,58 +179,27 @@
           </div>
         </div>
 
-        <!-- Licensing Configuration -->
+        <!-- User Limits -->
         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
-          <h2 class="text-xl font-semibold text-gray-900 mb-4">License Configuration</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <h2 class="text-xl font-semibold text-gray-900 mb-4">User Limits</h2>
+          <p class="text-sm text-gray-600 mb-4">
+            Set the maximum number of users for your Service Vault installation. 
+            <span class="text-blue-600">Full licensing system will be implemented in a future release.</span>
+          </p>
+          <div class="max-w-md">
             <div>
-              <InputLabel for="license_key" value="License Key" />
+              <InputLabel for="max_users" value="Maximum Users" />
               <TextInput
-                id="license_key"
-                type="text"
+                id="max_users"
+                type="number"
                 class="mt-1 block w-full"
-                v-model="form.license_key"
-                required
-                placeholder="Enter your Service Vault license key"
-              />
-              <InputError class="mt-2" :message="form.errors.license_key" />
-            </div>
-
-            <div>
-              <InputLabel for="license_server_url" value="License Server URL" />
-              <TextInput
-                id="license_server_url"
-                type="url"
-                class="mt-1 block w-full"
-                v-model="form.license_server_url"
-                required
-                placeholder="https://license.servicevault.com"
-              />
-              <InputError class="mt-2" :message="form.errors.license_server_url" />
-            </div>
-
-            <div>
-              <InputLabel for="license_contact_name" value="License Contact Name" />
-              <TextInput
-                id="license_contact_name"
-                type="text"
-                class="mt-1 block w-full"
-                v-model="form.license_contact_name"
+                v-model="form.max_users"
+                min="1"
+                max="10000"
                 required
               />
-              <InputError class="mt-2" :message="form.errors.license_contact_name" />
-            </div>
-
-            <div>
-              <InputLabel for="license_contact_email" value="License Contact Email" />
-              <TextInput
-                id="license_contact_email"
-                type="email"
-                class="mt-1 block w-full"
-                v-model="form.license_contact_email"
-                required
-              />
-              <InputError class="mt-2" :message="form.errors.license_contact_email" />
+              <InputError class="mt-2" :message="form.errors.max_users" />
+              <p class="mt-1 text-xs text-gray-500">Default: 250 users (will be determined by license in future releases)</p>
             </div>
           </div>
         </div>
@@ -396,12 +365,8 @@ const form = useForm({
   timer_sync_interval: 5,
   permission_cache_ttl: 300,
   
-  // Licensing Configuration
-  license_key: '',
-  license_server_url: 'https://license.servicevault.com',
-  license_contact_name: '',
-  license_contact_email: '',
-  max_users: 25,
+  // User Limits (licensing will be implemented later)
+  max_users: 250,
   
   // Admin User Information
   admin_name: '',

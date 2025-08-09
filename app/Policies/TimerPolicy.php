@@ -13,7 +13,13 @@ class TimerPolicy
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        // Check token abilities if authenticated via API
+        if ($user->currentAccessToken()) {
+            return $user->tokenCan('timers:read');
+        }
+
+        // Default: allow all authenticated users to view their own timers
+        return true;
     }
 
     /**
@@ -21,7 +27,13 @@ class TimerPolicy
      */
     public function view(User $user, Timer $timer): bool
     {
-        return false;
+        // Check token abilities if authenticated via API
+        if ($user->currentAccessToken()) {
+            return $user->tokenCan('timers:read') && $timer->user_id === $user->id;
+        }
+
+        // User can only view their own timers
+        return $timer->user_id === $user->id;
     }
 
     /**
@@ -29,7 +41,13 @@ class TimerPolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        // Check token abilities if authenticated via API
+        if ($user->currentAccessToken()) {
+            return $user->tokenCan('timers:write');
+        }
+
+        // Default: allow all authenticated users to create timers
+        return true;
     }
 
     /**
@@ -37,7 +55,13 @@ class TimerPolicy
      */
     public function update(User $user, Timer $timer): bool
     {
-        return false;
+        // Check token abilities if authenticated via API
+        if ($user->currentAccessToken()) {
+            return $user->tokenCan('timers:write') && $timer->user_id === $user->id;
+        }
+
+        // User can only update their own timers
+        return $timer->user_id === $user->id;
     }
 
     /**
@@ -45,7 +69,27 @@ class TimerPolicy
      */
     public function delete(User $user, Timer $timer): bool
     {
-        return false;
+        // Check token abilities if authenticated via API
+        if ($user->currentAccessToken()) {
+            return $user->tokenCan('timers:delete') && $timer->user_id === $user->id;
+        }
+
+        // User can only delete their own timers
+        return $timer->user_id === $user->id;
+    }
+
+    /**
+     * Determine whether the user can sync timers across devices.
+     */
+    public function sync(User $user): bool
+    {
+        // Check token abilities if authenticated via API
+        if ($user->currentAccessToken()) {
+            return $user->tokenCan('timers:sync');
+        }
+
+        // Default: allow all authenticated users to sync timers
+        return true;
     }
 
     /**
@@ -53,7 +97,12 @@ class TimerPolicy
      */
     public function restore(User $user, Timer $timer): bool
     {
-        return false;
+        // Check token abilities if authenticated via API
+        if ($user->currentAccessToken()) {
+            return $user->tokenCan('timers:write') && $timer->user_id === $user->id;
+        }
+
+        return $timer->user_id === $user->id;
     }
 
     /**
@@ -61,6 +110,11 @@ class TimerPolicy
      */
     public function forceDelete(User $user, Timer $timer): bool
     {
-        return false;
+        // Check token abilities if authenticated via API
+        if ($user->currentAccessToken()) {
+            return $user->tokenCan('timers:delete') && $timer->user_id === $user->id;
+        }
+
+        return $timer->user_id === $user->id;
     }
 }

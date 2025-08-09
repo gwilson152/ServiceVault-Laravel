@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('role_templates', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+        Schema::table('timers', function (Blueprint $table) {
+            $table->string('ticket_number')->nullable()->after('description');
+            $table->index('ticket_number');
         });
     }
 
@@ -22,6 +22,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('role_templates');
+        Schema::table('timers', function (Blueprint $table) {
+            $table->dropIndex(['ticket_number']);
+            $table->dropColumn('ticket_number');
+        });
     }
 };

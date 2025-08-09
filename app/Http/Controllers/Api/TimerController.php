@@ -25,8 +25,6 @@ class TimerController extends Controller
     public function __construct(TimerService $timerService)
     {
         $this->timerService = $timerService;
-        
-        $this->authorizeResource(Timer::class, 'timer');
     }
 
     /**
@@ -34,6 +32,8 @@ class TimerController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
+        $this->authorize('viewAny', Timer::class);
+        
         $query = Timer::with(['project', 'task', 'billingRate'])
             ->where('user_id', $request->user()->id);
 
@@ -430,6 +430,7 @@ class TimerController extends Controller
      */
     public function sync(Request $request): JsonResponse
     {
+        $this->authorize('sync', Timer::class);
         $deviceId = $request->input('device_id');
         $userId = $request->user()->id;
 
@@ -463,6 +464,8 @@ class TimerController extends Controller
      */
     public function current(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Timer::class);
+        
         $timer = Timer::with(['project', 'task', 'billingRate'])
             ->where('user_id', $request->user()->id)
             ->whereIn('status', ['running', 'paused'])

@@ -117,27 +117,27 @@
           <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <!-- Flash messages -->
-              <div v-if="$page.props.flash.success" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
+              <div v-if="$page.props.flash?.success" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
                 <div class="flex">
                   <div class="flex-shrink-0">
                     <CheckCircleIcon class="h-5 w-5 text-green-400" />
                   </div>
                   <div class="ml-3">
                     <p class="text-sm font-medium text-green-800">
-                      {{ $page.props.flash.success }}
+                      {{ $page.props.flash?.success }}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div v-if="$page.props.flash.error" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+              <div v-if="$page.props.flash?.error" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
                 <div class="flex">
                   <div class="flex-shrink-0">
                     <XCircleIcon class="h-5 w-5 text-red-400" />
                   </div>
                   <div class="ml-3">
                     <p class="text-sm font-medium text-red-800">
-                      {{ $page.props.flash.error }}
+                      {{ $page.props.flash?.error }}
                     </p>
                   </div>
                 </div>
@@ -266,7 +266,7 @@ const page = usePage()
 
 const navigation = computed(() => [
   { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
-  { name: 'Timer', href: route('timer.index'), icon: ClockIcon, current: route().current('timer.*') },
+  { name: 'Timer', href: route('timers.web.index'), icon: ClockIcon, current: route().current('timers.*') },
   { name: 'Time Entries', href: route('time-entries.index'), icon: DocumentTextIcon, current: route().current('time-entries.*') },
   { name: 'Reports', href: route('reports.index'), icon: ChartBarIcon, current: route().current('reports.*') },
   { name: 'Settings', href: route('settings.index'), icon: CogIcon, current: route().current('settings.*') },

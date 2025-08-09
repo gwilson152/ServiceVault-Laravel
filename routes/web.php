@@ -38,6 +38,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Customer Portal
     Route::get('/portal', [DashboardController::class, 'portal'])->name('portal.dashboard');
+    
+    // Timer management (frontend routes)
+    Route::get('/timers', function () {
+        return Inertia::render('Timer/Index');
+    })->name('timers.web.index');
+    
+    // Placeholder routes for navigation (to be implemented later)
+    Route::get('/time-entries', function () {
+        return Inertia::render('TimeEntries/Index');
+    })->name('time-entries.index');
+    
+    Route::get('/reports', function () {
+        return Inertia::render('Reports/Index');
+    })->name('reports.index');
+    
+    Route::get('/settings', function () {
+        return Inertia::render('Settings/Index');
+    })->name('settings.index');
 });
 
 Route::middleware('auth')->group(function () {

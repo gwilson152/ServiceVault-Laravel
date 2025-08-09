@@ -59,11 +59,7 @@ class SetupController extends Controller
             'timer_sync_interval' => 'required|integer|min:1|max:60',
             'permission_cache_ttl' => 'required|integer|min:60|max:3600',
             
-            // Licensing Configuration
-            'license_key' => 'required|string|max:500',
-            'license_server_url' => 'required|url',
-            'license_contact_name' => 'required|string|max:255',
-            'license_contact_email' => 'required|email|max:255',
+            // User Limits (optional for now - licensing will be implemented later)
             'max_users' => 'required|integer|min:1|max:10000',
 
             // Admin User Information
@@ -98,8 +94,8 @@ class SetupController extends Controller
         // Store system configuration
         $this->storeSystemConfiguration($request);
 
-        // Validate and store license information
-        $this->validateAndStoreLicense($request);
+        // Store basic license placeholder (licensing will be implemented later)
+        $this->storeLicensePlaceholder($request);
 
         // Create system role templates
         $this->createSystemRoleTemplates();
@@ -234,21 +230,15 @@ class SetupController extends Controller
     }
 
     /**
-     * Validate and store license information.
+     * Store basic license placeholder (licensing will be implemented later).
      */
-    private function validateAndStoreLicense(Request $request): void
+    private function storeLicensePlaceholder(Request $request): void
     {
-        // TODO: Implement actual license validation with license server
-        // For now, we'll store the license information for later validation
-        
+        // Store minimal license information - licensing system will be implemented later
         $licenseSettings = [
-            'license.key' => $request->license_key,
-            'license.server_url' => $request->license_server_url,
-            'license.contact_name' => $request->license_contact_name,
-            'license.contact_email' => $request->license_contact_email,
             'license.max_users' => $request->max_users,
-            'license.validated_at' => now()->toISOString(),
-            'license.status' => 'pending_validation',
+            'license.status' => 'unlicensed_development',
+            'license.created_at' => now()->toISOString(),
         ];
 
         foreach ($licenseSettings as $key => $value) {
@@ -258,9 +248,6 @@ class SetupController extends Controller
                 'type' => 'license',
             ]);
         }
-
-        // TODO: Queue a job to validate the license with the license server
-        // dispatch(new ValidateLicenseJob($request->license_key, $request->license_server_url));
     }
 
     /**
@@ -271,6 +258,6 @@ class SetupController extends Controller
         return User::count() > 0 
             && Account::count() > 0 
             && RoleTemplate::where('is_system_role', true)->count() > 0
-            && \App\Models\Setting::where('key', 'license.key')->exists();
+            && \App\Models\Setting::where('key', 'license.status')->exists();
     }
 }

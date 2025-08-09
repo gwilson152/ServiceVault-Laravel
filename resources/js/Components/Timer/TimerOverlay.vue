@@ -1,11 +1,55 @@
 <template>
-  <!-- Fixed Timer Overlay -->
+  <!-- Mini Timer Badge (Collapsed) -->
   <div
-    v-if="currentTimer"
-    class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-80"
+    v-if="currentTimer && !expanded"
+    @click="toggleExpanded"
+    class="fixed bottom-4 right-4 z-50 bg-white rounded-full shadow-lg border border-gray-200 px-4 py-2 cursor-pointer hover:shadow-xl transition-all duration-200 min-w-48"
   >
-    <!-- Timer Header -->
-    <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center space-x-3">
+      <!-- Status Indicator -->
+      <div
+        :class="[
+          'w-2 h-2 rounded-full flex-shrink-0',
+          currentTimer.status === 'running' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'
+        ]"
+      />
+      
+      <!-- Timer Info -->
+      <div class="flex items-center space-x-2 text-sm">
+        <!-- Duration -->
+        <span class="font-mono font-semibold text-gray-900">
+          {{ formatDuration(duration) }}
+        </span>
+        
+        <!-- Separator -->
+        <span class="text-gray-400">•</span>
+        
+        <!-- Ticket Number -->
+        <span class="text-gray-700">
+          {{ currentTimer.ticket_number || 'No Ticket' }}
+        </span>
+        
+        <!-- Separator -->
+        <span class="text-gray-400">•</span>
+        
+        <!-- Dollar Amount -->
+        <span class="font-semibold text-green-600">
+          ${{ (currentTimer.calculated_amount || 0).toFixed(2) }}
+        </span>
+      </div>
+      
+      <!-- Expand Icon -->
+      <ChevronUpIcon class="w-4 h-4 text-gray-400 flex-shrink-0" />
+    </div>
+  </div>
+
+  <!-- Expanded Timer Panel -->
+  <div
+    v-if="currentTimer && expanded"
+    class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-80"
+  >
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between mb-4">
       <div class="flex items-center space-x-2">
         <div
           :class="[
@@ -21,29 +65,28 @@
         @click="toggleExpanded"
         class="p-1 text-gray-400 hover:text-gray-600"
       >
-        <ChevronUpIcon
-          v-if="expanded"
-          class="w-4 h-4"
-        />
-        <ChevronDownIcon
-          v-else
-          class="w-4 h-4"
-        />
+        <ChevronDownIcon class="w-4 h-4" />
       </button>
     </div>
 
     <!-- Timer Display -->
-    <div class="text-center mb-3">
-      <div class="text-2xl font-mono font-bold text-gray-900">
+    <div class="text-center mb-4">
+      <div class="text-3xl font-mono font-bold text-gray-900">
         {{ formatDuration(duration) }}
       </div>
-      <div v-if="currentTimer.calculated_amount" class="text-lg font-semibold text-green-600">
-        ${{ currentTimer.calculated_amount.toFixed(2) }}
+      <div class="flex items-center justify-center space-x-2 mt-1">
+        <span class="text-sm text-gray-600">
+          {{ currentTimer.ticket_number || 'No Ticket' }}
+        </span>
+        <span class="text-gray-400">•</span>
+        <span class="text-lg font-semibold text-green-600">
+          ${{ (currentTimer.calculated_amount || 0).toFixed(2) }}
+        </span>
       </div>
     </div>
 
     <!-- Expanded Controls -->
-    <div v-if="expanded" class="space-y-3">
+    <div class="space-y-3">
       <!-- Description Input -->
       <div>
         <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
@@ -52,6 +95,18 @@
           @blur="updateDescription"
           type="text"
           placeholder="What are you working on?"
+          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+        />
+      </div>
+
+      <!-- Ticket Number Input -->
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Ticket Number</label>
+        <input
+          v-model="ticketNumber"
+          @blur="updateTicketNumber"
+          type="text"
+          placeholder="e.g., TKT-123, JIRA-456"
           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
         />
       </div>
@@ -203,6 +258,7 @@ const currentTimer = ref(null)
 const duration = ref(0)
 const expanded = ref(false)
 const description = ref('')
+const ticketNumber = ref('')
 const selectedProject = ref('')
 const selectedBillingRate = ref('')
 const manualDuration = ref('')
@@ -239,6 +295,7 @@ const fetchCurrentTimer = async () => {
     if (response.data.data) {
       currentTimer.value = response.data.data
       description.value = currentTimer.value.description || ''
+      ticketNumber.value = currentTimer.value.ticket_number || ''
       selectedProject.value = currentTimer.value.project?.id || ''
       selectedBillingRate.value = currentTimer.value.billing_rate?.id || ''
       
@@ -376,6 +433,19 @@ const updateDescription = async () => {
     })
   } catch (error) {
     console.error('Failed to update description:', error)
+  }
+}
+
+const updateTicketNumber = async () => {
+  if (!currentTimer.value) return
+  
+  try {
+    await axios.put(`/api/timers/${currentTimer.value.id}`, {
+      ticket_number: ticketNumber.value,
+    })
+    currentTimer.value.ticket_number = ticketNumber.value
+  } catch (error) {
+    console.error('Failed to update ticket number:', error)
   }
 }
 

@@ -12,7 +12,8 @@
       "Bash(npm install:*)",
       "Bash(php artisan:*)",
       "Bash(rm:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

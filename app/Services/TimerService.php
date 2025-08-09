@@ -87,11 +87,13 @@ class TimerService
     }
 
     /**
-     * Update timer state in Redis for cross-device sync.
+     * Update timer state in Redis for cross-device sync (supports multiple timers).
      */
     public function updateRedisState(Timer $timer): void
     {
-        $key = "timer:user:{$timer->user_id}:active";
+        $userKey = "timer:user:{$timer->user_id}:active";
+        $timerKey = "timer:user:{$timer->user_id}:timer:{$timer->id}";
+        
         $data = [
             'timer_id' => $timer->id,
             'status' => $timer->status,
@@ -108,35 +110,64 @@ class TimerService
             'updated_at' => now()->toIso8601String(),
         ];
 
-        // Store in Redis with 24-hour expiry
-        Redis::setex($key, 86400, json_encode($data));
+        // Store individual timer data
+        Redis::setex($timerKey, 86400, json_encode($data));
 
-        // Also update in cache for faster access
-        Cache::put("user.{$timer->user_id}.current_timer", $data, now()->addHours(24));
+        // Maintain list of active timer IDs for the user
+        if ($timer->status === 'running' || $timer->status === 'paused') {
+            Redis::sadd($userKey, $timer->id);
+            Redis::expire($userKey, 86400);
+        } else {
+            Redis::srem($userKey, $timer->id);
+        }
+
+        // Update cache with all active timers for this user
+        $this->refreshActiveTimersCache($timer->user_id);
     }
 
     /**
-     * Get timer state from Redis.
+     * Get all active timer states from Redis for a user.
      */
-    public function getRedisState(int $userId): ?array
+    public function getRedisState(int $userId): array
     {
         // Try cache first
-        $cached = Cache::get("user.{$userId}.current_timer");
+        $cached = Cache::get("user.{$userId}.active_timers");
         if ($cached) {
             return $cached;
         }
 
-        // Fall back to Redis
-        $key = "timer:user:{$userId}:active";
-        $data = Redis::get($key);
+        // Get active timer IDs from Redis
+        $userKey = "timer:user:{$userId}:active";
+        $timerIds = Redis::smembers($userKey);
         
-        if ($data) {
-            $decoded = json_decode($data, true);
-            Cache::put("user.{$userId}.current_timer", $decoded, now()->addHours(24));
-            return $decoded;
+        $timers = [];
+        foreach ($timerIds as $timerId) {
+            $timerKey = "timer:user:{$userId}:timer:{$timerId}";
+            $data = Redis::get($timerKey);
+            if ($data) {
+                $timers[] = json_decode($data, true);
+            }
         }
 
-        return null;
+        // Cache the result
+        if (!empty($timers)) {
+            Cache::put("user.{$userId}.active_timers", $timers, now()->addHours(24));
+        }
+
+        return $timers;
+    }
+
+    /**
+     * Refresh the active timers cache for a user.
+     */
+    private function refreshActiveTimersCache(int $userId): void
+    {
+        // Clear existing cache
+        Cache::forget("user.{$userId}.active_timers");
+        Cache::forget("user.{$userId}.current_timer");
+        
+        // Rebuild cache with fresh data
+        $this->getRedisState($userId);
     }
 
     /**

@@ -23,6 +23,7 @@ class Timer extends Model
         'billing_rate_id',
         'time_entry_id',
         'description',
+        'ticket_number',
         'status',
         'started_at',
         'stopped_at',
