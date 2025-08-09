@@ -36,4 +36,49 @@ window.axios.interceptors.response.use(
     }
 );
 
-console.log('Service Vault - Frontend Initialized');
+// Initialize Laravel Echo for real-time broadcasting (configured for future use)
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
+
+// Configure for development - will be activated when WebSocket server is set up
+if (import.meta.env.VITE_ENABLE_BROADCASTING === 'true') {
+    window.Pusher = Pusher;
+    
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key: import.meta.env.VITE_PUSHER_APP_KEY || 'local-dev-key',
+        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
+        wsHost: import.meta.env.VITE_PUSHER_HOST || '127.0.0.1',
+        wsPort: import.meta.env.VITE_PUSHER_PORT || 6001,
+        wssPort: import.meta.env.VITE_PUSHER_PORT || 6001,
+        forceTLS: (import.meta.env.VITE_PUSHER_SCHEME || 'http') === 'https',
+        encrypted: true,
+        enabledTransports: ['ws', 'wss'],
+        authEndpoint: '/broadcasting/auth',
+        auth: {
+            headers: {
+                Accept: 'application/json',
+            }
+        }
+    });
+} else {
+    // Mock Echo for development when broadcasting is disabled
+    console.log('Broadcasting disabled - using mock Echo');
+    window.Echo = {
+        private: () => ({
+            listen: () => ({ listen: () => ({ listen: () => ({}) }) }),
+            subscribed: () => ({}),
+            error: () => ({})
+        }),
+        leave: () => ({})
+    };
+}
+
+// Helper function to get user ID for channels
+window.getCurrentUserId = () => {
+    // This would typically come from a global user object or meta tag
+    const userMeta = document.head.querySelector('meta[name="user-id"]');
+    return userMeta ? userMeta.content : null;
+};
+
+console.log('Service Vault - Frontend & Broadcasting Initialized');

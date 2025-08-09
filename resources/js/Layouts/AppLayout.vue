@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- App-wide Timer Overlay -->
-    <TimerOverlay />
+    <!-- App-wide Timer Broadcast Overlay -->
+    <TimerBroadcastOverlay />
     
     <!-- Main Content -->
     <div class="flex h-screen overflow-hidden">
@@ -258,7 +258,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 // Components
-import TimerOverlay from '@/Components/Timer/TimerOverlay.vue'
+import TimerBroadcastOverlay from '@/Components/Timer/TimerBroadcastOverlay.vue'
 import TimerStatus from '@/Components/Timer/TimerStatus.vue'
 
 const sidebarOpen = ref(false)

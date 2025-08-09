@@ -6,21 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Service Vault is a comprehensive time management and invoicing system built with Laravel 12. It features hierarchical account management, advanced timer synchronization, ABAC permission system, comprehensive billing/invoicing capabilities, and enterprise-level theming for multi-tenant usage.
 
-### Current Status: Phase 8/15 Complete (53% MVP Ready)
-**✅ Working Features:**
-- App-wide timer overlay with full control suite
-- Real-time duration tracking and billing calculations  
-- Cross-device timer synchronization via Redis
-- Modern Vue.js frontend with responsive design
-- Comprehensive backend API with ABAC authorization
-- **Complete authentication system** with Laravel Breeze + Inertia.js
-- **ABAC permission system** with role templates and hierarchical inheritance
-- **User management** with automatic role assignment and invitation system
-- **Hybrid Sanctum authentication** - Session auth for web + Token auth for API
-- **Token management system** with granular abilities and scoped permissions
-- **API security** with token-based authorization and policy integration
+### Current Status: Phase 8/15 Complete (60% MVP Ready)
+**✅ Fully Implemented Features:**
+- **Multi-Timer System**: Multiple concurrent timers per user with Redis synchronization
+- **Laravel Sanctum Authentication**: Hybrid session/token auth with 23 granular abilities
+- **Domain-Based User Assignment**: Automatic account assignment via email domain patterns
+- **Real-Time Broadcasting Infrastructure**: Laravel Echo + Vue composables (WebSocket ready)
+- **ABAC Permission System**: Role templates with hierarchical account inheritance
+- **Comprehensive API**: 30+ endpoints with authentication, authorization, and token management
+- **Cross-Device Timer Sync**: Redis-based state management with conflict resolution
+- **Enterprise Authentication**: Token scoping (employee, manager, mobile-app, admin)
+- **Modern Frontend Stack**: Vue.js 3.5 + Inertia.js + Tailwind CSS + Headless UI
 
-**🎯 Next Priority:** Real-time broadcasting (Laravel Echo + WebSockets) and TimeEntry management workflows
+**🎯 Next Development Cycle:** Multi-Role Dashboard System and TimeEntry management workflows
 
 ## Documentation
 
@@ -81,15 +79,30 @@ php artisan db:seed      # Seed test data only
 npm run build           # Production build
 npm run dev             # Development with hot reload
 
-# API testing endpoints (Timer System)
-# GET    /api/timers                     # List user timers
-# POST   /api/timers                     # Start new timer  
-# GET    /api/timers/active/current      # Get current running timer
+# API testing endpoints (Timer System - Multi-Timer Support)
+# GET    /api/timers                     # List user timers (paginated)
+# POST   /api/timers                     # Start new timer (stop_others=false for concurrent)
+# GET    /api/timers/active/current      # Get ALL active timers with totals
 # POST   /api/timers/{timer}/stop        # Stop timer
 # POST   /api/timers/{timer}/pause       # Pause running timer
 # POST   /api/timers/{timer}/resume      # Resume paused timer
 # POST   /api/timers/{timer}/commit      # Stop and convert to time entry
 # DELETE /api/timers/{timer}?force=true  # Force delete timer
+# POST   /api/timers/sync                # Cross-device timer synchronization
+# POST   /api/timers/bulk                # Bulk operations (stop, pause, resume, delete)
+
+# Authentication & Token Management
+# GET    /api/auth/tokens                # List user's API tokens
+# POST   /api/auth/tokens                # Create new API token
+# GET    /api/auth/tokens/abilities      # Get available token abilities
+# POST   /api/auth/tokens/scope          # Create scoped token (employee, manager, etc.)
+# DELETE /api/auth/tokens/revoke-all     # Revoke all user tokens
+
+# Domain Mapping Management (Admin/Manager)  
+# GET    /api/domain-mappings            # List domain mappings
+# POST   /api/domain-mappings            # Create domain mapping
+# POST   /api/domain-mappings/preview    # Preview assignment for email
+# GET    /api/domain-mappings/validate/requirements # System validation
 
 # Standard Laravel CLI
 php artisan make:model ModelName -mfs          # Model + migration/factory/seeder
@@ -139,6 +152,122 @@ if ($user->currentAccessToken()) {
 return $user->hasPermission('timers.view');
 ```
 
+## Multi-Timer System Architecture
+
+### Concurrent Timer Management
+Service Vault supports multiple concurrent timers per user with comprehensive state synchronization:
+
+#### Redis State Management
+```php
+// Individual timer state keys
+user:{user_id}:timer:{timer_id}:state
+user:{user_id}:active_timers  // Set of active timer IDs
+user:{user_id}:last_sync      // Last synchronization timestamp
+```
+
+#### API Endpoints
+```bash
+# Multi-timer operations
+POST /api/timers                    # Create timer (stop_others=false)
+GET  /api/timers/active/current     # Get ALL active timers
+POST /api/timers/sync               # Sync all timer states
+POST /api/timers/bulk              # Bulk operations
+```
+
+#### Frontend Integration
+```vue
+<!-- TimerBroadcastOverlay.vue supports multiple timers -->
+<TimerBroadcastOverlay />
+<!-- Shows all active timers with individual controls -->
+```
+
+### Domain-Based User Assignment
+
+#### Pattern Matching System
+```php
+// Wildcard domain pattern support
+$mapping = DomainMapping::create([
+    'domain_pattern' => '*.company.com',  // Matches subdomains
+    'account_id' => $account->id,
+    'priority' => 1
+]);
+
+// Automatic assignment on registration
+$user = User::create($data);
+$account = DomainAssignmentService::assignUserToAccount($user->email);
+```
+
+#### Management API
+```bash
+GET  /api/domain-mappings                 # List mappings
+POST /api/domain-mappings                 # Create mapping
+POST /api/domain-mappings/preview         # Preview assignment
+GET  /api/domain-mappings/validate/requirements  # Validation
+```
+
+### Laravel Sanctum Token Management
+
+#### Token Abilities System
+```php
+// 23 granular abilities across all system features
+class TokenAbilityService {
+    public const ABILITIES = [
+        // Timer Management
+        'timers:read' => 'View timer data',
+        'timers:write' => 'Create and update timers',
+        'timers:sync' => 'Cross-device synchronization',
+        
+        // Project Management
+        'projects:read' => 'View project information',
+        'projects:write' => 'Create and modify projects',
+        
+        // Account Management
+        'accounts:read' => 'View account data',
+        
+        // Administrative
+        'admin:read' => 'View administrative data',
+        'admin:write' => 'Administrative operations',
+    ];
+}
+```
+
+#### Predefined Token Scopes
+```php
+// Ready-to-use scopes for common scenarios
+public const SCOPES = [
+    'employee' => ['timers:read', 'timers:write', 'projects:read'],
+    'manager' => ['timers:read', 'timers:write', 'projects:write', 'reports:read'],
+    'mobile-app' => ['timers:read', 'timers:write', 'timers:sync', 'projects:read'],
+    'admin' => ['*']  // All abilities
+];
+```
+
+### Real-Time Broadcasting Infrastructure
+
+#### Laravel Echo Configuration
+```javascript
+// Conditional loading based on environment
+if (import.meta.env.VITE_ENABLE_BROADCASTING === 'true') {
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        // Production WebSocket configuration
+    });
+} else {
+    // Mock Echo for development
+    window.Echo = mockEchoImplementation;
+}
+```
+
+#### Vue Composable Integration
+```javascript
+// useTimerBroadcasting.js - Real-time timer management
+export function useTimerBroadcasting() {
+    // Handles multiple timer events
+    // Cross-device synchronization
+    // Optimistic UI updates
+}
+```
+
 ## Development Standards
 
 ### Laravel CLI-First Approach
@@ -154,8 +283,11 @@ php artisan make:resource AccountResource             # API responses
 ```
 
 ### Architecture Principles
-- **ABAC Permission System**: Role templates with hierarchical inheritance, no hard-coded roles
-- **Database First**: Design schema, then build models and relationships
+- **Hybrid Authentication**: Laravel Sanctum (session + token) with granular abilities
+- **Multi-Timer Architecture**: Concurrent timer support with Redis state management
+- **Domain-Based Assignment**: Automatic user-account mapping via email patterns
+- **ABAC Permission System**: Role templates with hierarchical inheritance
+- **Real-Time Infrastructure**: Laravel Echo + Vue composables (WebSocket ready)
 - **API-First Backend**: RESTful endpoints with consistent JSON responses
-- **Component-Based Frontend**: Vue.js 3.5 + Inertia.js with Headless UI + Tailwind CSS
+- **Component-Based Frontend**: Vue.js 3.5 + Inertia.js + Headless UI + Tailwind CSS
 - **Enterprise Theming**: CSS custom properties for multi-tenant branding

@@ -96,8 +96,8 @@ class TimerController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Stop any running timers if single timer mode is enabled
-            if ($request->boolean('stop_others', true)) {
+            // Stop any running timers if single timer mode is requested (now defaults to false)
+            if ($request->boolean('stop_others', false)) {
                 $this->timerService->stopAllUserTimers($request->user()->id, $request->input('device_id'));
             }
 
@@ -434,18 +434,18 @@ class TimerController extends Controller
         $deviceId = $request->input('device_id');
         $userId = $request->user()->id;
 
-        // Get current state from Redis
-        $currentState = $this->timerService->getRedisState($userId);
+        // Get current states from Redis (now returns array of all active timers)
+        $currentStates = $this->timerService->getRedisState($userId);
 
         // Get active timers from database
         $activeTimers = Timer::where('user_id', $userId)
-            ->where('status', 'running')
+            ->whereIn('status', ['running', 'paused'])
             ->get();
 
         // Reconcile any conflicts
         $reconciledTimers = $this->timerService->reconcileTimerConflicts(
             $activeTimers,
-            $currentState,
+            $currentStates,
             $deviceId
         );
 
@@ -460,39 +460,79 @@ class TimerController extends Controller
     }
 
     /**
-     * Get current timer status with running calculations
+     * Get all current active timers with running calculations
      */
     public function current(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Timer::class);
         
-        $timer = Timer::with(['project', 'task', 'billingRate'])
+        $timers = Timer::with(['project', 'task', 'billingRate'])
             ->where('user_id', $request->user()->id)
             ->whereIn('status', ['running', 'paused'])
-            ->latest('started_at')
-            ->first();
+            ->orderBy('started_at', 'desc')
+            ->get();
 
-        if (!$timer) {
+        if ($timers->isEmpty()) {
             return response()->json([
-                'message' => 'No active timer',
-                'data' => null,
+                'message' => 'No active timers',
+                'data' => [],
+                'totals' => [
+                    'count' => 0,
+                    'total_running_amount' => 0,
+                    'total_duration' => 0,
+                ],
             ]);
         }
 
-        // Calculate real-time values
-        $currentDuration = $timer->duration;
-        $currentAmount = $timer->calculated_amount;
+        $totalAmount = 0;
+        $totalDuration = 0;
+        $timerData = [];
+
+        foreach ($timers as $timer) {
+            $currentDuration = $timer->duration;
+            $currentAmount = $timer->calculated_amount;
+            $totalAmount += $currentAmount ?? 0;
+            $totalDuration += $currentDuration;
+
+            $timerData[] = [
+                'timer' => new TimerResource($timer),
+                'calculations' => [
+                    'duration_seconds' => $currentDuration,
+                    'duration_formatted' => $timer->duration_formatted,
+                    'running_amount' => $currentAmount,
+                    'hourly_rate' => $timer->billingRate ? $timer->billingRate->rate : null,
+                    'estimated_hourly_earnings' => $currentAmount ? ($currentAmount / ($currentDuration / 3600)) : 0,
+                ],
+            ];
+        }
         
         return response()->json([
-            'data' => new TimerResource($timer),
-            'calculations' => [
-                'duration_seconds' => $currentDuration,
-                'duration_formatted' => $timer->duration_formatted,
-                'running_amount' => $currentAmount,
-                'hourly_rate' => $timer->billingRate ? $timer->billingRate->rate : null,
-                'estimated_hourly_earnings' => $currentAmount ? ($currentAmount / ($currentDuration / 3600)) : 0,
+            'data' => $timerData,
+            'totals' => [
+                'count' => $timers->count(),
+                'total_running_amount' => round($totalAmount, 2),
+                'total_duration' => $totalDuration,
+                'total_duration_formatted' => $this->formatDuration($totalDuration),
             ],
         ]);
+    }
+
+    /**
+     * Format duration in seconds to human-readable format.
+     */
+    private function formatDuration(int $seconds): string
+    {
+        $hours = floor($seconds / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+        $secs = $seconds % 60;
+
+        if ($hours > 0) {
+            return sprintf('%dh %dm %ds', $hours, $minutes, $secs);
+        } elseif ($minutes > 0) {
+            return sprintf('%dm %ds', $minutes, $secs);
+        } else {
+            return sprintf('%ds', $secs);
+        }
     }
 
     /**

@@ -141,11 +141,14 @@ class TimerService
         $timerIds = Redis::smembers($userKey);
         
         $timers = [];
-        foreach ($timerIds as $timerId) {
-            $timerKey = "timer:user:{$userId}:timer:{$timerId}";
-            $data = Redis::get($timerKey);
-            if ($data) {
-                $timers[] = json_decode($data, true);
+        // Handle case where Redis returns false (empty set)
+        if ($timerIds && is_array($timerIds)) {
+            foreach ($timerIds as $timerId) {
+                $timerKey = "timer:user:{$userId}:timer:{$timerId}";
+                $data = Redis::get($timerKey);
+                if ($data) {
+                    $timers[] = json_decode($data, true);
+                }
             }
         }
 
@@ -175,63 +178,71 @@ class TimerService
      */
     public function removeFromRedis(Timer $timer): void
     {
-        $key = "timer:user:{$timer->user_id}:active";
-        Redis::del($key);
-        Cache::forget("user.{$timer->user_id}.current_timer");
-        Cache::forget("user.{$timer->user_id}.active_timers");
+        $userKey = "timer:user:{$timer->user_id}:active";
+        $timerKey = "timer:user:{$timer->user_id}:timer:{$timer->id}";
+        
+        // Remove timer from active list
+        Redis::srem($userKey, $timer->id);
+        
+        // Delete individual timer data
+        Redis::del($timerKey);
+        
+        // Refresh cache
+        $this->refreshActiveTimersCache($timer->user_id);
     }
 
     /**
-     * Reconcile timer conflicts across devices.
+     * Reconcile timer states across devices (supports multiple concurrent timers).
      */
-    public function reconcileTimerConflicts(Collection $activeTimers, ?array $redisState, ?string $deviceId): Collection
+    public function reconcileTimerConflicts(Collection $activeTimers, array $redisStates, ?string $deviceId): Collection
     {
-        if (!$redisState) {
+        if (empty($redisStates)) {
             return $activeTimers;
         }
 
-        $redisTimerId = $redisState['timer_id'] ?? null;
-        $redisDeviceId = $redisState['device_id'] ?? null;
+        $reconciledTimers = collect();
+        $redisTimerIds = collect($redisStates)->pluck('timer_id');
 
-        // If Redis has a different timer than what's in the database
-        if ($redisTimerId) {
-            $redisTimer = Timer::find($redisTimerId);
+        // Start with active timers from database
+        foreach ($activeTimers as $timer) {
+            // Check if this timer exists in Redis
+            $redisTimer = collect($redisStates)->firstWhere('timer_id', $timer->id);
             
-            if ($redisTimer && !$activeTimers->contains('id', $redisTimerId)) {
-                // Add the Redis timer to the collection if it's more recent
-                if ($redisTimer->updated_at > $activeTimers->max('updated_at')) {
-                    // Stop older timers
-                    foreach ($activeTimers as $timer) {
-                        if ($timer->id !== $redisTimerId) {
-                            $timer->stop();
-                        }
+            if ($redisTimer) {
+                // Compare timestamps to see which is more recent
+                $redisUpdated = new \DateTime($redisTimer['updated_at']);
+                $dbUpdated = $timer->updated_at;
+                
+                if ($redisUpdated > $dbUpdated) {
+                    // Redis state is newer, sync from Redis
+                    $timer->status = $redisTimer['status'];
+                    if ($redisTimer['paused_at']) {
+                        $timer->paused_at = new \DateTime($redisTimer['paused_at']);
                     }
-                    
-                    return collect([$redisTimer]);
-                }
-            }
-        }
-
-        // If same device, prefer local state
-        if ($deviceId && $redisDeviceId === $deviceId) {
-            return $activeTimers;
-        }
-
-        // Otherwise, prefer the most recently updated timer
-        $mostRecent = $activeTimers->sortByDesc('updated_at')->first();
-        
-        if ($mostRecent) {
-            // Stop all other timers
-            foreach ($activeTimers as $timer) {
-                if ($timer->id !== $mostRecent->id) {
-                    $timer->stop();
+                    $timer->total_paused_duration = $redisTimer['total_paused_duration'];
+                    $timer->save();
                 }
             }
             
-            return collect([$mostRecent]);
+            $reconciledTimers->push($timer);
         }
 
-        return $activeTimers;
+        // Add any Redis timers that aren't in the active collection
+        foreach ($redisStates as $redisState) {
+            if (!$activeTimers->contains('id', $redisState['timer_id'])) {
+                $redisTimer = Timer::find($redisState['timer_id']);
+                if ($redisTimer && ($redisTimer->status === 'running' || $redisTimer->status === 'paused')) {
+                    $reconciledTimers->push($redisTimer);
+                }
+            }
+        }
+
+        // Update Redis with current state
+        foreach ($reconciledTimers as $timer) {
+            $this->updateRedisState($timer);
+        }
+
+        return $reconciledTimers->unique('id');
     }
 
     /**
@@ -308,10 +319,27 @@ class TimerService
             $dailyBreakdown[$day]['count']++;
         }
 
-        // Get active timer if exists
-        $activeTimer = Timer::where('user_id', $userId)
+        // Get all active timers
+        $activeTimers = Timer::where('user_id', $userId)
             ->whereIn('status', ['running', 'paused'])
-            ->first();
+            ->get();
+
+        $activeTimersData = [];
+        $totalActiveAmount = 0;
+        foreach ($activeTimers as $timer) {
+            $activeTimersData[] = [
+                'id' => $timer->id,
+                'status' => $timer->status,
+                'duration' => $timer->duration,
+                'duration_formatted' => $timer->duration_formatted,
+                'calculated_amount' => $timer->calculated_amount,
+                'description' => $timer->description,
+                'project_name' => $timer->project->name ?? null,
+                'task_name' => $timer->task->name ?? null,
+                'started_at' => $timer->started_at->toIso8601String(),
+            ];
+            $totalActiveAmount += $timer->calculated_amount ?? 0;
+        }
 
         return [
             'period' => [
@@ -325,13 +353,11 @@ class TimerService
                 'timer_count' => $timers->count(),
                 'average_duration' => $timers->count() > 0 ? round($totalDuration / $timers->count()) : 0,
             ],
-            'active_timer' => $activeTimer ? [
-                'id' => $activeTimer->id,
-                'status' => $activeTimer->status,
-                'duration' => $activeTimer->duration,
-                'duration_formatted' => $activeTimer->duration_formatted,
-                'calculated_amount' => $activeTimer->calculated_amount,
-            ] : null,
+            'active_timers' => [
+                'count' => $activeTimers->count(),
+                'total_running_amount' => $totalActiveAmount,
+                'timers' => $activeTimersData,
+            ],
             'breakdowns' => [
                 'by_project' => array_values($projectBreakdown),
                 'by_task' => array_values($taskBreakdown),

@@ -23,7 +23,7 @@ A comprehensive time management and invoicing system built with Laravel 12, feat
 -   **Database**: PostgreSQL 15+ (primary), MySQL (alternative)
 -   **Frontend**: Inertia.js + Vue.js 3.5+ with Composition API
 -   **UI Framework**: Headless UI + Tailwind CSS (accessibility-first)
--   **Authentication**: Laravel Sanctum with multi-tenant support
+-   **Authentication**: Laravel Sanctum hybrid (session + token) with 23 granular abilities
 -   **Real-time**: Laravel Echo with Pusher/Socket.io
 -   **Caching**: Redis for sessions, permissions, timer state
 -   **Testing**: PHPUnit + Laravel Dusk for browser testing
@@ -93,15 +93,18 @@ php artisan test                                # Run test suite
 
 See [`todos.md`](todos.md) for complete implementation roadmap.
 
-**Current Phase**: API Controllers & Backend Logic (60% Complete)  
-**Next Priority**: AccountSelector Component → Domain Mapping Feature
+**Current Phase**: Phase 8/15 Complete (60% MVP Ready)  
+**Next Priority**: Multi-Role Dashboard System and TimeEntry management workflows
 
-### Recent Achievements
+### Recently Implemented (Phase 8)
 
--   ✅ **ABAC Permission System**: Complete with PermissionService, Gates, and middleware
--   ✅ **Laravel CLI-First Development**: Following proper Laravel standards
--   ✅ **AccountController**: With hierarchical selector support for domain mapping
--   ✅ **Authorization Policies**: AccountPolicy, TimerPolicy, TimeEntryPolicy implemented
+-   ✅ **Laravel Sanctum Authentication**: Hybrid session/token auth with 23 granular abilities
+-   ✅ **Multi-Timer System**: Multiple concurrent timers per user with Redis synchronization
+-   ✅ **Domain-Based User Assignment**: Automatic account assignment via email domain patterns
+-   ✅ **Real-Time Broadcasting Infrastructure**: Laravel Echo + Vue composables (WebSocket ready)
+-   ✅ **Token Management API**: Complete CRUD with scoped token creation (employee, manager, mobile-app, admin)
+-   ✅ **Cross-Device Timer Sync**: Redis-based state management with conflict resolution
+-   ✅ **Vue.js Frontend Integration**: TimerBroadcastOverlay component with multiple timer support
 
 ## Documentation Structure
 
@@ -159,7 +162,7 @@ Production deployment, server configuration, and infrastructure.
 ### Backend
 
 -   **Laravel 12** - PHP framework with PostgreSQL
--   **Laravel Sanctum** - API authentication
+-   **Laravel Sanctum** - Hybrid authentication (session + token-based) with granular abilities
 -   **Redis** - Caching, sessions, queues
 -   **Laravel Echo** - Real-time broadcasting
 
@@ -212,12 +215,13 @@ php artisan tinker            # Interactive PHP shell
 -   Inherited permissions and settings
 -   Custom branding per account
 
-### Advanced Timer System
+### Advanced Multi-Timer System
 
--   Real-time cross-device synchronization
--   Multiple timer support
--   Automatic conflict resolution
--   Background time tracking
+-   **Multiple Concurrent Timers**: Users can run multiple timers simultaneously
+-   **Real-time Cross-device Synchronization**: Redis-based state management
+-   **Automatic Conflict Resolution**: Handles timer state conflicts across devices
+-   **Background Time Tracking**: Persistent timer state with pause/resume support
+-   **Laravel Echo Integration**: WebSocket-ready broadcasting infrastructure
 
 ### ABAC Permission System
 
