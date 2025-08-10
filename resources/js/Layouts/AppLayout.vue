@@ -255,6 +255,7 @@ import {
   DocumentTextIcon,
   CogIcon,
   ChartBarIcon,
+  TicketIcon,
 } from '@heroicons/vue/24/outline'
 
 // Components
@@ -266,6 +267,7 @@ const page = usePage()
 
 const navigation = computed(() => [
   { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
+  { name: 'Tickets', href: route('tickets.index'), icon: TicketIcon, current: route().current('tickets.*') },
   { name: 'Timer', href: route('timers.web.index'), icon: ClockIcon, current: route().current('timers.*') },
   { name: 'Time Entries', href: route('time-entries.index'), icon: DocumentTextIcon, current: route().current('time-entries.*') },
   { name: 'Reports', href: route('reports.index'), icon: ChartBarIcon, current: route().current('reports.*') },

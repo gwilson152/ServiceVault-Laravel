@@ -546,15 +546,57 @@ class TimerController extends Controller
      */
     public function statistics(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $includeServiceTickets = $request->boolean('include_service_tickets', false);
+        $status = $request->input('status');
+        
+        // Get base statistics from TimerService
         $stats = $this->timerService->getUserStatistics(
-            $request->user()->id,
+            $user->id,
             $request->input('start_date', now()->startOfMonth()),
             $request->input('end_date', now()->endOfMonth())
         );
 
-        return response()->json([
-            'data' => $stats,
-        ]);
+        // If requesting active timers with service tickets (for widget)
+        if ($includeServiceTickets && $status === 'active') {
+            $activeTimers = Timer::with(['serviceTicket:id,ticket_number,title', 'billingRate'])
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['running', 'paused'])
+                ->get();
+
+            $totalElapsed = 0;
+            $estimatedValue = 0;
+
+            foreach ($activeTimers as $timer) {
+                $elapsed = $timer->getElapsedSeconds();
+                $totalElapsed += $elapsed;
+
+                if ($timer->billingRate) {
+                    $hours = $elapsed / 3600;
+                    $estimatedValue += $hours * $timer->billingRate->rate;
+                }
+            }
+
+            $stats['active_timers'] = $activeTimers->map(function ($timer) {
+                return [
+                    'id' => $timer->id,
+                    'description' => $timer->description,
+                    'status' => $timer->status,
+                    'start_time' => $timer->started_at,
+                    'elapsed_seconds' => $timer->getElapsedSeconds(),
+                    'service_ticket' => $timer->serviceTicket ? [
+                        'id' => $timer->serviceTicket->id,
+                        'ticket_number' => $timer->serviceTicket->ticket_number,
+                        'title' => $timer->serviceTicket->title,
+                    ] : null,
+                ];
+            });
+
+            $stats['total_elapsed'] = $totalElapsed;
+            $stats['estimated_value'] = round($estimatedValue, 2);
+        }
+
+        return response()->json($stats);
     }
 
     /**

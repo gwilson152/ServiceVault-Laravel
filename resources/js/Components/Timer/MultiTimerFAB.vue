@@ -83,8 +83,8 @@
             <div class="text-lg font-mono font-bold text-gray-900">
               {{ formatDuration(calculateDuration(timer)) }}
             </div>
-            <div v-if="timer.service_ticket" class="text-xs text-gray-500">
-              {{ timer.service_ticket.ticket_number }}
+            <div v-if="timer.ticket" class="text-xs text-gray-500">
+              {{ timer.ticket.ticket_number }}
             </div>
           </div>
           
@@ -140,7 +140,7 @@
           <!-- Service Ticket Selection -->
           <div class="flex space-x-2">
             <select
-              v-model="timer.service_ticket_id"
+              v-model="timer.ticket_id"
               @change="updateTimerTicket(timer)"
               class="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
@@ -235,8 +235,8 @@
           <p class="text-orange-800 text-xs truncate">
             {{ timer.description || 'No description' }}
           </p>
-          <div v-if="timer.service_ticket" class="text-orange-600 text-xs">
-            {{ timer.service_ticket.ticket_number }}
+          <div v-if="timer.ticket" class="text-orange-600 text-xs">
+            {{ timer.ticket.ticket_number }}
           </div>
         </div>
 
@@ -483,14 +483,14 @@ const updateTimerDescription = async (timer) => {
 const updateTimerTicket = async (timer) => {
   try {
     await window.axios.put(`/api/timers/${timer.id}`, {
-      service_ticket_id: timer.service_ticket_id || null
+      ticket_id: timer.ticket_id || null
     })
     
     // Update local timer object
-    if (timer.service_ticket_id) {
-      timer.service_ticket = availableTickets.value.find(t => t.id == timer.service_ticket_id)
+    if (timer.ticket_id) {
+      timer.ticket = availableTickets.value.find(t => t.id == timer.ticket_id)
     } else {
-      timer.service_ticket = null
+      timer.ticket = null
     }
   } catch (error) {
     console.error('Failed to update timer ticket:', error)
@@ -555,7 +555,7 @@ const generateDeviceId = () => {
 const fetchAvailableOptions = async () => {
   try {
     // Fetch service tickets
-    const ticketResponse = await window.axios.get('/api/service-tickets?per_page=100')
+    const ticketResponse = await window.axios.get('/api/tickets?per_page=100')
     availableTickets.value = ticketResponse.data.data || []
     
     // Fetch billing rates (you'll need to implement this endpoint)

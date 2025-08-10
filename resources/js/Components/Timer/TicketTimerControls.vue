@@ -302,7 +302,7 @@ const calculateAmount = (timer) => {
 
 const fetchTimersForTicket = async () => {
   try {
-    const response = await fetch(`/api/service-tickets/${props.ticket.id}/timers/active`, {
+    const response = await fetch(`/api/tickets/${props.ticket.id}/timers/active`, {
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Content-Type': 'application/json',
@@ -330,7 +330,7 @@ const startTimer = async () => {
         'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
       },
       body: JSON.stringify({
-        service_ticket_id: props.ticket.id,
+        ticket_id: props.ticket.id,
         description: `Working on ticket ${props.ticket.ticket_number}`,
         device_id: generateDeviceId(),
         stop_others: false // Allow multiple concurrent timers

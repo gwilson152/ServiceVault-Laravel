@@ -10,15 +10,22 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
-  widgetId: {
-    type: String,
-    required: true
+  widgetData: {
+    type: [Object, Array],
+    default: null
+  },
+  widgetConfig: {
+    type: Object,
+    default: () => ({})
   },
   accountContext: {
     type: Object,
     default: () => ({})
   }
 })
+
+// Emits
+const emit = defineEmits(['refresh', 'configure'])
 
 // State
 const allTimers = ref([])
@@ -293,8 +300,8 @@ onUnmounted(() => {
             <p class="text-sm text-gray-700 truncate" :title="timer.description">
               {{ timer.description || 'No description' }}
             </p>
-            <div v-if="timer.service_ticket" class="text-xs text-gray-500">
-              Ticket: {{ timer.service_ticket.ticket_number }}
+            <div v-if="timer.ticket" class="text-xs text-gray-500">
+              Ticket: {{ timer.ticket.ticket_number }}
             </div>
           </div>
 

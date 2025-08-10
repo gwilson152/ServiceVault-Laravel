@@ -21,7 +21,7 @@ class TimeEntry extends Model
         'project_id',
         'task_id',
         'billing_rate_id',
-        'service_ticket_id',
+        'ticket_id',
         'description',
         'started_at',
         'ended_at',
@@ -88,9 +88,9 @@ class TimeEntry extends Model
     /**
      * Get the service ticket associated with the time entry.
      */
-    public function serviceTicket(): BelongsTo
+    public function ticket(): BelongsTo
     {
-        return $this->belongsTo(ServiceTicket::class);
+        return $this->belongsTo(Ticket::class);
     }
 
     /**
@@ -112,9 +112,9 @@ class TimeEntry extends Model
     /**
      * Scope a query to only include entries for a specific service ticket.
      */
-    public function scopeForServiceTicket($query, $serviceTicketId)
+    public function scopeForTicket($query, $ticketId)
     {
-        return $query->where('service_ticket_id', $serviceTicketId);
+        return $query->where('ticket_id', $ticketId);
     }
 
     /**

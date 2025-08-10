@@ -77,10 +77,10 @@
           <!-- Service Ticket -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Service Ticket <span class="text-red-500">*</span>
+              Ticket <span class="text-red-500">*</span>
             </label>
             <select
-              v-model="form.service_ticket_id"
+              v-model="form.ticket_id"
               @change="onTicketChange"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
             >
@@ -93,7 +93,7 @@
                 {{ ticket.ticket_number }} - {{ ticket.title }}
               </option>
             </select>
-            <div v-if="errors.service_ticket_id" class="mt-1 text-sm text-red-600">{{ errors.service_ticket_id }}</div>
+            <div v-if="errors.ticket_id" class="mt-1 text-sm text-red-600">{{ errors.ticket_id }}</div>
           </div>
 
           <!-- Account (Auto-populated from ticket) -->
@@ -296,7 +296,7 @@ const form = ref({
   duration_hours: 0,
   duration_minutes: 0,
   description: '',
-  service_ticket_id: '',
+  ticket_id: '',
   user_id: '',
   billing_rate_id: '',
   billable: true,
@@ -315,7 +315,7 @@ const totalDurationSeconds = computed(() => {
 })
 
 const selectedTicket = computed(() => {
-  return props.availableTickets.find(ticket => ticket.id == form.value.service_ticket_id)
+  return props.availableTickets.find(ticket => ticket.id == form.value.ticket_id)
 })
 
 const selectedBillingRate = computed(() => {
@@ -334,7 +334,7 @@ const totalBilledAmount = computed(() => {
 
 const canSubmit = computed(() => {
   return form.value.description.trim() && 
-         form.value.service_ticket_id && 
+         form.value.ticket_id && 
          totalDurationSeconds.value > 0 &&
          !isSubmitting.value
 })
@@ -380,7 +380,7 @@ const submitTimeEntry = async () => {
     const payload = {
       duration: totalDurationSeconds.value,
       description: form.value.description,
-      service_ticket_id: form.value.service_ticket_id,
+      ticket_id: form.value.ticket_id,
       user_id: form.value.user_id || props.currentUser.id,
       billing_rate_id: form.value.billing_rate_id || null,
       billable: form.value.billable,
@@ -434,7 +434,7 @@ const resetForm = () => {
     duration_hours: 0,
     duration_minutes: 0,
     description: '',
-    service_ticket_id: '',
+    ticket_id: '',
     user_id: props.currentUser.id,
     billing_rate_id: '',
     billable: true,
@@ -464,11 +464,11 @@ const initializeForm = () => {
     form.value.duration_hours = Math.floor(elapsed / 3600)
     form.value.duration_minutes = Math.floor((elapsed % 3600) / 60)
     form.value.description = props.timerData.description || ''
-    form.value.service_ticket_id = props.timerData.service_ticket_id || ''
+    form.value.ticket_id = props.timerData.ticket_id || ''
     form.value.billing_rate_id = props.timerData.billing_rate_id || ''
   } else if (props.ticketData) {
     // Manual entry mode with ticket context
-    form.value.service_ticket_id = props.ticketData.id
+    form.value.ticket_id = props.ticketData.id
     form.value.billing_rate_id = props.ticketData.billing_rate_id || ''
   }
   

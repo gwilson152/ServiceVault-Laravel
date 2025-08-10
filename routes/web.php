@@ -80,8 +80,14 @@ Route::middleware(['auth', 'verified', 'dashboard.role:portal'])->prefix('portal
     Route::get('/settings', [CustomerPortalController::class, 'settings'])->name('settings');
 });
 
-// Legacy route compatibility (these will redirect to appropriate dashboard)
+// Main application routes
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Tickets management
+    Route::get('/tickets', [App\Http\Controllers\Api\TicketController::class, 'indexView'])->name('tickets.index');
+    Route::get('/tickets/create', [App\Http\Controllers\Api\TicketController::class, 'create'])->name('tickets.create');
+    Route::get('/tickets/{ticket}', [App\Http\Controllers\Api\TicketController::class, 'showView'])->name('tickets.show');
+    Route::get('/tickets/{ticket}/edit', [App\Http\Controllers\Api\TicketController::class, 'edit'])->name('tickets.edit');
+    
     // Timer management (frontend routes)
     Route::get('/timers', function () {
         return Inertia::render('Timer/Index');

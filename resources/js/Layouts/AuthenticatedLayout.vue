@@ -6,13 +6,13 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import MultiTimerFAB from '@/Components/Timer/MultiTimerFAB.vue';
-import SimpleTimerFAB from '@/Components/Timer/SimpleTimerFAB.vue';
-import TimerStatus from '@/Components/Timer/TimerStatus.vue';
+import BottomTimerBar from '@/Components/Timer/BottomTimerBar.vue';
 import { Link } from '@inertiajs/vue3';
+import { useNavigation } from '@/Composables/useNavigation.js';
 
 const showingNavigationDropdown = ref(false);
 const page = usePage();
+const { navigation, mainNavigation, secondaryNavigation, isActive, loading } = useNavigation();
 
 // Check if user has any timer permissions at all
 const hasTimerPermissions = computed(() => {
@@ -34,35 +34,11 @@ const hasTimerPermissions = computed(() => {
     );
 });
 
-// Check if user has advanced timer permissions for multi-timer features
-const hasAdvancedTimerPermissions = computed(() => {
-    const user = page.props.auth?.user;
-    if (!user) return false;
-    
-    // Super admins always have all permissions
-    if (user.is_super_admin) return true;
-    
-    // Check for advanced timer permissions
-    const advancedPermissions = [
-        'admin.read',
-        'timers.view.all',
-        'timers.manage.team',
-        'managers.oversight'
-    ];
-    
-    return advancedPermissions.some(permission => 
-        user.permissions?.includes(permission)
-    );
-});
 </script>
 
 <template>
-    <div>
-        <!-- Timer System (Permission-Based) -->
-        <MultiTimerFAB v-if="hasAdvancedTimerPermissions" />
-        <SimpleTimerFAB v-else-if="hasTimerPermissions" />
-        
-        <div class="min-h-screen bg-gray-100">
+    <div>        
+        <div class="min-h-screen bg-gray-100 pb-16">
             <nav
                 class="border-b border-gray-100 bg-white"
             >
@@ -79,35 +55,56 @@ const hasAdvancedTimerPermissions = computed(() => {
                                 </Link>
                             </div>
 
-                            <!-- Navigation Links -->
-                            <div
-                                class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
-                            >
-                                <NavLink
-                                    :href="route('dashboard')"
-                                    :active="route().current('dashboard')"
-                                >
-                                    Dashboard
-                                </NavLink>
-                                <NavLink
-                                    :href="route('timers.web.index')"
-                                    :active="route().current('timers.*')"
-                                >
-                                    Timers
-                                </NavLink>
-                                <NavLink
-                                    :href="route('time-entries.index')"
-                                    :active="route().current('time-entries.*')"
-                                >
-                                    Time Entries
-                                </NavLink>
+                            <!-- Navigation Links (Permission-Based) -->
+                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <template v-if="!loading">
+                                    <NavLink
+                                        v-for="item in mainNavigation"
+                                        :key="item.key"
+                                        :href="route(item.route)"
+                                        :active="isActive(item)"
+                                    >
+                                        {{ item.label }}
+                                    </NavLink>
+                                    
+                                    <!-- Secondary Navigation Dropdown (if user has access to more items) -->
+                                    <div v-if="secondaryNavigation.length > 0" class="relative">
+                                        <Dropdown align="left" width="48">
+                                            <template #trigger>
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex items-center px-1 pt-1 text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 focus:outline-none focus:text-gray-700 transition duration-150 ease-in-out"
+                                                >
+                                                    More
+                                                    <svg class="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </template>
+
+                                            <template #content>
+                                                <DropdownLink
+                                                    v-for="item in secondaryNavigation"
+                                                    :key="item.key"
+                                                    :href="route(item.route)"
+                                                >
+                                                    {{ item.label }}
+                                                </DropdownLink>
+                                            </template>
+                                        </Dropdown>
+                                    </div>
+                                </template>
+                                
+                                <!-- Loading state -->
+                                <div v-else class="flex space-x-8">
+                                    <div class="h-4 w-16 bg-gray-200 animate-pulse rounded"></div>
+                                    <div class="h-4 w-12 bg-gray-200 animate-pulse rounded"></div>
+                                    <div class="h-4 w-14 bg-gray-200 animate-pulse rounded"></div>
+                                </div>
                             </div>
                         </div>
 
                         <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                            <!-- Timer Status -->
-                            <TimerStatus />
-                            
                             <!-- Settings Dropdown -->
                             <div class="relative ms-3">
                                 <Dropdown align="right" width="48">
@@ -212,6 +209,12 @@ const hasAdvancedTimerPermissions = computed(() => {
                             Dashboard
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
+                            :href="route('tickets.index')"
+                            :active="route().current('tickets.*')"
+                        >
+                            Tickets
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
                             :href="route('timers.web.index')"
                             :active="route().current('timers.*')"
                         >
@@ -271,5 +274,8 @@ const hasAdvancedTimerPermissions = computed(() => {
                 <slot />
             </main>
         </div>
+        
+        <!-- Bottom Timer Bar (Permission-Based) -->
+        <BottomTimerBar v-if="hasTimerPermissions" />
     </div>
 </template>

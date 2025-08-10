@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
+use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TimerController;
 use App\Http\Controllers\Api\TimeEntryController;
 use Illuminate\Http\Request;
@@ -37,6 +38,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('tokens/{token}', [App\Http\Controllers\Api\TokenController::class, 'destroy']);
     });
     
+    // User management routes
+    Route::get('users/assignable', [App\Http\Controllers\Api\UserController::class, 'assignableUsers'])
+        ->name('users.assignable');
+    
     // Timer routes
     Route::apiResource('timers', TimerController::class);
     
@@ -71,12 +76,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('timers/bulk', [TimerController::class, 'bulk'])
         ->name('timers.bulk');
     
-    // Service ticket timer endpoints
-    Route::get('service-tickets/{serviceTicketId}/timers', [TimerController::class, 'forServiceTicket'])
-        ->name('service-tickets.timers');
+    // Ticket timer endpoints
+    Route::get('tickets/{ticketId}/timers', [TimerController::class, 'forTicket'])
+        ->name('tickets.timers');
     
-    Route::get('service-tickets/{serviceTicketId}/timers/active', [TimerController::class, 'activeForServiceTicket'])
-        ->name('service-tickets.timers.active');
+    Route::get('tickets/{ticketId}/timers/active', [TimerController::class, 'activeForTicket'])
+        ->name('tickets.timers.active');
 
     // Time Entry routes with approval workflow
     Route::apiResource('time-entries', TimeEntryController::class);
@@ -115,34 +120,69 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // User invitation routes (admin/manager access)
     Route::apiResource('user-invitations', App\Http\Controllers\UserInvitationController::class);
 
-    // Service Ticket routes (comprehensive ticket management system)
-    Route::apiResource('service-tickets', App\Http\Controllers\Api\ServiceTicketController::class);
+    // Ticket routes (comprehensive ticket management system)
+    Route::apiResource('tickets', TicketController::class);
     
-    // Service ticket workflow and assignment endpoints
-    Route::post('service-tickets/{serviceTicket}/transition', [App\Http\Controllers\Api\ServiceTicketController::class, 'transitionStatus'])
-        ->name('service-tickets.transition');
+    // Ticket workflow and assignment endpoints
+    Route::post('tickets/{ticket}/transition', [TicketController::class, 'transitionStatus'])
+        ->name('tickets.transition');
     
-    Route::post('service-tickets/{serviceTicket}/assign', [App\Http\Controllers\Api\ServiceTicketController::class, 'assign'])
-        ->name('service-tickets.assign');
+    Route::post('tickets/{ticket}/assign', [TicketController::class, 'assign'])
+        ->name('tickets.assign');
     
-    Route::get('service-tickets/stats/dashboard', [App\Http\Controllers\Api\ServiceTicketController::class, 'statistics'])
-        ->name('service-tickets.statistics');
+    Route::get('tickets/stats/dashboard', [TicketController::class, 'statistics'])
+        ->name('tickets.statistics');
     
-    Route::get('service-tickets/my/assigned', [App\Http\Controllers\Api\ServiceTicketController::class, 'myTickets'])
-        ->name('service-tickets.my-tickets');
+    Route::get('tickets/my/assigned', [TicketController::class, 'myTickets'])
+        ->name('tickets.my-tickets');
     
     // Team assignment endpoints
-    Route::post('service-tickets/{serviceTicket}/team/add', [App\Http\Controllers\Api\ServiceTicketController::class, 'addTeamMember'])
-        ->name('service-tickets.team.add');
+    Route::post('tickets/{ticket}/team/add', [TicketController::class, 'addTeamMember'])
+        ->name('tickets.team.add');
     
-    Route::delete('service-tickets/{serviceTicket}/team/{teamMember}', [App\Http\Controllers\Api\ServiceTicketController::class, 'removeTeamMember'])
-        ->name('service-tickets.team.remove');
+    Route::delete('tickets/{ticket}/team/{teamMember}', [TicketController::class, 'removeTeamMember'])
+        ->name('tickets.team.remove');
+
+    // Ticket Addon Management routes
+    Route::apiResource('ticket-addons', App\Http\Controllers\Api\TicketAddonController::class);
     
-    Route::get('service-tickets/{serviceTicket}/team', [App\Http\Controllers\Api\ServiceTicketController::class, 'getTeamMembers'])
-        ->name('service-tickets.team.list');
+    // Addon approval workflow endpoints
+    Route::post('ticket-addons/{ticketAddon}/approve', [App\Http\Controllers\Api\TicketAddonController::class, 'approve'])
+        ->name('ticket-addons.approve');
     
-    Route::post('service-tickets/{serviceTicket}/team/bulk', [App\Http\Controllers\Api\ServiceTicketController::class, 'bulkAssignTeam'])
-        ->name('service-tickets.team.bulk-assign');
+    Route::post('ticket-addons/{ticketAddon}/reject', [App\Http\Controllers\Api\TicketAddonController::class, 'reject'])
+        ->name('ticket-addons.reject');
+
+    // Addon Template Management routes
+    Route::apiResource('addon-templates', App\Http\Controllers\Api\AddonTemplateController::class);
+    
+    // Create addon from template
+    Route::post('addon-templates/{addonTemplate}/create-addon', [App\Http\Controllers\Api\AddonTemplateController::class, 'createAddon'])
+        ->name('addon-templates.create-addon');
+
+    // Navigation routes (permission-based menu system)
+    Route::get('navigation', [App\Http\Controllers\Api\NavigationController::class, 'index'])
+        ->name('navigation.index');
+    Route::get('navigation/breadcrumbs', [App\Http\Controllers\Api\NavigationController::class, 'breadcrumbs'])
+        ->name('navigation.breadcrumbs');
+    Route::post('navigation/can-access', [App\Http\Controllers\Api\NavigationController::class, 'canAccess'])
+        ->name('navigation.can-access');
+
+    // Ticket Status Management routes
+    Route::apiResource('ticket-statuses', App\Http\Controllers\Api\TicketStatusController::class);
+    Route::get('ticket-statuses/options', [App\Http\Controllers\Api\TicketStatusController::class, 'options'])
+        ->name('ticket-statuses.options');
+    Route::get('ticket-statuses/{ticketStatus}/transitions', [App\Http\Controllers\Api\TicketStatusController::class, 'transitions'])
+        ->name('ticket-statuses.transitions');
+
+    // Ticket Category Management routes
+    Route::apiResource('ticket-categories', App\Http\Controllers\Api\TicketCategoryController::class);
+    Route::get('ticket-categories/options', [App\Http\Controllers\Api\TicketCategoryController::class, 'options'])
+        ->name('ticket-categories.options');
+    Route::get('ticket-categories/statistics', [App\Http\Controllers\Api\TicketCategoryController::class, 'statistics'])
+        ->name('ticket-categories.statistics');
+    Route::get('ticket-categories/sla-status', [App\Http\Controllers\Api\TicketCategoryController::class, 'slaStatus'])
+        ->name('ticket-categories.sla-status');
 });
 
 // Admin-only routes

@@ -99,11 +99,14 @@ const widgetComponents = {
   'TimeTrackingWidget': () => import('@/Components/Widgets/TimeTrackingWidget.vue'),
   'MyTicketsWidget': () => import('@/Components/Widgets/MyTicketsWidget.vue'),
   'TimeEntriesWidget': () => import('@/Components/Widgets/TimeEntriesWidget.vue'),
+  'RecentTimeEntriesWidget': () => import('@/Components/Widgets/RecentTimeEntriesWidget.vue'),
   'AllTimersWidget': () => import('@/Components/Widgets/AllTimersWidget.vue'),
-  // TODO: Create these widgets when needed:
+  'TicketFiltersWidget': () => import('@/Components/Widgets/TicketFiltersWidget.vue'),
+  'TicketTimerStatsWidget': () => import('@/Components/Widgets/TicketTimerStatsWidget.vue'),
   'BillingOverviewWidget': () => import('@/Components/Widgets/BillingOverviewWidget.vue'),
-  // 'TeamPerformanceWidget': () => import('@/Components/Widgets/TeamPerformanceWidget.vue'),
   'AccountActivityWidget': () => import('@/Components/Widgets/AccountActivityWidget.vue'),
+  // TODO: Create these widgets when needed:
+  // 'TeamPerformanceWidget': () => import('@/Components/Widgets/TeamPerformanceWidget.vue'),
   // 'AccountUsersWidget': () => import('@/Components/Widgets/AccountUsersWidget.vue'),
 }
 

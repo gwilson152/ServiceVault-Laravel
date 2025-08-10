@@ -118,9 +118,9 @@ const generateMockActivities = () => {
   return [
     {
       id: 1,
-      type: 'service_ticket',
-      title: 'Service Ticket Created',
-      description: 'New service ticket #ST-2024-001 created for server maintenance',
+      type: 'ticket',
+      title: 'Ticket Created',
+      description: 'New ticket #ST-2024-001 created for server maintenance',
       user_name: 'John Smith',
       created_at: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
     },
@@ -180,7 +180,7 @@ const refreshData = async () => {
 
 const getActivityTypeClass = (type) => {
   const classes = {
-    service_ticket: 'bg-blue-500',
+    ticket: 'bg-blue-500',
     time_entry: 'bg-green-500',
     invoice: 'bg-yellow-500',
     user: 'bg-purple-500',
@@ -193,7 +193,7 @@ const getActivityTypeClass = (type) => {
 const getActivityIcon = (type) => {
   // Return SVG path strings for different activity types
   const icons = {
-    service_ticket: 'TicketIcon',
+    ticket: 'TicketIcon',
     time_entry: 'ClockIcon',
     invoice: 'CurrencyIcon',
     user: 'UserIcon',

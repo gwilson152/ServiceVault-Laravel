@@ -4,9 +4,9 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\ServiceTicket;
+use App\Models\Ticket;
 
-class ServiceTicketResource extends JsonResource
+class TicketResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -26,34 +26,17 @@ class ServiceTicketResource extends JsonResource
             'priority' => $this->priority,
             'category' => $this->category,
             
-            // Customer information
-            'customer_name' => $this->customer_name,
-            'customer_email' => $this->when(
-                $this->shouldShowCustomerEmail($request->user()),
-                $this->customer_email
-            ),
-            'customer_phone' => $this->when(
-                $this->shouldShowCustomerPhone($request->user()),
-                $this->customer_phone
-            ),
-            
             // Assignment and billing
-            'billable' => $this->billable,
             'estimated_hours' => $this->estimated_hours,
-            'quoted_amount' => $this->when(
-                isset($this->quoted_amount),
-                $this->quoted_amount
-            ),
-            'requires_approval' => $this->requires_approval,
+            'estimated_amount' => $this->estimated_amount,
+            'actual_amount' => $this->actual_amount,
             
             // Dates and time tracking
             'due_date' => $this->due_date,
-            'opened_at' => $this->opened_at,
             'started_at' => $this->started_at,
+            'completed_at' => $this->completed_at,
             'resolved_at' => $this->resolved_at,
             'closed_at' => $this->closed_at,
-            'last_customer_update' => $this->last_customer_update,
-            'last_internal_update' => $this->last_internal_update,
             
             // Timestamps
             'created_at' => $this->created_at,
@@ -94,7 +77,9 @@ class ServiceTicketResource extends JsonResource
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
-                        'email' => $user->email
+                        'email' => $user->email,
+                        'role' => $user->pivot->role ?? 'assignee',
+                        'assigned_at' => $user->pivot->assigned_at
                     ];
                 });
             }),
@@ -104,6 +89,30 @@ class ServiceTicketResource extends JsonResource
                     'id' => $this->billingRate->id,
                     'rate' => $this->billingRate->rate,
                     'currency' => $this->billingRate->currency ?? 'USD'
+                ] : null;
+            }),
+            
+            // Status and category models
+            'status_model' => $this->whenLoaded('statusModel', function () {
+                return $this->statusModel ? [
+                    'key' => $this->statusModel->key,
+                    'name' => $this->statusModel->name,
+                    'color' => $this->statusModel->color,
+                    'bg_color' => $this->statusModel->bg_color,
+                    'icon' => $this->statusModel->icon,
+                    'is_closed' => $this->statusModel->is_closed
+                ] : null;
+            }),
+            
+            'category_model' => $this->whenLoaded('categoryModel', function () {
+                return $this->categoryModel ? [
+                    'key' => $this->categoryModel->key,
+                    'name' => $this->categoryModel->name,
+                    'color' => $this->categoryModel->color,
+                    'bg_color' => $this->categoryModel->bg_color,
+                    'icon' => $this->categoryModel->icon,
+                    'sla_hours' => $this->categoryModel->sla_hours,
+                    'formatted_sla' => $this->categoryModel->formatted_sla
                 ] : null;
             }),
             
@@ -124,20 +133,34 @@ class ServiceTicketResource extends JsonResource
                     return [
                         'id' => $timer->id,
                         'status' => $timer->status,
-                        'started_at' => $timer->started_at
+                        'started_at' => $timer->started_at,
+                        'duration' => $timer->duration
+                    ];
+                });
+            }),
+            
+            'addons' => $this->whenLoaded('addons', function () {
+                return $this->addons->map(function ($addon) {
+                    return [
+                        'id' => $addon->id,
+                        'name' => $addon->name,
+                        'status' => $addon->status,
+                        'total' => $addon->total,
+                        'created_at' => $addon->created_at
                     ];
                 });
             }),
             
             // Calculated fields
             'is_overdue' => $this->isOverdue(),
-            'is_sla_breached' => $this->isSlaBreached(),
             'total_time_logged' => $this->getTotalTimeLogged(),
             'total_billable_time' => $this->getTotalBillableTime(),
             'total_cost' => $this->when(
                 $this->relationLoaded('timeEntries') && $this->timeEntries->count() > 0,
                 $this->getTotalCost()
             ),
+            'total_addon_cost' => $this->getTotalAddonCost(),
+            'pending_addon_cost' => $this->getPendingAddonCost(),
             'hours_logged' => round($this->getTotalTimeLogged() / 3600, 2),
             'billable_hours' => round($this->getTotalBillableTime() / 3600, 2),
             
@@ -153,58 +176,10 @@ class ServiceTicketResource extends JsonResource
             'can_assign' => $this->canAssign($request->user()),
             'can_transition' => $this->getAvailableTransitions(),
             
-            // Internal notes (staff only)
-            'internal_notes' => $this->when(
-                $this->shouldShowInternalNotes($request->user()),
-                $this->internal_notes
-            ),
-            'resolution_notes' => $this->when(
-                $this->shouldShowResolutionNotes($request->user()),
-                $this->resolution_notes
-            ),
+            // Metadata
+            'metadata' => $this->metadata,
+            'settings' => $this->settings,
         ];
-    }
-    
-    /**
-     * Determine if customer email should be shown to this user
-     */
-    private function shouldShowCustomerEmail($user): bool
-    {
-        return $user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() ||
-               $user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() ||
-               $this->created_by === $user->id ||
-               $this->assigned_to === $user->id;
-    }
-    
-    /**
-     * Determine if customer phone should be shown to this user
-     */
-    private function shouldShowCustomerPhone($user): bool
-    {
-        return $this->shouldShowCustomerEmail($user);
-    }
-    
-    /**
-     * Determine if internal notes should be shown to this user
-     */
-    private function shouldShowInternalNotes($user): bool
-    {
-        return $user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() ||
-               $user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() ||
-               $this->created_by === $user->id ||
-               $this->assigned_to === $user->id;
-    }
-    
-    /**
-     * Determine if resolution notes should be shown to this user
-     */
-    private function shouldShowResolutionNotes($user): bool
-    {
-        return !empty($this->resolution_notes) && 
-               ($user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() ||
-                $user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() ||
-                $this->created_by === $user->id ||
-                $this->assigned_to === $user->id);
     }
     
     /**
@@ -213,12 +188,13 @@ class ServiceTicketResource extends JsonResource
     private function getStatusColor(): string
     {
         return match ($this->status) {
-            ServiceTicket::STATUS_OPEN => 'blue',
-            ServiceTicket::STATUS_IN_PROGRESS => 'yellow',
-            ServiceTicket::STATUS_WAITING_CUSTOMER => 'orange',
-            ServiceTicket::STATUS_RESOLVED => 'green',
-            ServiceTicket::STATUS_CLOSED => 'gray',
-            ServiceTicket::STATUS_CANCELLED => 'red',
+            Ticket::STATUS_OPEN => 'blue',
+            Ticket::STATUS_IN_PROGRESS => 'yellow',
+            Ticket::STATUS_WAITING_CUSTOMER => 'orange',
+            Ticket::STATUS_ON_HOLD => 'purple',
+            Ticket::STATUS_RESOLVED => 'green',
+            Ticket::STATUS_CLOSED => 'gray',
+            Ticket::STATUS_CANCELLED => 'red',
             default => 'gray'
         };
     }
@@ -229,10 +205,10 @@ class ServiceTicketResource extends JsonResource
     private function getPriorityColor(): string
     {
         return match ($this->priority) {
-            ServiceTicket::PRIORITY_LOW => 'gray',
-            ServiceTicket::PRIORITY_MEDIUM => 'blue',
-            ServiceTicket::PRIORITY_HIGH => 'orange',
-            ServiceTicket::PRIORITY_URGENT => 'red',
+            Ticket::PRIORITY_LOW => 'gray',
+            Ticket::PRIORITY_NORMAL => 'blue',
+            Ticket::PRIORITY_HIGH => 'orange',
+            Ticket::PRIORITY_URGENT => 'red',
             default => 'gray'
         };
     }
@@ -243,12 +219,13 @@ class ServiceTicketResource extends JsonResource
     private function getStatusLabel(): string
     {
         return match ($this->status) {
-            ServiceTicket::STATUS_OPEN => 'Open',
-            ServiceTicket::STATUS_IN_PROGRESS => 'In Progress',
-            ServiceTicket::STATUS_WAITING_CUSTOMER => 'Waiting for Customer',
-            ServiceTicket::STATUS_RESOLVED => 'Resolved',
-            ServiceTicket::STATUS_CLOSED => 'Closed',
-            ServiceTicket::STATUS_CANCELLED => 'Cancelled',
+            Ticket::STATUS_OPEN => 'Open',
+            Ticket::STATUS_IN_PROGRESS => 'In Progress',
+            Ticket::STATUS_WAITING_CUSTOMER => 'Waiting for Customer',
+            Ticket::STATUS_ON_HOLD => 'On Hold',
+            Ticket::STATUS_RESOLVED => 'Resolved',
+            Ticket::STATUS_CLOSED => 'Closed',
+            Ticket::STATUS_CANCELLED => 'Cancelled',
             default => ucfirst($this->status)
         };
     }
@@ -259,10 +236,10 @@ class ServiceTicketResource extends JsonResource
     private function getPriorityLabel(): string
     {
         return match ($this->priority) {
-            ServiceTicket::PRIORITY_LOW => 'Low',
-            ServiceTicket::PRIORITY_MEDIUM => 'Medium',
-            ServiceTicket::PRIORITY_HIGH => 'High',
-            ServiceTicket::PRIORITY_URGENT => 'Urgent',
+            Ticket::PRIORITY_LOW => 'Low',
+            Ticket::PRIORITY_NORMAL => 'Normal',
+            Ticket::PRIORITY_HIGH => 'High',
+            Ticket::PRIORITY_URGENT => 'Urgent',
             default => ucfirst($this->priority)
         };
     }
@@ -272,8 +249,8 @@ class ServiceTicketResource extends JsonResource
      */
     private function canAssign($user): bool
     {
-        return $user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() ||
-               $user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists();
+        return $user->isSuperAdmin() ||
+               $user->hasAnyPermission(['admin.write', 'tickets.assign', 'teams.manage']);
     }
     
     /**
@@ -282,12 +259,13 @@ class ServiceTicketResource extends JsonResource
     private function getAvailableTransitions(): array
     {
         $allTransitions = [
-            ServiceTicket::STATUS_OPEN => [ServiceTicket::STATUS_IN_PROGRESS, ServiceTicket::STATUS_CANCELLED],
-            ServiceTicket::STATUS_IN_PROGRESS => [ServiceTicket::STATUS_WAITING_CUSTOMER, ServiceTicket::STATUS_RESOLVED, ServiceTicket::STATUS_CANCELLED],
-            ServiceTicket::STATUS_WAITING_CUSTOMER => [ServiceTicket::STATUS_IN_PROGRESS, ServiceTicket::STATUS_RESOLVED],
-            ServiceTicket::STATUS_RESOLVED => [ServiceTicket::STATUS_CLOSED, ServiceTicket::STATUS_IN_PROGRESS],
-            ServiceTicket::STATUS_CLOSED => [],
-            ServiceTicket::STATUS_CANCELLED => [],
+            Ticket::STATUS_OPEN => [Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_ON_HOLD, Ticket::STATUS_CANCELLED],
+            Ticket::STATUS_IN_PROGRESS => [Ticket::STATUS_WAITING_CUSTOMER, Ticket::STATUS_ON_HOLD, Ticket::STATUS_RESOLVED, Ticket::STATUS_CANCELLED],
+            Ticket::STATUS_WAITING_CUSTOMER => [Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_ON_HOLD, Ticket::STATUS_RESOLVED],
+            Ticket::STATUS_ON_HOLD => [Ticket::STATUS_OPEN, Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_CANCELLED],
+            Ticket::STATUS_RESOLVED => [Ticket::STATUS_CLOSED, Ticket::STATUS_IN_PROGRESS],
+            Ticket::STATUS_CLOSED => [],
+            Ticket::STATUS_CANCELLED => [],
         ];
         
         return $allTransitions[$this->status] ?? [];

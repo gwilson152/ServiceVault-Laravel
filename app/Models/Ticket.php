@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 
-class ServiceTicket extends Model
+class Ticket extends Model
 {
     use HasFactory, SoftDeletes;
     
@@ -16,60 +16,50 @@ class ServiceTicket extends Model
         'ticket_number',
         'title',
         'description',
-        'customer_name',
-        'customer_email', 
-        'customer_phone',
         'status',
         'priority',
         'category',
-        'created_by',
-        'assigned_to',
+        'created_by_id',
+        'assigned_to_id',
         'due_date',
         'estimated_hours',
-        'billable',
+        'estimated_amount',
+        'actual_amount',
         'billing_rate_id',
-        'quoted_amount',
-        'requires_approval',
-        'resolution_notes',
+        'started_at',
+        'completed_at',
+        'resolved_at',
+        'closed_at',
         'metadata',
-        'internal_notes',
+        'settings',
     ];
     
     protected $casts = [
         'due_date' => 'datetime',
-        'sla_breached_at' => 'datetime',
-        'last_customer_update' => 'datetime',
-        'last_internal_update' => 'datetime',
-        'opened_at' => 'datetime',
         'started_at' => 'datetime',
+        'completed_at' => 'datetime',
         'resolved_at' => 'datetime',
         'closed_at' => 'datetime',
         'metadata' => 'array',
-        'billable' => 'boolean',
-        'requires_approval' => 'boolean',
-        'quoted_amount' => 'decimal:2',
+        'settings' => 'array',
+        'estimated_amount' => 'decimal:2',
+        'actual_amount' => 'decimal:2',
     ];
     
     // Status constants for better code organization
     public const STATUS_OPEN = 'open';
     public const STATUS_IN_PROGRESS = 'in_progress';
     public const STATUS_WAITING_CUSTOMER = 'waiting_customer';
+    public const STATUS_ON_HOLD = 'on_hold';
     public const STATUS_RESOLVED = 'resolved';
     public const STATUS_CLOSED = 'closed';
     public const STATUS_CANCELLED = 'cancelled';
     
     // Priority constants
     public const PRIORITY_LOW = 'low';
-    public const PRIORITY_MEDIUM = 'medium';
+    public const PRIORITY_NORMAL = 'normal';
     public const PRIORITY_HIGH = 'high';
     public const PRIORITY_URGENT = 'urgent';
-    
-    // Category constants
-    public const CATEGORY_SUPPORT = 'support';
-    public const CATEGORY_MAINTENANCE = 'maintenance';
-    public const CATEGORY_DEVELOPMENT = 'development';
-    public const CATEGORY_CONSULTING = 'consulting';
-    public const CATEGORY_OTHER = 'other';
     
     /**
      * Relationships
@@ -82,12 +72,12 @@ class ServiceTicket extends Model
     
     public function createdBy()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by_id');
     }
     
     public function assignedTo()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'assigned_to_id');
     }
     
     public function billingRate()
@@ -100,7 +90,9 @@ class ServiceTicket extends Model
      */
     public function assignedUsers()
     {
-        return $this->belongsToMany(User::class, 'service_ticket_user');
+        return $this->belongsToMany(User::class, 'ticket_user')
+                    ->withPivot(['role', 'assigned_at', 'unassigned_at'])
+                    ->withTimestamps();
     }
     
     /**
@@ -132,23 +124,23 @@ class ServiceTicket extends Model
      */
     public function approvedAddons()
     {
-        return $this->hasMany(TicketAddon::class)->approved();
+        return $this->hasMany(TicketAddon::class)->where('status', 'approved');
     }
     
     /**
-     * Get billable addons for this ticket
+     * Get ticket status model
      */
-    public function billableAddons()
+    public function statusModel()
     {
-        return $this->hasMany(TicketAddon::class)->billable();
+        return $this->belongsTo(TicketStatus::class, 'status', 'key');
     }
     
     /**
-     * Comments/updates on this ticket
+     * Get ticket category model
      */
-    public function comments()
+    public function categoryModel()
     {
-        return $this->hasMany(ServiceTicketComment::class)->orderBy('created_at', 'desc');
+        return $this->belongsTo(TicketCategory::class, 'category', 'key');
     }
     
     /**
@@ -189,14 +181,6 @@ class ServiceTicket extends Model
     }
     
     /**
-     * Check if SLA is breached
-     */
-    public function isSlaBreached(): bool
-    {
-        return !is_null($this->sla_breached_at);
-    }
-    
-    /**
      * Get total time logged on this ticket (in seconds)
      */
     public function getTotalTimeLogged(): int
@@ -228,7 +212,7 @@ class ServiceTicket extends Model
         }
         
         // Add approved addon costs
-        $addonTotal = $this->approvedAddons()->billable()->sum('total_amount');
+        $addonTotal = $this->approvedAddons()->sum('total');
         $total += $addonTotal;
         
         return round($total, 2);
@@ -239,7 +223,7 @@ class ServiceTicket extends Model
      */
     public function getTotalAddonCost(): float
     {
-        return round($this->approvedAddons()->billable()->sum('total_amount'), 2);
+        return round($this->approvedAddons()->sum('total'), 2);
     }
     
     /**
@@ -247,7 +231,7 @@ class ServiceTicket extends Model
      */
     public function getPendingAddonCost(): float
     {
-        return round($this->addons()->pending()->billable()->sum('total_amount'), 2);
+        return round($this->addons()->where('status', 'pending')->sum('total'), 2);
     }
     
     /**
@@ -257,9 +241,10 @@ class ServiceTicket extends Model
     public function canTransitionTo(string $newStatus): bool
     {
         $validTransitions = [
-            self::STATUS_OPEN => [self::STATUS_IN_PROGRESS, self::STATUS_CANCELLED],
-            self::STATUS_IN_PROGRESS => [self::STATUS_WAITING_CUSTOMER, self::STATUS_RESOLVED, self::STATUS_CANCELLED],
-            self::STATUS_WAITING_CUSTOMER => [self::STATUS_IN_PROGRESS, self::STATUS_RESOLVED],
+            self::STATUS_OPEN => [self::STATUS_IN_PROGRESS, self::STATUS_ON_HOLD, self::STATUS_CANCELLED],
+            self::STATUS_IN_PROGRESS => [self::STATUS_WAITING_CUSTOMER, self::STATUS_ON_HOLD, self::STATUS_RESOLVED, self::STATUS_CANCELLED],
+            self::STATUS_WAITING_CUSTOMER => [self::STATUS_IN_PROGRESS, self::STATUS_ON_HOLD, self::STATUS_RESOLVED],
+            self::STATUS_ON_HOLD => [self::STATUS_OPEN, self::STATUS_IN_PROGRESS, self::STATUS_CANCELLED],
             self::STATUS_RESOLVED => [self::STATUS_CLOSED, self::STATUS_IN_PROGRESS], // Can reopen if customer isn't satisfied
             self::STATUS_CLOSED => [], // Closed tickets can't be transitioned (except by admin override)
             self::STATUS_CANCELLED => [], // Cancelled tickets are final
@@ -292,17 +277,7 @@ class ServiceTicket extends Model
                 break;
         }
         
-        // Update internal tracking
-        $this->last_internal_update = now();
-        
-        $saved = $this->save();
-        
-        // Log the status change (will be implemented with comments system)
-        if ($saved && $notes) {
-            // This will be implemented when we create ServiceTicketComment model
-        }
-        
-        return $saved;
+        return $this->save();
     }
     
     /**
@@ -310,8 +285,7 @@ class ServiceTicket extends Model
      */
     public function assignTo(User $user): bool
     {
-        $this->assigned_to = $user->id;
-        $this->last_internal_update = now();
+        $this->assigned_to_id = $user->id;
         
         // Auto-transition to in_progress if currently open
         if ($this->status === self::STATUS_OPEN) {
@@ -332,19 +306,24 @@ class ServiceTicket extends Model
             return false;
         }
         
+        // Super admin can see everything
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+        
         // Admin can see all tickets in their accounts
-        if ($user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if ($user->hasAnyPermission(['admin.read', 'tickets.view.all'])) {
             return true;
         }
         
         // Manager can see all tickets in managed accounts
-        if ($user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists()) {
+        if ($user->hasAnyPermission(['tickets.view.account', 'teams.manage'])) {
             return true;
         }
         
         // User can see tickets they created or are assigned to
-        return $this->created_by === $user->id || 
-               $this->assigned_to === $user->id ||
+        return $this->created_by_id === $user->id || 
+               $this->assigned_to_id === $user->id ||
                $this->assignedUsers()->where('users.id', $user->id)->exists();
     }
     
@@ -357,14 +336,18 @@ class ServiceTicket extends Model
             return false;
         }
         
+        // Super admin can edit everything
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+        
         // Admin and managers can edit any ticket
-        if ($user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() ||
-            $user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists()) {
+        if ($user->hasAnyPermission(['admin.write', 'tickets.edit.all', 'teams.manage'])) {
             return true;
         }
         
         // Users can edit tickets they created (unless closed)
-        return $this->created_by === $user->id && 
+        return $this->created_by_id === $user->id && 
                !in_array($this->status, [self::STATUS_CLOSED, self::STATUS_CANCELLED]);
     }
     
@@ -384,7 +367,7 @@ class ServiceTicket extends Model
     
     public function scopeAssignedTo($query, User $user)
     {
-        return $query->where('assigned_to', $user->id);
+        return $query->where('assigned_to_id', $user->id);
     }
     
     public function scopeOverdue($query)
@@ -408,10 +391,6 @@ class ServiceTicket extends Model
         static::creating(function ($ticket) {
             if (empty($ticket->ticket_number)) {
                 $ticket->ticket_number = static::generateTicketNumber();
-            }
-            
-            if (empty($ticket->opened_at)) {
-                $ticket->opened_at = now();
             }
         });
     }

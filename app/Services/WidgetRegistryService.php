@@ -109,6 +109,45 @@ class WidgetRegistryService
             'enabled_by_default' => true,
         ],
 
+        'ticket-timer-stats' => [
+            'name' => 'Ticket Timer Stats',
+            'description' => 'Active timers on service tickets with controls',
+            'component' => 'TicketTimerStatsWidget',
+            'category' => 'time_management',
+            'permissions' => ['timers.view', 'tickets.view.assigned'],
+            'context' => 'both',
+            'account_aware' => true,
+            'default_size' => ['w' => 6, 'h' => 4],
+            'configurable' => true,
+            'enabled_by_default' => true,
+        ],
+
+        'ticket-filters' => [
+            'name' => 'Ticket Filters',
+            'description' => 'Advanced ticket filtering with saved views',
+            'component' => 'TicketFiltersWidget',
+            'category' => 'service_delivery',
+            'permissions' => ['tickets.view.all', 'tickets.view.assigned', 'tickets.view.account'],
+            'context' => 'both',
+            'account_aware' => true,
+            'default_size' => ['w' => 4, 'h' => 6],
+            'configurable' => true,
+            'enabled_by_default' => true,
+        ],
+
+        'recent-time-entries' => [
+            'name' => 'Recent Time Entries',
+            'description' => 'Latest time entries across tickets with approval actions',
+            'component' => 'RecentTimeEntriesWidget',
+            'category' => 'time_management',
+            'permissions' => ['time_entries.view', 'time_entries.view.own', 'time_entries.approve'],
+            'context' => 'both',
+            'account_aware' => true,
+            'default_size' => ['w' => 8, 'h' => 6],
+            'configurable' => true,
+            'enabled_by_default' => true,
+        ],
+
         'all-timers' => [
             'name' => 'All Active Timers',
             'description' => 'Monitor all active timers across all users (Admin only)',

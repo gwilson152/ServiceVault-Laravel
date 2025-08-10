@@ -10,15 +10,22 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
-  widgetId: {
-    type: String,
-    required: true
+  widgetData: {
+    type: [Object, Array],
+    default: null
+  },
+  widgetConfig: {
+    type: Object,
+    default: () => ({})
   },
   accountContext: {
     type: Object,
     default: () => ({})
   }
 })
+
+// Emits
+const emit = defineEmits(['refresh', 'configure'])
 
 // State
 const tickets = ref([])
@@ -77,7 +84,7 @@ const fetchMyTickets = async () => {
     loading.value = true
     error.value = null
     
-    const response = await fetch('/api/service-tickets/my/assigned', {
+    const response = await fetch('/api/tickets/my/assigned', {
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Content-Type': 'application/json',

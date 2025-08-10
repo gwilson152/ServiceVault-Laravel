@@ -308,8 +308,8 @@ onUnmounted(() => {
             <p class="text-sm text-gray-700 line-clamp-2">
               {{ entry.description || 'No description' }}
             </p>
-            <div v-if="entry.service_ticket" class="text-xs text-gray-500 mt-1">
-              Ticket: {{ entry.service_ticket.ticket_number }}
+            <div v-if="entry.ticket" class="text-xs text-gray-500 mt-1">
+              Ticket: {{ entry.ticket.ticket_number }}
             </div>
           </div>
 

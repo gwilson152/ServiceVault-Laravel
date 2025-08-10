@@ -2,26 +2,25 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     * 
+     * Note: User creation is handled by the setup page (/setup)
+     * This seeder only contains system reference data.
      */
     public function run(): void
     {
-        // Seed role templates first
+        // Seed system reference data
         $this->call([
             RoleTemplateSeeder::class,
-        ]);
-
-        // Create test user
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+            AddonTemplateSeeder::class,
+            TicketStatusSeeder::class,
+            TicketCategorySeeder::class,
+            TicketSeeder::class,  // Sample tickets for demonstration
         ]);
     }
 }

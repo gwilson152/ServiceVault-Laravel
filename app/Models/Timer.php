@@ -21,7 +21,7 @@ class Timer extends Model
         'project_id',
         'task_id',
         'billing_rate_id',
-        'service_ticket_id',
+        'ticket_id',
         'time_entry_id',
         'description',
         'ticket_number',
@@ -95,11 +95,11 @@ class Timer extends Model
     }
 
     /**
-     * Get the service ticket associated with the timer.
+     * Get the ticket associated with the timer.
      */
-    public function serviceTicket(): BelongsTo
+    public function ticket(): BelongsTo
     {
-        return $this->belongsTo(ServiceTicket::class);
+        return $this->belongsTo(Ticket::class);
     }
 
     /**
