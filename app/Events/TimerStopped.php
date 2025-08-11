@@ -23,7 +23,7 @@ class TimerStopped implements ShouldBroadcast
     public function __construct(Timer $timer)
     {
         $this->timer = $timer;
-        $this->timer->load(['project', 'task', 'billingRate', 'timeEntry']);
+        $this->timer->load(['billingRate', 'timeEntry']);
     }
 
     /**

@@ -23,7 +23,7 @@ class TimerUpdated implements ShouldBroadcast
     public function __construct(Timer $timer)
     {
         $this->timer = $timer;
-        $this->timer->load(['project', 'task', 'billingRate']);
+        $this->timer->load(['billingRate']);
     }
 
     /**
@@ -55,10 +55,7 @@ class TimerUpdated implements ShouldBroadcast
                 'duration' => $this->timer->duration,
                 'duration_formatted' => $this->timer->duration_formatted,
                 'calculated_amount' => $this->timer->calculated_amount,
-                'project' => $this->timer->project ? [
-                    'id' => $this->timer->project->id,
-                    'name' => $this->timer->project->name,
-                ] : null,
+                // Note: Project and task data removed - these entities are no longer used
                 'task' => $this->timer->task ? [
                     'id' => $this->timer->task->id,
                     'name' => $this->timer->task->name,

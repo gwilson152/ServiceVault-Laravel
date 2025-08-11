@@ -23,7 +23,7 @@ class UpdateTimerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => 'nullable|exists:projects,id',
+            // Note: project_id validation removed - projects no longer used
             'task_id' => 'nullable|exists:tasks,id',
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
             'description' => 'nullable|string|max:1000',
@@ -39,7 +39,7 @@ class UpdateTimerRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'project_id.exists' => 'The selected project does not exist.',
+            // Note: project validation messages removed
             'task_id.exists' => 'The selected task does not exist.',
             'billing_rate_id.exists' => 'The selected billing rate does not exist.',
             'description.max' => 'The description must not exceed 1000 characters.',

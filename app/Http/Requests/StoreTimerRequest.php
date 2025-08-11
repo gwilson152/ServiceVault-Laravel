@@ -22,7 +22,7 @@ class StoreTimerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => 'nullable|exists:projects,id',
+            // Note: project_id validation removed - projects no longer used
             'task_id' => 'nullable|exists:tasks,id',
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
             'service_ticket_id' => 'nullable|exists:service_tickets,id',
@@ -39,7 +39,7 @@ class StoreTimerRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'project_id.exists' => 'The selected project does not exist.',
+            // Note: project validation messages removed
             'task_id.exists' => 'The selected task does not exist.',
             'billing_rate_id.exists' => 'The selected billing rate does not exist.',
             'service_ticket_id.exists' => 'The selected service ticket does not exist.',

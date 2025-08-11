@@ -1,7 +1,7 @@
 <template>
   <div class="ticket-timer-controls">
     <!-- Compact Mode for List View -->
-    <div v-if="compact" class="flex items-center space-x-1">
+    <div v-if="compact" class="flex items-center flex-row-reverse space-x-reverse space-x-1">
       <!-- Debug info -->
       <!-- No Active Timer - Show Play Button -->
       <button
@@ -55,7 +55,7 @@
       </template>
       
       <!-- Other User's Timer - Show Status Indicator -->
-      <div v-else-if="activeTimer && !userOwnsActiveTimer" class="flex items-center space-x-1">
+      <div v-else-if="activeTimer && !userOwnsActiveTimer" class="flex items-center flex-row-reverse space-x-reverse space-x-1">
         <div 
           :class="activeTimer.status === 'running' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'"
           class="w-2 h-2 rounded-full"
@@ -607,12 +607,16 @@ const generateDeviceId = () => {
 
 // Lifecycle
 onMounted(async () => {
-  // Only fetch timers if not in compact mode to avoid N+1 queries on list pages
+  // Always fetch timers initially to show current state
+  await fetchTimersForTicket()
+  
+  // Set up periodic refresh based on mode
   if (!props.compact) {
-    await fetchTimersForTicket()
-    
-    // Set up periodic refresh
+    // Full mode: Refresh every 30 seconds (default)
     refreshIntervalId = setInterval(fetchTimersForTicket, props.refreshInterval)
+  } else {
+    // Compact mode: Refresh less frequently (every 60 seconds) to balance performance
+    refreshIntervalId = setInterval(fetchTimersForTicket, Math.max(props.refreshInterval * 2, 60000))
   }
   
   // Set up time update for duration calculations

@@ -15,7 +15,7 @@ class TimerService
     /**
      * Stop all running timers for a user (across all devices).
      */
-    public function stopAllUserTimers(int $userId, ?string $deviceId = null): void
+    public function stopAllUserTimers(string $userId, ?string $deviceId = null): void
     {
         // Ignore device_id parameter - stop ALL user timers globally for simplicity
         $timers = Timer::where('user_id', $userId)
@@ -123,7 +123,7 @@ class TimerService
     /**
      * Get all active timer states from Redis for a user.
      */
-    public function getRedisState(int $userId): array
+    public function getRedisState(string $userId): array
     {
         // Try cache first
         $cached = Cache::get("user.{$userId}.active_timers");
@@ -158,7 +158,7 @@ class TimerService
     /**
      * Refresh the active timers cache for a user.
      */
-    private function refreshActiveTimersCache(int $userId): void
+    private function refreshActiveTimersCache(string $userId): void
     {
         // Clear existing cache
         Cache::forget("user.{$userId}.active_timers");
@@ -243,16 +243,16 @@ class TimerService
     /**
      * Get user statistics for a date range.
      */
-    public function getUserStatistics(int $userId, $startDate, $endDate): array
+    public function getUserStatistics(string $userId, $startDate, $endDate): array
     {
         $timers = Timer::where('user_id', $userId)
             ->whereBetween('started_at', [$startDate, $endDate])
-            ->with('billingRate', 'task')
+            ->with('billingRate')
             ->get();
 
         $totalDuration = 0;
         $totalBilled = 0;
-        $taskBreakdown = [];
+        // Note: Task breakdown removed - tasks no longer used in this system
         $dailyBreakdown = [];
 
         foreach ($timers as $timer) {
@@ -267,22 +267,7 @@ class TimerService
             }
 
 
-            // Task breakdown
-            if ($timer->task_id) {
-                $taskKey = $timer->task_id;
-                $taskName = $timer->task->name ?? 'Unknown Task';
-                if (!isset($taskBreakdown[$taskKey])) {
-                    $taskBreakdown[$taskKey] = [
-                        'name' => $taskName,
-                        'duration' => 0,
-                        'amount' => 0,
-                        'count' => 0,
-                    ];
-                }
-                $taskBreakdown[$taskKey]['duration'] += $duration;
-                $taskBreakdown[$taskKey]['amount'] += $timer->calculated_amount ?? 0;
-                $taskBreakdown[$taskKey]['count']++;
-            }
+            // Note: Task breakdown code removed - tasks no longer used
 
             // Daily breakdown
             $day = $timer->started_at->format('Y-m-d');
@@ -314,7 +299,7 @@ class TimerService
                 'duration_formatted' => $timer->duration_formatted,
                 'calculated_amount' => $timer->calculated_amount,
                 'description' => $timer->description,
-                'task_name' => $timer->task->name ?? null,
+                // Note: task_name removed - tasks no longer used
                 'started_at' => $timer->started_at->toIso8601String(),
             ];
             $totalActiveAmount += $timer->calculated_amount ?? 0;
@@ -338,7 +323,7 @@ class TimerService
                 'timers' => $activeTimersData,
             ],
             'breakdowns' => [
-                'by_task' => array_values($taskBreakdown),
+                // Note: by_task breakdown removed - tasks no longer used
                 'by_day' => array_values($dailyBreakdown),
             ],
         ];

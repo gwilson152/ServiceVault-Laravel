@@ -1,7 +1,7 @@
 <template>
   <div 
     v-if="timers.length > 0" 
-    class="fixed bottom-4 right-4 z-50 space-y-2"
+    class="fixed bottom-4 right-4 z-50"
   >
     <!-- Connection Status Indicator -->
     <div class="flex items-center justify-end mb-2">
@@ -17,12 +17,14 @@
       </div>
     </div>
 
-    <!-- Active Timers -->
-    <div 
-      v-for="timer in timers" 
-      :key="timer.id"
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 min-w-80"
-    >
+    <!-- Timer Cards Container -->
+    <div class="flex flex-row-reverse space-x-reverse space-x-2">
+      <!-- Active Timers -->
+      <div 
+        v-for="timer in timers" 
+        :key="timer.id"
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 min-w-80"
+      >
       <!-- Timer Header -->
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center space-x-2">
@@ -91,6 +93,7 @@
         <span v-if="timer.project && timer.task"> • </span>
         <span v-if="timer.task">{{ timer.task.name }}</span>
       </div>
+    </div>
     </div>
 
     <!-- Totals (if multiple timers) -->
