@@ -93,6 +93,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('tickets/{ticketId}/timers', [TimerController::class, 'forTicket'])
         ->name('tickets.timers');
     
+    Route::post('tickets/{ticketId}/timers/start', [TimerController::class, 'startForTicket'])
+        ->name('tickets.timers.start');
+    
     Route::get('tickets/{ticketId}/timers/active', [TimerController::class, 'activeForTicket'])
         ->name('tickets.timers.active');
 
@@ -164,6 +167,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::delete('tickets/{ticket}/team/{teamMember}', [TicketController::class, 'removeTeamMember'])
         ->name('tickets.team.remove');
+        
+    // Ticket comment endpoints
+    Route::get('tickets/{ticket}/comments', [App\Http\Controllers\Api\TicketCommentController::class, 'index'])
+        ->name('tickets.comments.index');
+    Route::post('tickets/{ticket}/comments', [App\Http\Controllers\Api\TicketCommentController::class, 'store'])
+        ->name('tickets.comments.store');
+    Route::put('tickets/{ticket}/comments/{comment}', [App\Http\Controllers\Api\TicketCommentController::class, 'update'])
+        ->name('tickets.comments.update');
+    Route::delete('tickets/{ticket}/comments/{comment}', [App\Http\Controllers\Api\TicketCommentController::class, 'destroy'])
+        ->name('tickets.comments.destroy');
+        
+    // Ticket time tracking endpoints  
+    Route::get('tickets/{ticket}/time-entries', [TimeEntryController::class, 'forTicket'])
+        ->name('tickets.time-entries');
 
     // Ticket Addon Management routes
     Route::apiResource('ticket-addons', App\Http\Controllers\Api\TicketAddonController::class);
@@ -198,13 +215,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('ticket-statuses.transitions');
 
     // Ticket Category Management routes
-    Route::apiResource('ticket-categories', App\Http\Controllers\Api\TicketCategoryController::class);
+    // Specific routes must be defined BEFORE apiResource to avoid route conflicts
     Route::get('ticket-categories/options', [App\Http\Controllers\Api\TicketCategoryController::class, 'options'])
         ->name('ticket-categories.options');
     Route::get('ticket-categories/statistics', [App\Http\Controllers\Api\TicketCategoryController::class, 'statistics'])
         ->name('ticket-categories.statistics');
     Route::get('ticket-categories/sla-status', [App\Http\Controllers\Api\TicketCategoryController::class, 'sla-status'])
         ->name('ticket-categories.sla-status');
+    
+    Route::apiResource('ticket-categories', App\Http\Controllers\Api\TicketCategoryController::class);
 
     // Role Template Management routes (Admin access required)
     // Note: Specific routes MUST come before the resource route to avoid parameter binding conflicts

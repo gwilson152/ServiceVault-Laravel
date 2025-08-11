@@ -34,25 +34,20 @@ class TicketController extends Controller
         
         // Apply user scope - employees see assigned tickets, managers/admins see team tickets
         if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.read', 'admin.write'])) {
-            // Admins see all tickets in their accounts
-            $accountIds = $user->accounts()->pluck('accounts.id');
-            $query->whereIn('account_id', $accountIds);
+            // Admins see all tickets (super admin) or tickets in their account (admin)
+            if (!$user->isSuperAdmin() && $user->account) {
+                $query->where('account_id', $user->account->id);
+            }
         } elseif ($user->hasAnyPermission(['teams.manage', 'tickets.view.all'])) {
-            // Managers see tickets in accounts they manage
-            $managedAccountIds = $user->accounts()
-                ->whereHas('users', function ($userQuery) use ($user) {
-                    $userQuery->where('users.id', $user->id)
-                             ->whereHas('roleTemplates', function ($roleQuery) {
-                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
-                             });
-                })
-                ->pluck('accounts.id');
-            $query->whereIn('account_id', $managedAccountIds);
+            // Managers see tickets in their account
+            if ($user->account) {
+                $query->where('account_id', $user->account->id);
+            }
         } else {
             // Employees see tickets they created or are assigned to
             $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)
-                  ->orWhere('assigned_to_id', $user->id)
+                $q->where('created_by_id', $user->id)
+                  ->orWhere('agent_id', $user->id)
                   ->orWhereHas('assignedUsers', function ($assignedQuery) use ($user) {
                       $assignedQuery->where('users.id', $user->id);
                   });
@@ -70,13 +65,13 @@ class TicketController extends Controller
             $q->where('priority', $priority);
         })->when($request->category, function ($q, $category) {
             $q->where('category', $category);
-        })->when($request->assigned_to, function ($q, $assignedTo) {
-            if ($assignedTo === 'mine') {
-                $q->where('assigned_to_id', $user->id);
-            } elseif ($assignedTo === 'unassigned') {
-                $q->whereNull('assigned_to_id');
+        })->when($request->agent_id, function ($q, $agentId) {
+            if ($agentId === 'mine') {
+                $q->where('agent_id', $user->id);
+            } elseif ($agentId === 'unassigned') {
+                $q->whereNull('agent_id');
             } else {
-                $q->where('assigned_to_id', $assignedTo);
+                $q->where('agent_id', $agentId);
             }
         })->when($request->account_id, function ($q, $accountId) {
             $q->where('account_id', $accountId);
@@ -183,7 +178,7 @@ class TicketController extends Controller
             'account_id' => 'nullable|exists:accounts,id',
             'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
             'category' => ['required', Rule::in(['support', 'maintenance', 'development', 'consulting', 'other'])],
-            'assigned_to' => 'nullable|exists:users,id',
+            'agent_id' => 'nullable|exists:users,id',
             'due_date' => 'nullable|date|after:now',
             'estimated_hours' => 'nullable|integer|min:1|max:1000',
             'estimated_amount' => 'nullable|numeric|min:0|max:999999.99',
@@ -194,13 +189,12 @@ class TicketController extends Controller
         
         // Determine account_id if not provided
         if (empty($validated['account_id'])) {
-            // If user is super admin or has system-wide permissions, use their first available account
+            // If user is super admin or has system-wide permissions, use their account
             if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.write', 'accounts.manage', 'tickets.view.all'])) {
-                $userAccount = $user->accounts()->first();
-                if (!$userAccount) {
+                if (!$user->account_id) {
                     return response()->json(['error' => 'No account available for ticket creation.'], 422);
                 }
-                $validated['account_id'] = $userAccount->id;
+                $validated['account_id'] = $user->account_id;
             } else {
                 return response()->json(['error' => 'Account ID is required.'], 422);
             }
@@ -208,15 +202,15 @@ class TicketController extends Controller
         
         // Verify user has access to the specified account (unless they have system-wide permissions)
         if (!$user->isSuperAdmin() && !$user->hasAnyPermission(['admin.write', 'accounts.manage', 'tickets.view.all'])) {
-            if (!$user->accounts()->where('accounts.id', $validated['account_id'])->exists()) {
+            if ($user->account_id !== $validated['account_id']) {
                 return response()->json(['error' => 'You do not have access to this account.'], 403);
             }
         }
         
         // Verify assigned user has access to the account if specified
-        if (!empty($validated['assigned_to'])) {
-            $assignedUser = User::find($validated['assigned_to']);
-            if (!$assignedUser->accounts()->where('accounts.id', $validated['account_id'])->exists()) {
+        if (!empty($validated['agent_id'])) {
+            $assignedUser = User::find($validated['agent_id']);
+            if ($assignedUser && $assignedUser->account_id !== $validated['account_id']) {
                 return response()->json(['error' => 'Assigned user does not have access to this account.'], 422);
             }
         }
@@ -228,13 +222,13 @@ class TicketController extends Controller
             'account_id' => $validated['account_id'],
             'priority' => $validated['priority'],
             'category' => $validated['category'],
-            'created_by' => $user->id,
-            'assigned_to_id' => $validated['assigned_to'] ?? null,
+            'created_by_id' => $user->id,
+            'agent_id' => $validated['agent_id'] ?? null,
             'due_date' => $validated['due_date'] ?? null,
             'estimated_hours' => $validated['estimated_hours'] ?? null,
             'estimated_amount' => $validated['estimated_amount'] ?? null,
             'billing_rate_id' => $validated['billing_rate_id'] ?? null,
-            'status' => $validated['assigned_to'] ? Ticket::STATUS_IN_PROGRESS : Ticket::STATUS_OPEN,
+            'status' => $validated['agent_id'] ? Ticket::STATUS_IN_PROGRESS : Ticket::STATUS_OPEN,
             'metadata' => $validated['metadata'] ?? null,
             'settings' => $validated['settings'] ?? null,
         ]);
@@ -331,49 +325,6 @@ class TicketController extends Controller
         ]);
     }
 
-    /**
-     * Show ticket edit form (Inertia)
-     */
-    public function edit(Request $request, Ticket $ticket)
-    {
-        $user = $request->user();
-        
-        // Check permissions
-        $this->authorize('update', $ticket);
-        
-        $ticket->load(['account', 'assignedTo', 'createdBy']);
-        
-        $availableAccounts = [];
-        $assignableUsers = [];
-        $canAssignTickets = $user->hasAnyPermission(['tickets.assign', 'admin.write']);
-        
-        // Get available accounts
-        if ($user->hasAnyPermission(['tickets.view.all', 'admin.read', 'accounts.manage'])) {
-            $availableAccounts = Account::select('id', 'name')
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
-        }
-        
-        // Get assignable users
-        if ($canAssignTickets) {
-            $assignableUsers = User::select('id', 'name')
-                ->whereHas('roleTemplates', function ($query) {
-                    $query->whereHas('permissions', function ($q) {
-                        $q->where('name', 'LIKE', 'tickets.%');
-                    });
-                })
-                ->orderBy('name')
-                ->get();
-        }
-        
-        return Inertia::render('Tickets/Edit', [
-            'ticket' => new TicketResource($ticket),
-            'availableAccounts' => $availableAccounts,
-            'assignableUsers' => $assignableUsers,
-            'canAssignTickets' => $canAssignTickets,
-        ]);
-    }
 
     /**
      * Update the specified ticket
@@ -392,7 +343,7 @@ class TicketController extends Controller
             'description' => 'sometimes|string|max:10000',
             'priority' => ['sometimes', Rule::in(['low', 'normal', 'high', 'urgent'])],
             'category' => ['sometimes', Rule::in(['support', 'maintenance', 'development', 'consulting', 'other'])],
-            'assigned_to' => 'sometimes|nullable|exists:users,id',
+            'agent_id' => 'sometimes|nullable|exists:users,id',
             'due_date' => 'sometimes|nullable|date|after:now',
             'estimated_hours' => 'sometimes|nullable|integer|min:1|max:1000',
             'estimated_amount' => 'sometimes|nullable|numeric|min:0|max:999999.99',
@@ -403,9 +354,9 @@ class TicketController extends Controller
         ]);
         
         // Verify assigned user has access to the account if specified
-        if (isset($validated['assigned_to']) && $validated['assigned_to']) {
-            $assignedUser = User::find($validated['assigned_to']);
-            if (!$assignedUser->accounts()->where('accounts.id', $ticket->account_id)->exists()) {
+        if (isset($validated['agent_id']) && $validated['agent_id']) {
+            $assignedUser = User::find($validated['agent_id']);
+            if ($assignedUser->account_id !== $ticket->account_id) {
                 return response()->json(['error' => 'Assigned user does not have access to this account.'], 422);
             }
         }
@@ -432,7 +383,7 @@ class TicketController extends Controller
         }
         
         // Check account access
-        if (!$user->accounts()->where('accounts.id', $ticket->account_id)->exists()) {
+        if (!$user->isSuperAdmin() && $user->account_id !== $ticket->account_id) {
             return response()->json(['error' => 'You do not have access to this account.'], 403);
         }
         
@@ -504,13 +455,13 @@ class TicketController extends Controller
         }
         
         $validated = $request->validate([
-            'assigned_to' => 'required|exists:users,id'
+            'agent_id' => 'required|exists:users,id'
         ]);
         
-        $assignedUser = User::find($validated['assigned_to']);
+        $assignedUser = User::find($validated['agent_id']);
         
         // Verify assigned user has access to the account
-        if (!$assignedUser->accounts()->where('accounts.id', $ticket->account_id)->exists()) {
+        if ($assignedUser->account_id !== $ticket->account_id) {
             return response()->json(['error' => 'User does not have access to this account.'], 422);
         }
         
@@ -539,22 +490,19 @@ class TicketController extends Controller
         $query = Ticket::query();
         
         if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.read'])) {
-            $accountIds = $user->accounts()->pluck('accounts.id');
-            $query->whereIn('account_id', $accountIds);
+            // Super admin sees all, others see their account
+            if (!$user->isSuperAdmin() && $user->account_id) {
+                $query->where('account_id', $user->account_id);
+            }
         } elseif ($user->hasAnyPermission(['teams.manage'])) {
-            $managedAccountIds = $user->accounts()
-                ->whereHas('users', function ($userQuery) use ($user) {
-                    $userQuery->where('users.id', $user->id)
-                             ->whereHas('roleTemplates', function ($roleQuery) {
-                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
-                             });
-                })
-                ->pluck('accounts.id');
-            $query->whereIn('account_id', $managedAccountIds);
+            // User can see tickets from their account if they have management permissions
+            if ($user->account_id && $user->hasPermission('teams.manage')) {
+                $query->where('account_id', $user->account_id);
+            }
         } else {
             $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)
-                  ->orWhere('assigned_to_id', $user->id);
+                $q->where('created_by_id', $user->id)
+                  ->orWhere('agent_id', $user->id);
             });
         }
         
@@ -568,7 +516,7 @@ class TicketController extends Controller
             'closed' => (clone $query)->where('status', Ticket::STATUS_CLOSED)->count(),
             'overdue' => (clone $query)->where('due_date', '<', now())->whereNotIn('status', ['closed', 'cancelled'])->count(),
             'high_priority' => (clone $query)->whereIn('priority', [Ticket::PRIORITY_HIGH, Ticket::PRIORITY_URGENT])->count(),
-            'assigned_to_me' => (clone $query)->where('assigned_to_id', $user->id)->count(),
+            'assigned_to_me' => (clone $query)->where('agent_id', $user->id)->count(),
         ];
         
         return response()->json(['data' => $stats]);
@@ -582,7 +530,7 @@ class TicketController extends Controller
         $user = $request->user();
         
         $query = Ticket::with(['account:id,name', 'createdBy:id,name'])
-            ->where('assigned_to_id', $user->id);
+            ->where('agent_id', $user->id);
         
         // Apply status filter if provided
         if ($request->has('status')) {
@@ -627,7 +575,7 @@ class TicketController extends Controller
         $teamMember = User::find($validated['user_id']);
         
         // Verify team member has access to the account
-        if (!$teamMember->accounts()->where('accounts.id', $ticket->account_id)->exists()) {
+        if ($teamMember->account_id !== $ticket->account_id) {
             return response()->json(['error' => 'User does not have access to this account.'], 422);
         }
         
@@ -687,24 +635,19 @@ class TicketController extends Controller
         
         // Apply user scope - employees see assigned tickets, managers/admins see team tickets
         if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.read', 'admin.write'])) {
-            // Admins see all tickets in their accounts
-            $accountIds = $user->accounts()->pluck('accounts.id');
-            $baseQuery->whereIn('account_id', $accountIds);
+            // Admins see all tickets or tickets in their account
+            if (!$user->isSuperAdmin() && $user->account_id) {
+                $baseQuery->where('account_id', $user->account_id);
+            }
         } elseif ($user->hasAnyPermission(['teams.manage', 'tickets.view.all'])) {
-            // Managers see tickets in accounts they manage
-            $managedAccountIds = $user->accounts()
-                ->whereHas('users', function ($userQuery) use ($user) {
-                    $userQuery->where('users.id', $user->id)
-                             ->whereHas('roleTemplates', function ($roleQuery) {
-                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
-                             });
-                })
-                ->pluck('accounts.id');
-            $baseQuery->whereIn('account_id', $managedAccountIds);
+            // Managers see tickets in their account
+            if ($user->account_id) {
+                $baseQuery->where('account_id', $user->account_id);
+            }
         } else {
             // Regular employees see only their assigned tickets
             $baseQuery->where(function ($query) use ($user) {
-                $query->where('assigned_to_id', $user->id)
+                $query->where('agent_id', $user->id)
                       ->orWhereHas('assignedUsers', function ($assignedQuery) use ($user) {
                           $assignedQuery->where('users.id', $user->id);
                       });
@@ -720,7 +663,7 @@ class TicketController extends Controller
             'all' => (clone $baseQuery)->count(),
             'open' => (clone $baseQuery)->whereNotIn('status', ['closed', 'cancelled'])->count(),
             'closed' => (clone $baseQuery)->whereIn('status', ['closed'])->count(),
-            'assigned_to_me' => (clone $baseQuery)->where('assigned_to_id', $user->id)->count(),
+            'assigned_to_me' => (clone $baseQuery)->where('agent_id', $user->id)->count(),
             'high_priority' => (clone $baseQuery)->where('priority', 'high')->count(),
             'overdue' => (clone $baseQuery)->where('due_date', '<', now())->whereNotIn('status', ['closed', 'cancelled'])->count(),
         ];

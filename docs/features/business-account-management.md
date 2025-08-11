@@ -126,14 +126,21 @@ Support unlimited depth organizational hierarchies:
 ## Account Management Interface
 
 ### Account List View
-Professional business-focused interface:
+Professional business-focused interface with hierarchical display:
 
 **Display Columns:**
-- **Company/Account**: Business name with hierarchy indication
+- **Company/Account**: Business name with visual hierarchy tree connectors (└─, │)
 - **Contact Information**: Primary contact with email and phone
-- **Account Type**: Visual badges for customer/prospect/partner/internal
-- **Hierarchy Level**: Tree structure with indentation
+- **Account Type**: Visual badges for customer/prospect/partner/internal  
+- **Hierarchy Level**: Visual indicators showing Root Account vs Subsidiary L1/L2/etc with children count
 - **Status & Activity**: Active status and recent activity indicators
+
+**Hierarchical Display Features:**
+- **Tree Structure**: Visual tree connectors showing parent-child relationships
+- **Level Indicators**: Clear Root/Subsidiary level badges with different colors
+- **Indentation**: Proper indentation based on hierarchy depth
+- **Icon Differentiation**: Different icons for root accounts vs subsidiaries
+- **Children Count**: Shows number of direct subsidiaries per account
 
 **Search & Filtering:**
 - **Global Search**: Company name, contact person, email, phone
@@ -266,11 +273,11 @@ GET    /api/accounts/{account}          # Get account with full details
 PUT    /api/accounts/{account}          # Update account information
 DELETE /api/accounts/{account}          # Delete account (with safety checks)
 
-# Hierarchy Operations
-GET    /api/accounts?with_hierarchy=true          # Accounts with parent/children
-GET    /api/accounts/selector/hierarchical        # Hierarchical account selector
-GET    /api/accounts/{account}/hierarchy          # Get account hierarchy tree
-POST   /api/accounts/{account}/children           # Create child account
+# Hierarchy Operations  
+GET    /api/accounts                              # Returns accounts in hierarchical order by default
+GET    /api/accounts/selector/hierarchical        # Hierarchical account selector with tree structure
+GET    /api/accounts/{account}                    # Get account with parent/children relationships loaded
+POST   /api/accounts                             # Create account with optional parent_id for hierarchy placement
 
 # Search and Filtering
 GET    /api/accounts?search={query}               # Search accounts

@@ -46,7 +46,16 @@
           <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
         </div>
 
-        <!-- Form Row: Priority & Account -->
+        <!-- Account & Agent Selection -->
+        <SimpleAccountUserSelector
+          v-model:account-id="form.account_id"
+          v-model:user-id="form.agent_id"
+          :account-error="errors.account_id"
+          :user-error="errors.agent_id"
+          :show-user-selector="canAssignTickets"
+        />
+
+        <!-- Form Row: Priority & Category -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Priority -->
           <div>
@@ -68,37 +77,6 @@
             <p v-if="errors.priority" class="mt-1 text-sm text-red-600">{{ errors.priority }}</p>
           </div>
 
-          <!-- Account (if service provider) -->
-          <div v-if="availableAccounts.length > 0">
-            <label for="account_id" class="block text-sm font-medium text-gray-700 mb-2">
-              Account <span class="text-red-500">*</span>
-            </label>
-            <select
-              id="account_id"
-              v-model="form.account_id"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select Account</option>
-              <option
-                v-for="account in availableAccounts"
-                :key="account.id"
-                :value="account.id"
-              >
-                {{ account.name }}
-              </option>
-            </select>
-            <p v-if="errors.account_id" class="mt-1 text-sm text-red-600">{{ errors.account_id }}</p>
-          </div>
-          
-          <!-- Hidden account field for single-account users -->
-          <div v-else-if="user?.current_account_id">
-            <input type="hidden" :value="user.current_account_id" />
-          </div>
-        </div>
-
-        <!-- Form Row: Category & Due Date -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Category -->
           <div>
             <label for="category" class="block text-sm font-medium text-gray-700 mb-2">
@@ -107,54 +85,34 @@
             <select
               id="category"
               v-model="form.category"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :disabled="isLoadingCategories"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
             >
-              <option value="">Select Category</option>
-              <option value="bug">Bug Report</option>
-              <option value="feature_request">Feature Request</option>
-              <option value="support">Technical Support</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="consultation">Consultation</option>
-              <option value="other">Other</option>
+              <option value="">{{ isLoadingCategories ? 'Loading categories...' : 'Select Category' }}</option>
+              <option
+                v-for="category in availableCategories"
+                :key="category.key"
+                :value="category.key"
+              >
+                {{ category.name }}
+              </option>
             </select>
             <p v-if="errors.category" class="mt-1 text-sm text-red-600">{{ errors.category }}</p>
           </div>
-
-          <!-- Due Date -->
-          <div>
-            <label for="due_date" class="block text-sm font-medium text-gray-700 mb-2">
-              Due Date
-            </label>
-            <input
-              id="due_date"
-              v-model="form.due_date"
-              type="datetime-local"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-            <p v-if="errors.due_date" class="mt-1 text-sm text-red-600">{{ errors.due_date }}</p>
-          </div>
         </div>
 
-        <!-- Assignment (if has permission) -->
-        <div v-if="canAssignTickets">
-          <label for="assigned_to" class="block text-sm font-medium text-gray-700 mb-2">
-            Assign To
+        <!-- Due Date -->
+        <div>
+          <label for="due_date" class="block text-sm font-medium text-gray-700 mb-2">
+            Due Date
           </label>
-          <select
-            id="assigned_to"
-            v-model="form.assigned_to"
+          <input
+            id="due_date"
+            v-model="form.due_date"
+            type="datetime-local"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Unassigned</option>
-            <option
-              v-for="user in assignableUsers"
-              :key="user.id"
-              :value="user.id"
-            >
-              {{ user.name }}
-            </option>
-          </select>
-          <p v-if="errors.assigned_to" class="mt-1 text-sm text-red-600">{{ errors.assigned_to }}</p>
+          <p v-if="errors.due_date" class="mt-1 text-sm text-red-600">{{ errors.due_date }}</p>
         </div>
 
         <!-- Tags -->
@@ -226,6 +184,8 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
+import SimpleAccountUserSelector from '@/Components/UI/SimpleAccountUserSelector.vue'
+import axios from 'axios'
 
 // Props
 const props = defineProps({
@@ -246,7 +206,8 @@ const emit = defineEmits(['close', 'created'])
 // State
 const isSubmitting = ref(false)
 const errors = ref({})
-const assignableUsers = ref([])
+const isLoadingCategories = ref(false)
+const availableCategories = ref([])
 
 // Form data
 const form = reactive({
@@ -256,7 +217,7 @@ const form = reactive({
   account_id: '',
   category: '',
   due_date: '',
-  assigned_to: '',
+  agent_id: '',
   tags: '',
   start_timer: false,
   send_notifications: true
@@ -271,36 +232,34 @@ const resetForm = () => {
   form.title = ''
   form.description = ''
   form.priority = 'normal'
-  form.account_id = user.value?.current_account_id || ''
+  form.account_id = user.value?.account_id || ''
   form.category = ''
   form.due_date = ''
-  form.assigned_to = ''
+  form.agent_id = ''
   form.tags = ''
   form.start_timer = false
   form.send_notifications = true
   errors.value = {}
 }
 
-const loadAssignableUsers = async () => {
-  if (!props.canAssignTickets) return
-  
+const loadCategories = async () => {
+  isLoadingCategories.value = true
   try {
-    const response = await fetch('/api/users/assignable', {
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
-      }
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      assignableUsers.value = data.data || []
+    const response = await axios.get('/api/ticket-categories/options')
+    availableCategories.value = response.data.options || []
+    
+    // Set default category if available
+    if (response.data.default_category && !form.category) {
+      form.category = response.data.default_category
     }
   } catch (error) {
-    console.error('Failed to load assignable users:', error)
+    console.error('Failed to load categories:', error)
+    availableCategories.value = []
+  } finally {
+    isLoadingCategories.value = false
   }
 }
+
 
 const submitForm = async () => {
   if (isSubmitting.value) return
@@ -334,37 +293,18 @@ const submitForm = async () => {
       delete payload.account_id
     }
 
-    const response = await fetch('/api/tickets', {
-      method: 'POST',
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
-      },
-      body: JSON.stringify(payload)
-    })
-
-    const data = await response.json()
-
-    if (response.ok) {
-      // Success
-      const newTicket = data.data
-      
-      // Start timer if requested
-      if (form.start_timer) {
-        await startTimerForTicket(newTicket.id)
-      }
-
-      emit('created', newTicket)
-      resetForm()
-    } else {
-      // Validation errors
-      if (data.errors) {
-        errors.value = data.errors
-      } else {
-        errors.value = { general: data.message || 'Failed to create ticket' }
-      }
+    const response = await axios.post('/api/tickets', payload)
+    
+    // Success
+    const newTicket = response.data.data
+    
+    // Start timer if requested
+    if (form.start_timer) {
+      await startTimerForTicket(newTicket.id)
     }
+
+    emit('created', newTicket)
+    resetForm()
   } catch (error) {
     console.error('Error creating ticket:', error)
     errors.value = { general: 'Network error. Please try again.' }
@@ -375,17 +315,9 @@ const submitForm = async () => {
 
 const startTimerForTicket = async (ticketId) => {
   try {
-    await fetch('/api/timers', {
-      method: 'POST',
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
-      },
-      body: JSON.stringify({
-        ticket_id: ticketId,
-        description: `Working on ticket: ${form.title}`
-      })
+    await axios.post('/api/timers', {
+      ticket_id: ticketId,
+      description: `Working on ticket: ${form.title}`
     })
   } catch (error) {
     console.error('Failed to start timer:', error)
@@ -395,14 +327,15 @@ const startTimerForTicket = async (ticketId) => {
 
 // Watchers & Lifecycle
 onMounted(() => {
-  loadAssignableUsers()
+  loadCategories()
 })
 
 // Watch for modal show/hide
 watch(() => props.show, (show) => {
   if (show) {
     resetForm()
-    loadAssignableUsers()
+    loadCategories()
   }
 }, { immediate: true })
+
 </script>

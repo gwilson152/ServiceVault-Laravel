@@ -53,18 +53,11 @@ class DomainAssignmentService
             throw new \RuntimeException('No suitable role template found for domain assignment.');
         }
 
-        // Create role instance for this user in the mapped account
-        $userRole = Role::create([
+        // Assign user directly to account and role template
+        $user->update([
             'account_id' => $account->id,
             'role_template_id' => $roleTemplate->id,
         ]);
-
-        // Attach user to account and role
-        $account->users()->attach($user->id);
-        $user->roles()->attach($userRole->id);
-
-        // Set this as the user's current account
-        $user->update(['current_account_id' => $account->id]);
 
         Log::info('User assigned via domain mapping', [
             'user_id' => $user->id,
@@ -108,18 +101,11 @@ class DomainAssignmentService
             throw new \RuntimeException('Default employee role template not found.');
         }
 
-        // Create role instance for this user in the default account
-        $userRole = Role::create([
+        // Assign user directly to default account and role template
+        $user->update([
             'account_id' => $defaultAccount->id,
             'role_template_id' => $employeeTemplate->id,
         ]);
-
-        // Attach user to account and role
-        $defaultAccount->users()->attach($user->id);
-        $user->roles()->attach($userRole->id);
-
-        // Set this as the user's current account
-        $user->update(['current_account_id' => $defaultAccount->id]);
 
         Log::info('User assigned to default account', [
             'user_id' => $user->id,

@@ -55,7 +55,7 @@ class UserController extends Controller
             ], 403);
         }
         
-        $query = User::with(['accounts', 'roleTemplates', 'currentAccount']);
+        $query = User::with(['account', 'roleTemplate']);
         
         // Search functionality
         if ($request->filled('search')) {
@@ -73,16 +73,12 @@ class UserController extends Controller
         
         // Filter by role template
         if ($request->filled('role_template_id')) {
-            $query->whereHas('roleTemplates', function ($q) use ($request) {
-                $q->where('role_templates.id', $request->role_template_id);
-            });
+            $query->where('role_template_id', $request->role_template_id);
         }
         
         // Filter by account
         if ($request->filled('account_id')) {
-            $query->whereHas('accounts', function ($q) use ($request) {
-                $q->where('accounts.id', $request->account_id);
-            });
+            $query->where('account_id', $request->account_id);
         }
         
         // Sorting
@@ -126,10 +122,8 @@ class UserController extends Controller
             'timezone' => 'nullable|string|max:50',
             'locale' => 'nullable|string|max:10',
             'is_active' => 'boolean',
-            'account_ids' => 'nullable|array',
-            'account_ids.*' => 'exists:accounts,id',
-            'role_template_ids' => 'nullable|array',
-            'role_template_ids.*' => 'exists:role_templates,id',
+            'account_id' => 'nullable|exists:accounts,id',
+            'role_template_id' => 'nullable|exists:role_templates,id',
             'preferences' => 'nullable|array'
         ]);
         
@@ -147,21 +141,20 @@ class UserController extends Controller
         
         $newUser = User::create($userData);
         
-        // Assign accounts
-        if ($request->filled('account_ids')) {
-            $newUser->accounts()->attach($request->account_ids);
+        // Assign account (single relationship)
+        if ($request->filled('account_id')) {
+            $newUser->account_id = $request->account_id;
+            $newUser->save();
         }
         
-        // Assign role templates
-        if ($request->filled('role_template_ids')) {
-            foreach ($request->role_template_ids as $roleTemplateId) {
-                $accountId = $request->account_ids[0] ?? null; // Use first account as default
-                $newUser->roleTemplates()->attach($roleTemplateId, ['account_id' => $accountId]);
-            }
+        // Assign role template (single relationship)
+        if ($request->filled('role_template_id')) {
+            $newUser->role_template_id = $request->role_template_id;
+            $newUser->save();
         }
         
         // Load relationships for response
-        $newUser->load(['accounts', 'roleTemplates', 'currentAccount']);
+        $newUser->load(['account', 'roleTemplate']);
         
         return response()->json([
             'message' => 'User created successfully',
@@ -185,11 +178,10 @@ class UserController extends Controller
         
         // Load comprehensive relationships
         $user->load([
-            'accounts' => function ($query) {
+            'account' => function ($query) {
                 $query->withCount('users');
             },
-            'roleTemplates',
-            'currentAccount',
+            'roleTemplate',
             'timers' => function ($query) {
                 $query->latest()->limit(5);
             },
@@ -224,10 +216,8 @@ class UserController extends Controller
             'timezone' => 'nullable|string|max:50',
             'locale' => 'nullable|string|max:10',
             'is_active' => 'boolean',
-            'account_ids' => 'nullable|array',
-            'account_ids.*' => 'exists:accounts,id',
-            'role_template_ids' => 'nullable|array',
-            'role_template_ids.*' => 'exists:role_templates,id',
+            'account_id' => 'nullable|exists:accounts,id',
+            'role_template_id' => 'nullable|exists:role_templates,id',
             'preferences' => 'nullable|array'
         ]);
         
@@ -248,24 +238,20 @@ class UserController extends Controller
         
         $user->update($userData);
         
-        // Update account assignments
-        if ($request->has('account_ids')) {
-            $user->accounts()->sync($request->account_ids ?? []);
+        // Update account assignment (single relationship)
+        if ($request->has('account_id')) {
+            $user->account_id = $request->account_id;
         }
         
-        // Update role template assignments
-        if ($request->has('role_template_ids')) {
-            $user->roleTemplates()->detach();
-            if ($request->filled('role_template_ids')) {
-                foreach ($request->role_template_ids as $roleTemplateId) {
-                    $accountId = $request->account_ids[0] ?? null;
-                    $user->roleTemplates()->attach($roleTemplateId, ['account_id' => $accountId]);
-                }
-            }
+        // Update role template assignment (single relationship)
+        if ($request->has('role_template_id')) {
+            $user->role_template_id = $request->role_template_id;
         }
+        
+        $user->save();
         
         // Load relationships for response
-        $user->load(['accounts', 'roleTemplates', 'currentAccount']);
+        $user->load(['account', 'roleTemplate']);
         
         return response()->json([
             'message' => 'User updated successfully',
@@ -398,10 +384,12 @@ class UserController extends Controller
             return response()->json(['message' => 'Insufficient permissions'], 403);
         }
         
-        $accounts = $user->accounts()
-            ->withCount('users')
-            ->with('roleTemplates')
-            ->get();
+        // Since user has single account relationship, return it as array for compatibility
+        $accounts = $user->account ? [$user->account] : [];
+        
+        if ($user->account) {
+            $user->account->loadCount('users');
+        }
             
         return response()->json(['data' => $accounts]);
     }

@@ -61,6 +61,35 @@ class TicketResource extends JsonResource
                 ];
             }),
             
+            'agent' => $this->whenLoaded('agent', function () {
+                return $this->agent ? [
+                    'id' => $this->agent->id,
+                    'name' => $this->agent->name,
+                    'email' => $this->when(
+                        isset($this->agent->email),
+                        $this->agent->email
+                    )
+                ] : null;
+            }),
+            
+            'customer' => $this->when($this->customer_id || $this->customer_name, function () {
+                if ($this->customer) {
+                    return $this->whenLoaded('customer', function () {
+                        return [
+                            'id' => $this->customer->id,
+                            'name' => $this->customer->name,
+                            'email' => $this->customer->email,
+                        ];
+                    });
+                } else {
+                    return [
+                        'name' => $this->customer_name,
+                        'email' => $this->customer_email,
+                    ];
+                }
+            }),
+            
+            // Legacy field for backward compatibility
             'assigned_to' => $this->whenLoaded('assignedTo', function () {
                 return $this->assignedTo ? [
                     'id' => $this->assignedTo->id,

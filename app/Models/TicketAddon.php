@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,8 +25,7 @@ class TicketAddon extends Model
         'discount_amount',
         'tax_rate',
         'total_amount',
-        'is_billable',
-        'is_taxable',
+        'billable',
         'billing_category',
         'addon_template_id',
         'status',
@@ -40,11 +41,11 @@ class TicketAddon extends Model
         'discount_amount' => 'decimal:2',
         'tax_rate' => 'decimal:4',
         'total_amount' => 'decimal:2',
-        'is_billable' => 'boolean',
-        'is_taxable' => 'boolean',
+        'billable' => 'boolean',
         'approved_at' => 'datetime',
         'metadata' => 'array'
     ];
+
 
     /**
      * Calculate and set the total amount
@@ -111,7 +112,7 @@ class TicketAddon extends Model
      */
     public function scopeBillable($query)
     {
-        return $query->where('is_billable', true);
+        return $query->where('billable', true);
     }
 
     /**

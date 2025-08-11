@@ -46,16 +46,24 @@ class TicketCategoryController extends Controller
     }
 
     /**
-     * Get category options for forms
+     * Get category options for forms (public access for form dropdowns)
      */
     public function options(Request $request): JsonResponse
     {
-        $options = TicketCategory::getOptions();
-        
-        return response()->json([
-            'options' => $options,
-            'default_category' => TicketCategory::getDefault()?->key
-        ]);
+        try {
+            $options = TicketCategory::getOptions();
+            
+            return response()->json([
+                'options' => $options,
+                'default_category' => TicketCategory::getDefault()?->key
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'options' => [],
+                'default_category' => null,
+                'error' => 'Failed to load categories'
+            ], 500);
+        }
     }
 
     /**

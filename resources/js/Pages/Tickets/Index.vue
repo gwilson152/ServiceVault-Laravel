@@ -283,12 +283,19 @@
                       
                       <!-- Timer Controls -->
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <TicketTimerControls
-                          :ticket="ticket"
-                          @timer-started="handleTimerEvent"
-                          @timer-stopped="handleTimerEvent"
-                          @timer-paused="handleTimerEvent"
-                        />
+                        <div class="flex items-center space-x-1">
+                          <TicketTimerControls
+                            :ticket="ticket"
+                            :currentUser="user"
+                            :compact="true"
+                            :availableBillingRates="[]"
+                            :assignableUsers="[]"
+                            @timer-started="handleTimerEvent"
+                            @timer-stopped="handleTimerEvent"
+                            @timer-paused="handleTimerEvent"
+                            @time-entry-created="handleTimeEntryCreated"
+                          />
+                        </div>
                       </td>
                       
                       <!-- Updated -->
@@ -298,19 +305,27 @@
                       
                       <!-- Actions -->
                       <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div class="flex items-center justify-end space-x-2">
+                        <div class="flex items-center justify-end space-x-1">
+                          <!-- Manual Time Entry Button -->
                           <button
-                            @click="viewTicket(ticket)"
-                            class="text-blue-600 hover:text-blue-700 font-medium"
+                            @click="openManualTimeEntry(ticket)"
+                            class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Add Manual Time Entry"
                           >
-                            View
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
                           </button>
+                          
+                          <!-- Add Ticket Addon Button -->
                           <button
-                            v-if="canEditTicket(ticket)"
-                            @click="editTicket(ticket)"
-                            class="text-gray-600 hover:text-gray-700 font-medium"
+                            @click="openTicketAddon(ticket)"
+                            class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                            title="Add Ticket Addon"
                           >
-                            Edit
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -373,25 +388,37 @@
                     <div class="flex items-center justify-between">
                       <TicketTimerControls
                         :ticket="ticket"
+                        :currentUser="user"
+                        :compact="true"
+                        :availableBillingRates="[]"
+                        :assignableUsers="[]"
                         @timer-started="handleTimerEvent"
                         @timer-stopped="handleTimerEvent"
                         @timer-paused="handleTimerEvent"
-                        compact
+                        @time-entry-created="handleTimeEntryCreated"
                       />
                       
-                      <div class="flex items-center space-x-2">
+                      <div class="flex items-center space-x-1">
+                        <!-- Manual Time Entry Button -->
                         <button
-                          @click="viewTicket(ticket)"
-                          class="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                          @click="openManualTimeEntry(ticket)"
+                          class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Add Manual Time Entry"
                         >
-                          View
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </button>
+                        
+                        <!-- Add Ticket Addon Button -->
                         <button
-                          v-if="canEditTicket(ticket)"
-                          @click="editTicket(ticket)"
-                          class="text-xs text-gray-600 hover:text-gray-700 font-medium"
+                          @click="openTicketAddon(ticket)"
+                          class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                          title="Add Ticket Addon"
                         >
-                          Edit
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -750,6 +777,25 @@ const handleTimerEvent = (event) => {
 const onTicketCreated = (newTicket) => {
   tickets.value.unshift(newTicket)
   showCreateModal.value = false
+}
+
+const handleTimeEntryCreated = (timeEntry) => {
+  // Refresh tickets to show updated time data
+  refreshTickets()
+  // Refresh active timers in case timer was committed
+  refreshActiveTimers()
+}
+
+const openManualTimeEntry = (ticket) => {
+  // TODO: Open manual time entry dialog
+  console.log('Open manual time entry for ticket:', ticket.ticket_number)
+  // This would open a time entry modal/dialog
+}
+
+const openTicketAddon = (ticket) => {
+  // TODO: Open ticket addon dialog
+  console.log('Open ticket addon for ticket:', ticket.ticket_number)
+  // This would open a ticket addon selection modal/dialog
 }
 
 // Lifecycle

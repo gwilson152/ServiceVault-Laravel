@@ -1,18 +1,13 @@
 # Authentication API
 
-Service Vault implements a hybrid authentication system supporting both session-based web access and token-based API access using Laravel Sanctum.
+API authentication endpoints and token management for Service Vault.
 
-## Authentication Methods
+> **Architecture**: [System Authentication](../system/authentication-system.md)  
+> **Implementation**: Laravel Sanctum hybrid authentication
 
-### Session Authentication (Web Dashboard)
-- **Login/Register Pages**: Standard web authentication with session cookies
-- **CSRF Protection**: Inertia.js integration with CSRF tokens
-- **User Management**: Role assignment and ABAC permission integration
+## Overview
 
-### Token Authentication (API Access)
-- **Bearer Token**: API access for mobile and external clients
-- **Granular Permissions**: 23 different token abilities with scoped access
-- **Token Management**: Full CRUD operations for API tokens
+Service Vault provides secure API access through Laravel Sanctum bearer tokens with granular ability-based permissions. All API endpoints require authentication via bearer tokens.
 
 ## Token Abilities
 
@@ -273,53 +268,37 @@ return $user->hasPermission('timers.view');
 - Different limits for authenticated vs. unauthenticated requests
 - Token-based requests can have higher limits
 
-## Domain-Based User Assignment
+## Usage Examples
 
-New users are automatically assigned to accounts based on their email domain:
+### Creating API Token
+```bash
+# Get CSRF cookie first (for web-based token creation)
+curl -X GET http://localhost:8000/sanctum/csrf-cookie
 
-### Domain Mapping Configuration
-Administrators can configure domain patterns that automatically assign users to specific accounts:
-
-```http
-POST /api/domain-mappings
-Authorization: Bearer {admin_token}
-Content-Type: application/json
-
-{
-    "domain_pattern": "*.company.com",
-    "account_id": 123,
-    "priority": 1
-}
+# Create scoped token
+curl -X POST http://localhost:8000/api/auth/tokens/scope \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Mobile Token","scope":"employee","password":"password"}'
 ```
 
-### Pattern Matching
-- **Wildcard Support**: `*.company.com` matches any subdomain
-- **Exact Matching**: `company.com` matches only the exact domain
-- **Priority System**: Higher priority mappings take precedence
-
-### Preview Assignment
-```http
-POST /api/domain-mappings/preview
-Authorization: Bearer {admin_token}
-Content-Type: application/json
-
-{
-    "email": "john@dev.company.com"
-}
+### Using Token in Requests
+```bash
+curl -H "Authorization: Bearer sv_1|token..." \
+     -H "Accept: application/json" \
+     http://localhost:8000/api/timers
 ```
 
-**Response:**
-```json
-{
-    "matched_mapping": {
-        "id": 1,
-        "domain_pattern": "*.company.com",
-        "account_id": 123,
-        "account_name": "Company Inc"
-    },
-    "would_assign_to": {
-        "id": 123,
-        "name": "Company Inc"
+### JavaScript Client Example
+```javascript
+const token = 'sv_1|your_token_here';
+
+const response = await fetch('/api/timers', {
+    headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
     }
-}
+});
 ```
+
+For domain mapping and advanced authentication features, see [System Authentication](../system/authentication-system.md).

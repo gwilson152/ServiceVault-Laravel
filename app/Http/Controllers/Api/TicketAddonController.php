@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\TicketAddon;
-use App\Models\ServiceTicket;
+use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -23,7 +23,7 @@ class TicketAddonController extends Controller
         
         if ($ticketId) {
             // Get addons for specific ticket
-            $ticket = ServiceTicket::findOrFail($ticketId);
+            $ticket = Ticket::findOrFail($ticketId);
             $this->authorize('view', $ticket);
             
             $addons = $ticket->addons()
@@ -84,7 +84,7 @@ class TicketAddonController extends Controller
         ]);
         
         // Check permissions on the ticket
-        $ticket = ServiceTicket::findOrFail($validated['service_ticket_id']);
+        $ticket = Ticket::findOrFail($validated['service_ticket_id']);
         $this->authorize('update', $ticket);
         
         // Add user context

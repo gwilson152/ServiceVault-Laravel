@@ -13,18 +13,14 @@ use Illuminate\Support\Facades\Redis;
 class TimerService
 {
     /**
-     * Stop all running timers for a user on a specific device.
+     * Stop all running timers for a user (across all devices).
      */
     public function stopAllUserTimers(int $userId, ?string $deviceId = null): void
     {
-        $query = Timer::where('user_id', $userId)
-            ->where('status', 'running');
-
-        if ($deviceId) {
-            $query->where('device_id', $deviceId);
-        }
-
-        $timers = $query->get();
+        // Ignore device_id parameter - stop ALL user timers globally for simplicity
+        $timers = Timer::where('user_id', $userId)
+            ->where('status', 'running')
+            ->get();
 
         foreach ($timers as $timer) {
             $timer->stop();
@@ -101,7 +97,6 @@ class TimerService
             'paused_at' => $timer->paused_at?->toIso8601String(),
             'total_paused_duration' => $timer->total_paused_duration,
             'device_id' => $timer->device_id,
-            'project_id' => $timer->project_id,
             'task_id' => $timer->task_id,
             'billing_rate_id' => $timer->billing_rate_id,
             'description' => $timer->description,
@@ -252,12 +247,11 @@ class TimerService
     {
         $timers = Timer::where('user_id', $userId)
             ->whereBetween('started_at', [$startDate, $endDate])
-            ->with('billingRate', 'project', 'task')
+            ->with('billingRate', 'task')
             ->get();
 
         $totalDuration = 0;
         $totalBilled = 0;
-        $projectBreakdown = [];
         $taskBreakdown = [];
         $dailyBreakdown = [];
 
@@ -272,20 +266,6 @@ class TimerService
                 $totalBilled += $amount;
             }
 
-            // Project breakdown
-            $projectKey = $timer->project_id ?? 'no_project';
-            $projectName = $timer->project->name ?? 'No Project';
-            if (!isset($projectBreakdown[$projectKey])) {
-                $projectBreakdown[$projectKey] = [
-                    'name' => $projectName,
-                    'duration' => 0,
-                    'amount' => 0,
-                    'count' => 0,
-                ];
-            }
-            $projectBreakdown[$projectKey]['duration'] += $duration;
-            $projectBreakdown[$projectKey]['amount'] += $timer->calculated_amount ?? 0;
-            $projectBreakdown[$projectKey]['count']++;
 
             // Task breakdown
             if ($timer->task_id) {
@@ -334,7 +314,6 @@ class TimerService
                 'duration_formatted' => $timer->duration_formatted,
                 'calculated_amount' => $timer->calculated_amount,
                 'description' => $timer->description,
-                'project_name' => $timer->project->name ?? null,
                 'task_name' => $timer->task->name ?? null,
                 'started_at' => $timer->started_at->toIso8601String(),
             ];
@@ -359,7 +338,6 @@ class TimerService
                 'timers' => $activeTimersData,
             ],
             'breakdowns' => [
-                'by_project' => array_values($projectBreakdown),
                 'by_task' => array_values($taskBreakdown),
                 'by_day' => array_values($dailyBreakdown),
             ],
@@ -387,19 +365,13 @@ class TimerService
     /**
      * Get billing rates available for a user.
      */
-    public function getAvailableBillingRates(User $user, ?int $projectId = null): Collection
+    public function getAvailableBillingRates(User $user): Collection
     {
-        // This would be expanded to include project-specific rates,
-        // account-level rates, and user-specific overrides
+        // This would be expanded to include account-level rates, and user-specific overrides
         return DB::table('billing_rates')
-            ->where(function ($query) use ($user, $projectId) {
+            ->where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
                     ->orWhere('account_id', $user->account_id)
-                    ->orWhere(function ($q) use ($projectId) {
-                        if ($projectId) {
-                            $q->where('project_id', $projectId);
-                        }
-                    })
                     ->orWhereNull('user_id'); // System-wide rates
             })
             ->orderBy('name')

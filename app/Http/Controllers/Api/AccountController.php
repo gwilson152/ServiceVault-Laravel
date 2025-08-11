@@ -25,19 +25,21 @@ class AccountController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // For now, return all accounts until permission system is fully implemented
-        $accounts = Account::query()->get();
+        // Load accounts with hierarchy by default for better display
+        $accounts = Account::query()
+            ->with(['parent', 'children', 'users'])
+            ->orderBy('parent_id', 'asc')
+            ->orderBy('name', 'asc')
+            ->get();
 
-        // Support hierarchical loading with parent/children relationships
-        if ($request->boolean('with_hierarchy')) {
-            $accounts->load(['parent', 'children']);
-        }
+        // Build hierarchical structure for display
+        $hierarchicalAccounts = $this->buildHierarchicalDisplayList($accounts);
 
         return response()->json([
-            'data' => AccountResource::collection($accounts),
+            'data' => AccountResource::collection($hierarchicalAccounts),
             'meta' => [
                 'total' => $accounts->count(),
-                'hierarchical' => $request->boolean('with_hierarchy')
+                'hierarchical' => true
             ]
         ]);
     }
@@ -177,6 +179,44 @@ class AccountController extends Controller
         return response()->json([
             'message' => 'Account deleted successfully'
         ]);
+    }
+
+    /**
+     * Build hierarchical display list maintaining parent-child relationships.
+     */
+    protected function buildHierarchicalDisplayList($accounts): array
+    {
+        $accountsById = $accounts->keyBy('id');
+        $displayList = [];
+        
+        // First, add all root accounts
+        foreach ($accounts as $account) {
+            if (!$account->parent_id) {
+                $displayList = array_merge($displayList, $this->flattenAccountTree($account, $accountsById, 0));
+            }
+        }
+        
+        return $displayList;
+    }
+    
+    /**
+     * Recursively flatten account tree for hierarchical display.
+     */
+    protected function flattenAccountTree(Account $account, $accountsById, int $depth): array
+    {
+        $list = [$account];
+        
+        // Set hierarchy level for display
+        $account->hierarchy_level = $depth;
+        
+        // Add children recursively
+        foreach ($account->children as $child) {
+            if ($accountsById->has($child->id)) {
+                $list = array_merge($list, $this->flattenAccountTree($child, $accountsById, $depth + 1));
+            }
+        }
+        
+        return $list;
     }
 
     /**

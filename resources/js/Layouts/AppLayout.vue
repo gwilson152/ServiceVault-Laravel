@@ -70,9 +70,6 @@
 
             <!-- User menu -->
             <div class="flex items-center space-x-4">
-              <!-- Timer status in header -->
-              <TimerStatus />
-              
               <!-- User dropdown -->
               <Menu as="div" class="relative ml-3">
                 <div>
@@ -279,7 +276,6 @@ import {
 
 // Components
 import TimerBroadcastOverlay from '@/Components/Timer/TimerBroadcastOverlay.vue'
-import TimerStatus from '@/Components/Timer/TimerStatus.vue'
 
 // Composables
 import { useNavigation } from '@/Composables/useNavigation.js'

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TimeEntry extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUuid;
 
     /**
      * The attributes that are mass assignable.
@@ -18,8 +20,7 @@ class TimeEntry extends Model
      */
     protected $fillable = [
         'user_id',
-        'project_id',
-        'task_id',
+        'account_id',
         'billing_rate_id',
         'ticket_id',
         'description',
@@ -61,20 +62,13 @@ class TimeEntry extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the project associated with the time entry.
-     */
-    public function project(): BelongsTo
-    {
-        return $this->belongsTo(Project::class);
-    }
 
     /**
-     * Get the task associated with the time entry.
+     * Get the account associated with the time entry.
      */
-    public function task(): BelongsTo
+    public function account(): BelongsTo
     {
-        return $this->belongsTo(Task::class);
+        return $this->belongsTo(Account::class);
     }
 
     /**
@@ -86,7 +80,7 @@ class TimeEntry extends Model
     }
 
     /**
-     * Get the service ticket associated with the time entry.
+     * Get the ticket associated with the time entry.
      */
     public function ticket(): BelongsTo
     {
@@ -110,20 +104,13 @@ class TimeEntry extends Model
     }
 
     /**
-     * Scope a query to only include entries for a specific service ticket.
+     * Scope a query to only include entries for a specific ticket.
      */
     public function scopeForTicket($query, $ticketId)
     {
         return $query->where('ticket_id', $ticketId);
     }
 
-    /**
-     * Scope a query to only include entries for a specific project.
-     */
-    public function scopeForProject($query, $projectId)
-    {
-        return $query->where('project_id', $projectId);
-    }
 
     /**
      * Scope a query to only include entries within a date range.

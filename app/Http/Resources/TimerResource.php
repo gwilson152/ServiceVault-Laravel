@@ -17,18 +17,7 @@ class TimerResource extends JsonResource
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
-            'project' => $this->whenLoaded('project', function () {
-                return [
-                    'id' => $this->project->id,
-                    'name' => $this->project->name,
-                ];
-            }),
-            'task' => $this->whenLoaded('task', function () {
-                return [
-                    'id' => $this->task->id,
-                    'name' => $this->task->name,
-                ];
-            }),
+            // Note: Project and task references removed - these entities are no longer used in this system
             'billing_rate' => $this->whenLoaded('billingRate', function () {
                 return [
                     'id' => $this->billingRate->id,

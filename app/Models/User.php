@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Services\PermissionService;
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasFactory, Notifiable, HasApiTokens, HasUuid;
 
     /**
      * The attributes that are mass assignable.
@@ -23,7 +24,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'current_account_id',
+        'account_id',
+        'role_template_id',
         'preferences',
         'timezone',
         'locale',
@@ -64,50 +66,36 @@ class User extends Authenticatable
      */
 
     /**
-     * The current account the user is working in.
+     * The account the user belongs to.
      */
-    public function currentAccount()
+    public function account()
     {
-        return $this->belongsTo(Account::class, 'current_account_id');
+        return $this->belongsTo(Account::class);
     }
 
     /**
-     * All accounts the user has access to (many-to-many).
+     * The role template assigned to this user.
      */
-    public function accounts()
+    public function roleTemplate()
     {
-        return $this->belongsToMany(Account::class, 'account_user');
-    }
-
-    /**
-     * All roles assigned to this user across all accounts.
-     */
-    public function roles()
-    {
-        return $this->belongsToMany(Role::class, 'role_user');
-    }
-
-    /**
-     * Role templates assigned to this user (ABAC system).
-     */
-    public function roleTemplates()
-    {
-        return $this->belongsToMany(RoleTemplate::class, 'role_template_user');
+        return $this->belongsTo(RoleTemplate::class);
     }
     
     /**
-     * Check if user has a specific permission through their role templates
+     * Check if user has a specific permission through their role template
      */
     public function hasPermission(string $permission): bool
     {
-        return $this->roleTemplates()->get()->some(function ($roleTemplate) use ($permission) {
-            // Super Admin always has all permissions
-            if ($roleTemplate->isSuperAdmin()) {
-                return true;
-            }
-            
-            return in_array($permission, $roleTemplate->getAllPermissions());
-        });
+        if (!$this->roleTemplate) {
+            return false;
+        }
+
+        // Super Admin always has all permissions
+        if ($this->roleTemplate->isSuperAdmin()) {
+            return true;
+        }
+        
+        return in_array($permission, $this->roleTemplate->getAllPermissions());
     }
     
     /**
@@ -115,9 +103,7 @@ class User extends Authenticatable
      */
     public function isSuperAdmin(): bool
     {
-        return $this->roleTemplates()->get()->some(function ($roleTemplate) {
-            return $roleTemplate->isSuperAdmin();
-        });
+        return $this->roleTemplate && $this->roleTemplate->isSuperAdmin();
     }
     
     /**
@@ -150,39 +136,45 @@ class User extends Authenticatable
     }
     
     /**
-     * Service tickets assigned to this user.
+     * Tickets assigned to this user (as agent).
      */
     public function assignedTickets()
     {
-        return $this->hasMany(ServiceTicket::class, 'assigned_to');
+        return $this->hasMany(Ticket::class, 'agent_id');
     }
     
     /**
-     * Service tickets created by this user.
+     * Tickets created by this user.
      */
     public function createdTickets()
     {
-        return $this->hasMany(ServiceTicket::class, 'created_by');
+        return $this->hasMany(Ticket::class, 'created_by_id');
+    }
+    
+    /**
+     * Tickets where this user is the customer.
+     */
+    public function customerTickets()
+    {
+        return $this->hasMany(Ticket::class, 'customer_id');
     }
 
-    /**
-     * Projects the user is assigned to.
-     */
-    public function projects()
-    {
-        return $this->belongsToMany(Project::class, 'project_user');
-    }
 
     /**
      * ABAC Permission Methods
      */
 
     /**
-     * Check if user has a specific permission for an account.
+     * Check if user has a specific permission for their account.
      */
     public function hasPermissionForAccount(string $permission, Account $account): bool
     {
-        return app(PermissionService::class)->userHasPermissionForAccount($this, $permission, $account);
+        // Users can only access their own account
+        if (!$this->account || $this->account->id !== $account->id) {
+            return false;
+        }
+
+        return $this->hasPermission($permission);
     }
 
     /**
@@ -190,41 +182,19 @@ class User extends Authenticatable
      */
     public function hasSystemPermission(string $permission): bool
     {
-        return app(PermissionService::class)->userHasSystemPermission($this, $permission);
+        return $this->hasPermission($permission);
     }
 
     /**
-     * Get user's roles for a specific account.
-     */
-    public function getRolesForAccount(Account $account)
-    {
-        return $this->roles()->where('account_id', $account->id)->get();
-    }
-
-    /**
-     * Get all permissions for the user in the current account context.
+     * Get all permissions for the user.
      */
     public function getAllPermissions(): array
     {
-        if (!$this->currentAccount) {
+        if (!$this->roleTemplate) {
             return [];
         }
 
-        return app(PermissionService::class)->getUserPermissionsForAccount($this, $this->currentAccount);
-    }
-
-    /**
-     * Set the user's current working account.
-     */
-    public function switchToAccount(Account $account): void
-    {
-        // Verify user has access to this account
-        if (!$this->accounts->contains($account)) {
-            throw new \InvalidArgumentException('User does not have access to this account');
-        }
-
-        $this->update(['current_account_id' => $account->id]);
-        $this->refresh();
+        return $this->roleTemplate->getAllPermissions();
     }
 
     /**

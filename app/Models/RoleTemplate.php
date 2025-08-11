@@ -2,16 +2,19 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class RoleTemplate extends Model
 {
     /** @use HasFactory<\Database\Factories\RoleTemplateFactory> */
-    use HasFactory;
+    use HasFactory, HasUuid;
     
     protected $fillable = [
         'name',
+        'display_name',
         'permissions',
         'widget_permissions',
         'page_permissions',
@@ -32,6 +35,14 @@ class RoleTemplate extends Model
         'is_default' => 'boolean',
         'is_modifiable' => 'boolean',
     ];
+    
+    /**
+     * Get the display name attribute, falling back to name if null.
+     */
+    public function getDisplayNameAttribute($value)
+    {
+        return $value ?? $this->name;
+    }
     
     public function roles()
     {

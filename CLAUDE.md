@@ -307,7 +307,7 @@ php artisan make:resource AccountResource             # API responses
 ### Architecture Principles
 - **Hybrid Authentication**: Laravel Sanctum (session + token) with granular abilities
 - **Multi-Timer Architecture**: Concurrent timer support with Redis state management
-- **Account Hierarchy System**: Customer account trees with subsidiary access permissions
+- **Account Hierarchy System**: Customer account trees with visual hierarchical display and subsidiary access permissions
 - **Three-Dimensional Permission System**: Functional + Widget + Page access control
 - **ABAC Permission System**: Role templates with hierarchical inheritance and UI control
 - **Widget-Based Dashboard**: Permission-driven widget system with auto-discovery

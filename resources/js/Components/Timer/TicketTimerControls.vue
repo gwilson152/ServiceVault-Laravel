@@ -1,5 +1,71 @@
 <template>
   <div class="ticket-timer-controls">
+    <!-- Compact Mode for List View -->
+    <div v-if="compact" class="flex items-center space-x-1">
+      <!-- Debug info -->
+      <!-- No Active Timer - Show Play Button -->
+      <button
+        v-if="!activeTimer"
+        @click="startTimer"
+        :disabled="loading"
+        class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+        title="Start Timer"
+      >
+        <PlayIcon class="w-4 h-4" />
+      </button>
+      
+      <!-- Timer Running - Show Pause and Stop Buttons -->
+      <template v-else-if="activeTimer && activeTimer.status === 'running' && userOwnsActiveTimer">
+        <button
+          @click="pauseTimer"
+          :disabled="loading"
+          class="p-1.5 text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
+          title="Pause Timer"
+        >
+          <PauseIcon class="w-4 h-4" />
+        </button>
+        <button
+          @click="stopTimer"
+          :disabled="loading"
+          class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+          title="Stop Timer"
+        >
+          <StopIcon class="w-4 h-4" />
+        </button>
+      </template>
+      
+      <!-- Timer Paused - Show Play and Stop Buttons -->
+      <template v-else-if="activeTimer && activeTimer.status === 'paused' && userOwnsActiveTimer">
+        <button
+          @click="resumeTimer"
+          :disabled="loading"
+          class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+          title="Resume Timer"
+        >
+          <PlayIcon class="w-4 h-4" />
+        </button>
+        <button
+          @click="stopTimer"
+          :disabled="loading"
+          class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+          title="Stop Timer"
+        >
+          <StopIcon class="w-4 h-4" />
+        </button>
+      </template>
+      
+      <!-- Other User's Timer - Show Status Indicator -->
+      <div v-else-if="activeTimer && !userOwnsActiveTimer" class="flex items-center space-x-1">
+        <div 
+          :class="activeTimer.status === 'running' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'"
+          class="w-2 h-2 rounded-full"
+        ></div>
+        <span class="text-xs text-gray-500">{{ activeTimer.user?.name || 'User' }}</span>
+      </div>
+    </div>
+    
+    <!-- Full Mode for Detail View -->
+    <div v-else>
     <!-- Timer Status Display -->
     <div 
       v-if="activeTimer"
@@ -167,6 +233,7 @@
         </div>
       </div>
     </div>
+    </div>
 
     <!-- CommitTimeEntryDialog -->
     <CommitTimeEntryDialog
@@ -213,6 +280,10 @@ const props = defineProps({
   refreshInterval: {
     type: Number,
     default: 30000 // 30 seconds
+  },
+  compact: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -232,7 +303,7 @@ let timeUpdateIntervalId = null
 // Computed properties
 const activeTimer = computed(() => {
   return allTimersForTicket.value.find(timer => 
-    timer.status === 'running' && timer.user_id === props.currentUser.id
+    ['running', 'paused'].includes(timer.status) && timer.user_id === props.currentUser.id
   )
 })
 
@@ -250,6 +321,10 @@ const otherUsersTimers = computed(() => {
 })
 
 const canControlTimer = computed(() => {
+  return activeTimer.value && activeTimer.value.user_id === props.currentUser.id
+})
+
+const userOwnsActiveTimer = computed(() => {
   return activeTimer.value && activeTimer.value.user_id === props.currentUser.id
 })
 
@@ -313,6 +388,9 @@ const fetchTimersForTicket = async () => {
     if (response.ok) {
       const data = await response.json()
       allTimersForTicket.value = data.data?.map(item => item.timer || item) || []
+      console.log('Fetched timers for ticket:', props.ticket.id, allTimersForTicket.value)
+    } else {
+      console.error('Failed to fetch timers - HTTP', response.status)
     }
   } catch (error) {
     console.error('Failed to fetch timers for ticket:', error)
@@ -322,7 +400,7 @@ const fetchTimersForTicket = async () => {
 const startTimer = async () => {
   loading.value = true
   try {
-    const response = await fetch('/api/timers', {
+    const response = await fetch(`/api/tickets/${props.ticket.id}/timers/start`, {
       method: 'POST',
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
@@ -330,10 +408,9 @@ const startTimer = async () => {
         'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
       },
       body: JSON.stringify({
-        ticket_id: props.ticket.id,
         description: `Working on ticket ${props.ticket.ticket_number}`,
-        device_id: generateDeviceId(),
-        stop_others: false // Allow multiple concurrent timers
+        billing_rate_id: props.availableBillingRates[0]?.id || null,
+        device_id: generateDeviceId()
       })
     })
 
@@ -342,7 +419,14 @@ const startTimer = async () => {
       emit('timerStarted', data.data)
       await fetchTimersForTicket()
     } else {
-      throw new Error('Failed to start timer')
+      const errorData = await response.json()
+      if (errorData.existing_timer) {
+        // Handle case where user already has an active timer
+        alert(`${errorData.message}\n\nYou can manage your existing timer below.`)
+        await fetchTimersForTicket() // Refresh to show the existing timer
+      } else {
+        throw new Error(errorData.message || 'Failed to start timer')
+      }
     }
   } catch (error) {
     console.error('Failed to start timer:', error)
@@ -449,6 +533,15 @@ const stopTimer = async () => {
       const data = await response.json()
       emit('timerStopped', data.data)
       await fetchTimersForTicket()
+      
+      // In compact mode, open time entry dialog immediately after stopping
+      if (props.compact && data.data) {
+        timerToCommit.value = {
+          ...data.data,
+          elapsed: data.data.duration || 0
+        }
+        showCommitDialog.value = true
+      }
     } else {
       throw new Error('Failed to stop timer')
     }
@@ -514,10 +607,13 @@ const generateDeviceId = () => {
 
 // Lifecycle
 onMounted(async () => {
-  await fetchTimersForTicket()
-  
-  // Set up periodic refresh
-  refreshIntervalId = setInterval(fetchTimersForTicket, props.refreshInterval)
+  // Only fetch timers if not in compact mode to avoid N+1 queries on list pages
+  if (!props.compact) {
+    await fetchTimersForTicket()
+    
+    // Set up periodic refresh
+    refreshIntervalId = setInterval(fetchTimersForTicket, props.refreshInterval)
+  }
   
   // Set up time update for duration calculations
   timeUpdateIntervalId = setInterval(() => {

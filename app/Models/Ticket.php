@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,23 +10,28 @@ use Carbon\Carbon;
 
 class Ticket extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUuid;
+    
+    protected $table = 'tickets';
     
     protected $fillable = [
         'account_id',
         'ticket_number',
         'title',
         'description',
-        'status',
         'priority',
+        'status',
         'category',
+        'agent_id',
+        'customer_id',
+        'customer_name',
+        'customer_email',
         'created_by_id',
-        'assigned_to_id',
-        'due_date',
         'estimated_hours',
         'estimated_amount',
         'actual_amount',
         'billing_rate_id',
+        'due_date',
         'started_at',
         'completed_at',
         'resolved_at',
@@ -37,13 +43,12 @@ class Ticket extends Model
     protected $casts = [
         'due_date' => 'datetime',
         'started_at' => 'datetime',
-        'completed_at' => 'datetime',
         'resolved_at' => 'datetime',
         'closed_at' => 'datetime',
         'metadata' => 'array',
-        'settings' => 'array',
-        'estimated_amount' => 'decimal:2',
-        'actual_amount' => 'decimal:2',
+        'billable' => 'boolean',
+        'requires_approval' => 'boolean',
+        'quoted_amount' => 'decimal:2',
     ];
     
     // Status constants for better code organization
@@ -58,8 +63,16 @@ class Ticket extends Model
     // Priority constants
     public const PRIORITY_LOW = 'low';
     public const PRIORITY_NORMAL = 'normal';
+    public const PRIORITY_MEDIUM = 'medium';
     public const PRIORITY_HIGH = 'high';
     public const PRIORITY_URGENT = 'urgent';
+    
+    // Category constants
+    public const CATEGORY_SUPPORT = 'support';
+    public const CATEGORY_MAINTENANCE = 'maintenance';
+    public const CATEGORY_DEVELOPMENT = 'development';
+    public const CATEGORY_CONSULTING = 'consulting';
+    public const CATEGORY_OTHER = 'other';
     
     /**
      * Relationships
@@ -75,9 +88,25 @@ class Ticket extends Model
         return $this->belongsTo(User::class, 'created_by_id');
     }
     
+    public function agent()
+    {
+        return $this->belongsTo(User::class, 'agent_id');
+    }
+    
+    public function customer()
+    {
+        return $this->belongsTo(User::class, 'customer_id');
+    }
+    
+    // Legacy aliases for backward compatibility
     public function assignedTo()
     {
-        return $this->belongsTo(User::class, 'assigned_to_id');
+        return $this->agent();
+    }
+    
+    public function assignedUser()
+    {
+        return $this->agent();
     }
     
     public function billingRate()
@@ -90,9 +119,7 @@ class Ticket extends Model
      */
     public function assignedUsers()
     {
-        return $this->belongsToMany(User::class, 'ticket_user')
-                    ->withPivot(['role', 'assigned_at', 'unassigned_at'])
-                    ->withTimestamps();
+        return $this->belongsToMany(User::class, 'service_ticket_user');
     }
     
     /**
@@ -124,11 +151,27 @@ class Ticket extends Model
      */
     public function approvedAddons()
     {
-        return $this->hasMany(TicketAddon::class)->where('status', 'approved');
+        return $this->hasMany(TicketAddon::class)->approved();
     }
     
     /**
-     * Get ticket status model
+     * Get billable addons for this ticket
+     */
+    public function billableAddons()
+    {
+        return $this->hasMany(TicketAddon::class)->billable();
+    }
+    
+    /**
+     * Comments/updates on this ticket
+     */
+    public function comments()
+    {
+        return $this->hasMany(TicketComment::class)->orderBy('created_at', 'desc');
+    }
+    
+    /**
+     * Get the status model for this ticket
      */
     public function statusModel()
     {
@@ -136,7 +179,7 @@ class Ticket extends Model
     }
     
     /**
-     * Get ticket category model
+     * Get the category model for this ticket
      */
     public function categoryModel()
     {
@@ -181,6 +224,14 @@ class Ticket extends Model
     }
     
     /**
+     * Check if SLA is breached
+     */
+    public function isSlaBreached(): bool
+    {
+        return !is_null($this->sla_breached_at);
+    }
+    
+    /**
      * Get total time logged on this ticket (in seconds)
      */
     public function getTotalTimeLogged(): int
@@ -212,7 +263,7 @@ class Ticket extends Model
         }
         
         // Add approved addon costs
-        $addonTotal = $this->approvedAddons()->sum('total');
+        $addonTotal = $this->approvedAddons()->billable()->sum('total_amount');
         $total += $addonTotal;
         
         return round($total, 2);
@@ -223,7 +274,7 @@ class Ticket extends Model
      */
     public function getTotalAddonCost(): float
     {
-        return round($this->approvedAddons()->sum('total'), 2);
+        return round($this->approvedAddons()->billable()->sum('total_amount'), 2);
     }
     
     /**
@@ -231,7 +282,7 @@ class Ticket extends Model
      */
     public function getPendingAddonCost(): float
     {
-        return round($this->addons()->where('status', 'pending')->sum('total'), 2);
+        return round($this->addons()->pending()->billable()->sum('total_amount'), 2);
     }
     
     /**
@@ -277,7 +328,17 @@ class Ticket extends Model
                 break;
         }
         
-        return $this->save();
+        // Update internal tracking
+        $this->last_internal_update = now();
+        
+        $saved = $this->save();
+        
+        // Log the status change (will be implemented with comments system)
+        if ($saved && $notes) {
+            // This will be implemented when we create TicketComment model
+        }
+        
+        return $saved;
     }
     
     /**
@@ -285,7 +346,8 @@ class Ticket extends Model
      */
     public function assignTo(User $user): bool
     {
-        $this->assigned_to_id = $user->id;
+        $this->agent_id = $user->id;
+        $this->last_internal_update = now();
         
         // Auto-transition to in_progress if currently open
         if ($this->status === self::STATUS_OPEN) {
@@ -301,29 +363,25 @@ class Ticket extends Model
      */
     public function canBeViewedBy(User $user): bool
     {
-        // Account access check
-        if (!$user->accounts()->where('accounts.id', $this->account_id)->exists()) {
+        // Account access check - users can only see tickets from their account
+        if ($user->account_id !== $this->account_id && !$user->isSuperAdmin()) {
             return false;
         }
         
-        // Super admin can see everything
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
-        
         // Admin can see all tickets in their accounts
-        if ($user->hasAnyPermission(['admin.read', 'tickets.view.all'])) {
+        if ($user->roleTemplate && in_array('admin.manage', $user->roleTemplate->getAllPermissions())) {
             return true;
         }
         
         // Manager can see all tickets in managed accounts
-        if ($user->hasAnyPermission(['tickets.view.account', 'teams.manage'])) {
+        if ($user->roleTemplate && in_array('teams.manage', $user->roleTemplate->getAllPermissions())) {
             return true;
         }
         
-        // User can see tickets they created or are assigned to
+        // User can see tickets they created, are assigned to, or are the customer for
         return $this->created_by_id === $user->id || 
-               $this->assigned_to_id === $user->id ||
+               $this->agent_id === $user->id ||
+               $this->customer_id === $user->id ||
                $this->assignedUsers()->where('users.id', $user->id)->exists();
     }
     
@@ -336,13 +394,10 @@ class Ticket extends Model
             return false;
         }
         
-        // Super admin can edit everything
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
-        
         // Admin and managers can edit any ticket
-        if ($user->hasAnyPermission(['admin.write', 'tickets.edit.all', 'teams.manage'])) {
+        if ($user->roleTemplate && 
+            (in_array('admin.manage', $user->roleTemplate->getAllPermissions()) ||
+             in_array('teams.manage', $user->roleTemplate->getAllPermissions()))) {
             return true;
         }
         
@@ -367,7 +422,17 @@ class Ticket extends Model
     
     public function scopeAssignedTo($query, User $user)
     {
-        return $query->where('assigned_to_id', $user->id);
+        return $query->where('agent_id', $user->id);
+    }
+    
+    public function scopeForCustomer($query, User $user)
+    {
+        return $query->where('customer_id', $user->id);
+    }
+    
+    public function scopeForAgent($query, User $user)
+    {
+        return $query->where('agent_id', $user->id);
     }
     
     public function scopeOverdue($query)

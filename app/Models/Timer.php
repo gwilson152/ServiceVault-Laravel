@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +11,7 @@ use Illuminate\Support\Carbon;
 
 class Timer extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     /**
      * The attributes that are mass assignable.
@@ -18,10 +20,10 @@ class Timer extends Model
      */
     protected $fillable = [
         'user_id',
-        'project_id',
         'task_id',
         'billing_rate_id',
         'ticket_id',
+        'account_id',
         'time_entry_id',
         'description',
         'ticket_number',
@@ -70,13 +72,6 @@ class Timer extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the project associated with the timer.
-     */
-    public function project(): BelongsTo
-    {
-        return $this->belongsTo(Project::class);
-    }
 
     /**
      * Get the task associated with the timer.
@@ -223,13 +218,6 @@ class Timer extends Model
         return $query->where('user_id', $userId);
     }
 
-    /**
-     * Scope a query to only include timers for a specific project.
-     */
-    public function scopeForProject($query, $projectId)
-    {
-        return $query->where('project_id', $projectId);
-    }
 
     /**
      * Scope a query to only include timers for a specific ticket.
@@ -237,6 +225,41 @@ class Timer extends Model
     public function scopeForTicket($query, $ticketId)
     {
         return $query->where('ticket_id', $ticketId);
+    }
+
+    /**
+     * Check if user already has an active timer for this ticket
+     */
+    public static function userHasActiveTimerForTicket($userId, $ticketId): bool
+    {
+        return self::where('user_id', $userId)
+            ->where('ticket_id', $ticketId)
+            ->whereIn('status', ['running', 'paused'])
+            ->exists();
+    }
+
+    /**
+     * Get user's active timer for a specific ticket
+     */
+    public static function getUserActiveTimerForTicket($userId, $ticketId): ?Timer
+    {
+        return self::where('user_id', $userId)
+            ->where('ticket_id', $ticketId)
+            ->whereIn('status', ['running', 'paused'])
+            ->first();
+    }
+
+    /**
+     * Stop user's active timer for a specific ticket if it exists
+     */
+    public static function stopUserActiveTimerForTicket($userId, $ticketId): ?Timer
+    {
+        $timer = self::getUserActiveTimerForTicket($userId, $ticketId);
+        if ($timer) {
+            $timer->stop();
+            return $timer;
+        }
+        return null;
     }
 
     /**
@@ -311,9 +334,9 @@ class Timer extends Model
 
         $timeEntry = TimeEntry::create(array_merge([
             'user_id' => $this->user_id,
-            'project_id' => $this->project_id,
             'task_id' => $this->task_id,
             'billing_rate_id' => $this->billing_rate_id,
+            'ticket_id' => $this->ticket_id,
             'service_ticket_id' => $this->service_ticket_id,
             'description' => $this->description,
             'started_at' => $this->started_at,

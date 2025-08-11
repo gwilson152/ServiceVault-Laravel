@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AddonTemplate;
-use App\Models\ServiceTicket;
+use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -181,7 +181,7 @@ class AddonTemplateController extends Controller
             'metadata' => 'nullable|array'
         ]);
         
-        $ticket = ServiceTicket::findOrFail($validated['service_ticket_id']);
+        $ticket = Ticket::findOrFail($validated['service_ticket_id']);
         $this->authorize('update', $ticket);
         
         // Prepare overrides

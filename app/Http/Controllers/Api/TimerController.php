@@ -34,7 +34,7 @@ class TimerController extends Controller
     {
         $this->authorize('viewAny', Timer::class);
         
-        $query = Timer::with(['project', 'task', 'billingRate', 'ticket'])
+        $query = Timer::with(['billingRate', 'ticket'])
             ->where('user_id', $request->user()->id);
 
         // Filter by status
@@ -42,10 +42,7 @@ class TimerController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        // Filter by project
-        if ($request->has('project_id')) {
-            $query->where('project_id', $request->input('project_id'));
-        }
+        // Note: Project filtering removed - projects no longer used in this system
 
         // Filter by ticket
         if ($request->has('ticket_id')) {
@@ -79,7 +76,7 @@ class TimerController extends Controller
      */
     public function active(Request $request): AnonymousResourceCollection
     {
-        $timers = Timer::with(['project', 'task', 'billingRate', 'ticket'])
+        $timers = Timer::with(['billingRate', 'ticket'])
             ->where('user_id', $request->user()->id)
             ->where('status', 'running')
             ->get();
@@ -101,16 +98,30 @@ class TimerController extends Controller
     {
         DB::beginTransaction();
         try {
+            $userId = $request->user()->id;
+            $ticketId = $request->input('ticket_id');
+            
+            // If ticket_id is provided, enforce per-ticket timer limitation
+            if ($ticketId) {
+                // Check if user already has an active timer for this ticket
+                if (Timer::userHasActiveTimerForTicket($userId, $ticketId)) {
+                    return response()->json([
+                        'message' => 'You already have an active timer for this ticket. Please stop it first.',
+                        'existing_timer' => new TimerResource(Timer::getUserActiveTimerForTicket($userId, $ticketId))
+                    ], 422);
+                }
+            }
+            
             // Stop any running timers if single timer mode is requested (now defaults to false)
             if ($request->boolean('stop_others', false)) {
-                $this->timerService->stopAllUserTimers($request->user()->id, $request->input('device_id'));
+                $this->timerService->stopAllUserTimers($userId, $request->input('device_id'));
             }
 
             $timer = Timer::create([
-                'user_id' => $request->user()->id,
-                'project_id' => $request->input('project_id'),
-                'task_id' => $request->input('task_id'),
+                'user_id' => $userId,
                 'billing_rate_id' => $request->input('billing_rate_id'),
+                'ticket_id' => $ticketId,
+                'account_id' => $request->input('account_id'),
                 'service_ticket_id' => $request->input('service_ticket_id'),
                 'description' => $request->input('description'),
                 'status' => 'running',
@@ -134,7 +145,7 @@ class TimerController extends Controller
 
             return response()->json([
                 'message' => 'Timer started successfully',
-                'data' => new TimerResource($timer->load(['project', 'task', 'billingRate'])),
+                'data' => new TimerResource($timer->load(['billingRate'])),
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -151,7 +162,7 @@ class TimerController extends Controller
      */
     public function show(Timer $timer): TimerResource
     {
-        return new TimerResource($timer->load(['project', 'task', 'billingRate', 'timeEntry']));
+        return new TimerResource($timer->load(['billingRate', 'timeEntry']));
     }
 
     /**
@@ -203,7 +214,7 @@ class TimerController extends Controller
 
             return response()->json([
                 'message' => 'Timer updated successfully',
-                'data' => new TimerResource($timer->load(['project', 'task', 'billingRate'])),
+                'data' => new TimerResource($timer->load(['billingRate'])),
                 'running_amount' => $timer->calculated_amount,
                 'hourly_rate' => $timer->billingRate ? $timer->billingRate->rate : null,
             ]);
@@ -419,7 +430,7 @@ class TimerController extends Controller
 
             return response()->json([
                 'message' => 'Timer duration adjusted successfully',
-                'data' => new TimerResource($timer->load(['project', 'task', 'billingRate'])),
+                'data' => new TimerResource($timer->load(['billingRate'])),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -472,7 +483,7 @@ class TimerController extends Controller
     {
         $this->authorize('viewAny', Timer::class);
         
-        $timers = Timer::with(['project', 'task', 'billingRate'])
+        $timers = Timer::with(['billingRate'])
             ->where('user_id', $request->user()->id)
             ->whereIn('status', ['running', 'paused'])
             ->orderBy('started_at', 'desc')
@@ -547,7 +558,7 @@ class TimerController extends Controller
     public function statistics(Request $request): JsonResponse
     {
         $user = $request->user();
-        $includeServiceTickets = $request->boolean('include_service_tickets', false);
+        $includeTickets = $request->boolean('include_service_tickets', false);
         $status = $request->input('status');
         
         // Get base statistics from TimerService
@@ -558,7 +569,7 @@ class TimerController extends Controller
         );
 
         // If requesting active timers with tickets (for widget)
-        if ($includeServiceTickets && $status === 'active') {
+        if ($includeTickets && $status === 'active') {
             $activeTimers = Timer::with(['ticket:id,ticket_number,title', 'billingRate'])
                 ->where('user_id', $user->id)
                 ->whereIn('status', ['running', 'paused'])
@@ -643,7 +654,7 @@ class TimerController extends Controller
     /**
      * Get all timers for a specific ticket
      */
-    public function forTicket(Request $request, int $ticketId): AnonymousResourceCollection
+    public function forTicket(Request $request, string $ticketId): AnonymousResourceCollection
     {
         $request->validate([
             'include_all_statuses' => 'boolean',
@@ -668,49 +679,82 @@ class TimerController extends Controller
     }
 
     /**
+     * Start a timer for a specific ticket
+     */
+    public function startForTicket(Request $request, string $ticketId): JsonResponse
+    {
+        $request->validate([
+            'description' => 'required|string|max:1000',
+            'billing_rate_id' => 'nullable|exists:billing_rates,id',
+        ]);
+        
+        $userId = $request->user()->id;
+        
+        // Check if user already has an active timer for this ticket
+        if (Timer::userHasActiveTimerForTicket($userId, $ticketId)) {
+            return response()->json([
+                'message' => 'You already have an active timer for this ticket. Please stop it first.',
+                'existing_timer' => new TimerResource(Timer::getUserActiveTimerForTicket($userId, $ticketId))
+            ], 422);
+        }
+        
+        DB::beginTransaction();
+        try {
+            // Get ticket info for account_id
+            $ticket = \App\Models\Ticket::findOrFail($ticketId);
+            
+            $timer = Timer::create([
+                'user_id' => $userId,
+                'ticket_id' => $ticketId,
+                'account_id' => $ticket->account_id,
+                'billing_rate_id' => $request->input('billing_rate_id'),
+                'description' => $request->input('description'),
+                'status' => 'running',
+                'started_at' => now(),
+                'device_id' => $request->input('device_id', 'web-' . uniqid()),
+                'is_synced' => true,
+                'metadata' => [
+                    'client_ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'started_via' => 'ticket_api',
+                ],
+            ]);
+
+            // Broadcast timer started event
+            broadcast(new TimerStarted($timer))->toOthers();
+
+            // Update Redis state
+            $this->timerService->updateRedisState($timer);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Timer started for ticket',
+                'data' => new TimerResource($timer->load(['ticket', 'billingRate'])),
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Failed to start timer for ticket',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get active timers for a ticket (real-time dashboard)
      */
-    public function activeForTicket(Request $request, int $ticketId): JsonResponse
+    public function activeForTicket(Request $request, string $ticketId): JsonResponse
     {
         $timers = Timer::with(['user', 'billingRate', 'ticket'])
             ->where('ticket_id', $ticketId)
-            ->where('status', 'running')
+            ->whereIn('status', ['running', 'paused'])
             ->get();
 
-        $totalDuration = 0;
-        $totalAmount = 0;
-        $timerData = [];
-
-        foreach ($timers as $timer) {
-            $currentDuration = $timer->duration;
-            $currentAmount = $timer->calculated_amount;
-            
-            $totalAmount += $currentAmount ?? 0;
-            $totalDuration += $currentDuration;
-
-            $timerData[] = [
-                'timer' => new TimerResource($timer),
-                'user' => [
-                    'id' => $timer->user->id,
-                    'name' => $timer->user->name,
-                ],
-                'calculations' => [
-                    'duration_seconds' => $currentDuration,
-                    'duration_formatted' => $timer->duration_formatted,
-                    'running_amount' => $currentAmount,
-                    'hourly_rate' => $timer->billingRate ? $timer->billingRate->rate : null,
-                ],
-            ];
-        }
-        
+        // Return the timers directly as the frontend expects them
         return response()->json([
-            'data' => $timerData,
-            'totals' => [
-                'active_timers_count' => $timers->count(),
-                'total_running_amount' => round($totalAmount, 2),
-                'total_duration' => $totalDuration,
-                'total_duration_formatted' => $this->formatDuration($totalDuration),
-            ],
+            'data' => TimerResource::collection($timers),
         ]);
     }
 
@@ -789,7 +833,7 @@ class TimerController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $timers = Timer::with(['user', 'billingRate', 'ticket', 'project'])
+        $timers = Timer::with(['user', 'billingRate', 'ticket'])
             ->whereIn('status', ['running', 'paused'])
             ->orderBy('started_at', 'desc')
             ->get();

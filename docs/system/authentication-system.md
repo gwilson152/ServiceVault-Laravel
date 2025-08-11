@@ -1,177 +1,202 @@
-# Authentication System Documentation
+# Authentication System
 
-> **Status**: ✅ Complete (Phase 7)  
-> **Integration**: Laravel Breeze + Inertia.js + ABAC Permission System  
-> **Database**: PostgreSQL with complete relational schema
+Comprehensive user authentication and authorization system for Service Vault.
 
-## Overview
+> **Integration**: Laravel Breeze + Inertia.js + Three-Dimensional Permission System  
+> **Database**: PostgreSQL with UUID primary keys
 
-Service Vault's authentication system provides comprehensive user management with role-based access control through an Attribute-Based Access Control (ABAC) system. The implementation integrates Laravel Breeze for authentication workflows with a custom permission system that supports hierarchical account structures and flexible role templates.
+## Architecture Overview
 
-## Architecture Components
+### Core Components
+1. **Laravel Breeze**: Authentication foundation with Inertia.js integration
+2. **Three-Dimensional Permissions**: Functional + Widget + Page access control
+3. **Role Templates**: Permission blueprints for different user types
+4. **Account Hierarchy**: Multi-level business account relationships
+5. **User Invitations**: Email-based user onboarding system
 
-### 1. Authentication Foundation (Laravel Breeze)
+### Authentication Methods
+- **Session Authentication**: Web dashboard with cookie-based sessions
+- **API Token Authentication**: Laravel Sanctum with granular abilities
+- **Hybrid Support**: Single codebase supporting both methods
 
-**Authentication Routes** (`routes/auth.php`):
-- Registration: `/register` (GET/POST)
-- Login: `/login` (GET/POST)  
-- Password Reset: `/forgot-password`, `/reset-password` (GET/POST)
-- Email Verification: `/verify-email` (GET/POST)
-- Password Confirmation: `/confirm-password` (GET/POST)
-- Logout: `/logout` (POST)
+## User Management System
 
-**Authentication Pages** (`resources/js/Pages/Auth/`):
-- `Login.vue` - User login form
-- `Register.vue` - User registration form
-- `ForgotPassword.vue` - Password reset request
-- `ResetPassword.vue` - Password reset form
-- `VerifyEmail.vue` - Email verification prompt
-- `ConfirmPassword.vue` - Password confirmation
-
-### 2. Enhanced User Model
-
-**Database Schema** (`users` table):
-```sql
-id, name, email, email_verified_at, password, remember_token,
-current_account_id (foreign key to accounts),
-preferences (JSON),
-timezone (string, default: 'UTC'),
-locale (string, default: 'en'),
-last_active_at (timestamp),
-is_active (boolean, default: true),
-created_at, updated_at
-```
-
-**Key Relationships**:
+### Enhanced User Model
 ```php
-// Current working account
-public function currentAccount(): BelongsTo
-
-// All accounts user has access to (many-to-many)
-public function accounts(): BelongsToMany
-
-// All roles assigned across accounts
-public function roles(): BelongsToMany
-
-// User's timers and time entries
-public function timers(): HasMany
-public function timeEntries(): HasMany
-
-// Assigned projects
-public function projects(): BelongsToMany
-```
-
-**ABAC Permission Methods**:
-```php
-// Check account-specific permissions
-public function hasPermissionForAccount(string $permission, Account $account): bool
-
-// Check system-level permissions
-public function hasSystemPermission(string $permission): bool
-
-// Get all permissions for current account
-public function getAllPermissions(): array
-
-// Switch working account context
-public function switchToAccount(Account $account): void
-
-// Get current active timer
-public function getCurrentTimer(): Timer|null
-```
-
-### 3. Role Template System
-
-**Database Schema** (`role_templates` table):
-```sql
-id, name (unique), permissions (JSON), is_system_role (boolean),
-is_default (boolean), description (text), created_at, updated_at
-```
-
-**Default Role Templates** (Created during setup):
-
-#### System Roles
-- **Super Administrator**:
-  - Permissions: `system.manage`, `accounts.create`, `accounts.manage`, `users.manage`, `role_templates.manage`, `timers.manage`, `billing.manage`, `settings.manage`
-  - Full system access + role template management
-
-- **System Administrator**:
-  - Permissions: `accounts.create`, `accounts.manage`, `users.manage`, `timers.manage`, `billing.manage`, `settings.manage`
-  - System administration without role template management
-
-#### Account Roles
-- **Account Manager**:
-  - Permissions: `account.manage`, `users.assign`, `projects.manage`, `billing.view`
-  - Account-specific management capabilities
-
-- **Team Lead**:
-  - Permissions: `team.manage`, `projects.manage`, `time_entries.approve`, `reports.view`
-  - Team oversight and approval workflows
-
-- **Employee** (Default):
-  - Permissions: `timers.create`, `timers.manage`, `time_entries.create`, `projects.view`
-  - Standard time tracking access
-
-- **Customer**:
-  - Permissions: `portal.access`, `tickets.view`, `invoices.view`
-  - Portal access with limited visibility
-
-### 4. Role Instance System
-
-**Database Schema** (`roles` table):
-```sql
-id, account_id (FK), role_template_id (FK), name (optional custom name),
-custom_permissions (JSON, account-specific overrides), is_active (boolean),
-created_at, updated_at
-
-UNIQUE KEY (account_id, role_template_id)
-```
-
-**Permission Resolution**:
-```php
-public function getEffectivePermissions(): array
+class User extends Authenticatable
 {
-    $basePermissions = $this->roleTemplate->permissions ?? [];
-    $customPermissions = $this->custom_permissions ?? [];
+    use HasApiTokens, HasUuid;
     
-    return array_unique(array_merge($basePermissions, $customPermissions));
+    protected $fillable = [
+        'name', 'email', 'password', 'account_id', 'role_template_id',
+        'preferences', 'timezone', 'locale', 'is_active'
+    ];
+    
+    // Core relationships
+    public function account(): BelongsTo;           // Primary account
+    public function roleTemplate(): BelongsTo;     // Assigned role template
+    public function timers(): HasMany;             // User's timers
+    public function assignedTickets(): HasMany;    // Assigned service tickets
+    
+    // Permission methods
+    public function hasPermission(string $permission): bool;
+    public function isSuperAdmin(): bool;
+    public function hasAnyPermission(array $permissions): bool;
 }
 ```
 
-### 5. User Invitation System
-
-**Database Schema** (`user_invitations` table):
+### Database Schema
 ```sql
-id, email, token (64 chars, unique), invited_by_user_id (FK),
-account_id (FK), role_template_id (FK), invited_name,
-message (text), status ('pending'|'accepted'|'expired'|'cancelled'),
-expires_at, accepted_at, accepted_by_user_id (FK), created_at, updated_at
+-- Users table (enhanced Laravel default)
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    email_verified_at TIMESTAMP NULL,
+    password VARCHAR(255) NOT NULL,
+    account_id UUID REFERENCES accounts(id),
+    role_template_id UUID REFERENCES role_templates(id),
+    preferences JSONB,
+    timezone VARCHAR(100) DEFAULT 'UTC',
+    locale VARCHAR(10) DEFAULT 'en',
+    last_active_at TIMESTAMP,
+    last_login_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    remember_token VARCHAR(100),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
 ```
 
-**Invitation Workflow**:
-1. Administrator creates invitation with email, account, and role template
-2. System generates unique token and sends email notification
-3. Recipient clicks invitation link to register/accept
-4. User account created with specified role in target account
-5. Invitation marked as accepted with timestamp
+## Three-Dimensional Permission System
 
-**Key Methods**:
+### Permission Dimensions
+1. **Functional Permissions**: What users can DO
+   - `accounts.manage` - Account management operations
+   - `tickets.view.account` - View account tickets
+   - `timers.admin` - Timer administrative control
+   - `admin.read` - Administrative data access
+
+2. **Widget Permissions**: What users can SEE
+   - `widgets.dashboard.system-health` - System Health widget
+   - `widgets.dashboard.ticket-overview` - Ticket Overview widget
+   - `widgets.dashboard.all-timers` - All Active Timers (admin)
+
+3. **Page Permissions**: What pages users can ACCESS
+   - `pages.admin.system` - System Administration page
+   - `pages.tickets.manage` - Ticket Management page
+   - `pages.billing.overview` - Billing Overview page
+
+### Role Template System
 ```php
-public function isExpired(): bool           // Check expiration
-public function isPending(): bool           // Check if awaiting response
-public function markAsAccepted(User $user): void  // Complete invitation
-public static function generateToken(): string     // Generate secure token
+class RoleTemplate extends Model
+{
+    protected $fillable = [
+        'name', 'description', 'context', 
+        'permissions',              // Functional permissions
+        'widget_permissions',       // Widget permissions
+        'page_permissions',        // Page permissions
+        'dashboard_layout',        // Default widget layout
+        'is_system_role', 'is_modifiable'
+    ];
+    
+    protected $casts = [
+        'permissions' => 'array',
+        'widget_permissions' => 'array', 
+        'page_permissions' => 'array',
+        'dashboard_layout' => 'array'
+    ];
+}
 ```
 
-## Registration Integration
+### Default Role Templates
+
+**System Roles:**
+- **Super Administrator**: Complete system access + role management
+  - Permissions: All system, account, widget, and page permissions
+- **System Administrator**: System admin without role template management
+  - Permissions: System management excluding role template modification
+
+**Account Roles:**
+- **Account Manager**: Account-specific management capabilities
+- **Team Lead**: Team oversight and approval workflows
+- **Employee** (default): Standard time tracking and basic access
+- **Customer**: Portal access with limited visibility
+
+## Authentication Routes
+
+### Laravel Breeze Routes
+```php
+// Authentication routes (routes/auth.php)
+Route::get('/register', [RegisteredUserController::class, 'create']);
+Route::post('/register', [RegisteredUserController::class, 'store']);
+Route::get('/login', [AuthenticatedSessionController::class, 'create']);
+Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
+Route::get('/forgot-password', [PasswordResetLinkController::class, 'create']);
+Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
+Route::get('/reset-password/{token}', [NewPasswordController::class, 'create']);
+Route::post('/reset-password', [NewPasswordController::class, 'store']);
+```
+
+### API Authentication Routes
+```php
+// Token management (routes/api.php)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/auth/tokens', [TokenController::class, 'index']);
+    Route::post('/auth/tokens', [TokenController::class, 'store']);
+    Route::delete('/auth/tokens/{token}', [TokenController::class, 'destroy']);
+    Route::post('/auth/tokens/revoke-all', [TokenController::class, 'revokeAll']);
+    Route::get('/auth/tokens/abilities', [TokenController::class, 'abilities']);
+    Route::post('/auth/tokens/scope', [TokenController::class, 'createScoped']);
+});
+```
+
+## Laravel Sanctum Integration
+
+### Token Abilities System
+23 granular abilities across system features:
+```php
+class TokenAbilityService {
+    public const ABILITIES = [
+        // Timer Management
+        'timers:read' => 'View timer data',
+        'timers:write' => 'Create and update timers',
+        'timers:sync' => 'Cross-device synchronization',
+        
+        // Service Tickets  
+        'tickets:read' => 'View ticket information',
+        'tickets:write' => 'Create and modify tickets',
+        'tickets:account' => 'Access account hierarchy tickets',
+        
+        // Widget & UI Control
+        'widgets:dashboard' => 'Access dashboard widgets',
+        'widgets:configure' => 'Configure widget settings', 
+        'pages:access' => 'Access specific pages',
+        
+        // Administrative
+        'admin:read' => 'View administrative data',
+        'admin:write' => 'Administrative operations',
+    ];
+}
+```
+
+### Predefined Token Scopes
+```php
+public const SCOPES = [
+    'employee' => ['timers:read', 'timers:write', 'tickets:read', 'widgets:dashboard'],
+    'manager' => ['timers:read', 'timers:write', 'tickets:write', 'tickets:account'],
+    'mobile-app' => ['timers:read', 'timers:write', 'timers:sync', 'tickets:read'],
+    'admin' => ['*'] // All abilities including widgets and pages
+];
+```
+
+## User Registration & Invitations
 
 ### Enhanced Registration Process
-
-**RegisteredUserController** handles automatic role assignment:
-
 ```php
 public function store(Request $request): RedirectResponse
 {
-    // Create user with Service Vault fields
     $user = User::create([
         'name' => $request->name,
         'email' => $request->email,
@@ -181,8 +206,8 @@ public function store(Request $request): RedirectResponse
         'is_active' => true,
     ]);
 
-    // Assign to default account and role
-    $this->assignDefaultAccountAndRole($user);
+    // Auto-assign to account and role via domain mapping or default
+    $this->assignAccountAndRole($user);
 
     event(new Registered($user));
     Auth::login($user);
@@ -191,182 +216,133 @@ public function store(Request $request): RedirectResponse
 }
 ```
 
-**Default Assignment Logic**:
-1. Assigns user to primary account (first account from setup)
-2. Creates role instance using "Employee" template (default role)
-3. Establishes account-user and role-user relationships
-4. Sets primary account as user's current working account
+### User Invitation System
+```sql
+CREATE TABLE user_invitations (
+    id UUID PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    token VARCHAR(64) UNIQUE NOT NULL,
+    invited_by_user_id UUID REFERENCES users(id),
+    account_id UUID REFERENCES accounts(id),
+    role_template_id UUID REFERENCES role_templates(id),
+    invited_name VARCHAR(255),
+    message TEXT,
+    status VARCHAR(20) DEFAULT 'pending',
+    expires_at TIMESTAMP,
+    accepted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
 
-## Permission Service Integration
+## Permission Resolution
 
-The authentication system integrates with `App\Services\PermissionService` for:
+### Context-Aware Permission Checking
+```php
+public function hasPermission(string $permission): bool
+{
+    if (!$this->roleTemplate) return false;
+    
+    // Super Admin bypass
+    if ($this->roleTemplate->isSuperAdmin()) return true;
+    
+    // Check all three permission dimensions
+    return in_array($permission, array_merge(
+        $this->roleTemplate->permissions ?? [],
+        $this->roleTemplate->widget_permissions ?? [],
+        $this->roleTemplate->page_permissions ?? []
+    ));
+}
+```
 
-- **Permission Caching**: 5-minute TTL for user permissions
-- **Hierarchical Checking**: Account inheritance through parent relationships  
-- **Context Switching**: Permission validation based on current account
-- **System vs Account Permissions**: Distinction between global and account-scoped permissions
+### API Token Permission Checking
+```php
+// In policies and middleware
+if ($user->currentAccessToken()) {
+    return $user->tokenCan('timers:read');
+}
+// Fall back to role-based permissions
+return $user->hasPermission('timers.view');
+```
 
 ## Security Features
 
-### 1. Password Security
-- Laravel's default password requirements
-- Secure password hashing with bcrypt
+### Password Security
+- Laravel bcrypt hashing with automatic salting
+- Minimum 8 character requirements
 - Password confirmation for sensitive operations
+- Password reset via secure email links
 
-### 2. Email Verification
-- Built-in Laravel email verification
-- Signed URL generation for verification links
-- Rate limiting on verification attempts
-
-### 3. Session Management
-- Secure session handling via Laravel Sanctum
+### Session Security
+- Secure cookie configuration
+- CSRF protection on all forms
+- Session fixation protection
 - Remember token functionality
-- Device tracking capabilities (ready for implementation)
 
-### 4. Permission Validation
-- Middleware-based route protection
-- Model policy authorization
-- Real-time permission checking
-
-## Database Relationships
-
-### Core Relationship Map
-```
-User
-├── belongsTo currentAccount (Account)
-├── belongsToMany accounts (Account via account_user)
-├── belongsToMany roles (Role via role_user)
-├── hasMany timers (Timer)
-├── hasMany timeEntries (TimeEntry)
-└── belongsToMany projects (Project via project_user)
-
-Role
-├── belongsTo account (Account)
-├── belongsTo roleTemplate (RoleTemplate)
-└── belongsToMany users (User via role_user)
-
-RoleTemplate
-└── hasMany roles (Role)
-
-Account
-├── hasMany roles (Role)
-├── belongsToMany users (User via account_user)
-└── belongsTo parent (Account) // Hierarchical structure
-
-UserInvitation
-├── belongsTo invitedBy (User)
-├── belongsTo acceptedBy (User)
-├── belongsTo account (Account)
-└── belongsTo roleTemplate (RoleTemplate)
-```
+### API Security  
+- Token-based authentication with expiration
+- Granular ability-based access control
+- Rate limiting per endpoint
+- Request throttling and abuse prevention
 
 ## Integration Points
 
-### 1. Setup Wizard Integration
+### Setup Wizard Integration
 - Setup creates default role templates
-- First admin user gets "Super Administrator" role
-- Primary account establishment
+- First admin gets Super Administrator role
+- Primary account establishment and assignment
 
-### 2. Timer System Integration
-- User relationship to timers
-- Permission checking for timer operations
-- Current account context for timer scoping
+### Domain Mapping Integration
+- Automatic user-to-account assignment based on email domain
+- Domain pattern matching with wildcard support
+- Priority-based domain mapping rules
 
-### 3. API Authentication
-- Sanctum token authentication for API routes
-- Permission-based endpoint access control
-- User context in API controllers
+### Timer System Integration
+- User relationship to timers and time entries
+- Permission-based timer operation access
+- Account context for timer scoping and billing
 
-## Future Enhancements
+## Performance Optimizations
 
-### 1. Domain-Based Account Assignment
-- Automatic account assignment based on email domain
-- Domain mapping configuration in settings
-- CSV import for bulk domain rules
-
-### 2. Advanced User Management
-- Two-factor authentication (2FA)
-- Social login integration (OAuth)
-- Advanced password policies
-- Account lockout policies
-
-### 3. Invitation Workflow Completion
-- Email templates for invitations
-- Invitation management interface
-- Bulk invitation capabilities
-- Invitation expiration handling
-
-### 4. Session Management
-- Device tracking and management
-- Concurrent session limits  
-- Activity monitoring and logging
-- Suspicious activity detection
-
-## API Endpoints
-
-### Authentication Endpoints
-```
-POST /login              # User authentication
-POST /register           # New user registration  
-POST /logout             # User logout
-POST /forgot-password    # Password reset request
-POST /reset-password     # Password reset
-POST /email/verification-notification  # Resend verification
-GET  /verify-email/{id}/{hash}  # Email verification
+### Permission Caching
+```php
+// Cache user permissions for 5 minutes
+Cache::remember("user_permissions_{$user->id}", 300, function() use ($user) {
+    return $user->roleTemplate->getAllPermissions();
+});
 ```
 
-### User Management Endpoints (Planned)
-```
-GET    /api/users                    # List users (with permissions)
-POST   /api/users/{user}/invite      # Send user invitation
-GET    /api/invitations              # List pending invitations
-POST   /api/invitations/{token}/accept  # Accept invitation
-DELETE /api/invitations/{invitation}  # Cancel invitation
-PUT    /api/users/{user}/account     # Switch user account context
-```
-
-## Testing Strategy
-
-### Unit Tests
-- User model methods and relationships
-- Role template permission resolution
-- Invitation token generation and validation
-- Permission service integration
-
-### Feature Tests
-- Complete registration workflow
-- Login/logout functionality
-- Password reset process
-- Email verification flow
-- Role assignment during registration
-
-### Integration Tests
-- ABAC permission checking
-- Account switching functionality
-- Timer system integration with user context
-- Setup wizard integration
-
-## Performance Considerations
-
-### 1. Permission Caching
-- 5-minute cache TTL for user permissions
-- Cache invalidation on role changes
-- Efficient cache key generation
-
-### 2. Database Optimization
+### Database Optimization
+- UUID primary keys with proper indexing
 - Foreign key indexes on all relationships
 - Unique constraints on critical fields
 - Query optimization for permission checking
 
-### 3. Session Efficiency
+### Session Efficiency
 - Minimal session data storage
 - Lazy loading of user relationships
-- Efficient current account resolution
+- Efficient permission resolution algorithms
 
-## Related Documentation
+## Monitoring & Logging
 
-- [ABAC Permission System](../architecture/abac-permission-system.md)
-- [Setup Wizard](../system/setup-wizard.md)
-- [User Management](../features/user-management.md)
-- [Role Templates](../features/role-templates.md)
-- [Account Management](../features/accounts.md)
+### Authentication Events
+- Login/logout tracking with IP addresses
+- Failed login attempt monitoring
+- Password reset request logging
+- Token creation and usage tracking
+
+### Security Monitoring
+- Permission violation attempts
+- Suspicious activity detection
+- Rate limit violations
+- API abuse monitoring
+
+## Future Enhancements
+
+1. **Two-Factor Authentication**: TOTP and SMS-based 2FA
+2. **Social Login**: OAuth integration with major providers  
+3. **Advanced Password Policies**: Complexity requirements and rotation
+4. **Device Management**: Device registration and trusted device tracking
+5. **Advanced Audit Logging**: Comprehensive activity tracking and reporting
+
+Service Vault's authentication system provides enterprise-grade security with flexible permission management, supporting both web and API access patterns while maintaining scalability and performance.

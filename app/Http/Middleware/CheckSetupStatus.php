@@ -19,7 +19,7 @@ class CheckSetupStatus
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip setup check for setup routes and API routes
+        // Skip setup check for setup routes, API routes, and system routes
         if ($request->is('setup*') || $request->is('api/*') || $request->is('_*')) {
             return $next($request);
         }
@@ -29,7 +29,8 @@ class CheckSetupStatus
             return $this->isSystemSetup();
         });
 
-        if (!$isSetup && !$request->is('setup*')) {
+        // If system is not set up, redirect to setup page
+        if (!$isSetup) {
             return redirect()->route('setup.index');
         }
 

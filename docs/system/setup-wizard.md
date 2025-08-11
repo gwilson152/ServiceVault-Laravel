@@ -1,285 +1,229 @@
 # Setup Wizard Documentation
 
+Initial system configuration wizard for Service Vault.
+
 > **Location**: `/setup`  
 > **Controller**: `App\Http\Controllers\SetupController`  
 > **Frontend**: `resources/js/Pages/Setup/Index.vue`
 
 ## Overview
 
-The Service Vault Setup Wizard provides a comprehensive initial configuration interface that guides administrators through the complete system setup process. It creates the initial account structure, configures system settings, establishes role templates, and sets up the first administrator user.
+The Setup Wizard guides administrators through complete initial system configuration, creating the foundational account structure, system settings, role templates, and first administrator user.
 
-## Setup Process Flow
+## Setup Requirements
 
-### 1. Pre-Setup Validation
-```php
-private function isSystemSetup(): bool
-{
-    return User::count() > 0 
-        && Account::count() > 0 
-        && RoleTemplate::where('is_system_role', true)->count() > 0
-        && \App\Models\Setting::where('key', 'license.status')->exists();
-}
+Setup wizard only runs when system is empty:
+- No users exist
+- No accounts exist  
+- No system role templates exist
+- No license status configured
+
+If setup is complete, redirects to `Setup/AlreadyComplete.vue`.
+
+## Configuration Sections
+
+### 1. Company Information
+```bash
+• Company Name (required)         # Primary organization name
+• Company Email (required)        # Primary contact email  
+• Company Website (optional)      # Organization website
+• Company Phone (optional)        # Contact phone number
+• Company Address (optional)      # Full organization address
 ```
 
-The setup wizard only runs if:
-- No users exist in the system
-- No accounts exist in the system  
-- No system role templates exist
-- No license status has been set
+### 2. System Configuration
+```bash
+• Timezone (required)             # System default timezone
+• Currency (required)             # Default currency (USD, EUR, GBP, CAD, AUD)
+• Language (required)             # System language (en, es, fr, de, ja)
+• Date Format (required)          # Date format (Y-m-d, m/d/Y, d/m/Y, d-m-Y)
+• Time Format (required)          # Time format (H:i, g:i A)
+```
 
-If setup is already complete, users are redirected to `Setup/AlreadyComplete.vue`.
+### 3. Administrator Account
+```bash
+• Admin Name (required)           # Administrator full name
+• Admin Email (required)          # Administrator email (unique)
+• Admin Password (required)       # Password (8+ characters with confirmation)
+```
 
-### 2. Form Sections
+### 4. Advanced Settings
+```bash
+• Max Account Depth (1-20)        # Hierarchy levels (default: 10)
+• Timer Sync Interval (1-60s)     # Sync frequency (default: 5)
+• Permission Cache TTL (60-3600s) # Cache lifetime (default: 300)
+• Enable Real-time Features       # WebSocket features toggle
+• Enable Notifications            # System notifications toggle
+• Maximum Users (1-10000)         # User limit (default: 250)
+```
 
-#### Company Information
-- **Company Name** (required): Primary organization name
-- **Company Email** (required): Primary contact email
-- **Company Website** (optional): Organization website URL
-- **Company Phone** (optional): Primary contact phone
-- **Company Address** (optional): Full organization address
-
-#### System Configuration
-- **Timezone** (required): System-wide default timezone
-- **Currency** (required): Default currency code (USD, EUR, GBP, CAD, AUD)
-- **Language** (required): System default language (en, es, fr, de, ja)
-- **Date Format** (required): System date format (Y-m-d, m/d/Y, d/m/Y, d-m-Y)
-- **Time Format** (required): 12 or 24-hour format (H:i, g:i A)
-
-#### User Limits
-- **Maximum Users** (required): Default 250 users
-- **Note**: Licensing system will be implemented in future releases
-
-#### Administrator Account
-- **Admin Name** (required): First administrator full name
-- **Admin Email** (required): Administrator email (must be unique)
-- **Admin Password** (required): Minimum 8 characters with confirmation
-
-#### Advanced Settings
-- **Max Account Depth** (required): Maximum hierarchy levels (1-20, default: 10)
-- **Timer Sync Interval** (required): Seconds between sync updates (1-60, default: 5)
-- **Permission Cache TTL** (required): Cache lifetime in seconds (60-3600, default: 300)
-- **Enable Real-time Features** (checkbox): WebSocket features toggle
-- **Enable Notifications** (checkbox): System notifications toggle
-
-## Setup Execution Process
+## Setup Process
 
 ### 1. Company Account Creation
 ```php
 $account = Account::create([
     'name' => $request->company_name,
-    'slug' => Str::slug($request->company_name),
-    'description' => 'Primary company account',
+    'company_name' => $request->company_name,
+    'account_type' => 'internal',
+    'email' => $request->company_email,
+    'website' => $request->company_website,
+    'phone' => $request->company_phone,
+    'address' => $request->company_address,
     'settings' => [
-        'email' => $request->company_email,
-        'website' => $request->company_website,
-        'address' => $request->company_address,
-        'phone' => $request->company_phone,
         'timezone' => $request->timezone,
         'currency' => $request->currency,
-        'date_format' => $request->date_format,
-        'time_format' => $request->time_format,
-        'language' => $request->language,
+        'language' => $request->language
     ],
     'is_active' => true,
 ]);
 ```
 
-### 2. System Configuration Storage
-Stores configuration in the `settings` table with `type = 'system'`:
-- `system.timezone`
-- `system.currency`
-- `system.date_format`
-- `system.time_format`
-- `system.language`
-- `system.enable_real_time`
-- `system.enable_notifications`
-- `system.max_account_depth`
-- `system.timer_sync_interval`
-- `system.permission_cache_ttl`
-
-### 3. License Placeholder Storage
-Creates minimal license entries for future implementation:
+### 2. System Settings Storage
+Creates system configuration in `settings` table:
 ```php
-$licenseSettings = [
+$systemSettings = [
+    'system.timezone' => $request->timezone,
+    'system.currency' => $request->currency,
+    'system.date_format' => $request->date_format,
+    'system.time_format' => $request->time_format,
+    'system.language' => $request->language,
+    'system.enable_real_time' => $request->enable_real_time,
+    'system.enable_notifications' => $request->enable_notifications,
+    'system.max_account_depth' => $request->max_account_depth,
+    'system.timer_sync_interval' => $request->timer_sync_interval,
+    'system.permission_cache_ttl' => $request->permission_cache_ttl,
     'license.max_users' => $request->max_users,
     'license.status' => 'unlicensed_development',
-    'license.created_at' => now()->toISOString(),
 ];
 ```
 
-### 4. Role Template Creation
-Creates six default role templates:
+### 3. Default Role Templates
+Creates six system role templates:
 
-#### System Roles
-- **Super Administrator**: Full system access + role template management
-  - Permissions: `system.manage`, `accounts.create`, `accounts.manage`, `users.manage`, `role_templates.manage`, `timers.manage`, `billing.manage`, `settings.manage`
-- **System Administrator**: System administration without role template management
-  - Permissions: `accounts.create`, `accounts.manage`, `users.manage`, `timers.manage`, `billing.manage`, `settings.manage`
+**System Roles:**
+- **Super Administrator**: Complete system access + role management
+- **System Administrator**: System admin without role template management
 
-#### Account Roles  
-- **Account Manager**: Account-specific management
-  - Permissions: `account.manage`, `users.assign`, `projects.manage`, `billing.view`
-- **Team Lead**: Team management and approval workflows
-  - Permissions: `team.manage`, `projects.manage`, `time_entries.approve`, `reports.view`
+**Account Roles:**
+- **Account Manager**: Account-specific management capabilities
+- **Team Lead**: Team oversight and approval workflows  
 - **Employee** (default): Standard time tracking access
-  - Permissions: `timers.create`, `timers.manage`, `time_entries.create`, `projects.view`
 - **Customer**: Portal access with limited visibility
-  - Permissions: `portal.access`, `tickets.view`, `invoices.view`
 
-### 5. Administrator User Creation
+### 4. Administrator User Creation
 ```php
 $adminUser = User::create([
     'name' => $request->admin_name,
     'email' => $request->admin_email,
     'password' => Hash::make($request->admin_password),
     'email_verified_at' => now(),
-]);
-
-// Create and assign super admin role
-$adminRole = Role::create([
     'account_id' => $account->id,
     'role_template_id' => $superAdminTemplate->id,
 ]);
-
-$adminUser->roles()->attach($adminRole->id);
-$account->users()->attach($adminUser->id);
 ```
 
-### 6. Post-Setup Actions
-- Clears setup status cache
-- Authenticates the new administrator user
-- Redirects to dashboard with success message
+## Validation Rules
 
-## Technical Implementation Details
-
-### Validation Rules
+### Form Validation
 ```php
-$validator = Validator::make($request->all(), [
+$rules = [
     // Company Information
     'company_name' => 'required|string|max:255',
     'company_email' => 'required|email|max:255',
     'company_website' => 'nullable|url|max:255',
-    'company_address' => 'nullable|string|max:500',
     'company_phone' => 'nullable|string|max:50',
+    'company_address' => 'nullable|string|max:500',
     
     // System Configuration
     'timezone' => 'required|string|max:100',
     'currency' => 'required|string|size:3',
+    'language' => 'required|string|max:10',
     'date_format' => 'required|string|max:50',
     'time_format' => 'required|string|max:20',
-    'language' => 'required|string|max:10',
     
-    // Features & Limits
-    'enable_real_time' => 'boolean',
-    'enable_notifications' => 'boolean',
-    'max_account_depth' => 'required|integer|min:1|max:20',
-    'timer_sync_interval' => 'required|integer|min:1|max:60',
-    'permission_cache_ttl' => 'required|integer|min:60|max:3600',
-    
-    // User Limits
-    'max_users' => 'required|integer|min:1|max:10000',
-
-    // Admin User Information
+    // Administrator
     'admin_name' => 'required|string|max:255',
     'admin_email' => 'required|email|max:255|unique:users,email',
     'admin_password' => 'required|string|min:8|confirmed',
-]);
+    
+    // Advanced Settings
+    'max_account_depth' => 'required|integer|min:1|max:20',
+    'timer_sync_interval' => 'required|integer|min:1|max:60',
+    'permission_cache_ttl' => 'required|integer|min:60|max:3600',
+    'max_users' => 'required|integer|min:1|max:10000',
+    'enable_real_time' => 'boolean',
+    'enable_notifications' => 'boolean',
+];
 ```
 
-### Frontend Form Structure
+## Frontend Implementation
+
+### Vue.js Form Structure
 ```javascript
 const form = useForm({
   // Company Information
   company_name: '',
   company_email: '',
   company_website: '',
-  company_address: '',
   company_phone: '',
+  company_address: '',
   
   // System Configuration
   timezone: 'UTC',
   currency: 'USD',
+  language: 'en',
   date_format: 'Y-m-d',
   time_format: 'H:i',
-  language: 'en',
   
-  // Features & Limits
+  // Advanced Settings
   enable_real_time: true,
   enable_notifications: true,
   max_account_depth: 10,
   timer_sync_interval: 5,
   permission_cache_ttl: 300,
-  
-  // User Limits (licensing will be implemented later)
   max_users: 250,
   
-  // Admin User Information
+  // Administrator
   admin_name: '',
   admin_email: '',
   admin_password: '',
   admin_password_confirmation: '',
-})
+});
 ```
 
-## Security Considerations
+## Security Features
 
-1. **One-Time Setup**: Setup can only be run when system is empty
-2. **Password Security**: Admin password requires minimum 8 characters with confirmation
-3. **Email Uniqueness**: Admin email must be unique in the users table
-4. **Input Validation**: All inputs are validated with appropriate Laravel rules
-5. **Auto-Authentication**: Administrator is automatically logged in after setup
+1. **One-Time Setup**: Only runs on empty system
+2. **Password Security**: 8+ characters with confirmation
+3. **Email Uniqueness**: Admin email validation
+4. **Input Validation**: Laravel form request validation
+5. **Auto-Login**: Administrator authenticated after setup
 
-## Future Enhancements
+## Post-Setup Actions
 
-### Licensing Integration
-- Replace placeholder license storage with full licensing system
-- Add license key validation against license server
-- Implement license-based feature restrictions
-- Add license renewal and upgrade workflows
+1. **Cache Clearing**: Clears setup status cache
+2. **User Authentication**: Logs in new administrator
+3. **Dashboard Redirect**: Redirects to main dashboard
+4. **Success Notification**: Displays setup completion message
 
-### Enhanced Validation
-- Domain validation for company email
-- Phone number format validation
-- Enhanced password strength requirements
-- Multi-language support for error messages
+## Testing
 
-### Setup Customization
-- Industry-specific role template sets
-- Custom field configuration during setup
-- Integration settings (SMTP, LDAP, SSO)
-- Theme selection and customization
-
-## Error Handling
-
-The setup wizard includes comprehensive error handling:
-- Form validation errors are displayed inline
-- Database transaction rollback on setup failure
-- Graceful handling of duplicate setup attempts
-- Clear error messages for all validation failures
-
-## Testing Setup Process
-
-### Manual Testing Steps
-1. Ensure database is empty (fresh migration)
+### Manual Testing
+1. Fresh database migration
 2. Access `/setup` URL
-3. Fill out all required fields
-4. Submit form and verify success
-5. Confirm redirection to dashboard
-6. Verify admin user can access all features
+3. Complete all form sections
+4. Verify successful completion
+5. Confirm admin dashboard access
 
 ### Automated Testing
 ```php
-public function test_setup_creates_complete_system()
+public function test_setup_wizard_creates_complete_system()
 {
     $response = $this->post('/setup', [
         'company_name' => 'Test Company',
         'company_email' => 'admin@test.com',
         'timezone' => 'UTC',
         'currency' => 'USD',
-        'date_format' => 'Y-m-d',
-        'time_format' => 'H:i',
-        'language' => 'en',
-        'max_users' => 250,
         'admin_name' => 'Admin User',
         'admin_email' => 'admin@test.com',
         'admin_password' => 'password123',
@@ -294,9 +238,19 @@ public function test_setup_creates_complete_system()
 }
 ```
 
-## Related Documentation
+## Error Handling
 
-- [ABAC Permission System](../architecture/abac-permission-system.md)
-- [Account Management](../features/accounts.md)
-- [Role Templates](../features/role-templates.md)
-- [User Management](../features/user-management.md)
+- **Form Validation**: Inline error display for invalid inputs
+- **Database Errors**: Transaction rollback on setup failure
+- **Duplicate Setup**: Graceful handling of completed setup attempts
+- **Network Issues**: Retry mechanisms for setup submission
+
+## Future Enhancements
+
+1. **Industry Templates**: Predefined role sets for different industries
+2. **Integration Setup**: SMTP, LDAP, SSO configuration during setup
+3. **Theme Selection**: Custom branding and theme selection
+4. **Import Options**: Data import from existing systems
+5. **Multi-Language**: Localized setup wizard interface
+
+The Setup Wizard provides a comprehensive foundation for Service Vault deployment with all essential system components configured and ready for production use.

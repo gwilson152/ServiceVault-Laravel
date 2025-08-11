@@ -15,6 +15,7 @@ class RoleTemplateSeeder extends Seeder
     {
         // Super Administrator - Full system access (NON-MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Super Admin'], [
+            'display_name' => 'Super Administrator',
             'description' => 'Full system administration with all permissions (cannot be modified)',
             'is_system_role' => true,
             'is_default' => false,
@@ -106,6 +107,7 @@ class RoleTemplateSeeder extends Seeder
 
         // Admin - Full service provider administration (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Admin'], [
+            'display_name' => 'Administrator',
             'description' => 'Full service provider administration and user management',
             'is_system_role' => false,
             'is_default' => false,
@@ -149,6 +151,7 @@ class RoleTemplateSeeder extends Seeder
 
         // Manager - Service oversight and ticket management (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Manager'], [
+            'display_name' => 'Manager',
             'description' => 'Service oversight, ticket assignment, and approval workflows',
             'is_system_role' => false,
             'is_default' => false,
@@ -181,6 +184,7 @@ class RoleTemplateSeeder extends Seeder
 
         // Employee - Service delivery and time tracking (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Employee'], [
+            'display_name' => 'Employee',
             'description' => 'Standard employee with time tracking and assigned ticket management',
             'is_system_role' => false,
             'is_default' => true,
@@ -209,6 +213,7 @@ class RoleTemplateSeeder extends Seeder
 
         // Account Manager - Primary account + all subsidiaries access (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Account Manager'], [
+            'display_name' => 'Account Manager',
             'description' => 'Customer account manager with access to primary account and all subsidiaries',
             'is_system_role' => false,
             'is_default' => false,
@@ -242,6 +247,7 @@ class RoleTemplateSeeder extends Seeder
 
         // Account User - Basic customer account access (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Account User'], [
+            'display_name' => 'Account User',
             'description' => 'Basic customer account access with service request capabilities',
             'is_system_role' => false,
             'is_default' => false,

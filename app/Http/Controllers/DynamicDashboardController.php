@@ -6,7 +6,7 @@ use App\Models\Account;
 use App\Models\Timer;
 use App\Models\TimeEntry;
 use App\Models\User;
-use App\Models\ServiceTicket;
+use App\Models\Ticket;
 use App\Models\DomainMapping;
 use App\Services\WidgetRegistryService;
 use Illuminate\Http\Request;
@@ -102,10 +102,9 @@ class DynamicDashboardController extends Controller
             }
         } else {
             // Account user - can only see their own account
-            $userAccount = $user->accounts()->first();
-            if ($userAccount) {
-                $context['selectedAccount'] = $userAccount->toArray();
-                $context['availableAccounts'] = [$userAccount->toArray()];
+            if ($user->account) {
+                $context['selectedAccount'] = $user->account->toArray();
+                $context['availableAccounts'] = [$user->account->toArray()];
             }
         }
 
@@ -247,8 +246,12 @@ class DynamicDashboardController extends Controller
             return Account::orderBy('name')->get();
         }
 
-        // Get accounts this user has explicit access to
-        return $user->accounts()->orderBy('name')->get();
+        // Get the account this user belongs to
+        if ($user->account) {
+            return collect([$user->account]);
+        }
+
+        return collect();
     }
 
     // Widget data methods
@@ -296,15 +299,16 @@ class DynamicDashboardController extends Controller
 
     private function getTicketOverviewData(User $user, ?Account $account): array
     {
-        $query = ServiceTicket::with(['account', 'assignedUser', 'createdBy']);
+        $query = Ticket::with(['account', 'agent', 'customer', 'createdBy']);
 
         // Filter by account if specified
         if ($account) {
             $query->where('account_id', $account->id);
         } elseif (!$user->isSuperAdmin()) {
-            // Non-admin users see only tickets from accounts they can access
-            $accountIds = $user->accounts()->pluck('accounts.id');
-            $query->whereIn('account_id', $accountIds);
+            // Non-admin users see only tickets from their account
+            if ($user->account) {
+                $query->where('account_id', $user->account->id);
+            }
         }
 
         $tickets = $query->orderBy('created_at', 'desc')->take(10)->get();
@@ -322,8 +326,8 @@ class DynamicDashboardController extends Controller
 
     private function getMyTicketsData(User $user, ?Account $account): array
     {
-        $query = ServiceTicket::with(['account', 'assignedUser'])
-            ->where('assigned_to', $user->id);
+        $query = Ticket::with(['account', 'agent', 'customer'])
+            ->where('agent_id', $user->id);
 
         if ($account) {
             $query->where('account_id', $account->id);
@@ -396,8 +400,8 @@ class DynamicDashboardController extends Controller
         }
 
         // Get recent activity for the account
-        $recentTickets = ServiceTicket::where('account_id', $account->id)
-            ->with(['assignedUser', 'createdBy'])
+        $recentTickets = Ticket::where('account_id', $account->id)
+            ->with(['agent', 'customer', 'createdBy'])
             ->orderBy('updated_at', 'desc')
             ->take(5)
             ->get();

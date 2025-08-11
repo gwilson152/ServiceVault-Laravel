@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TicketCategory extends Model
 {
     /** @use HasFactory<\Database\Factories\TicketCategoryFactory> */
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'key',
@@ -85,8 +87,8 @@ class TicketCategory extends Model
             ->ordered()
             ->get()
             ->map(fn($category) => [
-                'value' => $category->key,
-                'label' => $category->name,
+                'key' => $category->key,
+                'name' => $category->name,
                 'description' => $category->description,
                 'color' => $category->color,
                 'bg_color' => $category->bg_color,

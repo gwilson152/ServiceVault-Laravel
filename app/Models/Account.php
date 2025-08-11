@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Account extends Model
 {
     /** @use HasFactory<\Database\Factories\AccountFactory> */
-    use HasFactory;
+    use HasFactory, HasUuid;
     
     protected $fillable = [
         'name',
@@ -76,7 +77,7 @@ class Account extends Model
     // User relationships
     public function users()
     {
-        return $this->belongsToMany(User::class);
+        return $this->hasMany(User::class);
     }
     
     public function roles()

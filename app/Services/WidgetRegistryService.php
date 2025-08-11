@@ -333,8 +333,8 @@ class WidgetRegistryService
             return false;
         }
         
-        // Get user's primary role template
-        $roleTemplate = $user->roles()->with('template')->first()?->template;
+        // Get user's role template directly
+        $roleTemplate = $user->roleTemplate;
         
         if (!$roleTemplate) {
             return false;
@@ -531,7 +531,7 @@ class WidgetRegistryService
         $maxCols = 12; // Grid system with 12 columns
 
         // Filter widgets that are enabled by default for the user's role
-        $roleTemplate = $user->roles()->with('template')->first()?->template;
+        $roleTemplate = $user->roleTemplate;
         
         foreach ($widgets as $widget) {
             // Check if widget is enabled by default in the widget config

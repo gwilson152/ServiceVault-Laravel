@@ -108,23 +108,15 @@ class SetupController extends Controller
             return back()->withErrors(['general' => 'Super Admin role template not found. Please contact support.']);
         }
 
-        // Create admin user
+        // Create admin user with direct account and role template assignment
         $adminUser = User::create([
             'name' => $request->admin_name,
             'email' => $request->admin_email,
             'password' => Hash::make($request->admin_password),
             'email_verified_at' => now(),
-        ]);
-
-        // Create and assign super admin role to the user
-        $adminRole = Role::create([
             'account_id' => $account->id,
             'role_template_id' => $superAdminTemplate->id,
         ]);
-
-        $adminUser->roles()->attach($adminRole->id);
-        $adminUser->roleTemplates()->attach($superAdminTemplate->id, ['account_id' => $account->id]);
-        $account->users()->attach($adminUser->id);
 
         // Clear the setup status cache
         Cache::forget('system_setup_status');
