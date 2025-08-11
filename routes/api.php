@@ -42,6 +42,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('users/assignable', [App\Http\Controllers\Api\UserController::class, 'assignableUsers'])
         ->name('users.assignable');
     
+    // Full user management API
+    Route::apiResource('users', App\Http\Controllers\Api\UserController::class);
+    
+    // Additional user detail endpoints
+    Route::get('users/{user}/tickets', [App\Http\Controllers\Api\UserController::class, 'tickets'])
+        ->name('users.tickets');
+    Route::get('users/{user}/time-entries', [App\Http\Controllers\Api\UserController::class, 'timeEntries'])
+        ->name('users.time-entries');
+    Route::get('users/{user}/activity', [App\Http\Controllers\Api\UserController::class, 'activity'])
+        ->name('users.activity');
+    Route::get('users/{user}/accounts', [App\Http\Controllers\Api\UserController::class, 'accounts'])
+        ->name('users.accounts');
+    
     // Timer routes
     Route::apiResource('timers', TimerController::class);
     
@@ -101,6 +114,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::get('time-entries/stats/approvals', [TimeEntryController::class, 'approvalStats'])
         ->name('time-entries.approval-stats');
+    
+    Route::get('time-entries/stats/recent', [TimeEntryController::class, 'recentStats'])
+        ->name('time-entries.recent-stats');
 
     // Account routes (hierarchical selector support)
     Route::apiResource('accounts', AccountController::class);
@@ -121,6 +137,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('user-invitations', App\Http\Controllers\UserInvitationController::class);
 
     // Ticket routes (comprehensive ticket management system)
+    // Note: Specific routes MUST come before the resource route to avoid parameter binding conflicts
+    
+    Route::get('tickets/stats/dashboard', [TicketController::class, 'statistics'])
+        ->name('tickets.statistics');
+    
+    Route::get('tickets/my/assigned', [TicketController::class, 'myTickets'])
+        ->name('tickets.my-tickets');
+    
+    Route::get('tickets/filter-counts', [TicketController::class, 'filterCounts'])
+        ->name('tickets.filter-counts');
+    
+    // Resource route (creates routes with {ticket} parameter binding)
     Route::apiResource('tickets', TicketController::class);
     
     // Ticket workflow and assignment endpoints
@@ -129,12 +157,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::post('tickets/{ticket}/assign', [TicketController::class, 'assign'])
         ->name('tickets.assign');
-    
-    Route::get('tickets/stats/dashboard', [TicketController::class, 'statistics'])
-        ->name('tickets.statistics');
-    
-    Route::get('tickets/my/assigned', [TicketController::class, 'myTickets'])
-        ->name('tickets.my-tickets');
     
     // Team assignment endpoints
     Route::post('tickets/{ticket}/team/add', [TicketController::class, 'addTeamMember'])
@@ -181,8 +203,55 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('ticket-categories.options');
     Route::get('ticket-categories/statistics', [App\Http\Controllers\Api\TicketCategoryController::class, 'statistics'])
         ->name('ticket-categories.statistics');
-    Route::get('ticket-categories/sla-status', [App\Http\Controllers\Api\TicketCategoryController::class, 'slaStatus'])
+    Route::get('ticket-categories/sla-status', [App\Http\Controllers\Api\TicketCategoryController::class, 'sla-status'])
         ->name('ticket-categories.sla-status');
+
+    // Role Template Management routes (Admin access required)
+    // Note: Specific routes MUST come before the resource route to avoid parameter binding conflicts
+    
+    Route::get('role-templates/create', [App\Http\Controllers\Api\RoleTemplateController::class, 'create'])
+        ->name('role-templates.create');
+    
+    Route::get('role-templates/create/preview/widgets', [App\Http\Controllers\Api\RoleTemplateController::class, 'previewWidgetsForCreate'])
+        ->name('role-templates.create.preview-widgets');
+    
+    Route::get('role-templates/permissions/available', [App\Http\Controllers\Api\RoleTemplateController::class, 'permissions'])
+        ->name('role-templates.permissions');
+    
+    // Resource route (creates routes with {roleTemplate} parameter binding)
+    Route::apiResource('role-templates', App\Http\Controllers\Api\RoleTemplateController::class);
+    
+    Route::get('role-templates/{roleTemplate}/preview/widgets', [App\Http\Controllers\Api\RoleTemplateController::class, 'previewWidgets'])
+        ->name('role-templates.preview-widgets');
+    Route::post('role-templates/{roleTemplate}/clone', [App\Http\Controllers\Api\RoleTemplateController::class, 'clone'])
+        ->name('role-templates.clone');
+
+    // Widget Assignment Management routes
+    Route::get('role-templates/{roleTemplate}/widgets', [App\Http\Controllers\Api\RoleTemplateController::class, 'getWidgets'])
+        ->name('role-templates.get-widgets');
+    Route::put('role-templates/{roleTemplate}/widgets', [App\Http\Controllers\Api\RoleTemplateController::class, 'updateWidgets'])
+        ->name('role-templates.update-widgets');
+
+    // Dashboard Preview routes (Admin access required)
+    Route::get('role-templates/{roleTemplate}/preview/dashboard', [App\Http\Controllers\Api\DashboardPreviewController::class, 'previewDashboard'])
+        ->name('role-templates.preview-dashboard');
+    Route::get('role-templates/{roleTemplate}/preview/widgets', [App\Http\Controllers\Api\DashboardPreviewController::class, 'previewWidgets'])
+        ->name('role-templates.preview-widgets-detailed');
+    Route::get('role-templates/{roleTemplate}/preview/navigation', [App\Http\Controllers\Api\DashboardPreviewController::class, 'previewNavigation'])
+        ->name('role-templates.preview-navigation');
+    Route::get('role-templates/{roleTemplate}/preview/layout', [App\Http\Controllers\Api\DashboardPreviewController::class, 'previewLayout'])
+        ->name('role-templates.preview-layout');
+
+    // Widget Permission Management routes (Admin access required)
+    Route::apiResource('widget-permissions', App\Http\Controllers\Api\WidgetPermissionController::class);
+    Route::post('widget-permissions/sync', [App\Http\Controllers\Api\WidgetPermissionController::class, 'sync'])
+        ->name('widget-permissions.sync');
+    Route::get('widget-permissions/categories/list', [App\Http\Controllers\Api\WidgetPermissionController::class, 'categories'])
+        ->name('widget-permissions.categories');
+    Route::post('widget-permissions/{widgetPermission}/assign-to-role', [App\Http\Controllers\Api\WidgetPermissionController::class, 'assignToRole'])
+        ->name('widget-permissions.assign-to-role');
+    Route::delete('widget-permissions/{widgetPermission}/remove-from-role', [App\Http\Controllers\Api\WidgetPermissionController::class, 'removeFromRole'])
+        ->name('widget-permissions.remove-from-role');
 });
 
 // Admin-only routes

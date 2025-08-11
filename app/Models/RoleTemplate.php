@@ -13,20 +13,44 @@ class RoleTemplate extends Model
     protected $fillable = [
         'name',
         'permissions',
+        'widget_permissions',
+        'page_permissions',
+        'dashboard_layout',
         'is_system_role',
         'is_default',
+        'is_modifiable',
+        'context',
         'description',
     ];
     
     protected $casts = [
         'permissions' => 'array',
+        'widget_permissions' => 'array',
+        'page_permissions' => 'array',
+        'dashboard_layout' => 'array',
         'is_system_role' => 'boolean',
         'is_default' => 'boolean',
+        'is_modifiable' => 'boolean',
     ];
     
     public function roles()
     {
         return $this->hasMany(Role::class);
+    }
+    
+    public function widgets()
+    {
+        return $this->hasMany(RoleTemplateWidget::class);
+    }
+    
+    public function widgetPermissions()
+    {
+        return $this->belongsToMany(WidgetPermission::class, 'role_template_widgets', 'role_template_id', 'widget_id', 'id', 'widget_id');
+    }
+    
+    public function pagePermissions()
+    {
+        return $this->belongsToMany(PagePermission::class, 'role_template_pages', 'role_template_id', 'page_permission_id');
     }
     
     /**
@@ -64,23 +88,20 @@ class RoleTemplate extends Model
             // Account Management
             'accounts.create',
             'accounts.manage',
+            'accounts.hierarchy.access',
+            'accounts.manage.own',
             'accounts.configure',
             'accounts.view',
             
             // User Management
             'users.manage',
+            'users.manage.account',
             'users.invite',
             'users.assign',
             
             // Role Management
             'roles.manage',
             'role_templates.manage',
-            
-            // Team Management
-            'teams.manage',
-            'team.manage',
-            'projects.manage',
-            'projects.view',
             
             // Billing & Financial
             'billing.manage',
@@ -89,52 +110,41 @@ class RoleTemplate extends Model
             'billing.invoices',
             'billing.reports',
             'billing.view.own',
+            'billing.view.account',
             
-            // Service Tickets - Admin Level
+            // Service Tickets - Updated for account-scoped permissions
             'tickets.admin',
             'tickets.create',
-            'tickets.create.basic',
+            'tickets.create.account',
             'tickets.create.request',
             'tickets.view.all',
             'tickets.view.account',
-            'tickets.view.team',
             'tickets.view.assigned',
             'tickets.view.own',
-            'tickets.view.support',
-            'tickets.view.development',
-            'tickets.view.billing',
             'tickets.edit.all',
             'tickets.edit.account',
-            'tickets.edit.team',
             'tickets.edit.own',
-            'tickets.edit.support',
-            'tickets.edit.development',
             'tickets.assign',
-            'tickets.assign.basic',
+            'tickets.assign.account',
             'tickets.transition',
-            'tickets.transition.basic',
             'tickets.close',
             'tickets.delete',
             'tickets.comment',
-            'tickets.technical',
             
             // Time Tracking & Management
             'time.admin',
             'time.track',
             'time.manage',
             'time.view.all',
-            'time.view.team',
+            'time.view.account',
             'time.view.own',
-            'time.view.billable',
             'time.edit.all',
+            'time.edit.account',
             'time.edit.own',
             'time.approve',
             'time.reports',
-            'time.reports.all',
             'time.reports.account',
-            'time.reports.team',
             'time.reports.own',
-            'time.reports.billing',
             
             // Legacy Timer Permissions (backward compatibility)
             'timers.create',
@@ -150,5 +160,108 @@ class RoleTemplate extends Model
             // Settings Management
             'settings.manage',
         ];
+    }
+    
+    /**
+     * Get all widget permissions for this role template
+     */
+    public function getAllWidgetPermissions(): array
+    {
+        if ($this->isSuperAdmin()) {
+            return $this->getAllPossibleWidgetPermissions();
+        }
+        
+        return $this->widget_permissions ?? [];
+    }
+    
+    /**
+     * Get all page permissions for this role template
+     */
+    public function getAllPagePermissions(): array
+    {
+        if ($this->isSuperAdmin()) {
+            return $this->getAllPossiblePagePermissions();
+        }
+        
+        return $this->page_permissions ?? [];
+    }
+    
+    /**
+     * Get all possible widget permissions in the system
+     */
+    public function getAllPossibleWidgetPermissions(): array
+    {
+        return [
+            // Dashboard Widgets
+            'widgets.dashboard.system-health',
+            'widgets.dashboard.system-stats',
+            'widgets.dashboard.user-management',
+            'widgets.dashboard.account-management',
+            'widgets.dashboard.ticket-overview',
+            'widgets.dashboard.my-tickets',
+            'widgets.dashboard.time-tracking',
+            'widgets.dashboard.all-timers',
+            'widgets.dashboard.billing-overview',
+            'widgets.dashboard.account-activity',
+            'widgets.dashboard.quick-actions',
+            
+            // Widget Configuration
+            'widgets.configure',
+            'dashboard.customize',
+        ];
+    }
+    
+    /**
+     * Get all possible page permissions in the system
+     */
+    public function getAllPossiblePagePermissions(): array
+    {
+        return [
+            // Administrative Pages
+            'pages.admin.system',
+            'pages.admin.users',
+            'pages.settings.roles',
+            
+            // Ticket Management
+            'pages.tickets.manage',
+            'pages.tickets.create',
+            
+            // Reports
+            'pages.reports.account',
+            'pages.reports.own',
+            'pages.reports.billing',
+            
+            // Billing
+            'pages.billing.overview',
+            'pages.billing.own',
+            
+            // Customer Portal
+            'pages.portal.dashboard',
+            'pages.portal.tickets',
+        ];
+    }
+    
+    /**
+     * Check if this role template has a specific widget permission
+     */
+    public function hasWidgetPermission(string $permission): bool
+    {
+        return in_array($permission, $this->getAllWidgetPermissions());
+    }
+    
+    /**
+     * Check if this role template has a specific page permission
+     */
+    public function hasPagePermission(string $permission): bool
+    {
+        return in_array($permission, $this->getAllPagePermissions());
+    }
+    
+    /**
+     * Check if this role template can be modified
+     */
+    public function isModifiable(): bool
+    {
+        return $this->is_modifiable ?? true;
     }
 }

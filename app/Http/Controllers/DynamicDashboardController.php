@@ -341,7 +341,7 @@ class DynamicDashboardController extends Controller
     {
         $activeTimers = Timer::where('user_id', $user->id)
             ->where('status', 'running')
-            ->with(['project', 'serviceTicket', 'billingRate'])
+            ->with(['project', 'ticket', 'billingRate'])
             ->get();
 
         return [
@@ -352,11 +352,11 @@ class DynamicDashboardController extends Controller
 
     private function getTimeEntriesData(User $user, ?Account $account): array
     {
-        $query = TimeEntry::with(['user', 'project', 'serviceTicket', 'billingRate'])
+        $query = TimeEntry::with(['user', 'project', 'ticket', 'billingRate'])
             ->where('user_id', $user->id);
 
         if ($account) {
-            $query->whereHas('serviceTicket', function ($q) use ($account) {
+            $query->whereHas('ticket', function ($q) use ($account) {
                 $q->where('account_id', $account->id);
             });
         }

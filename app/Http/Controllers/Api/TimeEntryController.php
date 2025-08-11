@@ -478,6 +478,47 @@ class TimeEntryController extends Controller
     }
     
     /**
+     * Get recent time entry statistics for dashboard widgets
+     */
+    public function recentStats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        // Build base query with user's accessible time entries
+        $baseQuery = TimeEntry::query();
+        
+        // Apply user scope - simplified approach to avoid role template complexity
+        $baseQuery->where('user_id', $user->id);
+        
+        // Get recent stats (last 30 days)
+        $startDate = now()->subDays(30);
+        
+        $recentEntries = (clone $baseQuery)
+            ->where('created_at', '>=', $startDate)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->with(['account:id,name', 'user:id,name'])
+            ->get();
+        
+        $stats = [
+            'recent_entries' => TimeEntryResource::collection($recentEntries),
+            'total_hours_month' => (clone $baseQuery)
+                ->where('created_at', '>=', $startDate)
+                ->sum('duration') ?? 0,
+            'entries_count_month' => (clone $baseQuery)
+                ->where('created_at', '>=', $startDate)
+                ->count(),
+            'pending_approval_count' => (clone $baseQuery)
+                ->where('status', 'pending')
+                ->count(),
+        ];
+        
+        return response()->json([
+            'data' => $stats
+        ]);
+    }
+
+    /**
      * Calculate approval rate percentage
      */
     private function getApprovalRate($query, $startDate): float

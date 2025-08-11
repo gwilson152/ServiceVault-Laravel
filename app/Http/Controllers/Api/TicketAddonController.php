@@ -32,8 +32,8 @@ class TicketAddonController extends Controller
                 ->get();
         } else {
             // Get all addons user can access
-            $query = TicketAddon::with(['serviceTicket', 'addedBy:id,name', 'approvedBy:id,name'])
-                ->whereHas('serviceTicket', function ($q) use ($user) {
+            $query = TicketAddon::with(['ticket', 'addedBy:id,name', 'approvedBy:id,name'])
+                ->whereHas('ticket', function ($q) use ($user) {
                     if (!$user->hasAnyPermission(['tickets.view.all', 'admin.read'])) {
                         $q->where('assigned_to', $user->id)
                           ->orWhere('created_by', $user->id);
@@ -110,10 +110,10 @@ class TicketAddonController extends Controller
      */
     public function show(TicketAddon $ticketAddon): JsonResponse
     {
-        $this->authorize('view', $ticketAddon->serviceTicket);
+        $this->authorize('view', $ticketAddon->ticket);
         
         $ticketAddon->load([
-            'serviceTicket:id,ticket_number,title',
+            'ticket:id,ticket_number,title',
             'addedBy:id,name',
             'approvedBy:id,name',
             'template:id,name,category'
@@ -130,7 +130,7 @@ class TicketAddonController extends Controller
      */
     public function update(Request $request, TicketAddon $ticketAddon): JsonResponse
     {
-        $this->authorize('update', $ticketAddon->serviceTicket);
+        $this->authorize('update', $ticketAddon->ticket);
         
         // Can only edit pending or rejected addons
         if (!$ticketAddon->canBeEdited()) {
@@ -168,7 +168,7 @@ class TicketAddonController extends Controller
      */
     public function destroy(TicketAddon $ticketAddon): JsonResponse
     {
-        $this->authorize('update', $ticketAddon->serviceTicket);
+        $this->authorize('update', $ticketAddon->ticket);
         
         // Can only delete pending or rejected addons
         if (!$ticketAddon->canBeEdited()) {
@@ -190,7 +190,7 @@ class TicketAddonController extends Controller
     public function approve(Request $request, TicketAddon $ticketAddon): JsonResponse
     {
         $user = $request->user();
-        $this->authorize('update', $ticketAddon->serviceTicket);
+        $this->authorize('update', $ticketAddon->ticket);
         
         // Check if user has approval permissions
         if (!$user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
@@ -231,7 +231,7 @@ class TicketAddonController extends Controller
     public function reject(Request $request, TicketAddon $ticketAddon): JsonResponse
     {
         $user = $request->user();
-        $this->authorize('update', $ticketAddon->serviceTicket);
+        $this->authorize('update', $ticketAddon->ticket);
         
         // Check if user has approval permissions
         if (!$user->hasAnyPermission(['tickets.approve', 'admin.write'])) {

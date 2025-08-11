@@ -52,7 +52,7 @@ class TicketController extends Controller
             // Employees see tickets they created or are assigned to
             $query->where(function ($q) use ($user) {
                 $q->where('created_by', $user->id)
-                  ->orWhere('assigned_to', $user->id)
+                  ->orWhere('assigned_to_id', $user->id)
                   ->orWhereHas('assignedUsers', function ($assignedQuery) use ($user) {
                       $assignedQuery->where('users.id', $user->id);
                   });
@@ -72,11 +72,11 @@ class TicketController extends Controller
             $q->where('category', $category);
         })->when($request->assigned_to, function ($q, $assignedTo) {
             if ($assignedTo === 'mine') {
-                $q->where('assigned_to', $user->id);
+                $q->where('assigned_to_id', $user->id);
             } elseif ($assignedTo === 'unassigned') {
-                $q->whereNull('assigned_to');
+                $q->whereNull('assigned_to_id');
             } else {
-                $q->where('assigned_to', $assignedTo);
+                $q->where('assigned_to_id', $assignedTo);
             }
         })->when($request->account_id, function ($q, $accountId) {
             $q->where('account_id', $accountId);
@@ -180,7 +180,7 @@ class TicketController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string|max:10000',
-            'account_id' => 'required|exists:accounts,id',
+            'account_id' => 'nullable|exists:accounts,id',
             'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
             'category' => ['required', Rule::in(['support', 'maintenance', 'development', 'consulting', 'other'])],
             'assigned_to' => 'nullable|exists:users,id',
@@ -192,9 +192,25 @@ class TicketController extends Controller
             'settings' => 'nullable|array',
         ]);
         
-        // Verify user has access to the account
-        if (!$user->accounts()->where('accounts.id', $validated['account_id'])->exists()) {
-            return response()->json(['error' => 'You do not have access to this account.'], 403);
+        // Determine account_id if not provided
+        if (empty($validated['account_id'])) {
+            // If user is super admin or has system-wide permissions, use their first available account
+            if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.write', 'accounts.manage', 'tickets.view.all'])) {
+                $userAccount = $user->accounts()->first();
+                if (!$userAccount) {
+                    return response()->json(['error' => 'No account available for ticket creation.'], 422);
+                }
+                $validated['account_id'] = $userAccount->id;
+            } else {
+                return response()->json(['error' => 'Account ID is required.'], 422);
+            }
+        }
+        
+        // Verify user has access to the specified account (unless they have system-wide permissions)
+        if (!$user->isSuperAdmin() && !$user->hasAnyPermission(['admin.write', 'accounts.manage', 'tickets.view.all'])) {
+            if (!$user->accounts()->where('accounts.id', $validated['account_id'])->exists()) {
+                return response()->json(['error' => 'You do not have access to this account.'], 403);
+            }
         }
         
         // Verify assigned user has access to the account if specified
@@ -213,7 +229,7 @@ class TicketController extends Controller
             'priority' => $validated['priority'],
             'category' => $validated['category'],
             'created_by' => $user->id,
-            'assigned_to' => $validated['assigned_to'] ?? null,
+            'assigned_to_id' => $validated['assigned_to'] ?? null,
             'due_date' => $validated['due_date'] ?? null,
             'estimated_hours' => $validated['estimated_hours'] ?? null,
             'estimated_amount' => $validated['estimated_amount'] ?? null,
@@ -538,7 +554,7 @@ class TicketController extends Controller
         } else {
             $query->where(function ($q) use ($user) {
                 $q->where('created_by', $user->id)
-                  ->orWhere('assigned_to', $user->id);
+                  ->orWhere('assigned_to_id', $user->id);
             });
         }
         
@@ -552,7 +568,7 @@ class TicketController extends Controller
             'closed' => (clone $query)->where('status', Ticket::STATUS_CLOSED)->count(),
             'overdue' => (clone $query)->where('due_date', '<', now())->whereNotIn('status', ['closed', 'cancelled'])->count(),
             'high_priority' => (clone $query)->whereIn('priority', [Ticket::PRIORITY_HIGH, Ticket::PRIORITY_URGENT])->count(),
-            'assigned_to_me' => (clone $query)->where('assigned_to', $user->id)->count(),
+            'assigned_to_me' => (clone $query)->where('assigned_to_id', $user->id)->count(),
         ];
         
         return response()->json(['data' => $stats]);
@@ -566,7 +582,7 @@ class TicketController extends Controller
         $user = $request->user();
         
         $query = Ticket::with(['account:id,name', 'createdBy:id,name'])
-            ->where('assigned_to', $user->id);
+            ->where('assigned_to_id', $user->id);
         
         // Apply status filter if provided
         if ($request->has('status')) {
@@ -656,6 +672,61 @@ class TicketController extends Controller
         return response()->json([
             'data' => new TicketResource($ticket),
             'message' => "Removed {$teamMember->name} from ticket team."
+        ]);
+    }
+    
+    /**
+     * Get filter counts for tickets dashboard
+     */
+    public function filterCounts(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        // Build base query with user's accessible accounts
+        $baseQuery = Ticket::query();
+        
+        // Apply user scope - employees see assigned tickets, managers/admins see team tickets
+        if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.read', 'admin.write'])) {
+            // Admins see all tickets in their accounts
+            $accountIds = $user->accounts()->pluck('accounts.id');
+            $baseQuery->whereIn('account_id', $accountIds);
+        } elseif ($user->hasAnyPermission(['teams.manage', 'tickets.view.all'])) {
+            // Managers see tickets in accounts they manage
+            $managedAccountIds = $user->accounts()
+                ->whereHas('users', function ($userQuery) use ($user) {
+                    $userQuery->where('users.id', $user->id)
+                             ->whereHas('roleTemplates', function ($roleQuery) {
+                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
+                             });
+                })
+                ->pluck('accounts.id');
+            $baseQuery->whereIn('account_id', $managedAccountIds);
+        } else {
+            // Regular employees see only their assigned tickets
+            $baseQuery->where(function ($query) use ($user) {
+                $query->where('assigned_to_id', $user->id)
+                      ->orWhereHas('assignedUsers', function ($assignedQuery) use ($user) {
+                          $assignedQuery->where('users.id', $user->id);
+                      });
+            });
+        }
+        
+        // Apply filters if provided
+        if ($request->has('selectedAccount') && $request->input('selectedAccount.id')) {
+            $baseQuery->where('account_id', $request->input('selectedAccount.id'));
+        }
+        
+        $counts = [
+            'all' => (clone $baseQuery)->count(),
+            'open' => (clone $baseQuery)->whereNotIn('status', ['closed', 'cancelled'])->count(),
+            'closed' => (clone $baseQuery)->whereIn('status', ['closed'])->count(),
+            'assigned_to_me' => (clone $baseQuery)->where('assigned_to_id', $user->id)->count(),
+            'high_priority' => (clone $baseQuery)->where('priority', 'high')->count(),
+            'overdue' => (clone $baseQuery)->where('due_date', '<', now())->whereNotIn('status', ['closed', 'cancelled'])->count(),
+        ];
+        
+        return response()->json([
+            'data' => $counts
         ]);
     }
 }

@@ -103,7 +103,7 @@ export function useNavigation() {
         ).sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999))
     })
 
-    // Get secondary navigation items
+    // Get secondary navigation items  
     const secondaryNavigation = computed(() => {
         return navigation.value.filter(item => 
             !['dashboard', 'tickets', 'timers', 'time-entries'].includes(item.key)

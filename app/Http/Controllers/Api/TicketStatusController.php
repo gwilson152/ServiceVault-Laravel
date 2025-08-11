@@ -169,7 +169,7 @@ class TicketStatusController extends Controller
         }
 
         // Check if status is being used
-        if ($ticketStatus->serviceTickets()->exists()) {
+        if ($ticketStatus->tickets()->exists()) {
             return response()->json([
                 'message' => 'Cannot delete status that is being used by existing tickets'
             ], 422);

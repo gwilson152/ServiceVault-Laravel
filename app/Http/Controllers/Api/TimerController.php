@@ -34,7 +34,7 @@ class TimerController extends Controller
     {
         $this->authorize('viewAny', Timer::class);
         
-        $query = Timer::with(['project', 'task', 'billingRate', 'serviceTicket'])
+        $query = Timer::with(['project', 'task', 'billingRate', 'ticket'])
             ->where('user_id', $request->user()->id);
 
         // Filter by status
@@ -47,9 +47,9 @@ class TimerController extends Controller
             $query->where('project_id', $request->input('project_id'));
         }
 
-        // Filter by service ticket
-        if ($request->has('service_ticket_id')) {
-            $query->where('service_ticket_id', $request->input('service_ticket_id'));
+        // Filter by ticket
+        if ($request->has('ticket_id')) {
+            $query->where('ticket_id', $request->input('ticket_id'));
         }
 
         // Filter by date range
@@ -79,7 +79,7 @@ class TimerController extends Controller
      */
     public function active(Request $request): AnonymousResourceCollection
     {
-        $timers = Timer::with(['project', 'task', 'billingRate', 'serviceTicket'])
+        $timers = Timer::with(['project', 'task', 'billingRate', 'ticket'])
             ->where('user_id', $request->user()->id)
             ->where('status', 'running')
             ->get();
@@ -557,9 +557,9 @@ class TimerController extends Controller
             $request->input('end_date', now()->endOfMonth())
         );
 
-        // If requesting active timers with service tickets (for widget)
+        // If requesting active timers with tickets (for widget)
         if ($includeServiceTickets && $status === 'active') {
-            $activeTimers = Timer::with(['serviceTicket:id,ticket_number,title', 'billingRate'])
+            $activeTimers = Timer::with(['ticket:id,ticket_number,title', 'billingRate'])
                 ->where('user_id', $user->id)
                 ->whereIn('status', ['running', 'paused'])
                 ->get();
@@ -584,10 +584,10 @@ class TimerController extends Controller
                     'status' => $timer->status,
                     'start_time' => $timer->started_at,
                     'elapsed_seconds' => $timer->getElapsedSeconds(),
-                    'service_ticket' => $timer->serviceTicket ? [
-                        'id' => $timer->serviceTicket->id,
-                        'ticket_number' => $timer->serviceTicket->ticket_number,
-                        'title' => $timer->serviceTicket->title,
+                    'ticket' => $timer->ticket ? [
+                        'id' => $timer->ticket->id,
+                        'ticket_number' => $timer->ticket->ticket_number,
+                        'title' => $timer->ticket->title,
                     ] : null,
                 ];
             });
@@ -641,16 +641,16 @@ class TimerController extends Controller
     }
 
     /**
-     * Get all timers for a specific service ticket
+     * Get all timers for a specific ticket
      */
-    public function forServiceTicket(Request $request, int $serviceTicketId): AnonymousResourceCollection
+    public function forTicket(Request $request, int $ticketId): AnonymousResourceCollection
     {
         $request->validate([
             'include_all_statuses' => 'boolean',
         ]);
         
-        $query = Timer::with(['user', 'billingRate', 'serviceTicket'])
-            ->where('service_ticket_id', $serviceTicketId);
+        $query = Timer::with(['user', 'billingRate', 'ticket'])
+            ->where('ticket_id', $ticketId);
 
         // By default, only show active timers
         if (!$request->boolean('include_all_statuses', false)) {
@@ -668,12 +668,12 @@ class TimerController extends Controller
     }
 
     /**
-     * Get active timers for a service ticket (real-time dashboard)
+     * Get active timers for a ticket (real-time dashboard)
      */
-    public function activeForServiceTicket(Request $request, int $serviceTicketId): JsonResponse
+    public function activeForTicket(Request $request, int $ticketId): JsonResponse
     {
-        $timers = Timer::with(['user', 'billingRate', 'serviceTicket'])
-            ->where('service_ticket_id', $serviceTicketId)
+        $timers = Timer::with(['user', 'billingRate', 'ticket'])
+            ->where('ticket_id', $ticketId)
             ->where('status', 'running')
             ->get();
 
@@ -789,7 +789,7 @@ class TimerController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $timers = Timer::with(['user', 'billingRate', 'serviceTicket', 'project'])
+        $timers = Timer::with(['user', 'billingRate', 'ticket', 'project'])
             ->whereIn('status', ['running', 'paused'])
             ->orderBy('started_at', 'desc')
             ->get();

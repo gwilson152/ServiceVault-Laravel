@@ -232,11 +232,11 @@ class Timer extends Model
     }
 
     /**
-     * Scope a query to only include timers for a specific service ticket.
+     * Scope a query to only include timers for a specific ticket.
      */
-    public function scopeForServiceTicket($query, $serviceTicketId)
+    public function scopeForTicket($query, $ticketId)
     {
-        return $query->where('service_ticket_id', $serviceTicketId);
+        return $query->where('ticket_id', $ticketId);
     }
 
     /**

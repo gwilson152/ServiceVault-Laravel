@@ -36,13 +36,13 @@ class TimerResource extends JsonResource
                     'rate' => $this->billingRate->rate,
                 ];
             }),
-            'service_ticket' => $this->whenLoaded('serviceTicket', function () {
+            'ticket' => $this->whenLoaded('ticket', function () {
                 return [
-                    'id' => $this->serviceTicket->id,
-                    'ticket_number' => $this->serviceTicket->ticket_number,
-                    'title' => $this->serviceTicket->title,
-                    'status' => $this->serviceTicket->status,
-                    'priority' => $this->serviceTicket->priority,
+                    'id' => $this->ticket->id,
+                    'ticket_number' => $this->ticket->ticket_number,
+                    'title' => $this->ticket->title,
+                    'status' => $this->ticket->status,
+                    'priority' => $this->ticket->priority,
                 ];
             }),
             'time_entry' => $this->whenLoaded('timeEntry', function () {

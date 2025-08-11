@@ -72,16 +72,17 @@ class SetupController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
-        // Create the main company account
+        // Create the main company account as internal type
         $account = Account::create([
             'name' => $request->company_name,
-            'slug' => Str::slug($request->company_name),
-            'description' => 'Primary company account',
+            'company_name' => $request->company_name,
+            'account_type' => 'internal',
+            'description' => 'Primary company account (Service Provider)',
+            'email' => $request->company_email,
+            'website' => $request->company_website,
+            'address' => $request->company_address,
+            'phone' => $request->company_phone,
             'settings' => [
-                'email' => $request->company_email,
-                'website' => $request->company_website,
-                'address' => $request->company_address,
-                'phone' => $request->company_phone,
                 'timezone' => $request->timezone,
                 'currency' => $request->currency,
                 'date_format' => $request->date_format,
@@ -101,7 +102,11 @@ class SetupController extends Controller
         (new \Database\Seeders\RoleTemplateSeeder())->run();
 
         // Get the super admin role template
-        $superAdminTemplate = RoleTemplate::where('name', 'Super Administrator')->first();
+        $superAdminTemplate = RoleTemplate::where('name', 'Super Admin')->first();
+        
+        if (!$superAdminTemplate) {
+            return back()->withErrors(['general' => 'Super Admin role template not found. Please contact support.']);
+        }
 
         // Create admin user
         $adminUser = User::create([

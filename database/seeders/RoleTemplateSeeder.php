@@ -13,46 +13,109 @@ class RoleTemplateSeeder extends Seeder
      */
     public function run(): void
     {
-        // Super Administrator - Full system access
-        RoleTemplate::updateOrCreate(['name' => 'Super Administrator'], [
-            'description' => 'Full system administration with all permissions',
+        // Super Administrator - Full system access (NON-MODIFIABLE)
+        RoleTemplate::updateOrCreate(['name' => 'Super Admin'], [
+            'description' => 'Full system administration with all permissions (cannot be modified)',
             'is_system_role' => true,
             'is_default' => false,
+            'is_modifiable' => false,
+            'context' => 'service_provider',
             'permissions' => [
+                // System Administration
                 'admin.manage',
                 'system.configure',
+                'system.manage',
+                
+                // Account Management
                 'accounts.create',
                 'accounts.manage',
+                'accounts.hierarchy.access',
+                
+                // User Management
                 'users.manage',
+                'users.invite',
+                'users.assign',
+                
+                // Role Management
                 'roles.manage',
-                'teams.manage',
-                'billing.manage',
+                'role_templates.manage',
+                
+                // Service Tickets - All Permissions
                 'tickets.admin',
                 'tickets.create',
+                'tickets.create.account',
                 'tickets.view.all',
+                'tickets.view.account',
                 'tickets.edit.all',
+                'tickets.edit.account',
                 'tickets.assign',
+                'tickets.assign.account',
                 'tickets.transition',
                 'tickets.close',
                 'tickets.delete',
+                
+                // Time Tracking - All Permissions
                 'time.admin',
+                'time.track',
+                'time.manage',
                 'time.view.all',
+                'time.view.account',
                 'time.edit.all',
+                'time.edit.account',
                 'time.approve',
                 'time.reports',
+                
+                // Billing & Financial
+                'billing.manage',
+                'billing.configure',
+                'billing.rates',
+                'billing.invoices',
+                'billing.reports',
+                
+                // Settings Management
+                'settings.manage',
+            ],
+            'widget_permissions' => [
+                // All dashboard widgets
+                'widgets.dashboard.system-health',
+                'widgets.dashboard.system-stats',
+                'widgets.dashboard.user-management',
+                'widgets.dashboard.account-management',
+                'widgets.dashboard.ticket-overview',
+                'widgets.dashboard.my-tickets',
+                'widgets.dashboard.time-tracking',
+                'widgets.dashboard.all-timers',
+                'widgets.dashboard.billing-overview',
+                'widgets.dashboard.account-activity',
+                'widgets.dashboard.quick-actions',
+                'widgets.configure',
+                'dashboard.customize',
+            ],
+            'page_permissions' => [
+                // All administrative pages
+                'pages.admin.system',
+                'pages.settings.roles',
+                'pages.admin.users',
+                'pages.tickets.manage',
+                'pages.tickets.create',
+                'pages.reports.account',
+                'pages.billing.overview',
+                'pages.reports.billing',
             ]
         ]);
 
-        // System Administrator - System management without role template management
-        RoleTemplate::updateOrCreate(['name' => 'System Administrator'], [
-            'description' => 'System administration and user management',
-            'is_system_role' => true,
+        // Admin - Full service provider administration (MODIFIABLE)
+        RoleTemplate::updateOrCreate(['name' => 'Admin'], [
+            'description' => 'Full service provider administration and user management',
+            'is_system_role' => false,
             'is_default' => false,
+            'is_modifiable' => true,
+            'context' => 'service_provider',
             'permissions' => [
                 'admin.manage',
                 'accounts.manage',
                 'users.manage',
-                'teams.manage',
+                'users.invite',
                 'billing.manage',
                 'tickets.admin',
                 'tickets.create',
@@ -66,150 +129,141 @@ class RoleTemplateSeeder extends Seeder
                 'time.edit.all',
                 'time.approve',
                 'time.reports',
+            ],
+            'widget_permissions' => [
+                'widgets.dashboard.system-stats',
+                'widgets.dashboard.user-management',
+                'widgets.dashboard.account-management',
+                'widgets.dashboard.ticket-overview',
+                'widgets.dashboard.all-timers',
+                'widgets.dashboard.billing-overview',
+                'widgets.configure',
+            ],
+            'page_permissions' => [
+                'pages.admin.users',
+                'pages.tickets.manage',
+                'pages.reports.account',
+                'pages.billing.overview',
             ]
         ]);
 
-        // Account Manager - Account-specific administration
-        RoleTemplate::updateOrCreate(['name' => 'Account Manager'], [
-            'description' => 'Account setup, user assignment, and account-level management',
+        // Manager - Service oversight and ticket management (MODIFIABLE)
+        RoleTemplate::updateOrCreate(['name' => 'Manager'], [
+            'description' => 'Service oversight, ticket assignment, and approval workflows',
             'is_system_role' => false,
             'is_default' => false,
+            'is_modifiable' => true,
+            'context' => 'service_provider',
             'permissions' => [
-                'accounts.configure',
-                'users.invite',
                 'users.assign',
-                'teams.manage',
-                'billing.configure',
-                'tickets.admin',
                 'tickets.create',
-                'tickets.view.account',
-                'tickets.edit.account',
-                'tickets.assign',
-                'tickets.transition',
-                'tickets.close',
-                'time.manage',
-                'time.view.team',
-                'time.approve',
-                'time.reports.account',
-            ]
-        ]);
-
-        // Team Lead/Manager - Team oversight and project management
-        RoleTemplate::updateOrCreate(['name' => 'Team Lead'], [
-            'description' => 'Team oversight, ticket assignment, and approval workflows',
-            'is_system_role' => false,
-            'is_default' => false,
-            'permissions' => [
-                'teams.manage',
-                'tickets.create',
-                'tickets.view.team',
-                'tickets.edit.team',
+                'tickets.view.all',
+                'tickets.edit.all',
                 'tickets.assign',
                 'tickets.transition',
                 'time.manage',
-                'time.view.team',
+                'time.view.all',
                 'time.approve',
-                'time.reports.team',
+                'time.reports',
+            ],
+            'widget_permissions' => [
+                'widgets.dashboard.ticket-overview',
+                'widgets.dashboard.my-tickets',
+                'widgets.dashboard.time-tracking',
+                'widgets.dashboard.account-activity',
+            ],
+            'page_permissions' => [
+                'pages.tickets.manage',
+                'pages.tickets.create',
+                'pages.reports.account',
             ]
         ]);
 
-        // Senior Employee - Advanced employee with some team responsibilities
-        RoleTemplate::updateOrCreate(['name' => 'Senior Employee'], [
-            'description' => 'Experienced employee with mentor and ticket assignment capabilities',
-            'is_system_role' => false,
-            'is_default' => false,
-            'permissions' => [
-                'tickets.create',
-                'tickets.view.assigned',
-                'tickets.edit.own',
-                'tickets.transition',
-                'tickets.assign.basic',
-                'time.track',
-                'time.view.own',
-                'time.edit.own',
-                'time.reports.own',
-            ]
-        ]);
-
-        // Employee - Standard employee with time tracking and ticket work
+        // Employee - Service delivery and time tracking (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Employee'], [
             'description' => 'Standard employee with time tracking and assigned ticket management',
             'is_system_role' => false,
             'is_default' => true,
+            'is_modifiable' => true,
+            'context' => 'service_provider',
             'permissions' => [
-                'tickets.create.basic',
+                'tickets.create',
                 'tickets.view.assigned',
                 'tickets.edit.own',
-                'tickets.transition.basic',
+                'tickets.transition',
                 'time.track',
                 'time.view.own',
                 'time.edit.own',
                 'time.reports.own',
+            ],
+            'widget_permissions' => [
+                'widgets.dashboard.my-tickets',
+                'widgets.dashboard.time-tracking',
+                'widgets.dashboard.quick-actions',
+            ],
+            'page_permissions' => [
+                'pages.tickets.create',
+                'pages.reports.own',
             ]
         ]);
 
-        // Customer/Client - Portal access with limited ticket interaction
-        RoleTemplate::updateOrCreate(['name' => 'Customer'], [
-            'description' => 'Customer portal access with ticket viewing and creation',
+        // Account Manager - Primary account + all subsidiaries access (MODIFIABLE)
+        RoleTemplate::updateOrCreate(['name' => 'Account Manager'], [
+            'description' => 'Customer account manager with access to primary account and all subsidiaries',
             'is_system_role' => false,
             'is_default' => false,
+            'is_modifiable' => true,
+            'context' => 'account_user',
+            'permissions' => [
+                'accounts.hierarchy.access',
+                'accounts.manage.own',
+                'users.manage.account',
+                'tickets.create.account',
+                'tickets.view.account',
+                'tickets.edit.account',
+                'tickets.assign.account',
+                'time.view.account',
+                'time.edit.account',
+                'billing.view.account',
+            ],
+            'widget_permissions' => [
+                'widgets.dashboard.ticket-overview',
+                'widgets.dashboard.account-activity',
+                'widgets.dashboard.billing-overview',
+                'widgets.dashboard.my-tickets',
+            ],
+            'page_permissions' => [
+                'pages.tickets.manage',
+                'pages.reports.account',
+                'pages.billing.overview',
+                'pages.portal.dashboard',
+            ]
+        ]);
+
+        // Account User - Basic customer account access (MODIFIABLE)
+        RoleTemplate::updateOrCreate(['name' => 'Account User'], [
+            'description' => 'Basic customer account access with service request capabilities',
+            'is_system_role' => false,
+            'is_default' => false,
+            'is_modifiable' => true,
+            'context' => 'account_user',
             'permissions' => [
                 'tickets.create.request',
                 'tickets.view.own',
                 'tickets.comment',
+                'time.view.own',
                 'billing.view.own',
                 'portal.access',
-            ]
-        ]);
-
-        // Billing Administrator - Specialized billing and invoicing role
-        RoleTemplate::updateOrCreate(['name' => 'Billing Administrator'], [
-            'description' => 'Specialized role for billing, invoicing, and financial management',
-            'is_system_role' => false,
-            'is_default' => false,
-            'permissions' => [
-                'billing.manage',
-                'billing.rates',
-                'billing.invoices',
-                'billing.reports',
-                'tickets.view.billing',
-                'time.view.billable',
-                'time.reports.billing',
-            ]
-        ]);
-
-        // Support Agent - Focused on customer support tickets
-        RoleTemplate::updateOrCreate(['name' => 'Support Agent'], [
-            'description' => 'Customer support specialist with ticket management focus',
-            'is_system_role' => false,
-            'is_default' => false,
-            'permissions' => [
-                'tickets.create',
-                'tickets.view.support',
-                'tickets.edit.support',
-                'tickets.transition',
-                'tickets.comment',
-                'time.track',
-                'time.view.own',
-                'time.edit.own',
-            ]
-        ]);
-
-        // Developer - Technical role with development-specific permissions
-        RoleTemplate::updateOrCreate(['name' => 'Developer'], [
-            'description' => 'Technical development role with code and technical ticket focus',
-            'is_system_role' => false,
-            'is_default' => false,
-            'permissions' => [
-                'tickets.create',
-                'tickets.view.development',
-                'tickets.edit.development',
-                'tickets.transition',
-                'tickets.technical',
-                'time.track',
-                'time.view.own',
-                'time.edit.own',
-                'time.reports.own',
+            ],
+            'widget_permissions' => [
+                'widgets.dashboard.my-tickets',
+                'widgets.dashboard.account-activity',
+                'widgets.dashboard.quick-actions',
+            ],
+            'page_permissions' => [
+                'pages.portal.dashboard',
+                'pages.portal.tickets',
+                'pages.billing.own',
             ]
         ]);
     }

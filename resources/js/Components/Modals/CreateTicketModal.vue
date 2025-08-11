@@ -90,6 +90,11 @@
             </select>
             <p v-if="errors.account_id" class="mt-1 text-sm text-red-600">{{ errors.account_id }}</p>
           </div>
+          
+          <!-- Hidden account field for single-account users -->
+          <div v-else-if="user?.current_account_id">
+            <input type="hidden" :value="user.current_account_id" />
+          </div>
         </div>
 
         <!-- Form Row: Category & Due Date -->
@@ -132,12 +137,12 @@
 
         <!-- Assignment (if has permission) -->
         <div v-if="canAssignTickets">
-          <label for="assigned_to_id" class="block text-sm font-medium text-gray-700 mb-2">
+          <label for="assigned_to" class="block text-sm font-medium text-gray-700 mb-2">
             Assign To
           </label>
           <select
-            id="assigned_to_id"
-            v-model="form.assigned_to_id"
+            id="assigned_to"
+            v-model="form.assigned_to"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Unassigned</option>
@@ -149,7 +154,7 @@
               {{ user.name }}
             </option>
           </select>
-          <p v-if="errors.assigned_to_id" class="mt-1 text-sm text-red-600">{{ errors.assigned_to_id }}</p>
+          <p v-if="errors.assigned_to" class="mt-1 text-sm text-red-600">{{ errors.assigned_to }}</p>
         </div>
 
         <!-- Tags -->
@@ -251,7 +256,7 @@ const form = reactive({
   account_id: '',
   category: '',
   due_date: '',
-  assigned_to_id: '',
+  assigned_to: '',
   tags: '',
   start_timer: false,
   send_notifications: true
@@ -266,10 +271,10 @@ const resetForm = () => {
   form.title = ''
   form.description = ''
   form.priority = 'normal'
-  form.account_id = ''
+  form.account_id = user.value?.current_account_id || ''
   form.category = ''
   form.due_date = ''
-  form.assigned_to_id = ''
+  form.assigned_to = ''
   form.tags = ''
   form.start_timer = false
   form.send_notifications = true
@@ -319,9 +324,14 @@ const submitForm = async () => {
       payload.due_date = new Date(payload.due_date).toISOString()
     }
 
-    // If no account selected and only one available, use it
+    // If no account selected but only one available, use it
     if (!payload.account_id && props.availableAccounts.length === 1) {
       payload.account_id = props.availableAccounts[0].id
+    }
+    
+    // Remove empty account_id to let backend handle auto-assignment
+    if (!payload.account_id) {
+      delete payload.account_id
     }
 
     const response = await fetch('/api/tickets', {

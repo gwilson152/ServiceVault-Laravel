@@ -148,6 +148,22 @@ class User extends Authenticatable
     {
         return $this->hasMany(TimeEntry::class);
     }
+    
+    /**
+     * Service tickets assigned to this user.
+     */
+    public function assignedTickets()
+    {
+        return $this->hasMany(ServiceTicket::class, 'assigned_to');
+    }
+    
+    /**
+     * Service tickets created by this user.
+     */
+    public function createdTickets()
+    {
+        return $this->hasMany(ServiceTicket::class, 'created_by');
+    }
 
     /**
      * Projects the user is assigned to.

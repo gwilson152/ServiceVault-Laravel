@@ -9,13 +9,13 @@ RESTful API specifications, authentication, and integration guides.
 - **[Error Handling](error-handling.md)** - Standard error responses
 
 ## Core Resources
-- **[Accounts API](accounts.md)** - Account management endpoints
-- **[Users API](users.md)** - User management and profiles
+- **[Accounts API](accounts.md)** - Business account management endpoints ✅ UPDATED
+- **[Users API](users.md)** - User management with account/role assignment ✅ UPDATED
+- **[Roles & Permissions API](roles-permissions.md)** - Three-dimensional permission system with dashboard preview ✅ COMPLETED
 - **[Timers API](timers.md)** - Timer control and synchronization with admin oversight ✅ UPDATED
 - **[Time Entries API](time-entries.md)** - Time tracking data
 - **[Service Tickets API](service-tickets.md)** - Ticket workflow and management ✅ NEW
 - **[Widgets API](widgets.md)** - Widget registry and dashboard APIs ✅ NEW
-- **[Projects API](projects.md)** - Project and task management
 
 ## Billing & Invoicing
 - **[Billing Rates API](billing-rates.md)** - Rate management
@@ -23,10 +23,11 @@ RESTful API specifications, authentication, and integration guides.
 - **[Payments API](payments.md)** - Payment tracking
 
 ## Administration
-- **[Permissions API](permissions.md)** - Role and permission management
+- **[Dashboard Preview API](dashboard-preview.md)** - Live dashboard preview with mock data generation ✅ COMPLETED
+- **[Widget Assignment API](widget-assignment.md)** - Drag & drop widget management interface ✅ COMPLETED
+- **[Account Hierarchy API](account-hierarchy.md)** - Business account hierarchy management
 - **[Settings API](settings.md)** - System and account settings
 - **[Admin Timer Management API](admin-timers.md)** - Cross-user timer oversight ✅ NEW
-- **[Widget Management API](widget-management.md)** - Widget configuration and discovery ✅ NEW
 - **[Themes API](themes.md)** - Theme configuration
 
 ## Real-time APIs

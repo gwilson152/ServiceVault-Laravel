@@ -227,7 +227,7 @@ class WidgetRegistryService
     ];
 
     /**
-     * Get all available widgets for a user based on their permissions
+     * Get all available widgets for a user based on their permissions and role template
      */
     public function getAvailableWidgets(User $user, ?string $context = null): array
     {
@@ -241,7 +241,12 @@ class WidgetRegistryService
                     return false;
                 }
                 
-                // Filter by permissions
+                // First check widget permissions from role template (three-dimensional permission system)
+                if (!$this->userHasWidgetPermission($user, $widget['id'] ?? null)) {
+                    return false;
+                }
+                
+                // Then check traditional functional permissions
                 if (!empty($widget['permissions'])) {
                     $permissions = is_array($widget['permissions']) ? $widget['permissions'] : [$widget['permissions']];
                     return $user->hasAnyPermission($permissions);
@@ -306,27 +311,118 @@ class WidgetRegistryService
             return false;
         }
 
-        // Check permissions
+        // First check widget permissions from role template (three-dimensional permission system)
+        if (!$this->userHasWidgetPermission($user, $widgetId)) {
+            return false;
+        }
+
+        // Then check traditional functional permissions
         if (!empty($widget['permissions'])) {
             return $user->hasAnyPermission($widget['permissions']);
         }
 
         return true;
     }
+    
+    /**
+     * Check if user has widget permission from their role template
+     */
+    public function userHasWidgetPermission(User $user, ?string $widgetId): bool
+    {
+        if (!$widgetId) {
+            return false;
+        }
+        
+        // Get user's primary role template
+        $roleTemplate = $user->roles()->with('template')->first()?->template;
+        
+        if (!$roleTemplate) {
+            return false;
+        }
+        
+        // Check if role template has this widget permission
+        $widgetPermissionKey = "widgets.dashboard.{$widgetId}";
+        
+        return $roleTemplate->hasWidgetPermission($widgetPermissionKey) ||
+               $roleTemplate->hasWidgetPermission('widgets.configure') ||
+               $roleTemplate->hasWidgetPermission('dashboard.customize');
+    }
+    
+    /**
+     * Get widgets available to a specific role template
+     */
+    public function getWidgetsForRoleTemplate(\App\Models\RoleTemplate $roleTemplate): array
+    {
+        $allWidgets = $this->getAllWidgets();
+        
+        return collect($allWidgets)
+            ->filter(function ($widget, $widgetId) use ($roleTemplate) {
+                // Filter by context
+                $roleContext = $roleTemplate->context ?? 'both';
+                if ($widget['context'] !== 'both' && $widget['context'] !== $roleContext) {
+                    return false;
+                }
+                
+                // Check widget permissions
+                $widgetPermissionKey = "widgets.dashboard.{$widgetId}";
+                return $roleTemplate->hasWidgetPermission($widgetPermissionKey) ||
+                       $roleTemplate->hasWidgetPermission('widgets.configure') ||
+                       $roleTemplate->hasWidgetPermission('dashboard.customize');
+            })
+            ->map(function ($widget, $key) {
+                return array_merge($widget, ['id' => $key]);
+            })
+            ->values()
+            ->toArray();
+    }
 
     /**
-     * Get default widget layout for a user based on their role templates
+     * Get widgets available for role template preview (alias for compatibility)
      */
-    public function getDefaultLayout(User $user): array
+    public function getWidgetsForRolePreview(\App\Models\RoleTemplate $roleTemplate, ?string $context = null): array
     {
-        $widgets = $this->getAvailableWidgets($user);
+        $allWidgets = $this->getAllWidgets();
+        $effectiveContext = $context ?? $roleTemplate->context ?? 'both';
+        
+        return collect($allWidgets)
+            ->filter(function ($widget, $widgetId) use ($roleTemplate, $effectiveContext) {
+                // Filter by context
+                if ($widget['context'] !== 'both' && $widget['context'] !== $effectiveContext) {
+                    return false;
+                }
+                
+                // Check widget permissions
+                $widgetPermissionKey = "widgets.dashboard.{$widgetId}";
+                return $roleTemplate->hasWidgetPermission($widgetPermissionKey) ||
+                       $roleTemplate->hasWidgetPermission('widgets.configure') ||
+                       $roleTemplate->hasWidgetPermission('dashboard.customize');
+            })
+            ->map(function ($widget, $key) {
+                return array_merge($widget, ['id' => $key]);
+            })
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get default widget layout for a role template (for preview)
+     */
+    public function getDefaultLayoutForRole(\App\Models\RoleTemplate $roleTemplate): array
+    {
+        $widgets = $this->getWidgetsForRoleTemplate($roleTemplate);
         $layout = [];
         $currentRow = 0;
         $currentCol = 0;
         $maxCols = 12; // Grid system with 12 columns
 
         foreach ($widgets as $widget) {
+            // Check if widget is enabled by default in the widget config
             if (!$widget['enabled_by_default']) {
+                continue;
+            }
+            
+            // Additional check: if role template has specific widget configurations
+            if (!$this->isWidgetEnabledForRole($roleTemplate, $widget['id'])) {
                 continue;
             }
 
@@ -352,12 +448,165 @@ class WidgetRegistryService
                 'y' => $currentRow,
                 'w' => $widgetWidth,
                 'h' => $widgetHeight,
+                'widget_config' => $this->getWidgetConfigForRole($roleTemplate, $widget['id']),
             ];
 
             $currentCol += $widgetWidth;
         }
 
         return $layout;
+    }
+    
+    /**
+     * Get widget permissions for role template management
+     */
+    public function getAllWidgetPermissionKeys(): array
+    {
+        $allWidgets = $this->getAllWidgets();
+        $permissions = [];
+        
+        foreach ($allWidgets as $widgetId => $widget) {
+            $permissions[] = [
+                'key' => "widgets.dashboard.{$widgetId}",
+                'name' => $widget['name'],
+                'description' => "Access to {$widget['name']} widget",
+                'category' => $widget['category'] ?? 'general',
+                'context' => $widget['context'] ?? 'both',
+            ];
+        }
+        
+        // Add global widget permissions
+        $permissions[] = [
+            'key' => 'widgets.configure',
+            'name' => 'Configure Widgets',
+            'description' => 'Ability to configure and customize widgets',
+            'category' => 'administration',
+            'context' => 'both',
+        ];
+        
+        $permissions[] = [
+            'key' => 'dashboard.customize',
+            'name' => 'Customize Dashboard',
+            'description' => 'Full dashboard customization access',
+            'category' => 'administration', 
+            'context' => 'both',
+        ];
+        
+        return $permissions;
+    }
+    
+    /**
+     * Validate widget permissions for role template
+     */
+    public function validateWidgetPermissions(array $widgetPermissions, string $context = 'both'): array
+    {
+        $validPermissions = [];
+        $allWidgetPermissions = collect($this->getAllWidgetPermissionKeys());
+        
+        foreach ($widgetPermissions as $permission) {
+            $validPermission = $allWidgetPermissions->firstWhere('key', $permission);
+            
+            if ($validPermission) {
+                // Check context compatibility
+                if ($validPermission['context'] === 'both' || 
+                    $validPermission['context'] === $context || 
+                    $context === 'both') {
+                    $validPermissions[] = $permission;
+                }
+            }
+        }
+        
+        return $validPermissions;
+    }
+
+    /**
+     * Get default widget layout for a user based on their role templates
+     */
+    public function getDefaultLayout(User $user): array
+    {
+        $widgets = $this->getAvailableWidgets($user);
+        $layout = [];
+        $currentRow = 0;
+        $currentCol = 0;
+        $maxCols = 12; // Grid system with 12 columns
+
+        // Filter widgets that are enabled by default for the user's role
+        $roleTemplate = $user->roles()->with('template')->first()?->template;
+        
+        foreach ($widgets as $widget) {
+            // Check if widget is enabled by default in the widget config
+            if (!$widget['enabled_by_default']) {
+                continue;
+            }
+            
+            // Additional check: if role template has specific widget configurations
+            if ($roleTemplate && !$this->isWidgetEnabledForRole($roleTemplate, $widget['id'])) {
+                continue;
+            }
+
+            // Safely extract widget size with defaults
+            $defaultSize = $widget['default_size'] ?? ['w' => 4, 'h' => 3];
+            if (is_string($defaultSize)) {
+                // If parsing failed and it's still a string, use defaults
+                $defaultSize = ['w' => 4, 'h' => 3];
+            }
+            
+            $widgetWidth = $defaultSize['w'] ?? 4;
+            $widgetHeight = $defaultSize['h'] ?? 3;
+
+            // Check if widget fits in current row
+            if ($currentCol + $widgetWidth > $maxCols) {
+                $currentRow += 1;
+                $currentCol = 0;
+            }
+
+            $layout[] = [
+                'i' => $widget['id'],
+                'x' => $currentCol,
+                'y' => $currentRow,
+                'w' => $widgetWidth,
+                'h' => $widgetHeight,
+                'widget_config' => $this->getWidgetConfigForRole($roleTemplate, $widget['id']),
+            ];
+
+            $currentCol += $widgetWidth;
+        }
+
+        return $layout;
+    }
+    
+    /**
+     * Check if widget is enabled for a specific role template
+     */
+    protected function isWidgetEnabledForRole(?\App\Models\RoleTemplate $roleTemplate, string $widgetId): bool
+    {
+        if (!$roleTemplate) {
+            return true;
+        }
+        
+        // Check if there's a specific widget configuration
+        $widgetConfig = $roleTemplate->widgets()->where('widget_id', $widgetId)->first();
+        
+        if ($widgetConfig) {
+            return $widgetConfig->enabled;
+        }
+        
+        // Default to enabled if no specific configuration
+        return true;
+    }
+    
+    /**
+     * Get widget configuration for a specific role template
+     */
+    protected function getWidgetConfigForRole(?\App\Models\RoleTemplate $roleTemplate, string $widgetId): array
+    {
+        if (!$roleTemplate) {
+            return [];
+        }
+        
+        $widgetConfig = $roleTemplate->widgets()->where('widget_id', $widgetId)->first();
+        
+        return $widgetConfig ? ($widgetConfig->widget_config ?? []) : [];
     }
 
     /**

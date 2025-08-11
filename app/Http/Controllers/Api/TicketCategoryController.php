@@ -108,15 +108,15 @@ class TicketCategoryController extends Controller
      */
     public function show(TicketCategory $ticketCategory): JsonResponse
     {
-        $category = $ticketCategory->load('serviceTickets');
+        $category = $ticketCategory->load('tickets');
         
         // Get category statistics
-        $ticketCount = $category->serviceTickets()->count();
-        $openTicketCount = $category->serviceTickets()
+        $ticketCount = $category->tickets()->count();
+        $openTicketCount = $category->tickets()
             ->whereNotIn('status', ['closed', 'cancelled'])
             ->count();
         
-        $recentTickets = $category->serviceTickets()
+        $recentTickets = $category->tickets()
             ->with(['assignedUsers', 'account'])
             ->orderBy('created_at', 'desc')
             ->take(5)
@@ -193,7 +193,7 @@ class TicketCategoryController extends Controller
         }
 
         // Check if category is being used
-        if ($ticketCategory->serviceTickets()->exists()) {
+        if ($ticketCategory->tickets()->exists()) {
             return response()->json([
                 'message' => 'Cannot delete category that is being used by existing tickets'
             ], 422);
@@ -249,14 +249,14 @@ class TicketCategoryController extends Controller
 
         $categories = TicketCategory::active()
             ->whereNotNull('sla_hours')
-            ->with(['serviceTickets' => function ($query) {
+            ->with(['tickets' => function ($query) {
                 $query->whereNotIn('status', ['closed', 'cancelled'])
                     ->where('created_at', '>=', now()->subDays(30));
             }])
             ->get();
 
         $slaStatus = $categories->map(function ($category) {
-            $tickets = $category->serviceTickets;
+            $tickets = $category->tickets;
             $breachedTickets = $tickets->filter(function ($ticket) use ($category) {
                 return $category->isSlaBreached($ticket->created_at);
             });

@@ -40,6 +40,14 @@ class Role extends Model
     }
     
     /**
+     * Alias for roleTemplate relationship for backward compatibility
+     */
+    public function template()
+    {
+        return $this->roleTemplate();
+    }
+    
+    /**
      * Users assigned to this role.
      */
     public function users()

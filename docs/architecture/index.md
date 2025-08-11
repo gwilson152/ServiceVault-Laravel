@@ -16,10 +16,12 @@ System architecture, database design, and technical specifications for Service V
 
 ## Core Systems
 
--   **[Authentication & Authorization](auth-system.md)** - ABAC permission system
--   **[ABAC Permission System](abac-permission-system.md)** - Detailed ABAC implementation ✅ NEW
+-   **[Three-Dimensional Permissions](three-dimensional-permissions.md)** - Complete permission architecture with dashboard preview ✅ COMPLETED
+-   **[Authentication & Authorization](auth-system.md)** - Session and token-based authentication
+-   **[ABAC Permission System](abac-permission-system.md)** - Attribute-based access control foundation
+-   **[Business Account System](business-account-system.md)** - Comprehensive B2B customer relationship management ✅ UPDATED
 -   **[Timer System](timer-system.md)** - Real-time timer synchronization with admin oversight ✅ UPDATED
--   **[Widget System](widget-system.md)** - Dynamic widget architecture with auto-discovery ✅ NEW
+-   **[Widget System](widget-system.md)** - Dynamic widget architecture with permission control ✅ UPDATED
 -   **[Service Ticket System](service-ticket-system.md)** - Comprehensive ticket workflow system ✅ NEW
 -   **[Billing System](billing-system.md)** - Rate management and invoicing
 -   **[Theme System](theme-system.md)** - Multi-tenant theming architecture

@@ -84,16 +84,6 @@ class NavigationService
                 'group' => 'time_management'
             ],
             [
-                'key' => 'projects',
-                'label' => 'Projects',
-                'icon' => 'FolderIcon',
-                'route' => 'projects.index',
-                'active_patterns' => ['projects.*'],
-                'permissions' => ['projects.view', 'projects.manage', 'projects.create'],
-                'sort_order' => 5,
-                'group' => 'project_management'
-            ],
-            [
                 'key' => 'accounts',
                 'label' => 'Accounts',
                 'icon' => 'BuildingOfficeIcon',
@@ -120,7 +110,7 @@ class NavigationService
                 'route' => 'billing.index',
                 'active_patterns' => ['billing.*', 'invoices.*'],
                 'permissions' => ['billing.manage', 'billing.view', 'invoices.create'],
-                'sort_order' => 8,
+                'sort_order' => 9,
                 'group' => 'financial'
             ],
             [
@@ -130,8 +120,18 @@ class NavigationService
                 'route' => 'reports.index',
                 'active_patterns' => ['reports.*'],
                 'permissions' => ['reports.view', 'reports.create', 'admin.read'],
-                'sort_order' => 9,
+                'sort_order' => 11,
                 'group' => 'analytics'
+            ],
+            [
+                'key' => 'roles',
+                'label' => 'Roles & Permissions',
+                'icon' => 'ShieldCheckIcon',
+                'route' => 'roles.index',
+                'active_patterns' => ['roles.*'],
+                'permissions' => ['admin.manage', 'roles.manage', 'role_templates.manage'],
+                'sort_order' => 8,
+                'group' => 'administration'
             ],
             [
                 'key' => 'settings',
@@ -140,7 +140,7 @@ class NavigationService
                 'route' => 'settings.index',
                 'active_patterns' => ['settings.*'],
                 'permissions' => ['admin.manage', 'system.manage', 'settings.manage'],
-                'sort_order' => 10,
+                'sort_order' => 12,
                 'group' => 'administration'
             ]
         ];

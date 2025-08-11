@@ -105,6 +105,42 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings', function () {
         return Inertia::render('Settings/Index');
     })->name('settings.index');
+    
+    // User Management
+    Route::get('/users', function () {
+        return Inertia::render('Users/Index');
+    })->name('users.index');
+    
+    Route::get('/users/{user}', function ($user) {
+        return Inertia::render('Users/Show', ['userId' => $user]);
+    })->name('users.show');
+    
+    // Billing Management
+    Route::get('/billing', function () {
+        return Inertia::render('Billing/Index');
+    })->name('billing.index');
+    
+    // Account Management
+    Route::get('/accounts', function () {
+        return Inertia::render('Accounts/Index');
+    })->name('accounts.index');
+    
+    // Roles & Permissions Management
+    Route::get('/roles', function () {
+        return Inertia::render('Roles/Index');
+    })->name('roles.index');
+    
+    Route::get('/roles/{roleTemplate}', function ($roleTemplate) {
+        return Inertia::render('Roles/Show', ['roleTemplateId' => $roleTemplate]);
+    })->name('roles.show');
+    
+    Route::get('/roles/{roleTemplate}/edit', function ($roleTemplate) {
+        return Inertia::render('Roles/Edit', ['roleTemplateId' => $roleTemplate]);
+    })->name('roles.edit');
+    
+    Route::get('/roles/create', function () {
+        return Inertia::render('Roles/Create');
+    })->name('roles.create');
 });
 
 Route::middleware('auth')->group(function () {

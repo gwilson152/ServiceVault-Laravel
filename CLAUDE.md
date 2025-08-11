@@ -4,38 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Service Vault is a comprehensive time management and invoicing system built with Laravel 12. It features hierarchical account management, advanced timer synchronization, ABAC permission system, comprehensive billing/invoicing capabilities, and enterprise-level theming for multi-tenant usage.
+Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring hierarchical customer account management, three-dimensional permission system (functional + widget + page access), account hierarchy permissions, and enterprise-level customization for multi-tenant service delivery.
 
-### Current Status: Phase 12D Complete (98% MVP Ready)
+### Current Status: Phase 13A Complete (100% MVP Ready)
 **✅ Fully Implemented Features:**
+- **Three-Dimensional Permission System**: Complete functional + widget + page permission architecture with role template management
+- **Dashboard Preview System**: Real-time role preview with mock data generation and context switching (service provider vs account user)
+- **Widget Assignment Interface**: Drag & drop widget management with 12-column grid layout designer and permission validation
+- **Role Template Management**: Complete CRUD operations with permission inheritance, cloning, and context-aware validation
+- **Context-Aware Security**: Service Provider vs Account User contexts with automatic permission filtering and inheritance
 - **Complete Ticket Addon System**: 18 predefined templates with approval workflow and billing integration
 - **Enhanced Ticket Widget System**: TicketTimerStats, TicketFilters, and RecentTimeEntries widgets with real-time functionality
-- **Permission-Based Navigation**: Dynamic menu system adapting to user roles and permissions
-- **Configurable Ticket Status System**: 7 default statuses with workflow management and business logic
-- **Configurable Ticket Category System**: 7 default categories with SLA management, priority multipliers, and approval requirements
-- **Addon Management UI**: Template-based creation with real-time calculations and permission-based controls
+- **Permission-Based Navigation**: Dynamic menu system adapting to user roles and three-dimensional permissions
+- **Configurable Ticket Status & Category System**: Complete workflow management with business logic and SLA integration
 - **Widget-Based Dashboard System**: 14+ permission-filtered widgets with auto-discovery and responsive grid layout
 - **Comprehensive Tickets Page**: Full-featured ticket management with advanced filtering, dual view modes, and addon integration
 - **Multi-Timer System with Admin Oversight**: Cross-user timer management with permission-based visibility
 - **Service Ticket Integration**: Complete workflow system with timer integration, inline controls, and addon cost tracking
-- **Ticket Creation & Management**: Modal-based creation system with smart features and auto-timer start
 - **TimeEntry Management**: Comprehensive approval workflows with bulk operations and statistical tracking
 - **User Invitation System**: Email-based invitations with automatic account setup and role assignment
 - **Laravel Sanctum Authentication**: Hybrid session/token auth with 23 granular abilities
 - **Domain-Based User Assignment**: Automatic account assignment via email domain patterns
 - **Real-Time Broadcasting Infrastructure**: Laravel Echo + Vue composables (WebSocket ready)
-- **ABAC Permission System**: Role templates with hierarchical account inheritance
-- **Comprehensive API**: 50+ endpoints with authentication, authorization, and configurable settings management
+- **Advanced Permission Caching**: Role-based permission caching with efficient resolution algorithms
+- **Comprehensive API**: 52+ endpoints with three-dimensional authentication, authorization, and preview capabilities
 - **Cross-Device Timer Sync**: Redis-based state management with conflict resolution
-- **Enterprise Authentication**: Token scoping (employee, manager, mobile-app, admin)
+- **Enterprise Authentication**: Token scoping (employee, manager, mobile-app, admin) with widget permissions
 - **Modern Frontend Stack**: Vue.js 3.5 + Inertia.js + Tailwind CSS + Headless UI
-- **Optimized Dashboard Layout**: CSS Grid responsive design with progressive breakpoints (1200px, 1440px, 1920px)
+- **Optimized Dashboard Layout**: CSS Grid responsive design with progressive breakpoints and widget assignment controls
 
-**🎯 Next Development Cycle:** Universal Widget System Extension (Phase 12E) and Service Ticket Communication System for complete business workflow management
+**🎯 Next Development Cycle:** Service Ticket Communication System and Universal Widget Framework Extension
 
 ## Documentation
 
-All project documentation is centralized in `/docs/index.md`. Refer to the documentation index for:
+All platform documentation is centralized in `/docs/index.md`. Refer to the documentation index for:
 
 - Development standards and workflows
 - Architecture and database design
@@ -140,13 +142,14 @@ Service Vault implements a hybrid authentication system supporting both session-
 - **API Access**: Bearer token authentication for mobile and external clients
 - **Token Abilities**: Granular permissions system with scoped abilities:
   - `timers:read`, `timers:write`, `timers:delete`, `timers:sync`
-  - `projects:read`, `projects:write`, `accounts:read`, `billing:read`
+  - `tickets:read`, `tickets:write`, `accounts:read`, `billing:read`
+  - `widgets:dashboard`, `pages:access` (for UI control)
   - `admin:read`, `admin:write` (for administrative access)
 - **Predefined Scopes**: Ready-to-use token scopes for common use cases:
-  - `employee`: Basic timer and project access
-  - `manager`: Team oversight and approval capabilities
-  - `mobile-app`: Full mobile application functionality
-  - `admin`: Complete administrative access
+  - `employee`: Basic timer and ticket access with essential widgets
+  - `manager`: Service oversight and approval capabilities with management widgets
+  - `mobile-app`: Full mobile application functionality with optimized widget set
+  - `admin`: Complete administrative access with all widgets and pages
 
 ### API Token Management
 - **Token CRUD**: Full REST API for creating, viewing, updating, and deleting tokens
@@ -230,9 +233,15 @@ class TokenAbilityService {
         'timers:write' => 'Create and update timers',
         'timers:sync' => 'Cross-device synchronization',
         
-        // Project Management
-        'projects:read' => 'View project information',
-        'projects:write' => 'Create and modify projects',
+        // Service Tickets
+        'tickets:read' => 'View ticket information',
+        'tickets:write' => 'Create and modify tickets',
+        'tickets:account' => 'Access account hierarchy tickets',
+        
+        // Widget & UI Control
+        'widgets:dashboard' => 'Access dashboard widgets',
+        'widgets:configure' => 'Configure widget settings',
+        'pages:access' => 'Access specific pages',
         
         // Account Management
         'accounts:read' => 'View account data',
@@ -248,10 +257,10 @@ class TokenAbilityService {
 ```php
 // Ready-to-use scopes for common scenarios
 public const SCOPES = [
-    'employee' => ['timers:read', 'timers:write', 'projects:read'],
-    'manager' => ['timers:read', 'timers:write', 'projects:write', 'reports:read'],
-    'mobile-app' => ['timers:read', 'timers:write', 'timers:sync', 'projects:read'],
-    'admin' => ['*']  // All abilities
+    'employee' => ['timers:read', 'timers:write', 'tickets:read', 'widgets:dashboard'],
+    'manager' => ['timers:read', 'timers:write', 'tickets:write', 'tickets:account', 'widgets:configure'],
+    'mobile-app' => ['timers:read', 'timers:write', 'timers:sync', 'tickets:read', 'widgets:dashboard'],
+    'admin' => ['*']  // All abilities including widgets and pages
 ];
 ```
 
@@ -298,9 +307,104 @@ php artisan make:resource AccountResource             # API responses
 ### Architecture Principles
 - **Hybrid Authentication**: Laravel Sanctum (session + token) with granular abilities
 - **Multi-Timer Architecture**: Concurrent timer support with Redis state management
-- **Domain-Based Assignment**: Automatic user-account mapping via email patterns
-- **ABAC Permission System**: Role templates with hierarchical inheritance
+- **Account Hierarchy System**: Customer account trees with subsidiary access permissions
+- **Three-Dimensional Permission System**: Functional + Widget + Page access control
+- **ABAC Permission System**: Role templates with hierarchical inheritance and UI control
+- **Widget-Based Dashboard**: Permission-driven widget system with auto-discovery
 - **Real-Time Infrastructure**: Laravel Echo + Vue composables (WebSocket ready)
 - **API-First Backend**: RESTful endpoints with consistent JSON responses
 - **Component-Based Frontend**: Vue.js 3.5 + Inertia.js + Headless UI + Tailwind CSS
 - **Enterprise Theming**: CSS custom properties for multi-tenant branding
+
+## Three-Dimensional Permission System
+
+Service Vault implements a sophisticated permission system with three complementary dimensions:
+
+### 1. Functional Permissions (What users can DO)
+```php
+// Account Hierarchy Permissions
+'accounts.hierarchy.access'  // Access subsidiary accounts under same root
+'accounts.manage'           // Manage account settings
+'users.manage.account'      // Manage users within account hierarchy
+
+// Service Ticket Permissions  
+'tickets.view.account'      // View tickets for accounts user belongs to
+'tickets.edit.account'      // Edit tickets for user's accounts
+'tickets.create.account'    // Create tickets for user's accounts
+'tickets.assign.account'    // Assign tickets within user's accounts
+
+// Time Tracking Permissions
+'time.view.account'         // View time entries for account tickets
+'time.edit.account'         // Edit time entries for account tickets
+'time.admin'               // Administrative time tracking control
+
+// System Administration
+'admin.manage'             // System administration
+'system.configure'         // System configuration
+'billing.manage'           // Billing and financial management
+```
+
+### 2. Widget Permissions (What users can SEE on dashboard)
+```php
+// Dashboard Widget Categories
+'widgets.dashboard.system-health'      // System Health widget
+'widgets.dashboard.ticket-overview'    // Service Tickets Overview widget
+'widgets.dashboard.my-tickets'         // My Tickets widget
+'widgets.dashboard.time-tracking'      // Active Timers widget
+'widgets.dashboard.all-timers'         // All Active Timers (Admin only)
+'widgets.dashboard.billing-overview'   // Billing Overview widget
+'widgets.dashboard.account-activity'   // Account Activity widget
+'widgets.dashboard.quick-actions'      // Quick Actions widget
+
+// Widget Configuration
+'widgets.configure'                    // Configure widget settings
+'dashboard.customize'                  // Customize dashboard layout
+```
+
+### 3. Page Access Permissions (What pages users can ACCESS)
+```php
+// Administrative Pages
+'pages.admin.system'                   // System Administration page
+'pages.settings.roles'                 // Roles & Permissions page
+'pages.admin.users'                    // User Management page
+
+// Service Management Pages  
+'pages.tickets.manage'                 // Tickets Management page
+'pages.tickets.create'                 // Ticket Creation page
+'pages.reports.account'                // Account Reports page
+
+// Financial Pages
+'pages.billing.overview'               // Billing Overview page
+'pages.reports.billing'                // Billing Reports page
+
+// Customer Portal Pages
+'pages.portal.dashboard'               // Customer Portal Dashboard
+'pages.portal.tickets'                 // Customer Ticket Portal
+```
+
+### Permission Model Example: Account Manager Role
+```php
+// Account Manager gets ALL THREE permission types:
+$accountManagerPermissions = [
+    // Functional Permissions - WHAT they can do
+    'accounts.hierarchy.access',
+    'tickets.view.account',
+    'tickets.edit.account', 
+    'tickets.create.account',
+    'users.manage.account',
+    'time.view.account',
+    
+    // Widget Permissions - WHAT they can see on dashboard
+    'widgets.dashboard.ticket-overview',
+    'widgets.dashboard.account-activity',
+    'widgets.dashboard.billing-overview',
+    'widgets.dashboard.my-tickets',
+    'widgets.configure',
+    
+    // Page Permissions - WHAT pages they can access
+    'pages.tickets.manage',
+    'pages.reports.account', 
+    'pages.billing.overview',
+    'pages.portal.dashboard'
+];
+```

@@ -15,26 +15,34 @@
           
           <!-- Navigation -->
           <nav class="flex-1 px-2 mt-5 space-y-1">
-            <Link
-              v-for="item in navigation"
-              :key="item.name"
-              :href="item.href"
-              :class="[
-                item.current
-                  ? 'bg-indigo-50 border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                'group flex items-center px-3 py-2 text-sm font-medium border-l-4'
-              ]"
-            >
-              <component
-                :is="item.icon"
+            <template v-if="!navigationLoading">
+              <Link
+                v-for="item in navigation"
+                :key="item.key"
+                :href="route(item.route)"
                 :class="[
-                  item.current ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500',
-                  'mr-3 h-5 w-5'
+                  isActive(item)
+                    ? 'bg-indigo-50 border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                  'group flex items-center px-3 py-2 text-sm font-medium border-l-4'
                 ]"
-              />
-              {{ item.name }}
-            </Link>
+              >
+                <component
+                  v-if="getIconComponent(item.icon)"
+                  :is="getIconComponent(item.icon)"
+                  :class="[
+                    isActive(item) ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500',
+                    'mr-3 h-5 w-5'
+                  ]"
+                />
+                {{ item.label }}
+              </Link>
+            </template>
+            
+            <!-- Loading state -->
+            <div v-else class="space-y-2">
+              <div v-for="n in 5" :key="n" class="h-10 bg-gray-200 animate-pulse rounded"></div>
+            </div>
           </nav>
         </div>
       </div>
@@ -202,26 +210,35 @@
                   <h1 class="text-xl font-semibold text-gray-900">Service Vault</h1>
                 </div>
                 <nav class="mt-5 px-2 space-y-1">
-                  <Link
-                    v-for="item in navigation"
-                    :key="item.name"
-                    :href="item.href"
-                    :class="[
-                      item.current
-                        ? 'bg-indigo-50 border-indigo-600 text-indigo-600'
-                        : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                      'group flex items-center px-3 py-2 text-sm font-medium border-l-4'
-                    ]"
-                  >
-                    <component
-                      :is="item.icon"
+                  <template v-if="!navigationLoading">
+                    <Link
+                      v-for="item in navigation"
+                      :key="item.key"
+                      :href="route(item.route)"
                       :class="[
-                        item.current ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500',
-                        'mr-3 h-5 w-5'
+                        isActive(item)
+                          ? 'bg-indigo-50 border-indigo-600 text-indigo-600'
+                          : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                        'group flex items-center px-3 py-2 text-sm font-medium border-l-4'
                       ]"
-                    />
-                    {{ item.name }}
-                  </Link>
+                      @click="sidebarOpen = false"
+                    >
+                      <component
+                        v-if="getIconComponent(item.icon)"
+                        :is="getIconComponent(item.icon)"
+                        :class="[
+                          isActive(item) ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500',
+                          'mr-3 h-5 w-5'
+                        ]"
+                      />
+                      {{ item.label }}
+                    </Link>
+                  </template>
+                  
+                  <!-- Loading state -->
+                  <div v-else class="space-y-2">
+                    <div v-for="n in 5" :key="n" class="h-10 bg-gray-200 animate-pulse rounded"></div>
+                  </div>
                 </nav>
               </div>
             </DialogPanel>
@@ -256,21 +273,46 @@ import {
   CogIcon,
   ChartBarIcon,
   TicketIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
 } from '@heroicons/vue/24/outline'
 
 // Components
 import TimerBroadcastOverlay from '@/Components/Timer/TimerBroadcastOverlay.vue'
 import TimerStatus from '@/Components/Timer/TimerStatus.vue'
 
+// Composables
+import { useNavigation } from '@/Composables/useNavigation.js'
+
 const sidebarOpen = ref(false)
 const page = usePage()
 
-const navigation = computed(() => [
-  { name: 'Dashboard', href: route('dashboard'), icon: HomeIcon, current: route().current('dashboard') },
-  { name: 'Tickets', href: route('tickets.index'), icon: TicketIcon, current: route().current('tickets.*') },
-  { name: 'Timer', href: route('timers.web.index'), icon: ClockIcon, current: route().current('timers.*') },
-  { name: 'Time Entries', href: route('time-entries.index'), icon: DocumentTextIcon, current: route().current('time-entries.*') },
-  { name: 'Reports', href: route('reports.index'), icon: ChartBarIcon, current: route().current('reports.*') },
-  { name: 'Settings', href: route('settings.index'), icon: CogIcon, current: route().current('settings.*') },
-])
+// Use navigation composable for dynamic permission-based navigation
+const { navigation, loading: navigationLoading, isActive } = useNavigation()
+
+// Icon mapping for dynamic navigation items
+const iconMap = {
+  'home': HomeIcon,
+  'dashboard': HomeIcon,
+  'ticket': TicketIcon,
+  'tickets': TicketIcon,
+  'clock': ClockIcon,
+  'timer': ClockIcon,
+  'timers': ClockIcon,
+  'document-text': DocumentTextIcon,
+  'time-entries': DocumentTextIcon,
+  'chart-bar': ChartBarIcon,
+  'reports': ChartBarIcon,
+  'cog': CogIcon,
+  'settings': CogIcon,
+  'user-group': UserGroupIcon,
+  'users': UserGroupIcon,
+  'shield-check': ShieldCheckIcon,
+  'roles': ShieldCheckIcon,
+}
+
+// Get icon component based on icon string
+const getIconComponent = (iconName) => {
+  return iconMap[iconName] || HomeIcon
+}
 </script>
