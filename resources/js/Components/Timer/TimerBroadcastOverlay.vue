@@ -3,8 +3,9 @@
     v-if="timers.length > 0" 
     class="fixed bottom-4 right-4 z-50"
   >
-    <!-- Connection Status Indicator -->
-    <div class="flex items-center justify-end mb-2">
+    <!-- Connection Status and Controls -->
+    <div class="flex items-center justify-end mb-2 space-x-2">
+      <!-- Connection Status Indicator -->
       <div 
         :class="connectionStatusClasses"
         class="px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1"
@@ -14,6 +15,66 @@
           class="w-2 h-2 rounded-full"
         ></div>
         <span>{{ connectionStatusText }}</span>
+      </div>
+
+      <!-- Expand/Collapse All -->
+      <button
+        v-if="timers.length > 1"
+        @click="toggleAllTimers"
+        class="p-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
+        :title="allExpanded ? 'Minimize All' : 'Expand All'"
+      >
+        <svg v-if="allExpanded" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+        </svg>
+        <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+      </button>
+      
+      <!-- New Timer Button -->
+      <button
+        @click="showQuickStart = !showQuickStart"
+        class="p-1 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
+        title="New Timer"
+      >
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Quick Start Form -->
+    <div 
+      v-if="showQuickStart"
+      class="mb-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3"
+    >
+      <input
+        v-model="quickStartDescription"
+        type="text"
+        placeholder="Timer description..."
+        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+        @keyup.enter="startQuickTimer"
+      />
+      <div class="flex space-x-2 mt-2">
+        <button
+          @click="startQuickTimer"
+          class="flex-1 p-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
+          title="Start Timer"
+        >
+          <svg class="w-4 h-4 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </button>
+        <button
+          @click="showQuickStart = false"
+          class="p-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
+          title="Cancel"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -29,41 +90,27 @@
         <div 
           v-if="!expandedTimers[timer.id]"
           @click="toggleTimerExpansion(timer.id)"
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3 cursor-pointer hover:shadow-xl transition-all min-w-32"
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 cursor-pointer hover:shadow-xl transition-all min-w-24"
         >
           <!-- Status Indicator -->
-          <div class="flex items-center justify-between mb-1">
+          <div class="flex items-center justify-center mb-1">
             <div 
               :class="timerStatusClasses(timer.status)"
               class="w-2 h-2 rounded-full"
             ></div>
-            <button
-              @click.stop="deleteTimer(timer.id)"
-              class="text-gray-400 hover:text-red-500 transition-colors"
-              title="Delete Timer"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
           </div>
           
           <!-- Duration Display -->
-          <div class="text-lg font-mono font-bold text-gray-900 dark:text-gray-100 text-center">
+          <div class="text-sm font-mono font-bold text-gray-900 dark:text-gray-100 text-center">
             {{ formatDuration(timer.duration || calculateDuration(timer), true) }}
           </div>
           
           <!-- Price Display -->
           <div 
             v-if="timer.billing_rate"
-            class="text-xs text-green-600 dark:text-green-400 text-center font-medium"
+            class="text-xs text-green-600 dark:text-green-400 text-center font-medium mt-1"
           >
             ${{ (calculateAmount(timer) || 0).toFixed(2) }}
-          </div>
-          
-          <!-- Click indicator -->
-          <div class="text-xs text-gray-400 text-center mt-1">
-            ⊙
           </div>
         </div>
 
@@ -83,26 +130,15 @@
                 {{ timer.description || 'Timer' }}
               </span>
             </div>
-            <div class="flex items-center space-x-1">
-              <button
-                @click="toggleTimerExpansion(timer.id)"
-                class="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Minimize"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                </svg>
-              </button>
-              <button
-                @click="deleteTimer(timer.id)"
-                class="text-gray-400 hover:text-red-500 transition-colors"
-                title="Delete Timer"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            </div>
+            <button
+              @click="toggleTimerExpansion(timer.id)"
+              class="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Minimize"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+              </svg>
+            </button>
           </div>
 
           <!-- Timer Display -->
@@ -162,68 +198,6 @@
       </div>
     </div>
 
-    <!-- Global Controls -->
-    <div class="mt-2 flex justify-end space-x-2">
-      <!-- Expand/Collapse All -->
-      <button
-        v-if="timers.length > 1"
-        @click="toggleAllTimers"
-        class="p-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
-        :title="allExpanded ? 'Minimize All' : 'Expand All'"
-      >
-        <svg v-if="allExpanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
-        </svg>
-        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-      </button>
-      
-      <!-- Quick Start Timer Button -->
-      <button
-        @click="showQuickStart = !showQuickStart"
-        class="p-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
-        title="New Timer"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Quick Start Form -->
-    <div 
-      v-if="showQuickStart"
-      class="mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3"
-    >
-      <input
-        v-model="quickStartDescription"
-        type="text"
-        placeholder="Timer description..."
-        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-        @keyup.enter="startQuickTimer"
-      />
-      <div class="flex space-x-2 mt-2">
-        <button
-          @click="startQuickTimer"
-          class="flex-1 p-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
-          title="Start Timer"
-        >
-          <svg class="w-4 h-4 mx-auto" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
-        </button>
-        <button
-          @click="showQuickStart = false"
-          class="p-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
-          title="Cancel"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
 
     <!-- Totals (if multiple timers) -->
     <div 
