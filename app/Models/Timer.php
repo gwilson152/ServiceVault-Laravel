@@ -127,7 +127,8 @@ class Timer extends Model
             $pausedDuration += now()->diffInSeconds($this->paused_at);
         }
         
-        return max(0, $totalDuration - $pausedDuration);
+        // Ensure we return a positive integer
+        return (int) max(0, $totalDuration - $pausedDuration);
     }
 
     /**
@@ -278,7 +279,9 @@ class Timer extends Model
     public function stop(): void
     {
         if ($this->status === 'paused' && $this->paused_at) {
-            $this->total_paused_duration += now()->diffInSeconds($this->paused_at);
+            // Calculate paused duration safely and ensure it's a positive integer
+            $additionalPaused = max(0, now()->diffInSeconds($this->paused_at));
+            $this->total_paused_duration = max(0, ($this->total_paused_duration ?? 0) + $additionalPaused);
             $this->paused_at = null;
         }
 
@@ -334,14 +337,13 @@ class Timer extends Model
 
         $timeEntry = TimeEntry::create(array_merge([
             'user_id' => $this->user_id,
-            'task_id' => $this->task_id,
+            'account_id' => $this->account_id,
             'billing_rate_id' => $this->billing_rate_id,
             'ticket_id' => $this->ticket_id,
-            'service_ticket_id' => $this->service_ticket_id,
             'description' => $this->description,
             'started_at' => $this->started_at,
             'ended_at' => $this->stopped_at,
-            'duration' => $this->duration,
+            'duration' => $additionalData['duration'] ?? $this->duration,
             'billable' => true,
             'status' => 'pending',
         ], $additionalData));

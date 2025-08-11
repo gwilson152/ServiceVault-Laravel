@@ -23,8 +23,7 @@ class UpdateTimerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Note: project_id validation removed - projects no longer used
-            'task_id' => 'nullable|exists:tasks,id',
+            // Note: task_id and project_id validation removed - no longer used in this system
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
             'description' => 'nullable|string|max:1000',
             'status' => ['nullable', Rule::in(['running', 'paused', 'stopped'])],
@@ -39,8 +38,7 @@ class UpdateTimerRequest extends FormRequest
     public function messages(): array
     {
         return [
-            // Note: project validation messages removed
-            'task_id.exists' => 'The selected task does not exist.',
+            // Note: project and task validation messages removed - no longer used
             'billing_rate_id.exists' => 'The selected billing rate does not exist.',
             'description.max' => 'The description must not exceed 1000 characters.',
             'status.in' => 'The timer status must be running, paused, or stopped.',
