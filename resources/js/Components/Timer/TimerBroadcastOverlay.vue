@@ -4,44 +4,65 @@
     class="fixed bottom-4 right-4 z-50"
   >
     <!-- Connection Status and Controls -->
-    <div class="flex items-center justify-end mb-2 space-x-2">
-      <!-- Connection Status Indicator -->
+    <div class="flex items-center justify-between mb-2">
+      <!-- Totals (if multiple timers) -->
       <div 
-        :class="connectionStatusClasses"
-        class="px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1"
+        v-if="timers.length > 1"
+        class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-xs border border-blue-200 dark:border-blue-800"
       >
-        <div 
-          :class="connectionDotClasses"
-          class="w-2 h-2 rounded-full"
-        ></div>
-        <span>{{ connectionStatusText }}</span>
+        <div class="flex items-center space-x-2">
+          <span class="font-medium text-blue-900 dark:text-blue-100">
+            Total ({{ timers.length }}):
+          </span>
+          <div class="font-mono font-bold text-blue-900 dark:text-blue-100">
+            {{ formatDuration(totalDuration) }}
+          </div>
+          <div class="text-blue-700 dark:text-blue-300">
+            ${{ totalAmount.toFixed(2) }}
+          </div>
+        </div>
       </div>
 
-      <!-- Expand/Collapse All -->
-      <button
-        v-if="timers.length > 1"
-        @click="toggleAllTimers"
-        class="p-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
-        :title="allExpanded ? 'Minimize All' : 'Expand All'"
-      >
-        <svg v-if="allExpanded" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
-        </svg>
-        <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-      </button>
-      
-      <!-- New Timer Button -->
-      <button
-        @click="showQuickStart = !showQuickStart"
-        class="p-1 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
-        title="New Timer"
-      >
-        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-        </svg>
-      </button>
+      <!-- Right side controls -->
+      <div class="flex items-center space-x-2">
+        <!-- Connection Status Indicator -->
+        <div 
+          :class="connectionStatusClasses"
+          class="px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1"
+        >
+          <div 
+            :class="connectionDotClasses"
+            class="w-2 h-2 rounded-full"
+          ></div>
+          <span>{{ connectionStatusText }}</span>
+        </div>
+
+        <!-- Expand/Collapse All -->
+        <button
+          v-if="timers.length > 1"
+          @click="toggleAllTimers"
+          class="p-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
+          :title="allExpanded ? 'Minimize All' : 'Expand All'"
+        >
+          <svg v-if="allExpanded" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+          </svg>
+          <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+        </button>
+        
+        <!-- New Timer Button -->
+        <button
+          @click="showQuickStart = !showQuickStart"
+          class="p-1 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
+          title="New Timer"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Quick Start Form -->
@@ -304,25 +325,6 @@
     </div>
 
 
-    <!-- Totals (if multiple timers) -->
-    <div 
-      v-if="timers.length > 1"
-      class="mt-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs border border-blue-200 dark:border-blue-800"
-    >
-      <div class="flex justify-between items-center">
-        <span class="font-medium text-blue-900 dark:text-blue-100">
-          Total ({{ timers.length }}):
-        </span>
-        <div class="text-right">
-          <div class="font-mono font-bold text-blue-900 dark:text-blue-100">
-            {{ formatDuration(totalDuration) }}
-          </div>
-          <div class="text-blue-700 dark:text-blue-300">
-            ${{ totalAmount.toFixed(2) }}
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Commit Time Entry Dialog -->
     <div 
