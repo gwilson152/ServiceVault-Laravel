@@ -349,7 +349,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::apiResource('payments', App\Http\Controllers\Api\PaymentController::class);
         
         // Billing Settings
-        Route::apiResource('settings', App\Http\Controllers\Api\BillingSettingController::class);
+        Route::apiResource('billing-settings', App\Http\Controllers\Api\BillingSettingController::class)
+            ->names([
+                'index' => 'billing.settings.index',
+                'store' => 'billing.settings.store',
+                'show' => 'billing.settings.show',
+                'update' => 'billing.settings.update',
+                'destroy' => 'billing.settings.destroy'
+            ]);
         
         // Billing Reports
         Route::get('reports/dashboard', [App\Http\Controllers\Api\BillingReportController::class, 'dashboard'])

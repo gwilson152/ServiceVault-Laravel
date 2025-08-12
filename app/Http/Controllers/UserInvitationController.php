@@ -24,21 +24,17 @@ class UserInvitationController extends Controller
         $user = $request->user();
         
         // Check permissions
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists()) {
+        if (!$user->hasAnyPermission(['admin.manage', 'teams.manage'])) {
             return response()->json(['error' => 'Insufficient permissions to view invitations.'], 403);
         }
         
         $query = UserInvitation::with(['invitedBy:id,name,email', 'account:id,name', 'roleTemplate:id,name', 'acceptedBy:id,name']);
         
         // Managers can only see invitations for accounts they manage
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasPermission('admin.manage')) {
             $managedAccountIds = $user->accounts()
                 ->whereHas('users', function ($userQuery) use ($user) {
-                    $userQuery->where('users.id', $user->id)
-                             ->whereHas('roleTemplates', function ($roleQuery) {
-                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
-                             });
+                    $userQuery->where('users.id', $user->id);
                 })
                 ->pluck('accounts.id');
             $query->whereIn('account_id', $managedAccountIds);
@@ -73,8 +69,7 @@ class UserInvitationController extends Controller
         $user = $request->user();
         
         // Check permissions
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists()) {
+        if (!$user->hasAnyPermission(['admin.manage', 'teams.manage'])) {
             return response()->json(['error' => 'Insufficient permissions to send invitations.'], 403);
         }
         
@@ -103,7 +98,7 @@ class UserInvitationController extends Controller
         }
         
         // Verify manager has access to this account (if not admin)
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasPermission('admin.manage')) {
             if (!$user->accounts()->where('accounts.id', $validated['account_id'])->exists()) {
                 return response()->json(['error' => 'You do not have access to invite users to this account.'], 403);
             }
@@ -150,8 +145,7 @@ class UserInvitationController extends Controller
         $user = $request->user();
         
         // Check permissions - admin/manager access or if it's their own invitation
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
+        if (!$user->hasAnyPermission(['admin.manage', 'teams.manage']) &&
             $invitation->invited_by_user_id !== $user->id) {
             return response()->json(['error' => 'Unauthorized access.'], 403);
         }
@@ -171,8 +165,7 @@ class UserInvitationController extends Controller
         $user = $request->user();
         
         // Check permissions
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
+        if (!$user->hasAnyPermission(['admin.manage', 'teams.manage']) &&
             $invitation->invited_by_user_id !== $user->id) {
             return response()->json(['error' => 'Unauthorized access.'], 403);
         }
@@ -235,7 +228,7 @@ class UserInvitationController extends Controller
         $user = $request->user();
         
         // Check permissions - only admins can delete invitations
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasPermission('admin.manage')) {
             return response()->json(['error' => 'Only administrators can delete invitations.'], 403);
         }
         
@@ -291,8 +284,8 @@ class UserInvitationController extends Controller
             $user->accounts()->attach($invitation->account_id);
             
             // Assign the role template
-            $user->roleTemplates()->attach($invitation->role_template_id, [
-                'account_id' => $invitation->account_id
+            $user->update([
+                'role_template_id' => $invitation->role_template_id
             ]);
             
             // Mark invitation as accepted

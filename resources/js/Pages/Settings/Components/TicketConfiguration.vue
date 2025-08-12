@@ -458,8 +458,11 @@ const handleStatusReorder = async (event) => {
       sort_order: index
     }))
     
+    // Store original order for rollback
+    const originalOrder = [...statuses.value]
+    
     try {
-      await fetch('/api/ticket-statuses/reorder', {
+      const response = await fetch('/api/ticket-statuses/reorder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -468,11 +471,16 @@ const handleStatusReorder = async (event) => {
         body: JSON.stringify({ statuses: reorderedItems })
       })
       
-      emit('refresh')
+      if (!response.ok) {
+        throw new Error('Server returned error')
+      }
+      
+      // Update succeeded - no need for full page refresh
+      // The optimistic update is already applied via draggable
     } catch (error) {
       console.error('Failed to reorder statuses:', error)
-      // Revert on error
-      statusList.value = [...statuses.value]
+      // Revert on error by restoring original order
+      statusList.value = [...originalOrder]
     }
   }
 }
@@ -484,8 +492,11 @@ const handleCategoryReorder = async (event) => {
       sort_order: index
     }))
     
+    // Store original order for rollback
+    const originalOrder = [...categories.value]
+    
     try {
-      await fetch('/api/ticket-categories/reorder', {
+      const response = await fetch('/api/ticket-categories/reorder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -494,11 +505,16 @@ const handleCategoryReorder = async (event) => {
         body: JSON.stringify({ categories: reorderedItems })
       })
       
-      emit('refresh')
+      if (!response.ok) {
+        throw new Error('Server returned error')
+      }
+      
+      // Update succeeded - no need for full page refresh
+      // The optimistic update is already applied via draggable
     } catch (error) {
       console.error('Failed to reorder categories:', error)
-      // Revert on error
-      categoryList.value = [...categories.value]
+      // Revert on error by restoring original order
+      categoryList.value = [...originalOrder]
     }
   }
 }
@@ -510,8 +526,11 @@ const handlePriorityReorder = async (event) => {
       sort_order: index
     }))
     
+    // Store original order for rollback
+    const originalOrder = [...priorities.value]
+    
     try {
-      await fetch('/api/ticket-priorities/reorder', {
+      const response = await fetch('/api/ticket-priorities/reorder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -520,11 +539,16 @@ const handlePriorityReorder = async (event) => {
         body: JSON.stringify({ priorities: reorderedItems })
       })
       
-      emit('refresh')
+      if (!response.ok) {
+        throw new Error('Server returned error')
+      }
+      
+      // Update succeeded - no need for full page refresh
+      // The optimistic update is already applied via draggable
     } catch (error) {
       console.error('Failed to reorder priorities:', error)
-      // Revert on error
-      priorityList.value = [...priorities.value]
+      // Revert on error by restoring original order
+      priorityList.value = [...originalOrder]
     }
   }
 }

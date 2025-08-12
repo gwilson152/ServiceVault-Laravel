@@ -21,8 +21,7 @@ class CustomerPortalController extends Controller
         $user = $request->user();
         
         // Verify portal access
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'portal.access')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'accounts.view')->exists()) {
+        if (!$user->hasAnyPermission(['portal.access', 'accounts.view'])) {
             abort(403, 'Access denied. Portal access required.');
         }
 
@@ -117,7 +116,7 @@ class CustomerPortalController extends Controller
         }
         
         // Check if customer can view time tracking
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'time.view')->exists()) {
+        if (!$user->hasPermission('time.view')) {
             return Inertia::render('Portal/Restricted', [
                 'title' => 'Time Tracking - Access Restricted',
                 'message' => 'Time tracking visibility is restricted for your account level.'
@@ -179,7 +178,7 @@ class CustomerPortalController extends Controller
         }
         
         // Check if customer can view billing
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'billing.view')->exists()) {
+        if (!$user->hasPermission('billing.view')) {
             return Inertia::render('Portal/Restricted', [
                 'title' => 'Billing - Access Restricted',
                 'message' => 'Billing information is restricted for your account level.'
@@ -308,7 +307,7 @@ class CustomerPortalController extends Controller
      */
     private function getBillingInformation($user, $account): ?array
     {
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'billing.view')->exists()) {
+        if (!$user->hasPermission('billing.view')) {
             return null;
         }
         

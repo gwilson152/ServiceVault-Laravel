@@ -8,6 +8,7 @@ Functional specifications and user guides for Service Vault features.
 - **[Roles & Permissions](roles-permissions.md)** - Three-dimensional permission system with dashboard preview ✅ COMPLETED
 - **[Time Tracking](time-tracking.md)** - Timer and time entry system with admin oversight ✅ UPDATED
 - **[Service Tickets](service-tickets.md)** - Comprehensive ticket workflow system ✅ NEW
+- **[Ticket Configuration](ticket-configuration.md)** - Drag-drop workflow management with optimistic UI updates ✅ NEW
 - **[Widget-Based Dashboard](widget-dashboard.md)** - Dynamic dashboard with auto-discovery ✅ NEW
 
 ## Advanced Features

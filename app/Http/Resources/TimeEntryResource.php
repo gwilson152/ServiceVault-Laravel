@@ -34,7 +34,7 @@ class TimeEntryResource extends JsonResource
                     'name' => $this->user->name,
                     'email' => $this->when(
                         $request->user()->id === $this->user_id ||
-                        $request->user()->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists(),
+                        $request->user()->hasPermission('admin.manage'),
                         $this->user->email
                     )
                 ];
@@ -118,8 +118,7 @@ class TimeEntryResource extends JsonResource
         }
         
         // Managers and admins can edit any entries
-        if ($user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() ||
-            $user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return true;
         }
         
@@ -137,8 +136,7 @@ class TimeEntryResource extends JsonResource
         }
         
         // Managers and admins can delete any entries
-        if ($user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() ||
-            $user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return true;
         }
         
@@ -151,8 +149,7 @@ class TimeEntryResource extends JsonResource
     private function canApprove($user): bool
     {
         // Only managers and admins can approve
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return false;
         }
         

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring hierarchical customer account management, three-dimensional permission system (functional + widget + page access), account hierarchy permissions, and enterprise-level customization for multi-tenant service delivery.
 
-### Current Status: Phase 13A Complete (100% MVP Ready)
+### Current Status: Phase 13B Complete (100% MVP Ready)
 **✅ Fully Implemented Features:**
 - **Three-Dimensional Permission System**: Complete functional + widget + page permission architecture with role template management
 - **Dashboard Preview System**: Real-time role preview with mock data generation and context switching (service provider vs account user)
@@ -16,7 +16,9 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Complete Ticket Addon System**: 18 predefined templates with approval workflow and billing integration
 - **Enhanced Ticket Widget System**: TicketTimerStats, TicketFilters, and RecentTimeEntries widgets with real-time functionality
 - **Permission-Based Navigation**: Dynamic menu system adapting to user roles and three-dimensional permissions
-- **Configurable Ticket Status & Category System**: Complete workflow management with business logic and SLA integration
+- **Advanced Ticket Configuration System**: Complete drag-drop workflow management with optimistic UI updates, modal-based CRUD operations, and SLA integration
+- **Settings Page Path Parameters**: Tab-based navigation with URL routing and browser history support
+- **Optimistic Drag-Drop UX**: Instant visual feedback with background persistence and error recovery for all configuration ordering
 - **Widget-Based Dashboard System**: 14+ permission-filtered widgets with auto-discovery and responsive grid layout
 - **Comprehensive Tickets Page**: Full-featured ticket management with advanced filtering, dual view modes, and addon integration
 - **Enhanced Real-Time Multi-Timer System**: Live duration updates, cross-component sync, manual time override, optimized bulk queries, professional commit workflows, and persistent timer overlay with Inertia.js layouts
@@ -28,7 +30,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Domain-Based User Assignment**: Automatic account assignment via email domain patterns
 - **Real-Time Broadcasting Infrastructure**: Laravel Echo + Vue composables with cross-component timer synchronization
 - **Advanced Permission Caching**: Role-based permission caching with efficient resolution algorithms
-- **Comprehensive API**: 54+ endpoints with bulk operations, three-dimensional authentication, authorization, and preview capabilities
+- **Comprehensive API**: 58+ endpoints with bulk operations, three-dimensional authentication, authorization, and preview capabilities
 - **Cross-Device Timer Sync**: Redis-based state management with conflict resolution
 - **Enterprise Authentication**: Token scoping (employee, manager, mobile-app, admin) with widget permissions
 - **Modern Frontend Stack**: Vue.js 3.5 + Inertia.js persistent layouts + TanStack Query + Tailwind CSS + Headless UI
@@ -113,6 +115,25 @@ npm run dev             # Development with hot reload
 # GET    /api/auth/tokens/abilities      # Get available token abilities
 # POST   /api/auth/tokens/scope          # Create scoped token (employee, manager, etc.)
 # DELETE /api/auth/tokens/revoke-all     # Revoke all user tokens
+
+# Ticket Configuration Management (Admin/Settings)
+# GET    /api/settings/ticket-config     # Get all ticket configuration (statuses, categories, priorities)
+# GET    /api/ticket-statuses            # List ticket statuses with filtering
+# POST   /api/ticket-statuses            # Create new ticket status
+# PUT    /api/ticket-statuses/{id}       # Update ticket status
+# DELETE /api/ticket-statuses/{id}       # Delete ticket status
+# POST   /api/ticket-statuses/reorder    # Reorder statuses (optimistic drag-drop)
+# GET    /api/ticket-categories          # List ticket categories with SLA info
+# POST   /api/ticket-categories          # Create new ticket category
+# PUT    /api/ticket-categories/{id}     # Update ticket category
+# DELETE /api/ticket-categories/{id}     # Delete ticket category
+# POST   /api/ticket-categories/reorder  # Reorder categories (optimistic drag-drop)
+# GET    /api/ticket-priorities          # List ticket priorities with escalation
+# POST   /api/ticket-priorities          # Create new ticket priority
+# PUT    /api/ticket-priorities/{id}     # Update ticket priority
+# DELETE /api/ticket-priorities/{id}     # Delete ticket priority
+# POST   /api/ticket-priorities/reorder  # Reorder priorities (optimistic drag-drop)
+# PUT    /api/settings/workflow-transitions # Update workflow transition rules
 
 # Domain Mapping Management (Admin/Manager)  
 # GET    /api/domain-mappings            # List domain mappings

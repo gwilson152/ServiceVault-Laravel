@@ -26,16 +26,13 @@ class TimeEntryController extends Controller
         $query = TimeEntry::with(['user:id,name', 'account:id,name', 'project:id,name']);
         
         // Apply user scope - employees see their own, managers/admins see team members
-        if ($user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if ($user->hasPermission('admin.manage')) {
             // Admins see all time entries
-        } elseif ($user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists()) {
+        } elseif ($user->hasPermission('teams.manage')) {
             // Managers see entries for accounts they manage
             $managedAccountIds = $user->accounts()
                 ->whereHas('users', function ($userQuery) use ($user) {
-                    $userQuery->where('users.id', $user->id)
-                             ->whereHas('roleTemplates', function ($roleQuery) {
-                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
-                             });
+                    $userQuery->where('users.id', $user->id);
                 })
                 ->pluck('accounts.id');
             $query->whereIn('account_id', $managedAccountIds);
@@ -49,8 +46,7 @@ class TimeEntryController extends Controller
             $q->where('status', $status);
         })->when($request->user_id, function ($q, $userId) use ($user) {
             // Only managers/admins can filter by user
-            if ($user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() ||
-                $user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+            if ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
                 $q->where('user_id', $userId);
             }
         })->when($request->account_id, function ($q, $accountId) {
@@ -153,8 +149,7 @@ class TimeEntryController extends Controller
         
         // Check if user can view this time entry
         if ($timeEntry->user_id !== $user->id && 
-            !$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+            !$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return response()->json(['error' => 'Unauthorized access.'], 403);
         }
         
@@ -176,8 +171,7 @@ class TimeEntryController extends Controller
         $canEdit = false;
         if ($timeEntry->user_id === $user->id && $timeEntry->status === 'pending') {
             $canEdit = true;
-        } elseif ($user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() ||
-                  $user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        } elseif ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             $canEdit = true;
         }
         
@@ -198,7 +192,7 @@ class TimeEntryController extends Controller
         if (($request->has('description') || $request->has('duration') || $request->has('date')) &&
             $timeEntry->status === 'approved' &&
             $timeEntry->user_id === $user->id &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists()) {
+            !$user->hasPermission('teams.manage')) {
             $validated['status'] = 'pending';
         }
         
@@ -222,8 +216,7 @@ class TimeEntryController extends Controller
         $canDelete = false;
         if ($timeEntry->user_id === $user->id && $timeEntry->status === 'pending') {
             $canDelete = true;
-        } elseif ($user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() ||
-                  $user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        } elseif ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             $canDelete = true;
         }
         
@@ -246,19 +239,15 @@ class TimeEntryController extends Controller
         $user = $request->user();
         
         // Verify approval permissions
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return response()->json(['error' => 'Insufficient permissions to approve time entries.'], 403);
         }
         
         // Verify manager has access to this account
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasPermission('admin.manage')) {
             $managedAccountIds = $user->accounts()
                 ->whereHas('users', function ($userQuery) use ($user) {
-                    $userQuery->where('users.id', $user->id)
-                             ->whereHas('roleTemplates', function ($roleQuery) {
-                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
-                             });
+                    $userQuery->where('users.id', $user->id);
                 })
                 ->pluck('accounts.id');
                 
@@ -294,8 +283,7 @@ class TimeEntryController extends Controller
         $user = $request->user();
         
         // Verify rejection permissions
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return response()->json(['error' => 'Insufficient permissions to reject time entries.'], 403);
         }
         
@@ -326,8 +314,7 @@ class TimeEntryController extends Controller
         $user = $request->user();
         
         // Verify bulk approval permissions
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return response()->json(['error' => 'Insufficient permissions for bulk approval.'], 403);
         }
         
@@ -347,13 +334,10 @@ class TimeEntryController extends Controller
         }
         
         // Verify access to all accounts
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasPermission('admin.manage')) {
             $managedAccountIds = $user->accounts()
                 ->whereHas('users', function ($userQuery) use ($user) {
-                    $userQuery->where('users.id', $user->id)
-                             ->whereHas('roleTemplates', function ($roleQuery) {
-                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
-                             });
+                    $userQuery->where('users.id', $user->id);
                 })
                 ->pluck('accounts.id');
                 
@@ -387,8 +371,7 @@ class TimeEntryController extends Controller
         $user = $request->user();
         
         // Verify bulk rejection permissions
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return response()->json(['error' => 'Insufficient permissions for bulk rejection.'], 403);
         }
         
@@ -422,21 +405,17 @@ class TimeEntryController extends Controller
         $user = $request->user();
         
         // Verify stats access
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             return response()->json(['error' => 'Insufficient permissions to view approval statistics.'], 403);
         }
         
         // Build query for accessible accounts
         $query = TimeEntry::query();
         
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasPermission('admin.manage')) {
             $managedAccountIds = $user->accounts()
                 ->whereHas('users', function ($userQuery) use ($user) {
-                    $userQuery->where('users.id', $user->id)
-                             ->whereHas('roleTemplates', function ($roleQuery) {
-                                 $roleQuery->whereJsonContains('permissions', 'teams.manage');
-                             });
+                    $userQuery->where('users.id', $user->id);
                 })
                 ->pluck('accounts.id');
             $query->whereIn('account_id', $managedAccountIds);

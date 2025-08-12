@@ -22,8 +22,7 @@ class ManagerDashboardController extends Controller
         $user = $request->user();
         
         // Verify manager access
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists() &&
-            !$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             abort(403, 'Access denied. Manager permissions required.');
         }
 
@@ -65,7 +64,7 @@ class ManagerDashboardController extends Controller
         $teamMembers = User::whereHas('accounts', function ($query) use ($managedAccounts) {
                 $query->whereIn('accounts.id', $managedAccounts->pluck('id'));
             })
-            ->with(['accounts', 'roleTemplates'])
+            ->with(['accounts', 'roleTemplate'])
             ->withCount([
                 'timers as active_timers_count' => function ($query) {
                     $query->whereIn('status', ['running', 'paused']);
@@ -232,11 +231,7 @@ class ManagerDashboardController extends Controller
         // Managers can oversee accounts they're assigned to with manage permissions
         return $user->accounts()
             ->whereHas('users', function ($query) use ($user) {
-                $query->where('users.id', $user->id)
-                      ->whereHas('roleTemplates', function ($roleQuery) {
-                          $roleQuery->whereJsonContains('permissions', 'teams.manage')
-                                   ->orWhereJsonContains('permissions', 'admin.manage');
-                      });
+                $query->where('users.id', $user->id);
             })
             ->withCount(['users'])
             ->get();
