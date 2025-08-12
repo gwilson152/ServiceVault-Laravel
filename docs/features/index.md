@@ -19,6 +19,7 @@ Functional specifications and user guides for Service Vault features.
 
 ## Timer System
 - **[Timer Enhancements](timer-enhancements.md)** - Enhanced overlays, settings management, and commit workflows ✅ NEW
+- **[Persistent Timer Overlay](persistent-timer-overlay.md)** - Inertia.js persistent layouts for seamless navigation ✅ COMPLETED
 - **[Timer Controls](timer-controls.md)** - Start, stop, pause functionality with admin oversight ✅ UPDATED
 - **[Cross-device Sync](timer-sync.md)** - Real-time synchronization
 - **[Conflict Resolution](timer-conflicts.md)** - Multiple timer handling

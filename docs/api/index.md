@@ -23,6 +23,7 @@ RESTful API specifications, authentication, and integration guides.
 - **[User Invitations API](user-invitations.md)** - User invitation system
 - **[Navigation API](navigation.md)** - Dynamic navigation and breadcrumbs
 - **[Token Management API](tokens.md)** - API token CRUD and abilities
+- **[Settings API](settings.md)** - System settings including email configuration ✅ NEW
 
 ## Real-Time Integration
 Service Vault uses Laravel Echo + WebSocket for real-time updates:

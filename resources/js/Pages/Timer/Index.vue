@@ -1,11 +1,24 @@
 <template>
-  <AppLayout title="Timer Management">
-    <div class="py-12">
+  <!-- Page Header -->
+  <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            Timer Management
+          </h2>
+          <p class="text-sm text-gray-600 mt-1">
+            Manage your timers and time tracking.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="py-12">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
           <div class="p-6 text-gray-900">
-            <h1 class="text-2xl font-bold mb-4">Timer Management</h1>
-            <p class="text-gray-600">Manage your timers and time tracking.</p>
             
             <div class="mt-8">
               <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -29,9 +42,13 @@
         </div>
       </div>
     </div>
-  </AppLayout>
 </template>
 
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
+
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
 </script>

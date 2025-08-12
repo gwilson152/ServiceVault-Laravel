@@ -7,6 +7,7 @@ System configuration, setup processes, and operational procedures for Service Va
 ### Initial Setup
 - **[Setup Wizard](setup-wizard.md)** - Complete initial system configuration ✅ CURRENT
 - **[Authentication System](authentication-system.md)** - User authentication and authorization ✅ CURRENT
+- **[Email Configuration](email-configuration.md)** - SMTP/IMAP setup with OAuth support ✅ CURRENT
 
 ### System Requirements
 - **PHP 8.2+**: Laravel 12 compatibility
@@ -49,10 +50,19 @@ PUSHER_APP_KEY=your_app_key
 PUSHER_APP_SECRET=your_app_secret
 PUSHER_APP_CLUSTER=mt1
 
-# Mail Configuration
+# Mail Configuration (Basic - See Email Configuration guide for full setup)
 MAIL_MAILER=smtp
-MAIL_HOST=mailpit
-MAIL_PORT=1025
+MAIL_HOST=smtp-mail.outlook.com
+MAIL_PORT=587
+MAIL_USERNAME=support@company.com
+MAIL_PASSWORD=your_app_password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=support@company.com
+MAIL_FROM_NAME="Company Support"
+
+# For development/testing
+# MAIL_HOST=mailpit
+# MAIL_PORT=1025
 ```
 
 ## System Architecture

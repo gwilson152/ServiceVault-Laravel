@@ -1,8 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- App-wide Timer Broadcast Overlay -->
-    <TimerBroadcastOverlay />
-    
     <!-- Main Content -->
     <div class="flex h-screen overflow-hidden">
       <!-- Sidebar -->
@@ -62,7 +59,7 @@
                 <Bars3Icon class="h-6 w-6" />
               </button>
               
-              <!-- Page title -->
+              <!-- Page title from props -->
               <h1 class="text-lg font-semibold text-gray-900">
                 {{ $page.props.title || 'Dashboard' }}
               </h1>
@@ -243,6 +240,9 @@
         </div>
       </Dialog>
     </TransitionRoot>
+    
+    <!-- Timer Broadcast Overlay -->
+    <TimerBroadcastOverlay />
   </div>
 </template>
 
@@ -278,13 +278,13 @@ import {
 import TimerBroadcastOverlay from '@/Components/Timer/TimerBroadcastOverlay.vue'
 
 // Composables
-import { useNavigation } from '@/Composables/useNavigation.js'
+import { useNavigationQuery } from '@/Composables/queries/useNavigationQuery.js'
 
 const sidebarOpen = ref(false)
 const page = usePage()
 
-// Use navigation composable for dynamic permission-based navigation
-const { navigation, loading: navigationLoading, isActive } = useNavigation()
+// Use navigation query composable for dynamic permission-based navigation
+const { navigation, loading: navigationLoading, isActive } = useNavigationQuery()
 
 // Icon mapping for dynamic navigation items
 const iconMap = {

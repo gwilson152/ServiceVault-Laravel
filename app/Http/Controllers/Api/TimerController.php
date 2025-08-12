@@ -350,7 +350,7 @@ class TimerController extends Controller
                 'convert_to_entry' => true,
                 'round_to' => $request->input('round_to', 15),
                 'notes' => $request->input('notes'),
-                'manual_duration' => $request->input('manual_duration'), // Allow manual duration override
+                'manual_duration' => $request->input('duration'), // Allow manual duration override (in minutes)
             ]);
 
             // Broadcast timer stopped event
@@ -983,5 +983,46 @@ class TimerController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Get active timers for multiple tickets in bulk
+     */
+    public function bulkActiveForTickets(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Timer::class);
+
+        $request->validate([
+            'ticket_ids' => 'required|array|min:1|max:100',
+            'ticket_ids.*' => 'string|exists:tickets,id',
+        ]);
+
+        $ticketIds = $request->input('ticket_ids');
+        
+        // Get all active timers for the provided ticket IDs
+        $timers = Timer::with(['user', 'billingRate', 'ticket'])
+            ->whereIn('ticket_id', $ticketIds)
+            ->whereIn('status', ['running', 'paused'])
+            ->get();
+        
+        // Group timers by ticket_id for easier frontend consumption
+        $timersByTicket = [];
+        foreach ($ticketIds as $ticketId) {
+            $timersByTicket[$ticketId] = [];
+        }
+        
+        foreach ($timers as $timer) {
+            $timersByTicket[$timer->ticket_id][] = new TimerResource($timer);
+        }
+
+        return response()->json([
+            'message' => 'Active timers retrieved successfully',
+            'data' => $timersByTicket,
+            'meta' => [
+                'tickets_requested' => count($ticketIds),
+                'tickets_with_timers' => count(array_filter($timersByTicket, fn($timers) => !empty($timers))),
+                'total_active_timers' => $timers->count(),
+            ]
+        ]);
     }
 }

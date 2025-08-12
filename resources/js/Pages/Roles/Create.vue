@@ -4,6 +4,11 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
+
 const form = useForm({
     name: '',
     description: '',
@@ -174,8 +179,23 @@ onMounted(() => {
 <template>
     <Head title="Create Role Template" />
 
-    <AppLayout>
-        <div class="py-6">
+    <!-- Page Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                        Create Role Template
+                    </h2>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Create a new role template with custom permissions
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <!-- Page Header -->
                 <div class="flex items-center space-x-4 mb-6">
@@ -407,5 +427,4 @@ onMounted(() => {
                 </form>
             </div>
         </div>
-    </AppLayout>
 </template>

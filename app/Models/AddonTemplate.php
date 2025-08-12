@@ -16,30 +16,23 @@ class AddonTemplate extends Model
         'name',
         'description',
         'category',
-        'sku',
-        'default_unit_price',
+        'unit_type',
+        'default_price',
         'default_quantity',
-        'allow_quantity_override',
-        'allow_price_override',
-        'is_billable',
         'is_taxable',
-        'billing_category',
-        'default_tax_rate',
-        'is_active',
-        'sort_order',
-        'metadata'
+        'requires_approval',
+        'account_id',
+        'is_system',
+        'is_active'
     ];
 
     protected $casts = [
-        'default_unit_price' => 'decimal:2',
+        'default_price' => 'decimal:2',
         'default_quantity' => 'decimal:2',
-        'default_tax_rate' => 'decimal:4',
-        'allow_quantity_override' => 'boolean',
-        'allow_price_override' => 'boolean',
-        'is_billable' => 'boolean',
         'is_taxable' => 'boolean',
-        'is_active' => 'boolean',
-        'metadata' => 'array'
+        'requires_approval' => 'boolean',
+        'is_system' => 'boolean',
+        'is_active' => 'boolean'
     ];
 
     /**
@@ -71,7 +64,7 @@ class AddonTemplate extends Model
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order')->orderBy('name');
+        return $query->orderBy('name');
     }
 
     /**

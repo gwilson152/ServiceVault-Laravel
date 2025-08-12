@@ -56,6 +56,7 @@ For complete setup instructions, see [System Documentation](system/index.md).
 - **[Multi-Timer System](features/time-tracking.md)** - Concurrent timer management with real-time sync
 - **[Service Tickets](features/service-tickets.md)** - Complete workflow management system
 - **[Account Management](features/business-account-management.md)** - Hierarchical business relationships
+- **[Email Configuration](system/email-configuration.md)** - SMTP/IMAP setup with OAuth and app password support
 
 ### 🔧 Technical References
 
@@ -67,7 +68,7 @@ For complete setup instructions, see [System Documentation](system/index.md).
 ## Technology Stack
 
 - **Backend**: Laravel 12 with PostgreSQL and Redis
-- **Frontend**: Vue.js 3.5 + Inertia.js + Tailwind CSS
+- **Frontend**: Vue.js 3.5 + Inertia.js persistent layouts + TanStack Query + Tailwind CSS
 - **Authentication**: Laravel Sanctum (session + API tokens)
 - **Real-Time**: Laravel Echo with WebSocket broadcasting
 - **Caching**: Redis for performance and timer state management

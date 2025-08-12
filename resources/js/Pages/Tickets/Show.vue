@@ -1,8 +1,10 @@
 <template>
-  <AppLayout :title="`Ticket #${ticket?.ticket_number || ''}`">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
+  <div>
+    <!-- Page Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
           <!-- Back Button -->
           <Link 
             :href="route('tickets.index')" 
@@ -63,6 +65,7 @@
             </div>
           </div>
         </div>
+        </div>
         
         <!-- Actions -->
         <div class="flex items-center space-x-3">
@@ -81,7 +84,7 @@
           </button>
         </div>
       </div>
-    </template>
+    </div>
 
     <div class="py-6">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -288,7 +291,7 @@
         </div>
       </div>
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
@@ -296,6 +299,11 @@ import { ref, computed, onMounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import axios from 'axios'
+
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
 
 // Props
 const props = defineProps({

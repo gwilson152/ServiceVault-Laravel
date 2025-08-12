@@ -1,44 +1,47 @@
 <template>
-  <AppLayout :title="dashboardMeta?.title || 'Dashboard'">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ dashboardMeta?.title || 'Dashboard' }}
-          </h2>
-          <p v-if="dashboardMeta?.userName" class="text-sm text-gray-600 mt-1">
-            Welcome back, {{ dashboardMeta.userName }}
-            <span v-if="dashboardMeta?.lastLogin" class="text-gray-500">
-              • Last login: {{ dashboardMeta.lastLogin }}
-            </span>
-          </p>
-        </div>
-        
-        <!-- Account Context Switcher -->
-        <div v-if="accountContext?.canSwitchAccounts" class="flex items-center space-x-4">
-          <div class="flex items-center space-x-2">
-            <label for="account-select" class="text-sm font-medium text-gray-700">
-              Account:
-            </label>
-            <select
-              id="account-select"
-              v-model="selectedAccountId"
-              @change="switchAccount"
-              class="border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-            >
-              <option value="">All Accounts</option>
-              <option 
-                v-for="account in accountContext.availableAccounts" 
-                :key="account.id" 
-                :value="account.id"
+  <div>
+    <!-- Page Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+              {{ dashboardMeta?.title || 'Dashboard' }}
+            </h2>
+            <p v-if="dashboardMeta?.userName" class="text-sm text-gray-600 mt-1">
+              Welcome back, {{ dashboardMeta.userName }}
+              <span v-if="dashboardMeta?.lastLogin" class="text-gray-500">
+                • Last login: {{ dashboardMeta.lastLogin }}
+              </span>
+            </p>
+          </div>
+          
+          <!-- Account Context Switcher -->
+          <div v-if="accountContext?.canSwitchAccounts" class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+              <label for="account-select" class="text-sm font-medium text-gray-700">
+                Account:
+              </label>
+              <select
+                id="account-select"
+                v-model="selectedAccountId"
+                @change="switchAccount"
+                class="border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
               >
-                {{ account.name }}
-              </option>
-            </select>
+                <option value="">All Accounts</option>
+                <option 
+                  v-for="account in accountContext.availableAccounts" 
+                  :key="account.id" 
+                  :value="account.id"
+                >
+                  {{ account.name }}
+                </option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
-    </template>
+    </div>
 
     <div class="py-12">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -134,7 +137,7 @@
         </div>
       </div>
     </Modal>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
@@ -143,6 +146,11 @@ import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import Modal from '@/Components/Modal.vue'
 import WidgetLoader from '@/Components/WidgetLoader.vue'
+
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
 
 // Props from the controller
 const props = defineProps({

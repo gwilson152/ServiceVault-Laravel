@@ -108,11 +108,11 @@ class TicketCategory extends Model
     {
         $priorities = ['low' => 1, 'medium' => 2, 'high' => 3, 'urgent' => 4];
         $priorityNames = array_flip($priorities);
-        
+
         $baseValue = $priorities[$basePriority] ?? 2;
         $adjustedValue = round($baseValue * $this->default_priority_multiplier);
         $adjustedValue = max(1, min(4, $adjustedValue)); // Clamp between 1 and 4
-        
+
         return $priorityNames[$adjustedValue];
     }
 
@@ -168,9 +168,11 @@ class TicketCategory extends Model
      */
     public static function getStatistics(): array
     {
-        $categories = static::active()->with(['tickets' => function ($query) {
-            $query->where('created_at', '>=', now()->subDays(30));
-        }])->get();
+        $categories = static::active()->with([
+            'tickets' => function ($query) {
+                $query->where('created_at', '>=', now()->subDays(30));
+            }
+        ])->get();
 
         return $categories->map(function ($category) {
             $tickets = $category->tickets;
@@ -186,7 +188,7 @@ class TicketCategory extends Model
                 'total_tickets' => $tickets->count(),
                 'open_tickets' => $openTickets->count(),
                 'sla_breached' => $slaBreached->count(),
-                'average_resolution_hours' => $this->calculateAverageResolutionTime($tickets)
+                'average_resolution_hours' => self::calculateAverageResolutionTime($tickets)
             ];
         })->toArray();
     }
@@ -197,7 +199,7 @@ class TicketCategory extends Model
     private static function calculateAverageResolutionTime($tickets): ?float
     {
         $resolvedTickets = $tickets->whereNotNull('resolved_at');
-        
+
         if ($resolvedTickets->isEmpty()) {
             return null;
         }

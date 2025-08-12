@@ -23,6 +23,7 @@ GET /api/timers/active/current                           # Get active timers
 GET /api/timers/{id}                                     # Timer details
 POST /api/timers                                         # Create timer
 PUT /api/timers/{id}                                     # Update timer
+POST /api/timers/bulk-active-for-tickets                # Bulk timer query (NEW)
 ```
 
 ### Timer Controls
@@ -68,6 +69,79 @@ GET /api/admin/timers/statistics             # Timer statistics
 GET /api/tickets/{id}/timers                 # Get timers for ticket
 GET /api/tickets/{id}/timers/active          # Get active timers for ticket
 POST /api/tickets/{id}/timers                # Start timer for ticket
+```
+
+## Bulk Operations
+
+### Bulk Active Timers for Tickets
+Efficient endpoint to retrieve active timers for multiple tickets in a single request. Optimizes performance by reducing API calls from N individual requests to 1 bulk request.
+
+```http
+POST /api/timers/bulk-active-for-tickets
+```
+
+**Request:**
+```json
+{
+  "ticket_ids": ["uuid1", "uuid2", "uuid3"]
+}
+```
+
+**Validation:**
+- `ticket_ids`: Required array, 1-100 items, each must be valid ticket UUID
+- User must have `timers:read` permission
+
+**Response:**
+```json
+{
+  "message": "Active timers retrieved successfully",
+  "data": {
+    "uuid1": [
+      {
+        "id": "timer-uuid-1",
+        "status": "running",
+        "description": "Working on feature",
+        "duration": 1800,
+        "user": { "id": "user-1", "name": "John Doe" },
+        "billing_rate": { "rate": 75.00 }
+      }
+    ],
+    "uuid2": [],
+    "uuid3": [
+      {
+        "id": "timer-uuid-2", 
+        "status": "paused",
+        "description": "Code review",
+        "duration": 900,
+        "user": { "id": "user-2", "name": "Jane Smith" },
+        "billing_rate": { "rate": 125.00 }
+      }
+    ]
+  },
+  "meta": {
+    "tickets_requested": 3,
+    "tickets_with_timers": 2,
+    "total_active_timers": 2
+  }
+}
+```
+
+**Performance Benefits:**
+- Replaces N individual API calls with 1 bulk call
+- Reduces database queries and response time
+- Minimizes frontend-backend round trips
+- Optimized for tickets page with many items
+
+**Usage Example:**
+```javascript
+// Frontend optimization for tickets page
+const ticketIds = tickets.map(t => t.id)
+const response = await fetch('/api/timers/bulk-active-for-tickets', {
+  method: 'POST',
+  body: JSON.stringify({ ticket_ids: ticketIds })
+})
+const timersByTicket = response.data.data
+// Use grouped data to populate TicketTimerControls components
 ```
 
 ## Real-Time Events

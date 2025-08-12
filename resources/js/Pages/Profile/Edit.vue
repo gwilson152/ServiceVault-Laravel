@@ -5,6 +5,11 @@ import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import { Head } from '@inertiajs/vue3';
 
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+});
+
 defineProps({
     mustVerifyEmail: {
         type: Boolean,
@@ -18,18 +23,24 @@ defineProps({
 <template>
     <Head title="Profile" />
 
-    <AppLayout>
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <!-- Page Header -->
-                <div class="mb-6">
-                    <h2 class="text-xl font-semibold leading-tight text-gray-800">
+    <!-- Page Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                         Profile
                     </h2>
-                    <p class="mt-1 text-sm text-gray-600">
+                    <p class="text-sm text-gray-600 mt-1">
                         Manage your account profile information and settings
                     </p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-6">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 
                 <div class="space-y-6">
                     <div
@@ -56,5 +67,4 @@ defineProps({
                 </div>
             </div>
         </div>
-    </AppLayout>
 </template>

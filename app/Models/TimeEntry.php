@@ -145,25 +145,25 @@ class TimeEntry extends Model
     }
 
     /**
-     * Get the formatted duration.
+     * Get the formatted duration (duration stored in minutes).
      *
      * @return string
      */
     public function getDurationFormattedAttribute(): string
     {
-        $hours = floor($this->duration / 3600);
-        $minutes = floor(($this->duration % 3600) / 60);
-        $seconds = $this->duration % 60;
+        $totalMinutes = $this->duration; // Duration is stored in minutes
+        $hours = floor($totalMinutes / 60);
+        $minutes = $totalMinutes % 60;
         
         if ($hours > 0) {
-            return sprintf('%d:%02d:%02d', $hours, $minutes, $seconds);
+            return sprintf('%d:%02d', $hours, $minutes);
         }
         
-        return sprintf('%02d:%02d', $minutes, $seconds);
+        return sprintf('%d min', $minutes);
     }
 
     /**
-     * Calculate the cost based on duration and rate.
+     * Calculate the cost based on duration and rate (duration stored in minutes).
      *
      * @return float|null
      */
@@ -173,7 +173,7 @@ class TimeEntry extends Model
             return null;
         }
 
-        $hours = $this->duration / 3600;
+        $hours = $this->duration / 60; // Convert minutes to hours
         
         return round($hours * $this->rate_at_time, 2);
     }

@@ -259,6 +259,7 @@ import {
   CheckIcon 
 } from '@heroicons/vue/24/outline'
 import CommitTimeEntryDialog from '@/Components/CommitTimeEntryDialog.vue'
+import { useTimerBroadcasting } from '@/Composables/useTimerBroadcasting.js'
 
 const props = defineProps({
   ticket: {
@@ -268,6 +269,10 @@ const props = defineProps({
   currentUser: {
     type: Object,
     required: true
+  },
+  initialTimerData: {
+    type: Array,
+    default: () => []
   },
   availableBillingRates: {
     type: Array,
@@ -289,8 +294,11 @@ const props = defineProps({
 
 const emit = defineEmits(['timerStarted', 'timerStopped', 'timeEntryCreated'])
 
+// Broadcasting integration for real-time updates
+const { timers: broadcastTimers, addOrUpdateTimer, removeTimer } = useTimerBroadcasting()
+
 // State
-const allTimersForTicket = ref([])
+const allTimersForTicket = ref(props.initialTimerData || [])
 const loading = ref(false)
 const currentTime = ref(new Date())
 const showCommitDialog = ref(false)
@@ -607,16 +615,18 @@ const generateDeviceId = () => {
 
 // Lifecycle
 onMounted(async () => {
-  // Always fetch timers initially to show current state
-  await fetchTimersForTicket()
+  // Only fetch timers if no initial data was provided
+  if (!props.initialTimerData || props.initialTimerData.length === 0) {
+    await fetchTimersForTicket()
+  }
   
   // Set up periodic refresh based on mode
   if (!props.compact) {
     // Full mode: Refresh every 30 seconds (default)
     refreshIntervalId = setInterval(fetchTimersForTicket, props.refreshInterval)
   } else {
-    // Compact mode: Refresh less frequently (every 60 seconds) to balance performance
-    refreshIntervalId = setInterval(fetchTimersForTicket, Math.max(props.refreshInterval * 2, 60000))
+    // Compact mode: Only refresh on timer actions, not periodically, to avoid conflicts with bulk loading
+    // The parent page will handle bulk refreshes
   }
   
   // Set up time update for duration calculations
@@ -640,6 +650,45 @@ watch(() => props.ticket.id, async (newTicketId, oldTicketId) => {
     await fetchTimersForTicket()
   }
 })
+
+// Watch for changes in initial timer data (from bulk loading)
+watch(() => props.initialTimerData, (newTimerData) => {
+  if (newTimerData && Array.isArray(newTimerData)) {
+    allTimersForTicket.value = [...newTimerData]
+  }
+}, { deep: true })
+
+// Watch for broadcasting timer updates and sync with ticket-specific timers
+watch(broadcastTimers, (newBroadcastTimers) => {
+  if (!newBroadcastTimers || !Array.isArray(newBroadcastTimers)) return
+  
+  // Filter broadcast timers for this specific ticket
+  const ticketTimers = newBroadcastTimers.filter(timer => timer.ticket_id === props.ticket.id)
+  
+  // Update local state with broadcast timers
+  if (ticketTimers.length > 0) {
+    // Merge with existing timers, prioritizing broadcast data
+    const mergedTimers = [...allTimersForTicket.value]
+    
+    ticketTimers.forEach(broadcastTimer => {
+      const existingIndex = mergedTimers.findIndex(t => t.id === broadcastTimer.id)
+      if (existingIndex >= 0) {
+        mergedTimers[existingIndex] = broadcastTimer
+      } else {
+        mergedTimers.push(broadcastTimer)
+      }
+    })
+    
+    // Remove any timers that are no longer active in broadcast
+    const activeBroadcastIds = ticketTimers.map(t => t.id)
+    const filteredTimers = mergedTimers.filter(timer => {
+      if (timer.ticket_id !== props.ticket.id) return true
+      return activeBroadcastIds.includes(timer.id) || !['running', 'paused'].includes(timer.status)
+    })
+    
+    allTimersForTicket.value = filteredTimers
+  }
+}, { deep: true })
 </script>
 
 <style scoped>

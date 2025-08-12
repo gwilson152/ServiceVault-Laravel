@@ -41,19 +41,24 @@ class TimerService
         // Stop the timer
         $timer->stop();
 
-        // Calculate duration
-        $duration = $manualDuration ?? $timer->duration;
+        // Get timer duration in seconds
+        $timerDurationSeconds = $timer->duration;
         
-        // Round duration if specified
-        if ($roundTo > 0 && !$manualDuration) {
-            $minutes = ceil($duration / 60);
-            $roundedMinutes = ceil($minutes / $roundTo) * $roundTo;
-            $duration = $roundedMinutes * 60;
+        // If manual duration provided (in minutes), use that for time entry
+        if ($manualDuration) {
+            $timeEntryDurationMinutes = $manualDuration;
+        } else {
+            // Convert timer seconds to minutes and apply rounding
+            $timeEntryDurationMinutes = ceil($timerDurationSeconds / 60);
+            if ($roundTo > 0) {
+                $timeEntryDurationMinutes = ceil($timeEntryDurationMinutes / $roundTo) * $roundTo;
+            }
         }
 
         $result = [
-            'duration' => $duration,
-            'duration_formatted' => $this->formatDuration($duration),
+            'timer_duration' => $timerDurationSeconds, // Original timer duration in seconds
+            'time_entry_duration' => $timeEntryDurationMinutes, // Time entry duration in minutes
+            'duration_formatted' => $this->formatDuration($timerDurationSeconds),
             'time_entry' => null,
             'billed_amount' => null,
         ];
@@ -61,17 +66,19 @@ class TimerService
         // Convert to time entry if requested
         if ($convertToEntry) {
             $timeEntry = $timer->convertToTimeEntry([
-                'duration' => $duration,
+                'duration' => $timeEntryDurationMinutes, // Store duration in minutes for time entry
                 'notes' => $notes,
-                'rounded' => $roundTo > 0,
+                'rounded' => $roundTo > 0 && !$manualDuration,
                 'round_to' => $roundTo,
+                'manual_override' => $manualDuration ? true : false,
+                'original_timer_duration' => $timerDurationSeconds, // Track original timer duration
             ]);
 
             $result['time_entry'] = $timeEntry;
             
-            // Calculate billed amount
+            // Calculate billed amount (convert time entry minutes to hours)
             if ($timer->billingRate) {
-                $hours = $duration / 3600;
+                $hours = $timeEntryDurationMinutes / 60;
                 $result['billed_amount'] = round($hours * $timer->billingRate->rate, 2);
             }
         }
@@ -259,9 +266,9 @@ class TimerService
             $duration = $timer->duration;
             $totalDuration += $duration;
             
-            // Calculate billed amount
+            // Calculate billed amount (duration is in seconds from Timer model)
             if ($timer->billingRate) {
-                $hours = $duration / 3600;
+                $hours = $duration / 3600; // Convert seconds to hours
                 $amount = round($hours * $timer->billingRate->rate, 2);
                 $totalBilled += $amount;
             }
@@ -380,9 +387,10 @@ class TimerService
         $hoursRemaining = $remainingBudget / $timer->billingRate->rate;
         
         // Calculate estimated completion based on current pace
-        $currentDuration = $timer->duration;
-        if ($currentDuration > 0 && $currentAmount > 0) {
-            $pace = $currentAmount / ($currentDuration / 3600); // $ per hour
+        $currentDurationSeconds = $timer->duration;
+        if ($currentDurationSeconds > 0 && $currentAmount > 0) {
+            $currentHours = $currentDurationSeconds / 3600; // Convert seconds to hours
+            $pace = $currentAmount / $currentHours; // $ per hour
             $estimatedHours = $remainingBudget / $pace;
             $estimatedCompletion = now()->addHours($estimatedHours);
         } else {

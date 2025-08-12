@@ -1,18 +1,20 @@
 <template>
-  <AppLayout :title="pageTitle">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ pageTitle }}
-          </h2>
-          <p class="text-sm text-gray-600 mt-1">
-            Manage tickets, track time, and monitor progress
-          </p>
-        </div>
-        
-        <!-- Actions -->
-        <div class="flex items-center space-x-3">
+  <div>
+    <!-- Page Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+              {{ pageTitle }}
+            </h2>
+            <p class="text-sm text-gray-600 mt-1">
+              Manage tickets, track time, and monitor progress
+            </p>
+          </div>
+          
+          <!-- Actions -->
+          <div class="flex items-center space-x-3">
           <button
             @click="showCreateModal = true"
             class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
@@ -34,7 +36,8 @@
           </button>
         </div>
       </div>
-    </template>
+    </div>
+  </div>
 
     <div class="py-6">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -288,6 +291,7 @@
                             :ticket="ticket"
                             :currentUser="user"
                             :compact="true"
+                            :initialTimerData="timersByTicket[ticket.id] || []"
                             :availableBillingRates="[]"
                             :assignableUsers="[]"
                             @timer-started="handleTimerEvent"
@@ -390,6 +394,7 @@
                         :ticket="ticket"
                         :currentUser="user"
                         :compact="true"
+                        :initialTimerData="timersByTicket[ticket.id] || []"
                         :availableBillingRates="[]"
                         :assignableUsers="[]"
                         @timer-started="handleTimerEvent"
@@ -509,7 +514,7 @@
       @close="showCreateModal = false"
       @created="onTicketCreated"
     />
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
@@ -518,6 +523,11 @@ import { usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
 import CreateTicketModal from '@/Components/Modals/CreateTicketModal.vue'
+
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
 
 // Props
 const props = defineProps({
@@ -546,6 +556,7 @@ const props = defineProps({
 // State
 const tickets = ref(props.initialTickets || [])
 const activeTimers = ref(props.initialActiveTimers || [])
+const timersByTicket = ref({}) // Store timers grouped by ticket_id
 const isLoading = ref(false)
 const showCreateModal = ref(false)
 const viewMode = ref('table')
@@ -666,6 +677,35 @@ const refreshActiveTimers = async () => {
   }
 }
 
+const fetchTimersForTickets = async () => {
+  if (tickets.value.length === 0) return
+  
+  try {
+    const ticketIds = tickets.value.map(ticket => ticket.id)
+    
+    const response = await fetch('/api/timers/bulk-active-for-tickets', {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({
+        ticket_ids: ticketIds
+      })
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      timersByTicket.value = data.data || {}
+    } else {
+      console.error('Failed to fetch bulk timers - HTTP', response.status)
+    }
+  } catch (error) {
+    console.error('Failed to fetch timers for tickets:', error)
+  }
+}
+
 const clearFilters = () => {
   searchQuery.value = ''
   statusFilter.value = ''
@@ -768,6 +808,9 @@ const handleTimerEvent = (event) => {
   // Refresh active timers when timer events occur
   refreshActiveTimers()
   
+  // Refresh bulk timers for tickets page
+  fetchTimersForTickets()
+  
   // Optionally refresh tickets if timer affects displayed data
   if (event.type === 'timer_stopped' && event.converted_to_time_entry) {
     refreshTickets()
@@ -801,9 +844,13 @@ const openTicketAddon = (ticket) => {
 // Lifecycle
 onMounted(() => {
   refreshActiveTimers()
+  fetchTimersForTickets()
   
   // Set up periodic refresh for active timers
-  const timerInterval = setInterval(refreshActiveTimers, 30000) // Every 30 seconds
+  const timerInterval = setInterval(() => {
+    refreshActiveTimers()
+    fetchTimersForTickets() // Also refresh bulk timers periodically
+  }, 30000) // Every 30 seconds
   
   // Cleanup
   return () => {

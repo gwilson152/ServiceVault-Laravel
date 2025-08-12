@@ -5,6 +5,11 @@ import UserFormModal from '@/Components/UserFormModal.vue'
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
+
 const users = ref([])
 const accounts = ref([])
 const roleTemplates = ref([])
@@ -152,18 +157,24 @@ onMounted(() => {
 <template>
     <Head title="User Management" />
 
-    <AppLayout>
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <!-- Page Header -->
-                <div class="mb-6">
+    <!-- Page Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
                     <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                         User Management
                     </h2>
-                    <p class="mt-1 text-sm text-gray-600">
+                    <p class="text-sm text-gray-600 mt-1">
                         Manage users, assign accounts, and configure role permissions
                     </p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-6">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 <!-- Filters and Search -->
                 <div class="mb-6 bg-white p-4 rounded-lg shadow">
@@ -519,5 +530,4 @@ onMounted(() => {
                 </div>
             </div>
         </div>
-    </AppLayout>
 </template>

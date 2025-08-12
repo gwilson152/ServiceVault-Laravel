@@ -161,7 +161,7 @@
               Current Duration
             </label>
             <div class="px-3 py-2 bg-gray-50 dark:bg-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100">
-              {{ formatDuration(calculateDuration(currentTimerSettings)) }}
+              {{ formatDuration(currentTimerSettings ? calculateDuration(currentTimerSettings) : 0) }}
             </div>
           </div>
 
@@ -198,7 +198,7 @@
     <div class="flex flex-row-reverse space-x-reverse space-x-2">
       <!-- Individual Timer -->
       <div 
-        v-for="timer in timers" 
+        v-for="timer in reactiveTimerData" 
         :key="timer.id"
         class="relative"
       >
@@ -216,7 +216,7 @@
           
           <!-- Duration Display (Center) -->
           <div class="text-sm font-mono font-bold text-gray-900 dark:text-gray-100">
-            {{ formatDuration(timer.duration || calculateDuration(timer), true) }}
+            {{ formatDuration(timer.currentDuration, true) }}
           </div>
           
           <!-- Price Display (Right) -->
@@ -224,7 +224,7 @@
             v-if="timer.billing_rate"
             class="text-xs text-green-600 dark:text-green-400 font-medium flex-shrink-0"
           >
-            ${{ (calculateAmount(timer) || 0).toFixed(2) }}
+            ${{ (timer.currentAmount || 0).toFixed(2) }}
           </div>
         </div>
 
@@ -270,13 +270,13 @@
           <!-- Timer Display -->
           <div class="text-center mb-3">
             <div class="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100">
-              {{ formatDuration(timer.duration || calculateDuration(timer)) }}
+              {{ formatDuration(timer.currentDuration, false, true) }}
             </div>
             <div 
               v-if="timer.billing_rate"
               class="text-sm text-gray-600 dark:text-gray-400"
             >
-              ${{ (calculateAmount(timer) || 0).toFixed(2) }} @ ${{ timer.billing_rate.rate }}/hr
+              ${{ (timer.currentAmount || 0).toFixed(2) }} @ ${{ timer.billing_rate.rate }}/hr
             </div>
           </div>
 
@@ -358,10 +358,13 @@
             <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timer</div>
             <div class="text-sm text-gray-900 dark:text-gray-100">{{ timerToCommit.description || 'Timer' }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Duration: {{ formatDuration(calculateDuration(timerToCommit)) }}
-              <span v-if="timerToCommit.billing_rate" class="ml-2">
-                Value: ${{ calculateAmount(timerToCommit).toFixed(2) }}
+              Duration: {{ formatDuration(timerToCommit ? calculateDuration(timerToCommit) : 0) }}
+              <span v-if="timerToCommit && timerToCommit.billing_rate" class="ml-2">
+                Value: ${{ (timerToCommit ? calculateAmount(timerToCommit) : 0).toFixed(2) }}
               </span>
+              <div v-if="commitForm.manualDuration" class="text-blue-600 dark:text-blue-400 mt-1">
+                Override: {{ commitForm.manualDuration }} minutes ({{ formatDuration(commitForm.manualDuration * 60) }})
+              </div>
             </div>
           </div>
 
@@ -378,8 +381,26 @@
             ></textarea>
           </div>
 
+          <!-- Manual Time Override -->
+          <div v-if="allowManualTimeOverride">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Manual Duration (minutes)
+            </label>
+            <input
+              v-model.number="commitForm.manualDuration"
+              type="number"
+              min="0"
+              step="1"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Override timer duration"
+            />
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Leave empty to use calculated duration: {{ Math.ceil((timerToCommit ? calculateDuration(timerToCommit) : 0) / 60) }} minutes
+            </div>
+          </div>
+
           <!-- Round Duration -->
-          <div>
+          <div v-if="!commitForm.manualDuration">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Round up to nearest
             </label>
@@ -452,17 +473,25 @@ const showCommitDialog = ref(false)
 const timerToCommit = ref(null)
 const commitForm = reactive({
   notes: '',
-  roundTo: 5
+  roundTo: 5,
+  manualDuration: null
 })
 
-// Computed properties for timer stats
+// Manual time override setting (should be configurable via system settings)
+const allowManualTimeOverride = ref(true) // TODO: Load from system settings
+
+// Computed properties for timer stats (reactive to currentTime for real-time updates)
 const totalDuration = computed(() => {
+  // Include currentTime.value to make this reactive to time changes
+  const _ = currentTime.value
   return timers.value.reduce((total, timer) => {
     return total + calculateDuration(timer)
   }, 0)
 })
 
 const totalAmount = computed(() => {
+  // Include currentTime.value to make this reactive to time changes
+  const _ = currentTime.value
   return timers.value.reduce((total, timer) => {
     return total + calculateAmount(timer)
   }, 0)
@@ -471,13 +500,16 @@ const totalAmount = computed(() => {
 // Timer utility functions
 const calculateDuration = (timer) => {
   if (!timer) return 0
-  if (timer.status !== 'running') return timer.duration || 0
+  if (timer.status !== 'running') {
+    // Timer is stopped/paused - duration is in seconds from backend
+    return timer.duration || 0
+  }
   
   const startedAt = new Date(timer.started_at)
   const now = currentTime.value
-  const totalPaused = timer.total_paused_duration || 0
+  const totalPausedSeconds = timer.total_paused_duration || 0
   
-  return Math.max(0, Math.floor((now - startedAt) / 1000) - totalPaused)
+  return Math.max(0, Math.floor((now - startedAt) / 1000) - totalPausedSeconds)
 }
 
 const calculateAmount = (timer) => {
@@ -487,6 +519,17 @@ const calculateAmount = (timer) => {
   const hours = duration / 3600
   return hours * timer.billing_rate.rate
 }
+
+// Create reactive timer data for real-time updates
+const reactiveTimerData = computed(() => {
+  // Include currentTime.value to make this reactive to time changes
+  const _ = currentTime.value
+  return timers.value.map(timer => ({
+    ...timer,
+    currentDuration: calculateDuration(timer),
+    currentAmount: calculateAmount(timer)
+  }))
+})
 
 // Delete timer function
 const deleteTimer = async (timerId) => {
@@ -626,17 +669,27 @@ const closeCommitDialog = () => {
   timerToCommit.value = null
   commitForm.notes = ''
   commitForm.roundTo = 5
+  commitForm.manualDuration = null
 }
 
 const commitTimeEntry = async () => {
   if (!timerToCommit.value) return
   
   try {
+    const payload = {
+      notes: commitForm.notes
+    }
+    
+    // Add manual duration override if provided (in minutes)
+    if (commitForm.manualDuration && commitForm.manualDuration > 0) {
+      payload.duration = commitForm.manualDuration // Manual override in minutes
+    } else {
+      // Use rounding if no manual override
+      payload.round_to = commitForm.roundTo
+    }
+    
     // Commit the timer to a time entry via the API
-    const response = await window.axios.post(`/api/timers/${timerToCommit.value.id}/commit`, {
-      notes: commitForm.notes,
-      round_to: commitForm.roundTo
-    })
+    const response = await window.axios.post(`/api/timers/${timerToCommit.value.id}/commit`, payload)
     
     // The API should return success message and data
     if (response.data && response.data.message) {
@@ -655,15 +708,18 @@ const commitTimeEntry = async () => {
   }
 }
 
-// Format duration function with compact mode support
-const formatDuration = (seconds, compact = false) => {
-  if (!seconds || seconds < 0) return compact ? '0:00' : '0s'
+// Format duration function with compact mode and expanded HH:MM:SS support
+const formatDuration = (seconds, compact = false, expanded = false) => {
+  if (!seconds || seconds < 0) return compact ? '0:00' : (expanded ? '0:00:00' : '0s')
   
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
   
-  if (compact) {
+  if (expanded) {
+    // Expanded format: always show HH:MM:SS
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  } else if (compact) {
     // Compact format: show just minutes and seconds for mini badges
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}`

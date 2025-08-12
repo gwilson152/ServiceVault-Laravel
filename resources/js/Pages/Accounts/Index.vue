@@ -5,6 +5,11 @@ import AccountFormModal from '@/Components/AccountFormModal.vue'
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
+
 const accounts = ref([])
 const loading = ref(true)
 const error = ref(null)
@@ -120,18 +125,24 @@ onMounted(() => {
 <template>
     <Head title="Accounts Management" />
 
-    <AppLayout>
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <!-- Page Header -->
-                <div class="mb-6">
+    <!-- Page Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
                     <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                         Accounts Management
                     </h2>
-                    <p class="mt-1 text-sm text-gray-600">
+                    <p class="text-sm text-gray-600 mt-1">
                         Manage customer accounts, hierarchies, and access permissions
                     </p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-6">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 <!-- Header Section with Search and Actions -->
                 <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -405,5 +416,4 @@ onMounted(() => {
                 </div>
             </div>
         </div>
-    </AppLayout>
 </template>

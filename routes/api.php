@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
+use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TimerController;
 use App\Http\Controllers\Api\TimeEntryController;
@@ -88,6 +89,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::post('timers/bulk', [TimerController::class, 'bulk'])
         ->name('timers.bulk');
+    
+    Route::post('timers/bulk-active-for-tickets', [TimerController::class, 'bulkActiveForTickets'])
+        ->name('timers.bulk-active-for-tickets');
     
     // Ticket timer endpoints
     Route::get('tickets/{ticketId}/timers', [TimerController::class, 'forTicket'])
@@ -271,6 +275,44 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('widget-permissions.assign-to-role');
     Route::delete('widget-permissions/{widgetPermission}/remove-from-role', [App\Http\Controllers\Api\WidgetPermissionController::class, 'removeFromRole'])
         ->name('widget-permissions.remove-from-role');
+
+    // Settings Management routes (Admin access required)
+    Route::prefix('settings')->group(function () {
+        Route::get('/', [SettingController::class, 'index'])
+            ->name('settings.index');
+        
+        // System Settings
+        Route::put('system', [SettingController::class, 'updateSystemSettings'])
+            ->name('settings.system.update');
+        
+        // Email Settings
+        Route::put('email', [SettingController::class, 'updateEmailSettings'])
+            ->name('settings.email.update');
+        Route::post('email/test-smtp', [SettingController::class, 'testSmtp'])
+            ->name('settings.email.test-smtp');
+        Route::post('email/test-imap', [SettingController::class, 'testImap'])
+            ->name('settings.email.test-imap');
+        
+        // Ticket Configuration
+        Route::get('ticket-config', [SettingController::class, 'getTicketConfig'])
+            ->name('settings.ticket-config');
+        
+        // Billing Configuration
+        Route::get('billing-config', [SettingController::class, 'getBillingConfig'])
+            ->name('settings.billing-config');
+        
+        // Timer Settings
+        Route::get('timer', [SettingController::class, 'getTimerSettings'])
+            ->name('settings.timer');
+        Route::put('timer', [SettingController::class, 'updateTimerSettings'])
+            ->name('settings.timer.update');
+        
+        // User Management Settings
+        Route::get('user-management', [SettingController::class, 'getUserManagementSettings'])
+            ->name('settings.user-management');
+        Route::put('user-management', [SettingController::class, 'updateUserManagementSettings'])
+            ->name('settings.user-management.update');
+    });
 });
 
 // Admin-only routes

@@ -34,4 +34,20 @@ class BillingRate extends Model
         'rate' => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Get the user that owns the billing rate.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the account that owns the billing rate.
+     */
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
+    }
 }
