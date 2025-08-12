@@ -307,4 +307,57 @@ Gate::define('admin.timers.manage', function (User $user) {
 ### Billing System
 - Real-time calculation of timer values
 - Automatic billing rate application
+
+## Frontend Architecture
+
+### Persistent Layout Implementation
+
+Service Vault uses **Inertia.js persistent layouts** to ensure the timer overlay remains stable across all page navigation:
+
+#### Key Components
+
+1. **AppLayout.vue** - Persistent layout container that never unmounts
+2. **TimerBroadcastOverlay.vue** - Timer UI component that persists in the layout
+3. **TimerBroadcastingService.js** - Global singleton managing WebSocket connections
+4. **TanStack Query Integration** - Optimistic updates and cache management
+
+#### Navigation Flow
+
+```
+Page A → Page B Navigation:
+├── AppLayout.vue (stays mounted)
+├── TimerBroadcastOverlay.vue (stays mounted)
+├── WebSocket connections (persist)
+├── Timer state (preserved)
+└── Only page content changes
+```
+
+#### Benefits
+
+- ✅ **No timer interruptions** during navigation
+- ✅ **Stable WebSocket connections** across pages  
+- ✅ **Seamless user experience** without reconnection delays
+- ✅ **Improved performance** with persistent layout caching
+
+### Page Structure Pattern
+
+All pages follow the persistent layout pattern:
+
+```vue
+<script setup>
+import AppLayout from '@/Layouts/AppLayout.vue'
+
+defineOptions({
+  layout: AppLayout
+})
+</script>
+
+<template>
+  <div>
+    <!-- Page-specific content -->
+  </div>
+</template>
+```
+
+This ensures consistent behavior across the entire application while maintaining the persistent timer overlay functionality.
 - Cost tracking and project profitability analysis
