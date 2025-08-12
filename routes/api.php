@@ -162,6 +162,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('tickets/{ticket}/transition', [TicketController::class, 'transitionStatus'])
         ->name('tickets.transition');
     
+    Route::post('tickets/{ticket}/priority', [TicketController::class, 'updatePriority'])
+        ->name('tickets.priority');
+    
     Route::post('tickets/{ticket}/assign', [TicketController::class, 'assign'])
         ->name('tickets.assign');
     
@@ -212,11 +215,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('navigation.can-access');
 
     // Ticket Status Management routes
-    Route::apiResource('ticket-statuses', App\Http\Controllers\Api\TicketStatusController::class);
     Route::get('ticket-statuses/options', [App\Http\Controllers\Api\TicketStatusController::class, 'options'])
         ->name('ticket-statuses.options');
+    Route::post('ticket-statuses/reorder', [App\Http\Controllers\Api\TicketStatusController::class, 'reorder'])
+        ->name('ticket-statuses.reorder');
     Route::get('ticket-statuses/{ticketStatus}/transitions', [App\Http\Controllers\Api\TicketStatusController::class, 'transitions'])
         ->name('ticket-statuses.transitions');
+    
+    Route::apiResource('ticket-statuses', App\Http\Controllers\Api\TicketStatusController::class);
 
     // Ticket Category Management routes
     // Specific routes must be defined BEFORE apiResource to avoid route conflicts
@@ -226,8 +232,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('ticket-categories.statistics');
     Route::get('ticket-categories/sla-status', [App\Http\Controllers\Api\TicketCategoryController::class, 'sla-status'])
         ->name('ticket-categories.sla-status');
+    Route::post('ticket-categories/reorder', [App\Http\Controllers\Api\TicketCategoryController::class, 'reorder'])
+        ->name('ticket-categories.reorder');
     
     Route::apiResource('ticket-categories', App\Http\Controllers\Api\TicketCategoryController::class);
+
+    // Ticket Priority Management routes
+    Route::get('ticket-priorities/options', [App\Http\Controllers\Api\TicketPriorityController::class, 'options'])
+        ->name('ticket-priorities.options');
+    Route::post('ticket-priorities/reorder', [App\Http\Controllers\Api\TicketPriorityController::class, 'reorder'])
+        ->name('ticket-priorities.reorder');
+    
+    Route::apiResource('ticket-priorities', App\Http\Controllers\Api\TicketPriorityController::class);
 
     // Role Template Management routes (Admin access required)
     // Note: Specific routes MUST come before the resource route to avoid parameter binding conflicts
@@ -296,6 +312,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Ticket Configuration
         Route::get('ticket-config', [SettingController::class, 'getTicketConfig'])
             ->name('settings.ticket-config');
+        Route::put('workflow-transitions', [SettingController::class, 'updateWorkflowTransitions'])
+            ->name('settings.workflow-transitions.update');
         
         // Billing Configuration
         Route::get('billing-config', [SettingController::class, 'getBillingConfig'])
@@ -312,6 +330,36 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('settings.user-management');
         Route::put('user-management', [SettingController::class, 'updateUserManagementSettings'])
             ->name('settings.user-management.update');
+    });
+
+    // Billing Management routes
+    Route::prefix('billing')->group(function () {
+        // Invoice Management
+        Route::apiResource('invoices', App\Http\Controllers\Api\InvoiceController::class);
+        
+        // Additional invoice endpoints
+        Route::post('invoices/{invoice}/send', [App\Http\Controllers\Api\InvoiceController::class, 'send'])
+            ->name('invoices.send');
+        Route::post('invoices/{invoice}/mark-paid', [App\Http\Controllers\Api\InvoiceController::class, 'markPaid'])
+            ->name('invoices.mark-paid');
+        Route::get('invoices/{invoice}/pdf', [App\Http\Controllers\Api\InvoiceController::class, 'pdf'])
+            ->name('invoices.pdf');
+        
+        // Payment Management
+        Route::apiResource('payments', App\Http\Controllers\Api\PaymentController::class);
+        
+        // Billing Settings
+        Route::apiResource('settings', App\Http\Controllers\Api\BillingSettingController::class);
+        
+        // Billing Reports
+        Route::get('reports/dashboard', [App\Http\Controllers\Api\BillingReportController::class, 'dashboard'])
+            ->name('billing.reports.dashboard');
+        Route::get('reports/revenue', [App\Http\Controllers\Api\BillingReportController::class, 'revenue'])
+            ->name('billing.reports.revenue');
+        Route::get('reports/outstanding', [App\Http\Controllers\Api\BillingReportController::class, 'outstanding'])
+            ->name('billing.reports.outstanding');
+        Route::get('reports/payments', [App\Http\Controllers\Api\BillingReportController::class, 'payments'])
+            ->name('billing.reports.payments');
     });
 });
 

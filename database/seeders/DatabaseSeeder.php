@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             AddonTemplateSeeder::class,
             TicketStatusSeeder::class,
             TicketCategorySeeder::class,
+            TicketPrioritySeeder::class,
             TicketSeeder::class,  // Sample tickets for demonstration
         ]);
     }

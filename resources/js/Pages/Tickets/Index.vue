@@ -100,11 +100,13 @@
               class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Statuses</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="pending_review">Pending Review</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option 
+                v-for="status in ticketStatuses" 
+                :key="status.key" 
+                :value="status.key"
+              >
+                {{ status.name }}
+              </option>
             </select>
             
             <!-- Priority Filter -->
@@ -113,10 +115,13 @@
               class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Priorities</option>
-              <option value="low">Low</option>
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
+              <option 
+                v-for="priority in ticketPriorities" 
+                :key="priority.key" 
+                :value="priority.key"
+              >
+                {{ priority.name }}
+              </option>
             </select>
             
             <!-- Assignment Filter -->
@@ -232,19 +237,24 @@
             </div>
             
             <!-- Business Table View -->
-            <div v-else class="overflow-hidden">
-              <div class="overflow-x-auto">
+            <div v-else style="overflow: visible;">
+              <div class="overflow-x-auto relative" style="overflow-y: visible;">
                 <TicketsTable
                   :table="table"
                   :user="user"
                   :timersByTicket="timersByTicket"
                   :density="tableDensity"
+                  :ticket-statuses="ticketStatuses"
+                  :ticket-priorities="ticketPriorities"
+                  :workflow-transitions="workflowTransitions"
                   @timer-started="handleTimerEvent"
                   @timer-stopped="handleTimerEvent"
                   @timer-paused="handleTimerEvent"
                   @time-entry-created="handleTimeEntryCreated"
                   @open-manual-time-entry="openManualTimeEntry"
                   @open-ticket-addon="openTicketAddon"
+                  @status-updated="handleStatusUpdated"
+                  @priority-updated="handlePriorityUpdated"
                 />
               </div>
             </div>
@@ -398,6 +408,11 @@ const showMobileFilters = ref(false)
 const showMobileSidebar = ref(false)
 const isMobile = ref(window.innerWidth < 1024)
 
+// Ticket configuration data for dropdowns
+const ticketStatuses = ref([])
+const ticketPriorities = ref([])
+const workflowTransitions = ref({})
+
 // Filters
 const searchQuery = ref('')
 const statusFilter = ref('')
@@ -479,11 +494,17 @@ const refreshTickets = async () => {
       tickets.value = data.data || []
     }
   } catch (error) {
-    console.error('Failed to refresh tickets:', error)
+    // Only log errors in development mode
+    if (import.meta.env.DEV) {
+      console.error('Failed to refresh tickets:', error)
+    }
   } finally {
     isLoading.value = false
   }
 }
+
+// Debounce timer to prevent excessive API calls
+let timerRefreshDebounce = null
 
 const refreshActiveTimers = async () => {
   try {
@@ -500,7 +521,10 @@ const refreshActiveTimers = async () => {
       activeTimers.value = data.data || []
     }
   } catch (error) {
-    console.error('Failed to refresh active timers:', error)
+    // Only log errors in development mode
+    if (import.meta.env.DEV) {
+      console.error('Failed to refresh active timers:', error)
+    }
   }
 }
 
@@ -525,11 +549,38 @@ const fetchTimersForTickets = async () => {
     if (response.ok) {
       const data = await response.json()
       timersByTicket.value = data.data || {}
-    } else {
+    } else if (import.meta.env.DEV) {
       console.error('Failed to fetch bulk timers - HTTP', response.status)
     }
   } catch (error) {
-    console.error('Failed to fetch timers for tickets:', error)
+    // Only log errors in development mode
+    if (import.meta.env.DEV) {
+      console.error('Failed to fetch timers for tickets:', error)
+    }
+  }
+}
+
+// Load ticket configuration data for dropdowns
+const loadTicketConfig = async () => {
+  try {
+    const response = await fetch('/api/settings/ticket-config', {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
+      }
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      ticketStatuses.value = data.data.statuses || []
+      ticketPriorities.value = data.data.priorities || []
+      workflowTransitions.value = data.data.workflow_transitions || {}
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Failed to load ticket configuration:', error)
+    }
   }
 }
 
@@ -617,14 +668,25 @@ const getMyTicketsCount = () => {
   return tickets.value.filter(ticket => ticket.assigned_to_id === user.value?.id).length
 }
 
+// Unified timer refresh with debouncing
+const refreshTimerData = async () => {
+  await Promise.all([
+    refreshActiveTimers(),
+    fetchTimersForTickets()
+  ])
+}
+
 const handleTimerEvent = (event) => {
-  // Refresh active timers when timer events occur
-  refreshActiveTimers()
+  // Debounce timer refresh to prevent excessive API calls
+  if (timerRefreshDebounce) {
+    clearTimeout(timerRefreshDebounce)
+  }
   
-  // Refresh bulk timers for tickets page
-  fetchTimersForTickets()
+  timerRefreshDebounce = setTimeout(() => {
+    refreshTimerData()
+  }, 100) // 100ms debounce
   
-  // Optionally refresh tickets if timer affects displayed data
+  // Only refresh tickets if timer was converted to time entry
   if (event.type === 'timer_stopped' && event.converted_to_time_entry) {
     refreshTickets()
   }
@@ -642,14 +704,54 @@ const handleTimeEntryCreated = (timeEntry) => {
   refreshActiveTimers()
 }
 
+const handleStatusUpdated = (event) => {
+  if (event.error) {
+    // Handle error case - could show toast notification
+    if (import.meta.env.DEV) {
+      console.error('Status update failed:', event.error)
+    }
+  } else {
+    // Update the ticket in the local state
+    const ticketIndex = tickets.value.findIndex(t => t.id === event.ticket.id)
+    if (ticketIndex !== -1 && event.updatedTicket) {
+      tickets.value[ticketIndex] = { ...tickets.value[ticketIndex], ...event.updatedTicket }
+    }
+    
+    // Optionally refresh tickets to get latest data
+    // refreshTickets()
+  }
+}
+
+const handlePriorityUpdated = (event) => {
+  if (event.error) {
+    // Handle error case - could show toast notification
+    if (import.meta.env.DEV) {
+      console.error('Priority update failed:', event.error)
+    }
+  } else {
+    // Update the ticket in the local state
+    const ticketIndex = tickets.value.findIndex(t => t.id === event.ticket.id)
+    if (ticketIndex !== -1 && event.updatedTicket) {
+      tickets.value[ticketIndex] = { ...tickets.value[ticketIndex], ...event.updatedTicket }
+    }
+    
+    // Optionally refresh tickets to get latest data
+    // refreshTickets()
+  }
+}
+
 const openManualTimeEntry = (ticket) => {
-  // TODO: Open manual time entry dialog
-  console.log('Open manual time entry for ticket:', ticket.ticket_number)
+  // TODO: Implement manual time entry dialog
+  if (import.meta.env.DEV) {
+    console.log('Manual time entry requested for ticket:', ticket.ticket_number)
+  }
 }
 
 const openTicketAddon = (ticket) => {
-  // TODO: Open ticket addon dialog
-  console.log('Open ticket addon for ticket:', ticket.ticket_number)
+  // TODO: Implement ticket addon dialog
+  if (import.meta.env.DEV) {
+    console.log('Ticket addon requested for ticket:', ticket.ticket_number)
+  }
 }
 
 // Handle window resize
@@ -663,21 +765,26 @@ const handleResize = () => {
 
 // Lifecycle
 onMounted(() => {
-  refreshActiveTimers()
-  fetchTimersForTickets()
+  // Initial load - use unified function
+  refreshTimerData()
+  
+  // Load ticket configuration for dropdowns
+  loadTicketConfig()
   
   // Add resize listener
   window.addEventListener('resize', handleResize)
   
-  // Set up periodic refresh for active timers
+  // Set up periodic refresh with unified function
   const timerInterval = setInterval(() => {
-    refreshActiveTimers()
-    fetchTimersForTickets()
+    refreshTimerData()
   }, 30000) // Every 30 seconds
   
   // Cleanup
   onUnmounted(() => {
     clearInterval(timerInterval)
+    if (timerRefreshDebounce) {
+      clearTimeout(timerRefreshDebounce)
+    }
     window.removeEventListener('resize', handleResize)
   })
 })

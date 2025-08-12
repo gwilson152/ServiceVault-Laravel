@@ -23,7 +23,7 @@ class AdminDashboardController extends Controller
         $user = $request->user();
         
         // Verify admin access
-        if (!$user->roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()) {
+        if (!$user->hasPermission('admin.manage')) {
             abort(403, 'Access denied. Admin permissions required.');
         }
 
@@ -50,7 +50,7 @@ class AdminDashboardController extends Controller
      */
     public function users(Request $request)
     {
-        $users = User::with(['accounts', 'roleTemplates'])
+        $users = User::with(['account', 'roleTemplate'])
             ->withCount(['timers', 'timeEntries'])
             ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")

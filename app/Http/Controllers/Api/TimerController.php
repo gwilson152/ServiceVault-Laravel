@@ -185,8 +185,8 @@ class TimerController extends Controller
                     $timer->paused_at = now();
                     $timer->total_paused_duration = $timer->total_paused_duration ?? 0;
                 } elseif ($request->input('status') === 'running' && $originalStatus === 'paused') {
-                    $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
-                    $timer->total_paused_duration = ($timer->total_paused_duration ?? 0) + $pausedDuration;
+                    $pausedDuration = $timer->paused_at ? max(0, (int) now()->diffInSeconds($timer->paused_at)) : 0;
+                    $timer->total_paused_duration = max(0, (int) (($timer->total_paused_duration ?? 0) + $pausedDuration));
                     $timer->paused_at = null;
                 }
             }
@@ -312,12 +312,19 @@ class TimerController extends Controller
                 ], 400);
             }
 
-            $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
+            // Calculate paused duration more safely
+            $pausedDuration = 0;
+            if ($timer->paused_at) {
+                $pausedDuration = max(0, (int) now()->diffInSeconds($timer->paused_at));
+            }
+            
+            // Ensure total_paused_duration is always a non-negative integer
+            $totalPausedDuration = max(0, (int) (($timer->total_paused_duration ?? 0) + $pausedDuration));
             
             $timer->update([
                 'status' => 'running',
                 'paused_at' => null,
-                'total_paused_duration' => ($timer->total_paused_duration ?? 0) + $pausedDuration,
+                'total_paused_duration' => $totalPausedDuration,
             ]);
 
             // Broadcast update
@@ -822,11 +829,12 @@ class TimerController extends Controller
                         break;
                     case 'resume':
                         if ($timer->status === 'paused') {
-                            $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
+                            $pausedDuration = $timer->paused_at ? max(0, (int) now()->diffInSeconds($timer->paused_at)) : 0;
+                            $totalPausedDuration = max(0, (int) (($timer->total_paused_duration ?? 0) + $pausedDuration));
                             $timer->update([
                                 'status' => 'running',
                                 'paused_at' => null,
-                                'total_paused_duration' => ($timer->total_paused_duration ?? 0) + $pausedDuration,
+                                'total_paused_duration' => $totalPausedDuration,
                             ]);
                             $results[] = ['id' => $timer->id, 'status' => 'resumed'];
                         }
@@ -947,12 +955,13 @@ class TimerController extends Controller
             return response()->json(['message' => 'Timer is not paused'], 400);
         }
 
-        $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
+        $pausedDuration = $timer->paused_at ? max(0, (int) now()->diffInSeconds($timer->paused_at)) : 0;
+        $totalPausedDuration = max(0, (int) (($timer->total_paused_duration ?? 0) + $pausedDuration));
         
         $timer->update([
             'status' => 'running',
             'paused_at' => null,
-            'total_paused_duration' => ($timer->total_paused_duration ?? 0) + $pausedDuration,
+            'total_paused_duration' => $totalPausedDuration,
         ]);
 
         // Broadcast update to the timer owner

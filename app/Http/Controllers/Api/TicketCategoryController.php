@@ -293,4 +293,37 @@ class TicketCategoryController extends Controller
             'message' => 'SLA status retrieved successfully'
         ]);
     }
+
+    /**
+     * Reorder ticket categories
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+            return response()->json([
+                'message' => 'Insufficient permissions to reorder ticket categories'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'categories' => 'required|array',
+            'categories.*.id' => 'required|string|exists:ticket_categories,id',
+            'categories.*.sort_order' => 'required|integer|min:0'
+        ]);
+
+        foreach ($validated['categories'] as $categoryData) {
+            TicketCategory::where('id', $categoryData['id'])
+                ->update(['sort_order' => $categoryData['sort_order']]);
+        }
+
+        $categories = TicketCategory::ordered()->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $categories,
+            'message' => 'Ticket categories reordered successfully'
+        ]);
+    }
 }

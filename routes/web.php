@@ -101,9 +101,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Reports/Index');
     })->name('reports.index');
     
-    Route::get('/settings', function () {
-        return Inertia::render('Settings/Index');
-    })->name('settings.index');
+    Route::get('/settings/{tab?}', function ($tab = null) {
+        return Inertia::render('Settings/Index', [
+            'activeTab' => $tab
+        ]);
+    })->name('settings.index')->where('tab', '(system|email|tickets|billing|timer|users)');
     
     // User Management
     Route::get('/users', function () {

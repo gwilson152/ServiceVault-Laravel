@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\TicketStatus;
 use App\Models\TicketCategory;
+use App\Models\TicketPriority;
 use App\Models\BillingRate;
 use App\Models\AddonTemplate;
 use App\Models\Account;
@@ -321,6 +322,7 @@ class SettingController extends Controller
                 'data' => [
                     'statuses' => TicketStatus::active()->ordered()->get(),
                     'categories' => TicketCategory::active()->ordered()->get(),
+                    'priorities' => TicketPriority::active()->ordered()->get(),
                     'workflow_transitions' => TicketStatus::getWorkflowTransitions(),
                 ],
             ]);
@@ -331,6 +333,7 @@ class SettingController extends Controller
                 'data' => [
                     'statuses' => [],
                     'categories' => [],
+                    'priorities' => [],
                     'workflow_transitions' => [],
                 ],
             ]);
@@ -469,6 +472,26 @@ class SettingController extends Controller
 
         return response()->json([
             'message' => 'User management settings updated successfully',
+        ]);
+    }
+
+    /**
+     * Update workflow transitions
+     */
+    public function updateWorkflowTransitions(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        $validated = $request->validate([
+            'workflow_transitions' => 'required|array'
+        ]);
+
+        // Store workflow transitions in settings
+        Setting::setValue('tickets.workflow_transitions', $validated['workflow_transitions'], 'tickets');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Workflow transitions updated successfully'
         ]);
     }
 }

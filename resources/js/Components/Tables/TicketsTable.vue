@@ -92,8 +92,16 @@
                   density === 'compact' ? 'flex-wrap' : 'flex-row'
                 ]"
               >
-                <!-- Status Badge -->
-                <span 
+                <!-- Status Dropdown -->
+                <StatusDropdown
+                  v-if="ticketStatuses.length > 0"
+                  :model-value="cell.row.original.status"
+                  :statuses="ticketStatuses"
+                  :workflow-transitions="workflowTransitions"
+                  :loading="statusUpdating === cell.row.original.id"
+                  @change="updateTicketStatus(cell.row.original, $event)"
+                />
+                <span v-else 
                   :class="getStatusClasses(cell.row.original.status)" 
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm"
                 >
@@ -104,8 +112,15 @@
                   {{ formatStatus(cell.row.original.status) }}
                 </span>
                 
-                <!-- Priority Badge -->
-                <span 
+                <!-- Priority Dropdown -->
+                <PriorityDropdown
+                  v-if="ticketPriorities.length > 0"
+                  :model-value="cell.row.original.priority"
+                  :priorities="ticketPriorities"
+                  :loading="priorityUpdating === cell.row.original.id"
+                  @change="updateTicketPriority(cell.row.original, $event)"
+                />
+                <span v-else
                   :class="getPriorityClasses(cell.row.original.priority)" 
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm"
                 >
@@ -306,8 +321,11 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { FlexRender } from '@tanstack/vue-table'
 import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
+import StatusDropdown from '@/Components/Form/StatusDropdown.vue'
+import PriorityDropdown from '@/Components/Form/PriorityDropdown.vue'
 
 const props = defineProps({
   table: {
@@ -326,17 +344,35 @@ const props = defineProps({
     type: String,
     default: 'compact',
     validator: (value) => ['comfortable', 'compact'].includes(value)
+  },
+  ticketStatuses: {
+    type: Array,
+    default: () => []
+  },
+  ticketPriorities: {
+    type: Array,
+    default: () => []
+  },
+  workflowTransitions: {
+    type: Object,
+    default: () => ({})
   }
 })
 
-defineEmits([
+const emit = defineEmits([
   'timer-started',
   'timer-stopped',
   'timer-paused',
   'time-entry-created',
   'open-manual-time-entry',
-  'open-ticket-addon'
+  'open-ticket-addon',
+  'status-updated',
+  'priority-updated'
 ])
+
+// Loading states for inline editing
+const statusUpdating = ref(null)
+const priorityUpdating = ref(null)
 
 // Helper methods
 const getStatusClasses = (status) => {
@@ -432,6 +468,114 @@ const formatDate = (dateString) => {
   
   return date.toLocaleDateString()
 }
+
+// Update ticket status via API
+const updateTicketStatus = async (ticket, changeEvent) => {
+  if (changeEvent.from === changeEvent.to) return // No change
+  
+  statusUpdating.value = ticket.id
+  
+  try {
+    const response = await fetch(`/api/tickets/${ticket.id}/transition`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        status: changeEvent.to,
+        notes: `Status changed via table from ${changeEvent.from} to ${changeEvent.to}`
+      })
+    })
+    
+    const data = await response.json()
+    
+    if (response.ok) {
+      // Emit success event to parent
+      emit('status-updated', {
+        ticket,
+        oldStatus: changeEvent.from,
+        newStatus: changeEvent.to,
+        updatedTicket: data.data
+      })
+      
+      if (import.meta.env.DEV) {
+        console.log('Status updated successfully:', data.message)
+      }
+    } else {
+      throw new Error(data.error || 'Failed to update status')
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Failed to update ticket status:', error)
+    }
+    
+    // Could emit error event or show toast notification
+    emit('status-updated', {
+      ticket,
+      error: error.message,
+      oldStatus: changeEvent.from,
+      newStatus: changeEvent.to
+    })
+  } finally {
+    statusUpdating.value = null
+  }
+}
+
+// Update ticket priority via API
+const updateTicketPriority = async (ticket, changeEvent) => {
+  if (changeEvent.from === changeEvent.to) return // No change
+  
+  priorityUpdating.value = ticket.id
+  
+  try {
+    const response = await fetch(`/api/tickets/${ticket.id}/priority`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        priority: changeEvent.to,
+        notes: `Priority changed via table from ${changeEvent.fromPriority?.name || changeEvent.from} to ${changeEvent.toPriority?.name || changeEvent.to}`
+      })
+    })
+    
+    const data = await response.json()
+    
+    if (response.ok) {
+      // Emit success event to parent
+      emit('priority-updated', {
+        ticket,
+        oldPriority: changeEvent.from,
+        newPriority: changeEvent.to,
+        updatedTicket: data.data
+      })
+      
+      if (import.meta.env.DEV) {
+        console.log('Priority updated successfully:', data.message)
+      }
+    } else {
+      throw new Error(data.error || 'Failed to update priority')
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Failed to update ticket priority:', error)
+    }
+    
+    // Could emit error event or show toast notification
+    emit('priority-updated', {
+      ticket,
+      error: error.message,
+      oldPriority: changeEvent.from,
+      newPriority: changeEvent.to
+    })
+  } finally {
+    priorityUpdating.value = null
+  }
+}
 </script>
 
 <style scoped>
@@ -443,12 +587,39 @@ const formatDate = (dateString) => {
   @apply text-xs;
 }
 
-.table-compact tbody tr:hover {
+.table-compact tbody tr:hover:not(.dropdown-open) {
   @apply shadow-sm;
+  position: relative;
+  z-index: 1;
 }
 
-.table-comfortable tbody tr:hover {
+.table-comfortable tbody tr:hover:not(.dropdown-open) {
   @apply shadow-md;
+  position: relative;
+  z-index: 1;
+}
+
+/* Fix z-index issues with dropdowns in table */
+tbody tr td {
+  position: static;
+  overflow: visible;
+}
+
+/* Row with open dropdown gets highest priority */
+tbody tr:has([data-headlessui-state="open"]) {
+  position: relative;
+  z-index: 10000 !important;
+}
+
+/* Normal hover state - but lower than open dropdowns */
+tbody tr:hover:not(:has([data-headlessui-state="open"])) {
+  z-index: 1;
+}
+
+/* Ensure the entire table respects dropdown z-index */
+table {
+  position: relative;
+  z-index: auto;
 }
 
 /* Business-like table styling */

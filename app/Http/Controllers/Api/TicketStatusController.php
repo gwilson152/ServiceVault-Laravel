@@ -203,4 +203,37 @@ class TicketStatusController extends Controller
             'all_transitions' => $allTransitions
         ]);
     }
+
+    /**
+     * Reorder ticket statuses
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+            return response()->json([
+                'message' => 'Insufficient permissions to reorder ticket statuses'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'statuses' => 'required|array',
+            'statuses.*.id' => 'required|string|exists:ticket_statuses,id',
+            'statuses.*.sort_order' => 'required|integer|min:0'
+        ]);
+
+        foreach ($validated['statuses'] as $statusData) {
+            TicketStatus::where('id', $statusData['id'])
+                ->update(['sort_order' => $statusData['sort_order']]);
+        }
+
+        $statuses = TicketStatus::ordered()->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $statuses,
+            'message' => 'Ticket statuses reordered successfully'
+        ]);
+    }
 }

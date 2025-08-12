@@ -443,6 +443,51 @@ class TicketController extends Controller
     }
     
     /**
+     * Update ticket priority
+     */
+    public function updatePriority(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeEditedBy($user)) {
+            return response()->json(['error' => 'Cannot modify this ticket.'], 403);
+        }
+        
+        $validated = $request->validate([
+            'priority' => ['required', Rule::in([
+                Ticket::PRIORITY_LOW,
+                Ticket::PRIORITY_NORMAL,
+                Ticket::PRIORITY_MEDIUM,
+                Ticket::PRIORITY_HIGH,
+                Ticket::PRIORITY_URGENT
+            ])],
+            'notes' => 'nullable|string|max:500'
+        ]);
+        
+        $oldPriority = $ticket->priority;
+        $ticket->update(['priority' => $validated['priority']]);
+        
+        // Log the priority change in ticket activity
+        $ticket->activities()->create([
+            'user_id' => $user->id,
+            'action' => 'priority_changed',
+            'description' => "Priority changed from {$oldPriority} to {$validated['priority']}",
+            'metadata' => [
+                'from_priority' => $oldPriority,
+                'to_priority' => $validated['priority'],
+                'notes' => $validated['notes'] ?? null,
+            ]
+        ]);
+        
+        $ticket->load(['account:id,name', 'createdBy:id,name', 'assignedTo:id,name']);
+        
+        return response()->json([
+            'data' => new TicketResource($ticket),
+            'message' => "Ticket priority updated to {$validated['priority']}."
+        ]);
+    }
+    
+    /**
      * Assign ticket to a user
      */
     public function assign(Request $request, Ticket $ticket): JsonResponse

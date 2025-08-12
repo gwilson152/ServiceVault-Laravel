@@ -81,6 +81,57 @@ Role template selection with context filtering:
 />
 ```
 
+### Status Dropdown
+Workflow-aware ticket status selection component with transition validation:
+
+```vue
+<StatusDropdown
+  v-model="ticket.status"
+  :statuses="ticketStatuses"
+  :workflow-transitions="workflowTransitions"
+  :loading="statusUpdating"
+  @change="handleStatusChange"
+/>
+```
+
+**Props:**
+- `modelValue: string` - Current status key (required)
+- `statuses: Array` - Available status definitions with colors and metadata
+- `workflowTransitions: Object` - Allowed transitions from current status
+- `loading: boolean` - Show loading indicator during updates
+- `disabled: boolean` - Disable interaction
+
+**Features:**
+- **Workflow Validation**: Only shows statuses that are valid transitions from current state
+- **Visual Design**: Status colors and icons for easy identification
+- **Smart Positioning**: Fixed positioning to avoid table scroll conflicts
+- **Loading States**: Built-in loading overlay during status updates
+- **Development Mode**: Shows disabled options in dev mode for debugging
+
+**Event Data:**
+```typescript
+interface StatusChangeEvent {
+  from: string;    // Previous status key
+  to: string;      // New status key  
+  timestamp: string; // ISO timestamp of change
+}
+```
+
+**Usage in Tables:**
+The component is designed for inline editing within data tables, particularly `TicketsTable.vue`. It handles viewport positioning and z-index layering to work correctly within scrollable table containers.
+
+**Workflow Integration:**
+Status transitions are controlled by the `workflowTransitions` prop, which maps current status to allowed next statuses:
+```javascript
+workflowTransitions: {
+  'open': ['in_progress', 'closed'],
+  'in_progress': ['pending_review', 'resolved'],
+  'pending_review': ['in_progress', 'resolved'],
+  'resolved': ['closed', 'in_progress'],
+  'closed': [] // Final state - no transitions
+}
+```
+
 ## Timer Components
 
 ### Timer Control Widget

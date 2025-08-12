@@ -59,7 +59,7 @@
                                 <button
                                     v-for="tab in tabs"
                                     :key="tab.id"
-                                    @click="activeTab = tab.id"
+                                    @click="navigateToTab(tab.id)"
                                     :class="[
                                         activeTab === tab.id
                                             ? 'border-indigo-500 text-indigo-600'
@@ -162,13 +162,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, nextTick } from "vue";
-import { router } from "@inertiajs/vue3";
+import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { router, usePage } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 
 // Define persistent layout
 defineOptions({
   layout: AppLayout
+});
+
+// Props from route
+const props = defineProps({
+  activeTab: {
+    type: String,
+    default: 'system'
+  }
 });
 import SystemConfiguration from "@/Pages/Settings/Components/SystemConfiguration.vue";
 import EmailConfiguration from "@/Pages/Settings/Components/EmailConfiguration.vue";
@@ -195,8 +203,8 @@ const tabs = [
     { id: "users", name: "User Management", icon: UsersIcon },
 ];
 
-// Reactive state
-const activeTab = ref("system");
+// Reactive state - initialize from props
+const activeTab = ref(props.activeTab || "system");
 const loading = reactive({
     system: false,
     email: false,
@@ -244,6 +252,28 @@ const scrollTabs = (direction) => {
         container.scrollLeft += scrollAmount;
     }
 };
+
+// Navigate to tab using URL path params
+const navigateToTab = (tabId) => {
+    const currentUrl = new URL(window.location.href);
+    const newPath = `/settings/${tabId}`;
+    
+    router.visit(newPath, {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['activeTab'],
+        onSuccess: () => {
+            activeTab.value = tabId;
+        }
+    });
+};
+
+// Watch for prop changes when navigating
+watch(() => props.activeTab, (newTab) => {
+    if (newTab && newTab !== activeTab.value) {
+        activeTab.value = newTab;
+    }
+}, { immediate: true });
 
 // Load all settings on mount
 onMounted(async () => {

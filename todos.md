@@ -33,6 +33,65 @@
     - Ticket creation handling with refresh and navigation
     - Reduced code redundancy by reusing modal component
 
+-   [x] **Comprehensive Billing Workflow Implementation**
+    
+    Successfully implemented a complete billing system with the following features:
+    - **Fresh Database Architecture**: New tables for invoices, payments, billing settings, tax configurations
+    - **Complete Invoice System**: Invoice generation from time entries and ticket addons with automatic numbering
+    - **Payment Tracking**: Full payment lifecycle management with multiple payment methods
+    - **Enhanced Time Entries Page**: Replaced placeholder with fully functional interface including bulk approvals
+    - **API Integration**: Comprehensive billing API endpoints with proper authentication and authorization
+    - **Settings Integration**: Invoice configuration components for company details and payment settings
+
+## Permission System Refactoring Plan 🔧
+
+**Priority: HIGH** - Performance and architecture cleanup required
+
+### Overview
+The codebase contains inefficient permission checking patterns that create unnecessary database queries. Currently using `$user->roleTemplates()->whereJsonContains('permissions', 'x')->exists()` instead of the efficient `$user->hasPermission('x')` methods already available in the User model.
+
+### Current Issues
+- **Performance**: Multiple identical database queries for permission checks
+- **Inconsistency**: Mix of efficient and inefficient permission checking methods
+- **Bloat**: Backward compatibility method that shouldn't exist
+- **Architecture**: Single role template per user but code suggests multiple templates
+
+### Affected Files Analysis
+- `app/Http/Controllers/Portal/CustomerPortalController.php` (5 instances)
+- `app/Http/Controllers/Api/TimeEntryController.php` (20+ instances)
+- `app/Http/Controllers/Dashboard/ManagerDashboardController.php` (3 instances)
+- `app/Http/Controllers/UserInvitationController.php` (9 instances)
+- `app/Http/Resources/TimeEntryResource.php` (7 instances)
+
+### Refactoring Tasks
+
+-   [ ] **Phase 1: Analysis & Permission Mapping**
+    - Catalog all permission strings used in `whereJsonContains()` calls
+    - Map them to existing User model methods where possible
+    - Identify missing permission methods that need to be added to User model
+
+-   [ ] **Phase 2: Controller Refactoring** 
+    - Replace `roleTemplates()->whereJsonContains('permissions', 'admin.manage')->exists()` with `hasPermission('admin.manage')`
+    - Replace `roleTemplates()->whereJsonContains('permissions', 'teams.manage')->exists()` with `hasPermission('teams.manage')`
+    - Use `hasAnyPermission(['perm1', 'perm2'])` for complex permission checks
+    - **Files**: CustomerPortalController, TimeEntryController, ManagerDashboardController, UserInvitationController
+
+-   [ ] **Phase 3: Resource Refactoring**
+    - Update `app/Http/Resources/TimeEntryResource.php` to use efficient permission checks
+    - Move permission logic out of resources where possible
+
+-   [ ] **Phase 4: Clean Up & Testing**
+    - Remove bloated `roleTemplates()` method from User model
+    - Add any missing efficient permission methods to User model
+    - Performance testing to confirm query reduction
+    - Verify all permission checks still work correctly
+
+### Expected Benefits
+- **Reduced Database Queries**: From N queries per permission check to 0 (using loaded relationships)
+- **Better Performance**: Faster page loads and API responses
+- **Improved Maintainability**: Single source of truth for permission logic
+- **Consistent Architecture**: All permission checks use the same efficient pattern
+
 ## Frontend Enhancements
 
 -   [ ] **Remove Cards View and Enhance Table View on Tickets Page**
@@ -57,6 +116,13 @@
     -   Professional enterprise appearance
     -   Reduced UI complexity and maintenance overhead
     -   Better performance with single view mode
+
+-   [ ] **Create Comprehensive Billing Management Interface**
+    - Invoice generation wizard with time entries and ticket addon selection
+    - Invoice management dashboard with status tracking
+    - Payment recording and tracking interface
+    - Billing reports and analytics page
+    - Integration with existing timer and ticket systems
 
 -   [ ] **Create Page-Specific Widget Panel in App Menu**
 

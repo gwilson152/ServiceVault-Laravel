@@ -80,6 +80,18 @@ class User extends Authenticatable
     {
         return $this->belongsTo(RoleTemplate::class);
     }
+
+    /**
+     * Role templates accessible by this user (for backward compatibility)
+     * This method handles the case where code expects roleTemplates() (plural)
+     * Returns a query builder that works with whereJsonContains
+     */
+    public function roleTemplates()
+    {
+        // Return a hasMany relationship that filters to just this user's role template
+        // This creates a query builder that works with whereJsonContains
+        return RoleTemplate::where('id', $this->role_template_id);
+    }
     
     /**
      * Check if user has a specific permission through their role template
