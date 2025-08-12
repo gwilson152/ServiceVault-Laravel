@@ -2,8 +2,8 @@
   <div class="space-y-8">
     <!-- Billing Configuration Header -->
     <div>
-      <h2 class="text-2xl font-semibold text-gray-900">Billing & Addons</h2>
-      <p class="text-gray-600 mt-2">Manage billing rates, addon templates, and pricing configuration.</p>
+      <h2 class="text-2xl font-semibold text-gray-900">Billing & Invoicing</h2>
+      <p class="text-gray-600 mt-2">Configure company information, invoice settings, tax configuration, and billing rates.</p>
     </div>
 
     <!-- Loading State -->
@@ -15,6 +15,137 @@
     </div>
 
     <template v-else>
+      <!-- Company Information -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-6">Company Information</h3>
+        <form @submit.prevent="saveBillingSettings" class="space-y-6">
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <label for="company_name" class="block text-sm font-medium text-gray-700">
+                Company Name
+              </label>
+              <input
+                id="company_name"
+                v-model="billingSettings.company_name"
+                type="text"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label for="company_email" class="block text-sm font-medium text-gray-700">
+                Email
+              </label>
+              <input
+                id="company_email"
+                v-model="billingSettings.company_email"
+                type="email"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label for="company_address" class="block text-sm font-medium text-gray-700">
+              Address
+            </label>
+            <textarea
+              id="company_address"
+              v-model="billingSettings.company_address"
+              rows="3"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+        </form>
+      </div>
+
+      <!-- Invoice Settings -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-6">Invoice Settings</h3>
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div>
+            <label for="invoice_prefix" class="block text-sm font-medium text-gray-700">
+              Invoice Number Prefix
+            </label>
+            <input
+              id="invoice_prefix"
+              v-model="billingSettings.invoice_prefix"
+              type="text"
+              placeholder="INV-"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label for="default_payment_terms" class="block text-sm font-medium text-gray-700">
+              Default Payment Terms (days)
+            </label>
+            <input
+              id="default_payment_terms"
+              v-model.number="billingSettings.default_payment_terms"
+              type="number"
+              min="1"
+              max="365"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Tax Settings -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-6">Tax Settings</h3>
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div>
+            <label for="default_tax_rate" class="block text-sm font-medium text-gray-700">
+              Default Tax Rate (%)
+            </label>
+            <input
+              id="default_tax_rate"
+              v-model.number="billingSettings.default_tax_rate"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label for="tax_name" class="block text-sm font-medium text-gray-700">
+              Tax Name
+            </label>
+            <input
+              id="tax_name"
+              v-model="billingSettings.tax_name"
+              type="text"
+              placeholder="VAT, Sales Tax, etc."
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <div class="flex justify-end space-x-3">
+        <button
+          type="button"
+          @click="$emit('refresh')"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Refresh
+        </button>
+        <button
+          type="button"
+          @click="saveBillingSettings"
+          :disabled="saving"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+        >
+          <span v-if="saving" class="mr-2">
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          </span>
+          {{ saving ? 'Saving...' : 'Save Settings' }}
+        </button>
+      </div>
       <!-- Billing Rates -->
       <div class="bg-white border border-gray-200 rounded-lg p-6">
         <div class="flex items-center justify-between mb-6">
@@ -177,7 +308,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   config: {
@@ -190,7 +321,22 @@ const props = defineProps({
   }
 })
 
-defineEmits(['refresh'])
+const emit = defineEmits(['refresh'])
+
+// Reactive billing settings with defaults
+const billingSettings = ref({
+  company_name: '',
+  company_email: '',
+  company_address: '',
+  invoice_prefix: 'INV-',
+  default_payment_terms: 30,
+  default_tax_rate: 0,
+  tax_name: 'Tax',
+  ...props.config.billing_settings
+})
+
+// State
+const saving = ref(false)
 
 const billingRates = computed(() => props.config.billing_rates || [])
 const addonTemplates = computed(() => props.config.addon_templates || [])
@@ -203,4 +349,51 @@ const activeAddonTemplates = computed(() => {
 const getCategoryLabel = (categoryKey) => {
   return addonCategories.value[categoryKey] || categoryKey
 }
+
+// Methods
+const saveBillingSettings = async () => {
+  saving.value = true
+  try {
+    const response = await fetch('/api/settings/billing-settings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify(billingSettings.value)
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to save billing settings')
+    }
+    
+    // Emit refresh to parent component
+    emit('refresh')
+    
+    // Show success feedback (you could add a toast notification here)
+    console.log('Billing settings saved successfully')
+    
+  } catch (error) {
+    console.error('Error saving billing settings:', error)
+    // You could add error notification here
+  } finally {
+    saving.value = false
+  }
+}
+
+// Watch for config changes and update billing settings
+watch(() => props.config.billing_settings, (newSettings) => {
+  if (newSettings) {
+    billingSettings.value = {
+      company_name: '',
+      company_email: '',
+      company_address: '',
+      invoice_prefix: 'INV-',
+      default_payment_terms: 30,
+      default_tax_rate: 0,
+      tax_name: 'Tax',
+      ...newSettings
+    }
+  }
+}, { deep: true, immediate: true })
 </script>

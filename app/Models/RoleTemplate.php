@@ -114,14 +114,55 @@ class RoleTemplate extends Model
             'roles.manage',
             'role_templates.manage',
             
-            // Billing & Financial
-            'billing.manage',
+            // Billing & Financial Management
+            'billing.full_access',
+            'billing.admin',
             'billing.configure',
-            'billing.rates',
-            'billing.invoices',
-            'billing.reports',
-            'billing.view.own',
+            'billing.manage',
+            'billing.view.all',
             'billing.view.account',
+            'billing.view.own',
+            'billing.reports',
+            
+            // Invoice Management
+            'invoices.create',
+            'invoices.edit',
+            'invoices.edit.account',
+            'invoices.delete',
+            'invoices.view.all',
+            'invoices.view.account',
+            'invoices.view.own',
+            'invoices.send',
+            'invoices.generate',
+            'invoices.void',
+            'invoices.duplicate',
+            
+            // Payment Management
+            'payments.create',
+            'payments.edit',
+            'payments.edit.account',
+            'payments.delete',
+            'payments.view.all',
+            'payments.view.account',
+            'payments.view.own',
+            'payments.track',
+            'payments.refund',
+            'payments.process',
+            
+            // Billing Rates Management
+            'billing.rates.create',
+            'billing.rates.edit',
+            'billing.rates.delete',
+            'billing.rates.view',
+            'billing.rates.manage',
+            'billing.rates.manage.account',
+            
+            // Billing Addons & Templates
+            'billing.addons.create',
+            'billing.addons.edit',
+            'billing.addons.delete',
+            'billing.addons.view',
+            'billing.addons.manage',
             
             // Service Tickets - Updated for account-scoped permissions
             'tickets.admin',
@@ -212,9 +253,15 @@ class RoleTemplate extends Model
             'widgets.dashboard.my-tickets',
             'widgets.dashboard.time-tracking',
             'widgets.dashboard.all-timers',
-            'widgets.dashboard.billing-overview',
             'widgets.dashboard.account-activity',
             'widgets.dashboard.quick-actions',
+            
+            // Billing Widgets
+            'widgets.billing.overview',
+            'widgets.billing.invoices',
+            'widgets.billing.payments',
+            'widgets.billing.rates',
+            'widgets.dashboard.billing-overview',
             
             // Widget Configuration
             'widgets.configure',
@@ -242,8 +289,12 @@ class RoleTemplate extends Model
             'pages.reports.own',
             'pages.reports.billing',
             
-            // Billing
+            // Billing Pages
             'pages.billing.overview',
+            'pages.billing.invoices',
+            'pages.billing.payments',
+            'pages.billing.rates',
+            'pages.billing.reports',
             'pages.billing.own',
             
             // Customer Portal

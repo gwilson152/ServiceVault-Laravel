@@ -31,9 +31,11 @@ const form = ref({
     timezone: '',
     locale: 'en',
     is_active: true,
-    account_ids: [],
-    role_template_ids: [],
-    preferences: {}
+    is_visible: true,
+    account_id: null,
+    role_template_id: null,
+    preferences: {},
+    send_invitation: true
 })
 
 const saving = ref(false)
@@ -56,8 +58,9 @@ watch(() => props.open, async (isOpen) => {
                 timezone: props.user.timezone || '',
                 locale: props.user.locale || 'en',
                 is_active: props.user.is_active ?? true,
-                account_ids: props.user.accounts?.map(account => account.id) || [],
-                role_template_ids: props.user.role_templates?.map(role => role.id) || [],
+                is_visible: props.user.is_visible ?? true,
+                account_id: props.user.account?.id || null,
+                role_template_id: props.user.role_template?.id || null,
                 preferences: props.user.preferences || {}
             }
         } else {
@@ -74,12 +77,14 @@ const resetForm = () => {
         email: '',
         password: '',
         password_confirmation: '',
-        timezone: '',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         locale: 'en',
         is_active: true,
-        account_ids: [],
-        role_template_ids: [],
-        preferences: {}
+        is_visible: true,
+        account_id: null,
+        role_template_id: null,
+        preferences: {},
+        send_invitation: true
     }
 }
 
@@ -90,10 +95,21 @@ const saveUser = async () => {
         
         const formData = { ...form.value }
         
-        // Don't send password fields if editing and password is empty
-        if (isEditing.value && !formData.password) {
-            delete formData.password
-            delete formData.password_confirmation
+        // Handle password logic based on mode
+        if (isEditing.value) {
+            // For editing: only send password if provided
+            if (!formData.password) {
+                delete formData.password
+                delete formData.password_confirmation
+            }
+            // Remove invitation flag for existing users
+            delete formData.send_invitation
+        } else {
+            // For new users: remove password fields if sending invitation or user is inactive
+            if (formData.send_invitation || !formData.is_active) {
+                delete formData.password
+                delete formData.password_confirmation
+            }
         }
         
         let response
@@ -211,8 +227,26 @@ const locales = [
                                 <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email[0] }}</p>
                             </div>
 
-                            <!-- Password -->
-                            <div>
+                            <!-- Invitation Option (New Users Only) -->
+                            <div v-if="!isEditing" class="md:col-span-2">
+                                <div class="flex items-center">
+                                    <input
+                                        id="send_invitation"
+                                        v-model="form.send_invitation"
+                                        type="checkbox"
+                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    />
+                                    <label for="send_invitation" class="ml-2 block text-sm text-gray-900">
+                                        Send invitation email to user
+                                    </label>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    When enabled, the user will receive an email invitation to set their own password and activate their account.
+                                </p>
+                            </div>
+
+                            <!-- Password (only if editing or not sending invitation) -->
+                            <div v-if="isEditing || (!form.send_invitation && form.is_active)">
                                 <label for="password" class="block text-sm font-medium text-gray-700">
                                     Password {{ isEditing ? '(leave empty to keep current)' : '*' }}
                                 </label>
@@ -221,7 +255,7 @@ const locales = [
                                         id="password"
                                         v-model="form.password"
                                         :type="showPassword ? 'text' : 'password'"
-                                        :required="!isEditing"
+                                        :required="!isEditing && !form.send_invitation && form.is_active"
                                         placeholder="Enter password"
                                         class="block w-full pr-10 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.password }"
@@ -243,8 +277,8 @@ const locales = [
                                 <p v-if="errors.password" class="mt-1 text-sm text-red-600">{{ errors.password[0] }}</p>
                             </div>
 
-                            <!-- Password Confirmation -->
-                            <div>
+                            <!-- Password Confirmation (only if editing or not sending invitation) -->
+                            <div v-if="isEditing || (!form.send_invitation && form.is_active)">
                                 <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirm Password</label>
                                 <input
                                     id="password_confirmation"
@@ -290,25 +324,20 @@ const locales = [
 
                     <!-- Account Assignment Section -->
                     <div class="border-b border-gray-200 pb-4">
-                        <h4 class="text-lg font-medium text-gray-900 mb-4">Account Access</h4>
+                        <h4 class="text-lg font-medium text-gray-900 mb-4">Account Assignment</h4>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Assign to Accounts</label>
-                            <div class="max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2">
-                                <div v-for="account in accounts" :key="account.id" class="flex items-center py-1">
-                                    <input
-                                        :id="`account-${account.id}`"
-                                        v-model="form.account_ids"
-                                        :value="account.id"
-                                        type="checkbox"
-                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                    />
-                                    <label :for="`account-${account.id}`" class="ml-2 text-sm text-gray-700 flex-1">
-                                        <span class="font-medium">{{ account.display_name }}</span>
-                                        <span class="text-gray-500 ml-2">({{ account.account_type }})</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <p class="mt-1 text-xs text-gray-500">Select which accounts this user should have access to.</p>
+                            <label for="account_id" class="block text-sm font-medium text-gray-700">Primary Account</label>
+                            <select
+                                id="account_id"
+                                v-model="form.account_id"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            >
+                                <option :value="null">Select an account...</option>
+                                <option v-for="account in accounts" :key="account.id" :value="account.id">
+                                    {{ account.display_name }} ({{ account.account_type }})
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">Select the primary account this user belongs to.</p>
                         </div>
                     </div>
 
@@ -316,43 +345,54 @@ const locales = [
                     <div class="border-b border-gray-200 pb-4">
                         <h4 class="text-lg font-medium text-gray-900 mb-4">Role Assignment</h4>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Assign Role Templates</label>
-                            <div class="max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2">
-                                <div v-for="role in roleTemplates" :key="role.id" class="flex items-center py-1">
-                                    <input
-                                        :id="`role-${role.id}`"
-                                        v-model="form.role_template_ids"
-                                        :value="role.id"
-                                        type="checkbox"
-                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                    />
-                                    <label :for="`role-${role.id}`" class="ml-2 text-sm text-gray-700 flex-1">
-                                        <span class="font-medium">{{ role.name }}</span>
-                                        <span class="text-gray-500 ml-2">({{ role.context }})</span>
-                                        <div v-if="role.description" class="text-xs text-gray-400">{{ role.description }}</div>
-                                    </label>
-                                </div>
-                            </div>
-                            <p class="mt-1 text-xs text-gray-500">Select which role templates should be assigned to this user.</p>
+                            <label for="role_template_id" class="block text-sm font-medium text-gray-700">Role Template</label>
+                            <select
+                                id="role_template_id"
+                                v-model="form.role_template_id"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            >
+                                <option :value="null">Select a role...</option>
+                                <option v-for="role in roleTemplates" :key="role.id" :value="role.id">
+                                    {{ role.name }} ({{ role.context }})
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">Select the role template for this user.</p>
                         </div>
                     </div>
 
                     <!-- Status Section -->
                     <div>
                         <h4 class="text-lg font-medium text-gray-900 mb-4">Account Status</h4>
-                        <div>
-                            <div class="flex items-center">
-                                <input
-                                    id="is_active"
-                                    v-model="form.is_active"
-                                    type="checkbox"
-                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                />
-                                <label for="is_active" class="ml-2 block text-sm text-gray-900">
-                                    User is active
-                                </label>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex items-center">
+                                    <input
+                                        id="is_active"
+                                        v-model="form.is_active"
+                                        type="checkbox"
+                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    />
+                                    <label for="is_active" class="ml-2 block text-sm text-gray-900">
+                                        User is active
+                                    </label>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500">Inactive users cannot log in or access the system.</p>
                             </div>
-                            <p class="mt-1 text-xs text-gray-500">Inactive users cannot log in or access the system.</p>
+                            
+                            <div>
+                                <div class="flex items-center">
+                                    <input
+                                        id="is_visible"
+                                        v-model="form.is_visible"
+                                        type="checkbox"
+                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    />
+                                    <label for="is_visible" class="ml-2 block text-sm text-gray-900">
+                                        User is visible
+                                    </label>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500">Hidden users are not shown in user lists and selections.</p>
+                            </div>
                         </div>
                     </div>
                 </div>

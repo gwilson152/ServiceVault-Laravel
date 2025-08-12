@@ -32,6 +32,7 @@ class User extends Authenticatable
         'last_active_at',
         'last_login_at',
         'is_active',
+        'is_visible',
     ];
 
     /**
@@ -58,6 +59,7 @@ class User extends Authenticatable
             'last_active_at' => 'datetime',
             'last_login_at' => 'datetime',
             'is_active' => 'boolean',
+            'is_visible' => 'boolean',
         ];
     }
 

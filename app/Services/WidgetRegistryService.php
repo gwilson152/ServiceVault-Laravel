@@ -186,6 +186,45 @@ class WidgetRegistryService
             'enabled_by_default' => false,
         ],
 
+        'invoice-status' => [
+            'name' => 'Invoice Status',
+            'description' => 'Invoice tracking and status overview with quick actions',
+            'component' => 'InvoiceStatusWidget',
+            'category' => 'financial',
+            'permissions' => ['billing.view.account', 'billing.manage', 'invoices.create'],
+            'context' => 'both',
+            'account_aware' => true,
+            'default_size' => ['w' => 4, 'h' => 4],
+            'configurable' => true,
+            'enabled_by_default' => false,
+        ],
+
+        'payment-tracking' => [
+            'name' => 'Payment Tracking',
+            'description' => 'Recent payment activity and payment method analytics',
+            'component' => 'PaymentTrackingWidget',
+            'category' => 'financial',
+            'permissions' => ['billing.view.account', 'billing.manage', 'payments.view'],
+            'context' => 'both',
+            'account_aware' => true,
+            'default_size' => ['w' => 4, 'h' => 4],
+            'configurable' => true,
+            'enabled_by_default' => false,
+        ],
+
+        'billing-rates' => [
+            'name' => 'Billing Rates',
+            'description' => 'Quick view and management of billing rates',
+            'component' => 'BillingRatesWidget',
+            'category' => 'financial',
+            'permissions' => ['billing.rates.view', 'billing.rates.manage', 'billing.manage'],
+            'context' => 'service_provider',
+            'account_aware' => true,
+            'default_size' => ['w' => 4, 'h' => 4],
+            'configurable' => true,
+            'enabled_by_default' => false,
+        ],
+
 
         'account-activity' => [
             'name' => 'Account Activity',

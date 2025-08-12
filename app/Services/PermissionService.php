@@ -137,7 +137,12 @@ class PermissionService
                 'accounts.manage',
                 'users.assign',
                 'rates.customize',
-                'reports.view_account'
+                'reports.view_account',
+                // Basic billing permissions for account managers
+                'billing.view.account',
+                'invoices.view.account',
+                'payments.view.account',
+                'widgets.billing.overview'
             ],
             'team_lead' => [
                 'team.oversight',
@@ -154,14 +159,123 @@ class PermissionService
             'customer' => [
                 'portal.access',
                 'tickets.view_own',
-                'invoices.view_own',
-                'timeentries.view_own'
+                'timeentries.view_own',
+                // Customer billing permissions
+                'billing.view.own',
+                'invoices.view.own',
+                'payments.view.own',
+                'pages.billing.own'
             ],
             'billing_administrator' => [
+                // Full billing management access
+                'billing.full_access',
+                'billing.admin',
+                'billing.configure',
+                'billing.manage',
+                'billing.view.all',
+                'billing.reports',
+                
+                // Invoice management
+                'invoices.create',
+                'invoices.edit',
+                'invoices.delete',
+                'invoices.view.all',
+                'invoices.send',
                 'invoices.generate',
+                'invoices.void',
+                'invoices.duplicate',
+                
+                // Payment management
+                'payments.create',
+                'payments.edit',
+                'payments.delete',
+                'payments.view.all',
                 'payments.track',
-                'rates.manage',
-                'billing.full_access'
+                'payments.refund',
+                'payments.process',
+                
+                // Billing rates
+                'billing.rates.create',
+                'billing.rates.edit',
+                'billing.rates.delete',
+                'billing.rates.view',
+                'billing.rates.manage',
+                
+                // Addons and templates
+                'billing.addons.create',
+                'billing.addons.edit',
+                'billing.addons.delete',
+                'billing.addons.view',
+                'billing.addons.manage',
+                
+                // Widget permissions
+                'widgets.billing.overview',
+                'widgets.billing.invoices',
+                'widgets.billing.payments',
+                'widgets.billing.rates',
+                
+                // Page permissions
+                'pages.billing.overview',
+                'pages.billing.invoices',
+                'pages.billing.payments',
+                'pages.billing.rates',
+                'pages.billing.reports'
+            ],
+            
+            'billing_manager' => [
+                // Billing management (account-scoped)
+                'billing.manage',
+                'billing.view.account',
+                'billing.reports',
+                
+                // Invoice management (account-scoped)
+                'invoices.create',
+                'invoices.edit.account',
+                'invoices.view.account',
+                'invoices.send',
+                'invoices.generate',
+                
+                // Payment management (account-scoped)
+                'payments.create',
+                'payments.edit.account',
+                'payments.view.account',
+                'payments.track',
+                
+                // Billing rates (account-scoped)
+                'billing.rates.view',
+                'billing.rates.manage.account',
+                
+                // Widget permissions
+                'widgets.billing.overview',
+                'widgets.billing.invoices',
+                'widgets.billing.payments',
+                
+                // Page permissions
+                'pages.billing.overview',
+                'pages.billing.invoices',
+                'pages.billing.payments'
+            ],
+            
+            'billing_clerk' => [
+                // Basic billing operations
+                'billing.view.account',
+                
+                // Invoice operations
+                'invoices.create',
+                'invoices.view.account',
+                'invoices.send',
+                
+                // Payment operations
+                'payments.create',
+                'payments.view.account',
+                
+                // Widget permissions
+                'widgets.billing.overview',
+                'widgets.billing.invoices',
+                'widgets.billing.payments',
+                
+                // Page permissions
+                'pages.billing.overview'
             ]
         ];
     }

@@ -2,6 +2,8 @@
 import { Head, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import UserFormModal from '@/Components/UserFormModal.vue'
+import UsersTable from '@/Components/Tables/UsersTable.vue'
+import { useUsersTable } from '@/Composables/useUsersTable'
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 
@@ -19,35 +21,43 @@ const searchQuery = ref('')
 const selectedStatus = ref('all')
 const selectedRoleTemplate = ref(null)
 const selectedAccount = ref(null)
-const sortField = ref('name')
-const sortDirection = ref('asc')
-const currentPage = ref(1)
-const totalPages = ref(1)
-const totalUsers = ref(0)
 const showCreateModal = ref(false)
 const selectedUser = ref(null)
 const showDeleteConfirm = ref(false)
 const userToDelete = ref(null)
 
-const loadUsers = async (page = 1) => {
+// Table density preference (like tickets page)
+const tableDensity = ref(localStorage.getItem('users-table-density') || 'compact')
+
+// Watch for density changes and save to localStorage
+watch(tableDensity, (newDensity) => {
+  localStorage.setItem('users-table-density', newDensity)
+}, { immediate: false })
+
+// Initialize TanStack Table
+const {
+  table,
+  globalFilter,
+  setStatusFilter,
+  setRoleFilter,
+  setAccountFilter,
+  clearAllFilters,
+  totalUsers,
+  currentPage,
+  totalPages,
+} = useUsersTable(users, false)
+
+const loadUsers = async () => {
     try {
         loading.value = true
         
-        const params = {
-            page,
-            search: searchQuery.value || undefined,
-            status: selectedStatus.value !== 'all' ? selectedStatus.value : undefined,
-            role_template_id: selectedRoleTemplate.value || undefined,
-            account_id: selectedAccount.value || undefined,
-            sort: sortField.value,
-            direction: sortDirection.value
-        }
-        
-        const response = await axios.get('/api/users', { params })
+        // Load all users for client-side filtering/sorting
+        const response = await axios.get('/api/users', {
+            params: {
+                per_page: 1000 // Load more users for client-side operations
+            }
+        })
         users.value = response.data.data
-        currentPage.value = response.data.meta.current_page
-        totalPages.value = response.data.meta.last_page
-        totalUsers.value = response.data.meta.total
     } catch (err) {
         error.value = 'Failed to load users'
         console.error('Users loading error:', err)
@@ -74,30 +84,7 @@ const loadAccounts = async () => {
     }
 }
 
-const handleSort = (field) => {
-    if (sortField.value === field) {
-        sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
-    } else {
-        sortField.value = field
-        sortDirection.value = 'asc'
-    }
-    loadUsers(1)
-}
-
-const getSortIcon = (field) => {
-    if (sortField.value !== field) return ''
-    return sortDirection.value === 'asc' ? '↑' : '↓'
-}
-
-const getStatusBadge = (isActive) => {
-    return isActive 
-        ? 'bg-green-100 text-green-800'
-        : 'bg-gray-100 text-gray-800'
-}
-
-const getStatusLabel = (isActive) => {
-    return isActive ? 'Active' : 'Inactive'
-}
+// Removed manual sorting - now handled by TanStack Table
 
 const openCreateModal = () => {
     selectedUser.value = null
@@ -110,7 +97,7 @@ const openEditModal = (user) => {
 }
 
 const handleUserSaved = () => {
-    loadUsers(currentPage.value)
+    loadUsers()
     showCreateModal.value = false
 }
 
@@ -122,7 +109,7 @@ const confirmDelete = (user) => {
 const deleteUser = async () => {
     try {
         await axios.delete(`/api/users/${userToDelete.value.id}`)
-        loadUsers(currentPage.value)
+        loadUsers()
         showDeleteConfirm.value = false
         userToDelete.value = null
     } catch (error) {
@@ -136,16 +123,42 @@ const toggleUserStatus = async (user) => {
             ...user,
             is_active: !user.is_active
         })
-        loadUsers(currentPage.value)
+        loadUsers()
     } catch (error) {
         console.error('Failed to toggle user status:', error)
     }
 }
 
-// Watch for filter changes
-watch([searchQuery, selectedStatus, selectedRoleTemplate, selectedAccount], () => {
-    loadUsers(1)
-}, { debounce: 300 })
+// Sync search query with TanStack global filter
+watch(searchQuery, (newValue) => {
+  table.setGlobalFilter(newValue)
+})
+
+// Sync filters with TanStack table
+watch(selectedStatus, (newValue) => {
+  setStatusFilter(newValue)
+})
+
+watch(selectedRoleTemplate, (newValue) => {
+  setRoleFilter(newValue)
+})
+
+watch(selectedAccount, (newValue) => {
+  setAccountFilter(newValue)
+})
+
+// Computed for active filters
+const hasActiveFilters = computed(() => {
+  return !!(searchQuery.value || selectedStatus.value !== 'all' || selectedRoleTemplate.value || selectedAccount.value)
+})
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  selectedStatus.value = 'all'
+  selectedRoleTemplate.value = null
+  selectedAccount.value = null
+  clearAllFilters()
+}
 
 onMounted(() => {
     loadUsers()
@@ -247,235 +260,134 @@ onMounted(() => {
                 </div>
 
                 <!-- Users Table -->
-                <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                    <div v-if="loading" class="px-4 py-8 sm:p-6">
-                        <div class="flex items-center justify-center">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                            <span class="ml-2 text-gray-600">Loading users...</span>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="p-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                Users
+                                <span class="text-sm font-normal text-gray-500 ml-2">
+                                    ({{ table.getFilteredRowModel().rows.length }} of {{ users.length }})
+                                </span>
+                            </h3>
+                            
+                            <!-- Table Controls -->
+                            <div class="flex items-center space-x-4">
+                                <!-- Clear Filters -->
+                                <button
+                                    v-if="hasActiveFilters"
+                                    @click="clearFilters"
+                                    class="text-sm text-red-600 hover:text-red-700 font-medium bg-red-50 px-3 py-1 rounded-lg"
+                                >
+                                    Clear Filters
+                                </button>
+                                
+                                <!-- Table Density Toggle -->
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-500">Density:</span>
+                                    <div class="flex items-center space-x-1">
+                                        <button
+                                            @click="tableDensity = 'comfortable'"
+                                            :class="[
+                                                'px-2 py-1 rounded text-xs font-medium transition-colors',
+                                                tableDensity === 'comfortable' 
+                                                    ? 'bg-blue-100 text-blue-700' 
+                                                    : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                                            ]"
+                                            title="Comfortable spacing"
+                                        >
+                                            Comfortable
+                                        </button>
+                                        <button
+                                            @click="tableDensity = 'compact'"
+                                            :class="[
+                                                'px-2 py-1 rounded text-xs font-medium transition-colors',
+                                                tableDensity === 'compact' 
+                                                    ? 'bg-blue-100 text-blue-700' 
+                                                    : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                                            ]"
+                                            title="Compact spacing for maximum data density"
+                                        >
+                                            Compact
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <div v-else-if="error" class="px-4 py-5 sm:p-6">
+                    
+                    <!-- Loading State -->
+                    <div v-if="loading" class="p-8 text-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p class="mt-2 text-gray-500">Loading users...</p>
+                    </div>
+                    
+                    <!-- Error State -->
+                    <div v-else-if="error" class="p-8 text-center">
                         <div class="rounded-md bg-red-50 p-4">
                             <div class="text-sm text-red-700">{{ error }}</div>
                         </div>
                     </div>
-
-                    <div v-else-if="users.length > 0">
-                        <!-- Table Header -->
-                        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm font-medium text-gray-900">
-                                    {{ totalUsers }} users total
-                                </span>
-                                <span class="text-sm text-gray-500">
-                                    Page {{ currentPage }} of {{ totalPages }}
+                    
+                    <!-- Empty State -->
+                    <div v-else-if="table.getFilteredRowModel().rows.length === 0" class="p-8 text-center">
+                        <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No users found</h3>
+                        <p class="mt-1 text-sm text-gray-500">
+                            {{ hasActiveFilters ? 'Try adjusting your filters' : 'Get started by creating your first user' }}
+                        </p>
+                        <div class="mt-6">
+                            <button
+                                v-if="!hasActiveFilters"
+                                @click="openCreateModal"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                            >
+                                Create New User
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Users Table View -->
+                    <div v-else style="overflow: visible;">
+                        <div class="overflow-x-auto relative" style="overflow-y: visible;">
+                            <UsersTable
+                                :table="table"
+                                :density="tableDensity"
+                                @toggle-status="toggleUserStatus"
+                                @edit-user="openEditModal"
+                                @delete-user="confirmDelete"
+                            />
+                        </div>
+                    </div>
+                    
+                    <!-- Pagination Controls -->
+                    <div v-if="table.getPageCount() > 1" class="border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <span class="text-sm text-gray-700">
+                                    Showing {{ table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1 }} to 
+                                    {{ Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length) }} of 
+                                    {{ table.getFilteredRowModel().rows.length }} users
                                 </span>
                             </div>
-                        </div>
-                        
-                        <!-- Users Table -->
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th 
-                                            scope="col" 
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                            @click="handleSort('name')"
-                                        >
-                                            User {{ getSortIcon('name') }}
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Accounts & Roles
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Activity
-                                        </th>
-                                        <th 
-                                            scope="col" 
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                            @click="handleSort('is_active')"
-                                        >
-                                            Status {{ getSortIcon('is_active') }}
-                                        </th>
-                                        <th scope="col" class="relative px-6 py-3">
-                                            <span class="sr-only">Actions</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
-                                        <!-- User Info -->
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex items-center">
-                                                <div class="flex-shrink-0 h-10 w-10">
-                                                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                        <span class="text-indigo-600 font-medium text-sm">
-                                                            {{ user.name.charAt(0).toUpperCase() }}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div class="ml-4">
-                                                    <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
-                                                    <div class="text-sm text-gray-500">{{ user.email }}</div>
-                                                    <div v-if="user.is_super_admin" class="text-xs text-purple-600 font-medium">Super Admin</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        
-                                        <!-- Accounts & Roles -->
-                                        <td class="px-6 py-4">
-                                            <div class="text-sm text-gray-900">
-                                                <div v-if="user.accounts_summary">
-                                                    <span class="font-medium">{{ user.accounts_summary.total_accounts }} accounts</span>
-                                                    <div class="text-xs text-gray-500 mt-1">
-                                                        <span v-for="(count, type) in user.accounts_summary.account_types" :key="type" class="mr-2">
-                                                            {{ count }} {{ type }}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="text-sm text-gray-500 mt-1">
-                                                <div v-if="user.roles_summary">
-                                                    {{ user.roles_summary.total_roles }} roles assigned
-                                                </div>
-                                            </div>
-                                        </td>
-                                        
-                                        <!-- Activity -->
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <div v-if="user.statistics">
-                                                <div>{{ user.statistics.total_assigned_tickets }} tickets</div>
-                                                <div class="text-xs text-gray-500">{{ user.statistics.total_time_entries }} time entries</div>
-                                                <div v-if="user.statistics.active_timers_count > 0" class="text-xs text-green-600">
-                                                    {{ user.statistics.active_timers_count }} active timer(s)
-                                                </div>
-                                            </div>
-                                            <div v-if="user.last_active_at" class="text-xs text-gray-400 mt-1">
-                                                Last seen {{ new Date(user.last_active_at).toLocaleDateString() }}
-                                            </div>
-                                        </td>
-                                        
-                                        <!-- Status -->
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span 
-                                                :class="getStatusBadge(user.is_active)" 
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                            >
-                                                {{ getStatusLabel(user.is_active) }}
-                                            </span>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                {{ new Date(user.created_at).toLocaleDateString() }}
-                                            </div>
-                                        </td>
-                                        
-                                        <!-- Actions -->
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div class="flex items-center justify-end space-x-2">
-                                                <Link 
-                                                    :href="`/users/${user.id}`"
-                                                    class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                                                >
-                                                    View
-                                                </Link>
-                                                <button 
-                                                    @click="openEditModal(user)"
-                                                    class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button 
-                                                    @click="toggleUserStatus(user)"
-                                                    class="text-gray-600 hover:text-gray-900 text-sm font-medium"
-                                                >
-                                                    {{ user.is_active ? 'Deactivate' : 'Activate' }}
-                                                </button>
-                                                <button 
-                                                    @click="confirmDelete(user)"
-                                                    class="text-red-600 hover:text-red-900 text-sm font-medium"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        <div v-if="totalPages > 1" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                            <div class="flex-1 flex justify-between sm:hidden">
-                                <button 
-                                    @click="loadUsers(currentPage - 1)" 
-                                    :disabled="currentPage <= 1"
-                                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                            <div class="flex items-center space-x-2">
+                                <button
+                                    @click="table.previousPage()"
+                                    :disabled="!table.getCanPreviousPage()"
+                                    class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Previous
                                 </button>
-                                <button 
-                                    @click="loadUsers(currentPage + 1)" 
-                                    :disabled="currentPage >= totalPages"
-                                    class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                                <span class="text-sm text-gray-500">
+                                    Page {{ table.getState().pagination.pageIndex + 1 }} of {{ table.getPageCount() }}
+                                </span>
+                                <button
+                                    @click="table.nextPage()"
+                                    :disabled="!table.getCanNextPage()"
+                                    class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Next
-                                </button>
-                            </div>
-                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                <div>
-                                    <p class="text-sm text-gray-700">
-                                        Showing page <span class="font-medium">{{ currentPage }}</span> of <span class="font-medium">{{ totalPages }}</span>
-                                    </p>
-                                </div>
-                                <div>
-                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                        <button 
-                                            @click="loadUsers(currentPage - 1)" 
-                                            :disabled="currentPage <= 1"
-                                            class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                                        >
-                                            <span class="sr-only">Previous</span>
-                                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                            </svg>
-                                        </button>
-                                        <button 
-                                            @click="loadUsers(currentPage + 1)" 
-                                            :disabled="currentPage >= totalPages"
-                                            class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                                        >
-                                            <span class="sr-only">Next</span>
-                                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                            </svg>
-                                        </button>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div v-else class="px-4 py-12 sm:p-6">
-                        <div class="text-center">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5m-2 3v5m-4 0h9a2 2 0 002-2V9a2 2 0 00-2-2H8a2 2 0 00-2 2v17a2 2 0 002 2h8z"/>
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">No users found</h3>
-                            <p class="mt-1 text-sm text-gray-500">
-                                {{ searchQuery || selectedStatus !== 'all' || selectedRoleTemplate || selectedAccount 
-                                    ? 'No users match your search criteria.' 
-                                    : 'Get started by creating your first user.' }}
-                            </p>
-                            <div class="mt-6">
-                                <button
-                                    @click="openCreateModal"
-                                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                >
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                    </svg>
-                                    Create User
                                 </button>
                             </div>
                         </div>

@@ -13,9 +13,16 @@ class NavigationService
     {
         $navigationItems = $this->getNavigationItems();
         
-        return array_values(array_filter($navigationItems, function ($item) use ($user) {
+        $filteredItems = array_filter($navigationItems, function ($item) use ($user) {
             return $this->userCanAccessNavigationItem($user, $item);
-        }));
+        });
+
+        // Add filtered subitems to each navigation item
+        foreach ($filteredItems as &$item) {
+            $item['subitems'] = $this->getFilteredSubitems($user, $item);
+        }
+
+        return array_values($filteredItems);
     }
 
     /**
@@ -35,6 +42,20 @@ class NavigationService
 
         // Check if user has any of the required permissions
         return $user->hasAnyPermission($item['permissions']);
+    }
+
+    /**
+     * Get filtered subitems for a navigation item
+     */
+    protected function getFilteredSubitems(User $user, array $item): array
+    {
+        if (!isset($item['subitems']) || !is_array($item['subitems'])) {
+            return [];
+        }
+
+        return array_values(array_filter($item['subitems'], function ($subitem) use ($user) {
+            return $this->userCanAccessNavigationItem($user, $subitem);
+        }));
     }
 
     /**
@@ -108,10 +129,70 @@ class NavigationService
                 'label' => 'Billing',
                 'icon' => 'CurrencyDollarIcon',
                 'route' => 'billing.index',
-                'active_patterns' => ['billing.*', 'invoices.*'],
-                'permissions' => ['billing.manage', 'billing.view', 'invoices.create'],
-                'sort_order' => 9,
-                'group' => 'financial'
+                'active_patterns' => ['billing.*', 'invoices.*', 'payments.*'],
+                'permissions' => [
+                    'billing.manage', 'billing.view.account', 'billing.view.all', 'billing.admin',
+                    'invoices.create', 'invoices.view.account', 'invoices.view.all',
+                    'payments.create', 'payments.view.account', 'payments.view.all',
+                    'billing.rates.view', 'billing.addons.view'
+                ],
+                'sort_order' => 5,
+                'group' => 'financial',
+                'subitems' => [
+                    [
+                        'key' => 'billing-overview',
+                        'label' => 'Overview',
+                        'route' => 'billing.index',
+                        'permissions' => ['billing.view.account', 'billing.view.all']
+                    ],
+                    [
+                        'key' => 'billing-invoices',
+                        'label' => 'Invoices',
+                        'route' => 'billing.index',
+                        'params' => ['tab' => 'invoices'],
+                        'permissions' => ['invoices.view.account', 'invoices.view.all', 'invoices.create']
+                    ],
+                    [
+                        'key' => 'billing-payments',
+                        'label' => 'Payments',
+                        'route' => 'billing.index',
+                        'params' => ['tab' => 'payments'],
+                        'permissions' => ['payments.view.account', 'payments.view.all', 'payments.create']
+                    ],
+                    [
+                        'key' => 'billing-rates',
+                        'label' => 'Billing Rates',
+                        'route' => 'settings.index',
+                        'params' => ['tab' => 'billing'],
+                        'permissions' => ['billing.rates.view', 'billing.rates.manage']
+                    ]
+                ]
+            ],
+            [
+                'key' => 'my-billing',
+                'label' => 'My Billing',
+                'icon' => 'CreditCardIcon',
+                'route' => 'portal.billing',
+                'active_patterns' => ['portal.billing.*'],
+                'permissions' => ['billing.view.own', 'invoices.view.own', 'payments.view.own'],
+                'sort_order' => 6,
+                'group' => 'customer_portal',
+                'subitems' => [
+                    [
+                        'key' => 'my-invoices',
+                        'label' => 'My Invoices',
+                        'route' => 'portal.billing',
+                        'params' => ['tab' => 'invoices'],
+                        'permissions' => ['invoices.view.own']
+                    ],
+                    [
+                        'key' => 'my-payments',
+                        'label' => 'Payment History',
+                        'route' => 'portal.billing',
+                        'params' => ['tab' => 'payments'],
+                        'permissions' => ['payments.view.own']
+                    ]
+                ]
             ],
             [
                 'key' => 'reports',
@@ -180,9 +261,10 @@ class NavigationService
             'service_delivery' => 'Service Delivery',
             'time_management' => 'Time Management',
             'project_management' => 'Project Management',
-            'administration' => 'Administration',
             'financial' => 'Financial',
-            'analytics' => 'Analytics'
+            'customer_portal' => 'Customer Portal',
+            'analytics' => 'Analytics',
+            'administration' => 'Administration'
         ];
     }
 
@@ -225,5 +307,41 @@ class NavigationService
         }
         
         return $breadcrumbs;
+    }
+
+    /**
+     * Generate URL for navigation item with parameters
+     */
+    public function getNavigationItemUrl(array $item): string
+    {
+        $route = $item['route'];
+        $params = $item['params'] ?? [];
+        
+        if (empty($params)) {
+            return route($route);
+        }
+        
+        return route($route, $params);
+    }
+
+    /**
+     * Get navigation items with generated URLs
+     */
+    public function getNavigationWithUrls(User $user): array
+    {
+        $items = $this->getNavigationForUser($user);
+        
+        foreach ($items as &$item) {
+            $item['url'] = $this->getNavigationItemUrl($item);
+            
+            // Generate URLs for subitems
+            if (!empty($item['subitems'])) {
+                foreach ($item['subitems'] as &$subitem) {
+                    $subitem['url'] = $this->getNavigationItemUrl($subitem);
+                }
+            }
+        }
+        
+        return $items;
     }
 }

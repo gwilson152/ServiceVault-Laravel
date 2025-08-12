@@ -39,11 +39,27 @@ class TokenAbilityService
         // 'metrics:read' => 'Access monitoring metrics',
         // 'alerts:write' => 'Create monitoring alerts',
         
-        // Billing & Invoicing
-        'billing:read' => 'View billing data',
-        'billing:write' => 'Manage billing and invoices',
+        // Billing & Financial Management
+        'billing:read' => 'View billing data and reports',
+        'billing:write' => 'Manage billing settings and configuration',
+        'billing:admin' => 'Full billing administrative access',
+        
+        // Invoice Management
+        'invoices:read' => 'View invoices',
+        'invoices:write' => 'Create and modify invoices',
+        'invoices:send' => 'Send invoices to customers',
+        'invoices:void' => 'Void and cancel invoices',
+        
+        // Payment Management
+        'payments:read' => 'View payment records',
+        'payments:write' => 'Process and manage payments',
+        'payments:refund' => 'Process payment refunds',
+        
+        // Billing Rates & Addons
         'rates:read' => 'View billing rates',
         'rates:write' => 'Manage billing rates',
+        'addons:read' => 'View billing addons and templates',
+        'addons:write' => 'Manage billing addons and templates',
         
         // Administration
         'admin:read' => 'Administrative read access',
@@ -66,6 +82,9 @@ class TokenAbilityService
             'projects:read',
             'tasks:read',
             'accounts:read',
+            'billing:read',
+            'invoices:read',
+            'rates:read',
         ],
         
         'manager' => [
@@ -81,7 +100,32 @@ class TokenAbilityService
             'users:read',
             'accounts:read',
             'billing:read',
+            'billing:write',
+            'invoices:read',
+            'invoices:write',
+            'payments:read',
+            'payments:write',
             'rates:read',
+            'rates:write',
+            'addons:read',
+        ],
+        
+        'billing-admin' => [
+            'billing:read',
+            'billing:write',
+            'billing:admin',
+            'invoices:read',
+            'invoices:write',
+            'invoices:send',
+            'invoices:void',
+            'payments:read',
+            'payments:write',
+            'payments:refund',
+            'rates:read',
+            'rates:write',
+            'addons:read',
+            'addons:write',
+            'accounts:read',
         ],
         
         // Future scopes for external client monitoring
