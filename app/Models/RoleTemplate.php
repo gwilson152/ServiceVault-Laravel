@@ -69,7 +69,7 @@ class RoleTemplate extends Model
      */
     public function isSuperAdmin(): bool
     {
-        return $this->name === 'Super Administrator';
+        return $this->name === 'Super Admin';
     }
     
     /**

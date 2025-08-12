@@ -32,19 +32,17 @@ class TicketController extends Controller
             'billingRate:id,rate,currency'
         ]);
         
-        // Apply user scope - employees see assigned tickets, managers/admins see team tickets
-        if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.read', 'admin.write'])) {
-            // Admins see all tickets (super admin) or tickets in their account (admin)
-            if (!$user->isSuperAdmin() && $user->account) {
-                $query->where('account_id', $user->account->id);
-            }
-        } elseif ($user->hasAnyPermission(['teams.manage', 'tickets.view.all'])) {
-            // Managers see tickets in their account
+        // Apply user scope based on permissions
+        if ($user->isSuperAdmin() || $user->hasAnyPermission(['tickets.admin', 'tickets.view.all'])) {
+            // Global access - Super Admin and Admin roles see all tickets
+            // No filtering applied
+        } elseif ($user->hasAnyPermission(['admin.read', 'admin.write', 'tickets.view.account'])) {
+            // Account-scoped access - see tickets within their account
             if ($user->account) {
                 $query->where('account_id', $user->account->id);
             }
         } else {
-            // Employees see tickets they created or are assigned to
+            // Personal scope - Agents and Account Users see assigned/owned tickets only
             $query->where(function ($q) use ($user) {
                 $q->where('created_by_id', $user->id)
                   ->orWhere('agent_id', $user->id)
@@ -127,7 +125,9 @@ class TicketController extends Controller
         // Determine if user can view all accounts (service provider staff)
         $canViewAllAccounts = $user->hasAnyPermission([
             'tickets.view.all', 
+            'tickets.admin',
             'admin.read', 
+            'admin.write',
             'system.manage',
             'accounts.manage'
         ]);
@@ -312,7 +312,7 @@ class TicketController extends Controller
         $canAssignTickets = $user->hasAnyPermission(['tickets.assign', 'admin.write']);
         
         // Get available accounts
-        if ($user->hasAnyPermission(['tickets.view.all', 'admin.read', 'accounts.manage'])) {
+        if ($user->hasAnyPermission(['tickets.view.all', 'tickets.admin', 'admin.read', 'admin.write', 'accounts.manage'])) {
             $availableAccounts = Account::select('id', 'name')
                 ->where('is_active', true)
                 ->orderBy('name')
@@ -450,7 +450,7 @@ class TicketController extends Controller
         $user = $request->user();
         
         // Check permissions
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.write', 'tickets.assign'])) {
+        if (!$user->hasAnyPermission(['tickets.assign', 'tickets.assign.account', 'admin.write'])) {
             return response()->json(['error' => 'Insufficient permissions to assign tickets.'], 403);
         }
         
@@ -489,17 +489,16 @@ class TicketController extends Controller
         // Build base query with user's accessible tickets
         $query = Ticket::query();
         
-        if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.read'])) {
-            // Super admin sees all, others see their account
-            if (!$user->isSuperAdmin() && $user->account_id) {
-                $query->where('account_id', $user->account_id);
-            }
-        } elseif ($user->hasAnyPermission(['teams.manage'])) {
-            // User can see tickets from their account if they have management permissions
-            if ($user->account_id && $user->hasPermission('teams.manage')) {
+        if ($user->isSuperAdmin() || $user->hasAnyPermission(['tickets.admin', 'tickets.view.all'])) {
+            // Global access - see all tickets
+            // No filtering applied
+        } elseif ($user->hasAnyPermission(['admin.read', 'admin.write', 'tickets.view.account'])) {
+            // Account-scoped access
+            if ($user->account_id) {
                 $query->where('account_id', $user->account_id);
             }
         } else {
+            // Personal scope
             $query->where(function ($q) use ($user) {
                 $q->where('created_by_id', $user->id)
                   ->orWhere('agent_id', $user->id);
@@ -633,21 +632,20 @@ class TicketController extends Controller
         // Build base query with user's accessible accounts
         $baseQuery = Ticket::query();
         
-        // Apply user scope - employees see assigned tickets, managers/admins see team tickets
-        if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.read', 'admin.write'])) {
-            // Admins see all tickets or tickets in their account
-            if (!$user->isSuperAdmin() && $user->account_id) {
-                $baseQuery->where('account_id', $user->account_id);
-            }
-        } elseif ($user->hasAnyPermission(['teams.manage', 'tickets.view.all'])) {
-            // Managers see tickets in their account
+        // Apply user scope based on permissions
+        if ($user->isSuperAdmin() || $user->hasAnyPermission(['tickets.admin', 'tickets.view.all'])) {
+            // Global access - see all tickets
+            // No filtering applied
+        } elseif ($user->hasAnyPermission(['admin.read', 'admin.write', 'tickets.view.account'])) {
+            // Account-scoped access
             if ($user->account_id) {
                 $baseQuery->where('account_id', $user->account_id);
             }
         } else {
-            // Regular employees see only their assigned tickets
+            // Personal scope - see assigned/owned tickets only
             $baseQuery->where(function ($query) use ($user) {
-                $query->where('agent_id', $user->id)
+                $query->where('created_by_id', $user->id)
+                      ->orWhere('agent_id', $user->id)
                       ->orWhereHas('assignedUsers', function ($assignedQuery) use ($user) {
                           $assignedQuery->where('users.id', $user->id);
                       });

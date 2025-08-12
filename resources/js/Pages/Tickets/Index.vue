@@ -1,504 +1,422 @@
 <template>
-  <div>
+  <div class="min-h-screen bg-gray-50">
     <!-- Page Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center justify-between">
+    <div class="bg-white shadow-sm border-b border-gray-200">
+      <div class="px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
               {{ pageTitle }}
             </h2>
-            <p class="text-sm text-gray-600 mt-1">
+            <p class="text-sm text-gray-600 mt-1 hidden sm:block">
               Manage tickets, track time, and monitor progress
             </p>
           </div>
           
           <!-- Actions -->
-          <div class="flex items-center space-x-3">
-          <button
-            @click="showCreateModal = true"
-            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            New Ticket
-          </button>
-          
-          <button
-            @click="refreshTickets"
-            :disabled="isLoading"
-            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            <svg class="w-4 h-4" :class="{ 'animate-spin': isLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              @click="showCreateModal = true"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
+            >
+              <svg class="w-4 h-4 inline mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span class="hidden sm:inline">New Ticket</span>
+              <span class="sm:hidden">New</span>
+            </button>
+            
+            <button
+              @click="refreshTickets"
+              :disabled="isLoading"
+              class="p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+            >
+              <svg class="w-4 h-4" :class="{ 'animate-spin': isLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            
+            <!-- Mobile sidebar toggle -->
+            <button
+              @click="showMobileSidebar = !showMobileSidebar"
+              class="lg:hidden p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-    <div class="py-6">
-      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <!-- Page Layout: Main Content + Sidebar -->
-        <div class="flex gap-6">
-          <!-- Main Content Area -->
-          <div class="flex-1">
-            <!-- Filters and Search -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-              <div class="p-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Filters & Search</h3>
-              </div>
-              <div class="p-4 space-y-4">
-                <!-- Search Bar -->
-                <div class="relative">
-                  <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="Search tickets by number, title, or description..."
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                </div>
+    <div class="px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
+      <!-- Mobile Filters Toggle -->
+      <div class="lg:hidden mb-4">
+        <button
+          @click="showMobileFilters = !showMobileFilters"
+          class="w-full flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3"
+        >
+          <span class="font-medium text-gray-900">Filters & Search</span>
+          <svg 
+            class="w-5 h-5 text-gray-400 transition-transform"
+            :class="{ 'rotate-180': showMobileFilters }"
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Filters Section (Collapsible on mobile) -->
+      <div 
+        v-show="showMobileFilters || !isMobile"
+        class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 lg:mb-6"
+      >
+        <div class="p-4 border-b border-gray-200 hidden lg:block">
+          <h3 class="text-lg font-semibold text-gray-900">Filters & Search</h3>
+        </div>
+        <div class="p-4 space-y-4">
+          <!-- Search Bar -->
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search tickets..."
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+            >
+          </div>
+          
+          <!-- Filter Pills - Responsive Grid -->
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+            <!-- Status Filter -->
+            <select
+              v-model="statusFilter"
+              class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Statuses</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="pending_review">Pending Review</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+            
+            <!-- Priority Filter -->
+            <select
+              v-model="priorityFilter"
+              class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Priorities</option>
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+            
+            <!-- Assignment Filter -->
+            <select
+              v-model="assignmentFilter"
+              class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Assignments</option>
+              <option value="mine">My Tickets</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+            
+            <!-- Account Filter (if service provider) -->
+            <select
+              v-if="canViewAllAccounts"
+              v-model="accountFilter"
+              class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Accounts</option>
+              <option 
+                v-for="account in availableAccounts" 
+                :key="account.id" 
+                :value="account.id"
+              >
+                {{ account.name }}
+              </option>
+            </select>
+            
+            <!-- Clear Filters -->
+            <button
+              v-if="hasActiveFilters"
+              @click="clearFilters"
+              class="col-span-2 sm:col-span-1 text-sm text-red-600 hover:text-red-700 font-medium bg-red-50 px-3 py-2 rounded-lg"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout - Responsive Grid -->
+      <div class="lg:grid lg:grid-cols-12 lg:gap-6">
+        <!-- Main Content Area -->
+        <div class="lg:col-span-8 xl:col-span-9">
+          <!-- Tickets Container -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="p-4 border-b border-gray-200">
+              <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">
+                  Tickets
+                  <span class="text-sm font-normal text-gray-500 ml-2">
+                    ({{ filteredTickets.length }} of {{ tickets.length }})
+                  </span>
+                </h3>
                 
-                <!-- Filter Pills -->
-                <div class="flex flex-wrap gap-2">
-                  <!-- Status Filter -->
-                  <div class="relative">
-                    <select
-                      v-model="statusFilter"
-                      class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Statuses</option>
-                      <option value="open">Open</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="pending_review">Pending Review</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="closed">Closed</option>
-                    </select>
-                  </div>
-                  
-                  <!-- Priority Filter -->
-                  <div class="relative">
-                    <select
-                      v-model="priorityFilter"
-                      class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Priorities</option>
-                      <option value="low">Low</option>
-                      <option value="normal">Normal</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
-                  </div>
-                  
-                  <!-- Assignment Filter -->
-                  <div class="relative">
-                    <select
-                      v-model="assignmentFilter"
-                      class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Assignments</option>
-                      <option value="mine">My Tickets</option>
-                      <option value="unassigned">Unassigned</option>
-                    </select>
-                  </div>
-                  
-                  <!-- Account Filter (if service provider) -->
-                  <div v-if="canViewAllAccounts" class="relative">
-                    <select
-                      v-model="accountFilter"
-                      class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Accounts</option>
-                      <option 
-                        v-for="account in availableAccounts" 
-                        :key="account.id" 
-                        :value="account.id"
-                      >
-                        {{ account.name }}
-                      </option>
-                    </select>
-                  </div>
-                  
-                  <!-- Clear Filters -->
+                <!-- View Toggle -->
+                <div class="flex items-center space-x-1">
                   <button
-                    v-if="hasActiveFilters"
-                    @click="clearFilters"
-                    class="text-sm text-red-600 hover:text-red-700 font-medium"
+                    @click="viewMode = 'table'"
+                    :class="[
+                      'px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors',
+                      viewMode === 'table' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-700'
+                    ]"
                   >
-                    Clear Filters
+                    <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    <span class="hidden sm:inline">Table</span>
+                  </button>
+                  <button
+                    @click="viewMode = 'cards'"
+                    :class="[
+                      'px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors',
+                      viewMode === 'cards' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-700'
+                    ]"
+                  >
+                    <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    <span class="hidden sm:inline">Cards</span>
                   </button>
                 </div>
               </div>
             </div>
-
-            <!-- Tickets Table -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div class="p-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-lg font-semibold text-gray-900">
-                    Tickets
-                    <span class="text-sm font-normal text-gray-500 ml-2">
-                      ({{ filteredTickets.length }} of {{ tickets.length }})
+            
+            <!-- Loading State -->
+            <div v-if="isLoading" class="p-8 text-center">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p class="mt-2 text-gray-500">Loading tickets...</p>
+            </div>
+            
+            <!-- Empty State -->
+            <div v-else-if="filteredTickets.length === 0" class="p-8 text-center">
+              <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 class="mt-2 text-sm font-medium text-gray-900">No tickets found</h3>
+              <p class="mt-1 text-sm text-gray-500">
+                {{ hasActiveFilters ? 'Try adjusting your filters' : 'Get started by creating a new ticket' }}
+              </p>
+              <div class="mt-6">
+                <button
+                  v-if="!hasActiveFilters"
+                  @click="showCreateModal = true"
+                  class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                  Create New Ticket
+                </button>
+              </div>
+            </div>
+            
+            <!-- Table View (with horizontal scroll on mobile) -->
+            <div v-else-if="viewMode === 'table'" class="overflow-hidden">
+              <div class="overflow-x-auto">
+                <TicketsTable
+                  :table="table"
+                  :user="user"
+                  :timersByTicket="timersByTicket"
+                  @timer-started="handleTimerEvent"
+                  @timer-stopped="handleTimerEvent"
+                  @timer-paused="handleTimerEvent"
+                  @time-entry-created="handleTimeEntryCreated"
+                  @open-manual-time-entry="openManualTimeEntry"
+                  @open-ticket-addon="openTicketAddon"
+                />
+              </div>
+            </div>
+            
+            <!-- Cards View - Responsive Grid -->
+            <div v-else-if="viewMode === 'cards'" class="p-4 sm:p-6">
+              <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div
+                  v-for="ticket in filteredTickets"
+                  :key="ticket.id"
+                  class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <!-- Card Header -->
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="min-w-0 flex-1">
+                      <h4 class="text-sm font-medium text-blue-600 hover:text-blue-800">
+                        <a :href="`/tickets/${ticket.id}`" class="hover:underline">
+                          {{ ticket.ticket_number }}
+                        </a>
+                      </h4>
+                      <p class="text-sm text-gray-900 mt-1 truncate">
+                        {{ ticket.title }}
+                      </p>
+                    </div>
+                    <span :class="getPriorityClasses(ticket.priority)" class="ml-2 px-2 py-1 text-xs font-medium rounded-full flex-shrink-0">
+                      {{ formatPriority(ticket.priority) }}
                     </span>
-                  </h3>
-                  
-                  <!-- View Toggle -->
-                  <div class="flex items-center space-x-1">
-                    <button
-                      @click="viewMode = 'table'"
-                      :class="[
-                        'px-3 py-1 rounded text-sm font-medium transition-colors',
-                        viewMode === 'table' 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'text-gray-600 hover:text-gray-700'
-                      ]"
-                    >
-                      Table
-                    </button>
-                    <button
-                      @click="viewMode = 'cards'"
-                      :class="[
-                        'px-3 py-1 rounded text-sm font-medium transition-colors',
-                        viewMode === 'cards' 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'text-gray-600 hover:text-gray-700'
-                      ]"
-                    >
-                      Cards
-                    </button>
                   </div>
-                </div>
-              </div>
-              
-              <!-- Loading State -->
-              <div v-if="isLoading" class="p-8 text-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p class="mt-2 text-gray-500">Loading tickets...</p>
-              </div>
-              
-              <!-- Empty State -->
-              <div v-else-if="filteredTickets.length === 0" class="p-8 text-center">
-                <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No tickets found</h3>
-                <p class="mt-1 text-sm text-gray-500">
-                  {{ hasActiveFilters ? 'Try adjusting your filters' : 'Get started by creating a new ticket' }}
-                </p>
-                <div class="mt-6">
-                  <button
-                    v-if="!hasActiveFilters"
-                    @click="showCreateModal = true"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                  >
-                    Create New Ticket
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Table View -->
-              <div v-else-if="viewMode === 'table'" class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ticket
-                      </th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Priority
-                      </th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Assigned To
-                      </th>
-                      <th v-if="canViewAllAccounts" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Account
-                      </th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Time Tracked
-                      </th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Timer
-                      </th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Updated
-                      </th>
-                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr
-                      v-for="ticket in filteredTickets"
-                      :key="ticket.id"
-                      class="hover:bg-gray-50 transition-colors"
-                    >
-                      <!-- Ticket Info -->
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div class="text-sm font-medium text-blue-600 hover:text-blue-800">
-                            <a :href="`/tickets/${ticket.id}`" class="hover:underline">
-                              {{ ticket.ticket_number }}
-                            </a>
-                          </div>
-                          <div class="text-sm text-gray-900 mt-1 max-w-xs truncate">
-                            {{ ticket.title }}
-                          </div>
-                        </div>
-                      </td>
-                      
-                      <!-- Status -->
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span :class="getStatusClasses(ticket.status)" class="px-2 py-1 text-xs font-medium rounded-full">
-                          {{ formatStatus(ticket.status) }}
-                        </span>
-                      </td>
-                      
-                      <!-- Priority -->
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span :class="getPriorityClasses(ticket.priority)" class="px-2 py-1 text-xs font-medium rounded-full">
-                          {{ formatPriority(ticket.priority) }}
-                        </span>
-                      </td>
-                      
-                      <!-- Assigned To -->
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ ticket.assigned_to?.name || 'Unassigned' }}
-                      </td>
-                      
-                      <!-- Account (if service provider) -->
-                      <td v-if="canViewAllAccounts" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ ticket.account?.name }}
-                      </td>
-                      
-                      <!-- Time Tracked -->
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ formatDuration(ticket.total_time_logged) }}
-                      </td>
-                      
-                      <!-- Timer Controls -->
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center space-x-1">
-                          <TicketTimerControls
-                            :ticket="ticket"
-                            :currentUser="user"
-                            :compact="true"
-                            :initialTimerData="timersByTicket[ticket.id] || []"
-                            :availableBillingRates="[]"
-                            :assignableUsers="[]"
-                            @timer-started="handleTimerEvent"
-                            @timer-stopped="handleTimerEvent"
-                            @timer-paused="handleTimerEvent"
-                            @time-entry-created="handleTimeEntryCreated"
-                          />
-                        </div>
-                      </td>
-                      
-                      <!-- Updated -->
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ formatDate(ticket.updated_at) }}
-                      </td>
-                      
-                      <!-- Actions -->
-                      <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div class="flex items-center justify-end space-x-1">
-                          <!-- Manual Time Entry Button -->
-                          <button
-                            @click="openManualTimeEntry(ticket)"
-                            class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Add Manual Time Entry"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </button>
-                          
-                          <!-- Add Ticket Addon Button -->
-                          <button
-                            @click="openTicketAddon(ticket)"
-                            class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                            title="Add Ticket Addon"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              
-              <!-- Cards View -->
-              <div v-else-if="viewMode === 'cards'" class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div
-                    v-for="ticket in filteredTickets"
-                    :key="ticket.id"
-                    class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
-                    <!-- Card Header -->
-                    <div class="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 class="text-sm font-medium text-blue-600 hover:text-blue-800">
-                          <a :href="`/tickets/${ticket.id}`" class="hover:underline">
-                            {{ ticket.ticket_number }}
-                          </a>
-                        </h4>
-                        <p class="text-sm text-gray-900 mt-1 line-clamp-2">
-                          {{ ticket.title }}
-                        </p>
-                      </div>
-                      <span :class="getPriorityClasses(ticket.priority)" class="px-2 py-1 text-xs font-medium rounded-full">
-                        {{ formatPriority(ticket.priority) }}
+                  
+                  <!-- Card Content -->
+                  <div class="space-y-2 mb-4">
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-gray-600">Status:</span>
+                      <span :class="getStatusClasses(ticket.status)" class="px-2 py-1 text-xs font-medium rounded-full">
+                        {{ formatStatus(ticket.status) }}
                       </span>
                     </div>
                     
-                    <!-- Card Content -->
-                    <div class="space-y-2 mb-4">
-                      <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600">Status:</span>
-                        <span :class="getStatusClasses(ticket.status)" class="px-2 py-1 text-xs font-medium rounded-full">
-                          {{ formatStatus(ticket.status) }}
-                        </span>
-                      </div>
-                      
-                      <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600">Assigned:</span>
-                        <span class="text-gray-900">{{ ticket.assigned_to?.name || 'Unassigned' }}</span>
-                      </div>
-                      
-                      <div v-if="canViewAllAccounts" class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600">Account:</span>
-                        <span class="text-gray-900">{{ ticket.account?.name }}</span>
-                      </div>
-                      
-                      <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600">Time:</span>
-                        <span class="text-gray-900">{{ formatDuration(ticket.total_time_logged) }}</span>
-                      </div>
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-gray-600">Assigned:</span>
+                      <span class="text-gray-900 truncate ml-2">{{ ticket.assigned_to?.name || 'Unassigned' }}</span>
                     </div>
                     
-                    <!-- Card Footer -->
-                    <div class="flex items-center justify-between">
-                      <TicketTimerControls
-                        :ticket="ticket"
-                        :currentUser="user"
-                        :compact="true"
-                        :initialTimerData="timersByTicket[ticket.id] || []"
-                        :availableBillingRates="[]"
-                        :assignableUsers="[]"
-                        @timer-started="handleTimerEvent"
-                        @timer-stopped="handleTimerEvent"
-                        @timer-paused="handleTimerEvent"
-                        @time-entry-created="handleTimeEntryCreated"
-                      />
+                    <div v-if="canViewAllAccounts" class="flex items-center justify-between text-sm">
+                      <span class="text-gray-600">Account:</span>
+                      <span class="text-gray-900 truncate ml-2">{{ ticket.account?.name }}</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-gray-600">Time:</span>
+                      <span class="text-gray-900">{{ formatDuration(ticket.total_time_logged) }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Card Footer -->
+                  <div class="flex items-center justify-between">
+                    <TicketTimerControls
+                      :ticket="ticket"
+                      :currentUser="user"
+                      :compact="true"
+                      :initialTimerData="timersByTicket[ticket.id] || []"
+                      :availableBillingRates="[]"
+                      :assignableUsers="[]"
+                      @timer-started="handleTimerEvent"
+                      @timer-stopped="handleTimerEvent"
+                      @timer-paused="handleTimerEvent"
+                      @time-entry-created="handleTimeEntryCreated"
+                    />
+                    
+                    <div class="flex items-center space-x-1">
+                      <!-- Manual Time Entry Button -->
+                      <button
+                        @click="openManualTimeEntry(ticket)"
+                        class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title="Add Manual Time Entry"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </button>
                       
-                      <div class="flex items-center space-x-1">
-                        <!-- Manual Time Entry Button -->
-                        <button
-                          @click="openManualTimeEntry(ticket)"
-                          class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Add Manual Time Entry"
-                        >
-                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </button>
-                        
-                        <!-- Add Ticket Addon Button -->
-                        <button
-                          @click="openTicketAddon(ticket)"
-                          class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                          title="Add Ticket Addon"
-                        >
-                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                        </button>
-                      </div>
+                      <!-- Add Ticket Addon Button -->
+                      <button
+                        @click="openTicketAddon(ticket)"
+                        class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                        title="Add Ticket Addon"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- Sidebar - Hidden on mobile, shown on desktop -->
+        <div 
+          :class="[
+            'lg:col-span-4 xl:col-span-3 space-y-4 mt-4 lg:mt-0',
+            showMobileSidebar ? 'block' : 'hidden lg:block'
+          ]"
+        >
+          <!-- Quick Stats Widget -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold text-gray-900">Quick Stats</h3>
+            </div>
+            <div class="p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Total Tickets</span>
+                <span class="text-lg font-semibold text-gray-900">{{ tickets.length }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Open</span>
+                <span class="text-lg font-semibold text-blue-600">{{ getStatusCount('open') }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">In Progress</span>
+                <span class="text-lg font-semibold text-yellow-600">{{ getStatusCount('in_progress') }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">My Tickets</span>
+                <span class="text-lg font-semibold text-green-600">{{ getMyTicketsCount() }}</span>
+              </div>
+            </div>
+          </div>
           
-          <!-- Sidebar with Widgets -->
-          <div class="w-80 space-y-6">
-            <!-- Quick Stats Widget -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div class="p-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Quick Stats</h3>
+          <!-- Active Timers Widget -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold text-gray-900">Active Timers</h3>
+            </div>
+            <div class="p-4">
+              <div v-if="activeTimers.length === 0" class="text-center text-gray-500 text-sm">
+                No active timers
               </div>
-              <div class="p-4 space-y-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Total Tickets</span>
-                  <span class="text-lg font-semibold text-gray-900">{{ tickets.length }}</span>
+              <div v-else class="space-y-2">
+                <div
+                  v-for="timer in activeTimers.slice(0, 5)"
+                  :key="timer.id"
+                  class="flex items-center justify-between text-sm p-2 bg-gray-50 rounded"
+                >
+                  <span class="truncate">{{ timer.ticket_number || 'No Ticket' }}</span>
+                  <span class="font-mono text-green-600 ml-2">{{ formatDuration(timer.duration) }}</span>
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Open</span>
-                  <span class="text-lg font-semibold text-blue-600">{{ getStatusCount('open') }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">In Progress</span>
-                  <span class="text-lg font-semibold text-yellow-600">{{ getStatusCount('in_progress') }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">My Tickets</span>
-                  <span class="text-lg font-semibold text-green-600">{{ getMyTicketsCount() }}</span>
+                <div v-if="activeTimers.length > 5" class="text-xs text-gray-500 text-center pt-1">
+                  And {{ activeTimers.length - 5 }} more...
                 </div>
               </div>
             </div>
-            
-            <!-- Active Timers Widget -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div class="p-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Active Timers</h3>
-              </div>
-              <div class="p-4">
-                <div v-if="activeTimers.length === 0" class="text-center text-gray-500 text-sm">
-                  No active timers
-                </div>
-                <div v-else class="space-y-2">
-                  <div
-                    v-for="timer in activeTimers"
-                    :key="timer.id"
-                    class="flex items-center justify-between text-sm p-2 bg-gray-50 rounded"
-                  >
-                    <span class="truncate">{{ timer.ticket_number || 'No Ticket' }}</span>
-                    <span class="font-mono text-green-600">{{ formatDuration(timer.duration) }}</span>
-                  </div>
-                </div>
-              </div>
+          </div>
+          
+          <!-- Recent Activity Widget -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
             </div>
-            
-            <!-- Recent Activity Widget -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div class="p-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
-              </div>
-              <div class="p-4">
-                <div class="space-y-3 text-sm">
-                  <div
-                    v-for="activity in recentActivity"
-                    :key="activity.id"
-                    class="flex items-start space-x-2"
-                  >
-                    <div :class="getActivityIcon(activity.type)" class="w-2 h-2 rounded-full mt-2 flex-shrink-0"></div>
-                    <div>
-                      <p class="text-gray-900">{{ activity.description }}</p>
-                      <p class="text-gray-500 text-xs">{{ formatDate(activity.created_at) }}</p>
-                    </div>
+            <div class="p-4">
+              <div class="space-y-3 text-sm">
+                <div
+                  v-for="activity in recentActivity.slice(0, 5)"
+                  :key="activity.id"
+                  class="flex items-start space-x-2"
+                >
+                  <div :class="getActivityIcon(activity.type)" class="w-2 h-2 rounded-full mt-2 flex-shrink-0"></div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-gray-900 truncate">{{ activity.description }}</p>
+                    <p class="text-gray-500 text-xs">{{ formatDate(activity.created_at) }}</p>
                   </div>
                 </div>
               </div>
@@ -518,11 +436,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
 import CreateTicketModal from '@/Components/Modals/CreateTicketModal.vue'
+import TicketsTable from '@/Components/Tables/TicketsTable.vue'
+import { useTicketsTable } from '@/Composables/useTicketsTable'
 
 // Define persistent layout
 defineOptions({
@@ -560,6 +480,9 @@ const timersByTicket = ref({}) // Store timers grouped by ticket_id
 const isLoading = ref(false)
 const showCreateModal = ref(false)
 const viewMode = ref('table')
+const showMobileFilters = ref(false)
+const showMobileSidebar = ref(false)
+const isMobile = ref(window.innerWidth < 1024)
 
 // Filters
 const searchQuery = ref('')
@@ -572,6 +495,17 @@ const accountFilter = ref('')
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
+// Initialize TanStack Table
+const {
+  table,
+  globalFilter,
+  setStatusFilter,
+  setPriorityFilter,
+  setAssignmentFilter,
+  setAccountFilter,
+  clearAllFilters,
+} = useTicketsTable(tickets, user, props.canViewAllAccounts)
+
 // Computed
 const pageTitle = computed(() => {
   return props.canViewAllAccounts ? 'Service Tickets' : 'My Tickets'
@@ -581,44 +515,31 @@ const hasActiveFilters = computed(() => {
   return !!(searchQuery.value || statusFilter.value || priorityFilter.value || assignmentFilter.value || accountFilter.value)
 })
 
+// Sync search query with TanStack global filter
+watch(searchQuery, (newValue) => {
+  table.setGlobalFilter(newValue)
+})
+
+// Sync individual filters with TanStack column filters
+watch(statusFilter, (newValue) => {
+  setStatusFilter(newValue)
+})
+
+watch(priorityFilter, (newValue) => {
+  setPriorityFilter(newValue)
+})
+
+watch(assignmentFilter, (newValue) => {
+  setAssignmentFilter(newValue, user.value?.id)
+})
+
+watch(accountFilter, (newValue) => {
+  setAccountFilter(newValue)
+})
+
+// Use TanStack Table's filtered rows
 const filteredTickets = computed(() => {
-  let filtered = tickets.value
-
-  // Search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(ticket => 
-      ticket.ticket_number.toLowerCase().includes(query) ||
-      ticket.title.toLowerCase().includes(query) ||
-      (ticket.description && ticket.description.toLowerCase().includes(query))
-    )
-  }
-
-  // Status filter
-  if (statusFilter.value) {
-    filtered = filtered.filter(ticket => ticket.status === statusFilter.value)
-  }
-
-  // Priority filter
-  if (priorityFilter.value) {
-    filtered = filtered.filter(ticket => ticket.priority === priorityFilter.value)
-  }
-
-  // Assignment filter
-  if (assignmentFilter.value) {
-    if (assignmentFilter.value === 'mine') {
-      filtered = filtered.filter(ticket => ticket.assigned_to_id === user.value?.id)
-    } else if (assignmentFilter.value === 'unassigned') {
-      filtered = filtered.filter(ticket => !ticket.assigned_to_id)
-    }
-  }
-
-  // Account filter
-  if (accountFilter.value) {
-    filtered = filtered.filter(ticket => ticket.account_id === parseInt(accountFilter.value))
-  }
-
-  return filtered
+  return table.getFilteredRowModel().rows.map(row => row.original)
 })
 
 const recentActivity = computed(() => {
@@ -712,6 +633,7 @@ const clearFilters = () => {
   priorityFilter.value = ''
   assignmentFilter.value = ''
   accountFilter.value = ''
+  clearAllFilters()
 }
 
 const getStatusClasses = (status) => {
@@ -789,21 +711,6 @@ const getMyTicketsCount = () => {
   return tickets.value.filter(ticket => ticket.assigned_to_id === user.value?.id).length
 }
 
-const canEditTicket = (ticket) => {
-  // Can edit if assigned to user or if user has admin permissions
-  return ticket.assigned_to_id === user.value?.id || props.permissions.canEditAllTickets
-}
-
-const viewTicket = (ticket) => {
-  // Navigate to ticket detail view
-  window.location.href = `/tickets/${ticket.id}`
-}
-
-const editTicket = (ticket) => {
-  // Navigate to ticket edit view
-  window.location.href = `/tickets/${ticket.id}/edit`
-}
-
 const handleTimerEvent = (event) => {
   // Refresh active timers when timer events occur
   refreshActiveTimers()
@@ -832,13 +739,20 @@ const handleTimeEntryCreated = (timeEntry) => {
 const openManualTimeEntry = (ticket) => {
   // TODO: Open manual time entry dialog
   console.log('Open manual time entry for ticket:', ticket.ticket_number)
-  // This would open a time entry modal/dialog
 }
 
 const openTicketAddon = (ticket) => {
   // TODO: Open ticket addon dialog
   console.log('Open ticket addon for ticket:', ticket.ticket_number)
-  // This would open a ticket addon selection modal/dialog
+}
+
+// Handle window resize
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 1024
+  if (!isMobile.value) {
+    showMobileFilters.value = false
+    showMobileSidebar.value = false
+  }
 }
 
 // Lifecycle
@@ -846,30 +760,40 @@ onMounted(() => {
   refreshActiveTimers()
   fetchTimersForTickets()
   
+  // Add resize listener
+  window.addEventListener('resize', handleResize)
+  
   // Set up periodic refresh for active timers
   const timerInterval = setInterval(() => {
     refreshActiveTimers()
-    fetchTimersForTickets() // Also refresh bulk timers periodically
+    fetchTimersForTickets()
   }, 30000) // Every 30 seconds
   
   // Cleanup
-  return () => {
+  onUnmounted(() => {
     clearInterval(timerInterval)
-  }
+    window.removeEventListener('resize', handleResize)
+  })
 })
-
-// Watchers
-watch([searchQuery, statusFilter, priorityFilter, assignmentFilter, accountFilter], () => {
-  // Optional: debounce and make API calls for server-side filtering
-  // For now, we're doing client-side filtering
-}, { debounce: 300 })
 </script>
 
 <style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+/* Custom scrollbar for horizontal scroll */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 </style>

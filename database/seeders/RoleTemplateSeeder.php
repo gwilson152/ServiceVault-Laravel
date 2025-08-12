@@ -115,22 +115,34 @@ class RoleTemplateSeeder extends Seeder
             'context' => 'service_provider',
             'permissions' => [
                 'admin.manage',
+                'accounts.create',
                 'accounts.manage',
+                'accounts.hierarchy.access',
                 'users.manage',
+                'users.manage.account',
                 'users.invite',
                 'billing.manage',
                 'tickets.admin',
                 'tickets.create',
+                'tickets.create.account',
                 'tickets.view.all',
                 'tickets.edit.all',
                 'tickets.assign',
+                'tickets.assign.account',
                 'tickets.transition',
                 'tickets.close',
+                'tickets.delete',
                 'time.admin',
                 'time.view.all',
                 'time.edit.all',
                 'time.approve',
                 'time.reports',
+                'time.reports.account',
+                // Legacy timer support
+                'timers.read',
+                'timers.write',
+                'timers.manage',
+                'timers.sync',
             ],
             'widget_permissions' => [
                 'widgets.dashboard.system-stats',
@@ -139,6 +151,7 @@ class RoleTemplateSeeder extends Seeder
                 'widgets.dashboard.ticket-overview',
                 'widgets.dashboard.all-timers',
                 'widgets.dashboard.billing-overview',
+                'widgets.dashboard.account-activity',
                 'widgets.configure',
             ],
             'page_permissions' => [
@@ -149,61 +162,40 @@ class RoleTemplateSeeder extends Seeder
             ]
         ]);
 
-        // Manager - Service oversight and ticket management (MODIFIABLE)
-        RoleTemplate::updateOrCreate(['name' => 'Manager'], [
-            'display_name' => 'Manager',
-            'description' => 'Service oversight, ticket assignment, and approval workflows',
+
+        // Agent - Service delivery and time tracking (MODIFIABLE)
+        RoleTemplate::updateOrCreate(['name' => 'Agent'], [
+            'display_name' => 'Service Agent',
+            'description' => 'Service delivery agent with ticket management and time tracking',
             'is_system_role' => false,
             'is_default' => false,
             'is_modifiable' => true,
             'context' => 'service_provider',
             'permissions' => [
-                'users.assign',
                 'tickets.create',
-                'tickets.view.all',
-                'tickets.edit.all',
-                'tickets.assign',
-                'tickets.transition',
-                'time.manage',
-                'time.view.all',
-                'time.approve',
-                'time.reports',
-            ],
-            'widget_permissions' => [
-                'widgets.dashboard.ticket-overview',
-                'widgets.dashboard.my-tickets',
-                'widgets.dashboard.time-tracking',
-                'widgets.dashboard.account-activity',
-            ],
-            'page_permissions' => [
-                'pages.tickets.manage',
-                'pages.tickets.create',
-                'pages.reports.account',
-            ]
-        ]);
-
-        // Employee - Service delivery and time tracking (MODIFIABLE)
-        RoleTemplate::updateOrCreate(['name' => 'Employee'], [
-            'display_name' => 'Employee',
-            'description' => 'Standard employee with time tracking and assigned ticket management',
-            'is_system_role' => false,
-            'is_default' => true,
-            'is_modifiable' => true,
-            'context' => 'service_provider',
-            'permissions' => [
-                'tickets.create',
+                'tickets.create.account',
                 'tickets.view.assigned',
+                'tickets.view.own',
                 'tickets.edit.own',
+                'tickets.edit.assigned',
                 'tickets.transition',
+                'tickets.comment',
                 'time.track',
                 'time.view.own',
                 'time.edit.own',
                 'time.reports.own',
+                // Legacy timer support
+                'timers.create',
+                'timers.read',
+                'timers.write',
+                'timers.sync',
             ],
             'widget_permissions' => [
                 'widgets.dashboard.my-tickets',
                 'widgets.dashboard.time-tracking',
                 'widgets.dashboard.quick-actions',
+                'widgets.dashboard.ticket-timer-stats',
+                'widgets.dashboard.recent-time-entries',
             ],
             'page_permissions' => [
                 'pages.tickets.create',
@@ -250,7 +242,7 @@ class RoleTemplateSeeder extends Seeder
             'display_name' => 'Account User',
             'description' => 'Basic customer account access with service request capabilities',
             'is_system_role' => false,
-            'is_default' => false,
+            'is_default' => true,
             'is_modifiable' => true,
             'context' => 'account_user',
             'permissions' => [
