@@ -1,7 +1,14 @@
 <template>
   <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200" style="min-width: 800px">
-      <thead class="bg-gray-50">
+    <table 
+      class="min-w-full divide-y divide-gray-200" 
+      :class="{
+        'table-comfortable': density === 'comfortable',
+        'table-compact': density === 'compact'
+      }"
+      style="min-width: 800px"
+    >
+      <thead class="bg-gray-50 border-b border-gray-300">
         <tr
           v-for="headerGroup in table.getHeaderGroups()"
           :key="headerGroup.id"
@@ -10,11 +17,14 @@
             v-for="header in headerGroup.headers"
             :key="header.id"
             :colspan="header.colSpan"
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            :class="{
-              'cursor-pointer hover:bg-gray-100': header.column.getCanSort(),
-              'text-right': header.id === 'actions'
-            }"
+            :class="[
+              density === 'compact' ? 'px-3 py-2' : 'px-6 py-3',
+              'text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200',
+              {
+                'cursor-pointer hover:bg-gray-100': header.column.getCanSort(),
+                'text-right': header.id === 'actions'
+              }
+            ]"
             @click="header.column.getToggleSortingHandler()?.($event)"
           >
             <div class="flex items-center" :class="{ 'justify-end': header.id === 'actions' }">
@@ -37,94 +47,154 @@
           </th>
         </tr>
       </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
+      <tbody class="bg-white divide-y divide-gray-100">
         <tr
           v-for="row in table.getRowModel().rows"
           :key="row.id"
-          class="hover:bg-gray-50 transition-colors"
+          class="hover:bg-blue-50 transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-blue-300 hover:shadow-sm"
         >
           <td
             v-for="cell in row.getVisibleCells()"
             :key="cell.id"
-            class="px-6 py-4 whitespace-nowrap"
-            :class="{
-              'text-right': cell.column.id === 'actions',
-              'text-sm text-gray-900': !['ticket_number', 'status', 'priority', 'timer', 'actions'].includes(cell.column.id),
-              'text-sm text-gray-500': cell.column.id === 'updated_at'
-            }"
+            :class="[
+              density === 'compact' ? 'px-3 py-2' : 'px-6 py-4',
+              'whitespace-nowrap border-b border-gray-100',
+              {
+                'text-right': cell.column.id === 'timer',
+                'text-sm text-gray-900': !['ticket_number', 'status', 'priority', 'timer', 'actions', 'account', 'assigned_to', 'total_time_logged'].includes(cell.column.id),
+                'text-sm text-gray-500': cell.column.id === 'updated_at'
+              }
+            ]"
           >
-            <!-- Ticket Column -->
+            <!-- Combined Ticket Details Column -->
             <div v-if="cell.column.id === 'ticket_number'">
-              <div class="text-sm font-medium text-blue-600 hover:text-blue-800">
-                <a :href="`/tickets/${cell.row.original.id}`" class="hover:underline">
-                  {{ cell.row.original.ticket_number }}
-                </a>
+              <!-- Ticket Number & Title -->
+              <div class="mb-2">
+                <div class="text-sm font-semibold text-blue-600 hover:text-blue-800">
+                  <a :href="`/tickets/${cell.row.original.id}`" class="hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded">
+                    {{ cell.row.original.ticket_number }}
+                  </a>
+                </div>
+                <div 
+                  :class="[
+                    'text-sm text-gray-700 max-w-sm',
+                    density === 'compact' ? 'mt-0.5 line-clamp-1' : 'mt-1 line-clamp-2'
+                  ]"
+                >
+                  {{ cell.row.original.title }}
+                </div>
               </div>
-              <div class="text-sm text-gray-900 mt-1 max-w-xs truncate">
-                {{ cell.row.original.title }}
+              
+              <!-- Status & Priority Row -->
+              <div 
+                :class="[
+                  'flex items-center gap-2',
+                  density === 'compact' ? 'flex-wrap' : 'flex-row'
+                ]"
+              >
+                <!-- Status Badge -->
+                <span 
+                  :class="getStatusClasses(cell.row.original.status)" 
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm"
+                >
+                  <span 
+                    :class="getStatusDotClass(cell.row.original.status)" 
+                    class="w-2 h-2 rounded-full mr-1.5"
+                  ></span>
+                  {{ formatStatus(cell.row.original.status) }}
+                </span>
+                
+                <!-- Priority Badge -->
+                <span 
+                  :class="getPriorityClasses(cell.row.original.priority)" 
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm"
+                >
+                  <span 
+                    :class="getPriorityIconClass(cell.row.original.priority)" 
+                    class="mr-1.5"
+                  >
+                    {{ getPriorityIcon(cell.row.original.priority) }}
+                  </span>
+                  {{ formatPriority(cell.row.original.priority) }}
+                </span>
               </div>
             </div>
             
-            <!-- Status Column -->
-            <span v-else-if="cell.column.id === 'status'" :class="getStatusClasses(cell.getValue())" class="px-2 py-1 text-xs font-medium rounded-full">
-              {{ formatStatus(cell.getValue()) }}
-            </span>
+            <!-- Combined Account/Customer Column -->
+            <div v-else-if="cell.column.id === 'account'" class="text-left">
+              <!-- Account Name -->
+              <div class="text-sm font-medium text-gray-900 mb-1">
+                {{ cell.row.original.account?.name || 'No Account' }}
+              </div>
+              
+              <!-- Assigned User -->
+              <div class="text-xs text-gray-600">
+                <span class="text-gray-500">Assigned:</span>
+                <span class="ml-1 font-medium">{{ cell.row.original.assigned_to?.name || 'Unassigned' }}</span>
+              </div>
+            </div>
             
-            <!-- Priority Column -->
-            <span v-else-if="cell.column.id === 'priority'" :class="getPriorityClasses(cell.getValue())" class="px-2 py-1 text-xs font-medium rounded-full">
-              {{ formatPriority(cell.getValue()) }}
-            </span>
-            
-            <!-- Time Tracked Column -->
-            <span v-else-if="cell.column.id === 'total_time_logged'">
-              {{ formatDuration(cell.getValue()) }}
-            </span>
-            
-            <!-- Timer Column -->
-            <div v-else-if="cell.column.id === 'timer'" class="flex items-center space-x-1">
-              <TicketTimerControls
-                :ticket="cell.row.original"
-                :currentUser="user"
-                :compact="true"
-                :initialTimerData="timersByTicket[cell.row.original.id] || []"
-                :availableBillingRates="[]"
-                :assignableUsers="[]"
-                @timer-started="$emit('timer-started', $event)"
-                @timer-stopped="$emit('timer-stopped', $event)"
-                @timer-paused="$emit('timer-paused', $event)"
-                @time-entry-created="$emit('time-entry-created', $event)"
-              />
+            <!-- Combined Timer/Time/Actions Column -->
+            <div v-else-if="cell.column.id === 'timer'" class="text-center">
+              <!-- Action Buttons Row -->
+              <div 
+                :class="[
+                  'flex items-center justify-center',
+                  density === 'compact' ? 'space-x-1 mb-1' : 'space-x-2 mb-2'
+                ]"
+              >
+                <!-- Timer Controls -->
+                <TicketTimerControls
+                  :ticket="cell.row.original"
+                  :currentUser="user"
+                  :compact="true"
+                  :initialTimerData="timersByTicket[cell.row.original.id] || []"
+                  :availableBillingRates="[]"
+                  :assignableUsers="[]"
+                  @timer-started="$emit('timer-started', $event)"
+                  @timer-stopped="$emit('timer-stopped', $event)"
+                  @timer-paused="$emit('timer-paused', $event)"
+                  @time-entry-created="$emit('time-entry-created', $event)"
+                />
+                
+                <!-- Manual Time Entry Button -->
+                <button
+                  @click="$emit('open-manual-time-entry', cell.row.original)"
+                  class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  title="Add Manual Time Entry"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+                
+                <!-- Add Ticket Addon Button -->
+                <button
+                  @click="$emit('open-ticket-addon', cell.row.original)"
+                  class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                  title="Add Ticket Addon"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Time Tracked Row -->
+              <div class="text-center">
+                <div class="font-mono text-sm font-medium text-gray-900">
+                  {{ formatDuration(cell.row.original.total_time_logged) }}
+                </div>
+                <div v-if="density === 'comfortable'" class="text-xs text-gray-500 mt-0.5">
+                  {{ formatHours(cell.row.original.total_time_logged) }}
+                </div>
+              </div>
             </div>
             
             <!-- Updated Column -->
             <span v-else-if="cell.column.id === 'updated_at'">
               {{ formatDate(cell.getValue()) }}
             </span>
-            
-            <!-- Actions Column -->
-            <div v-else-if="cell.column.id === 'actions'" class="flex items-center justify-end space-x-1">
-              <!-- Manual Time Entry Button -->
-              <button
-                @click="$emit('open-manual-time-entry', cell.row.original)"
-                class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                title="Add Manual Time Entry"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-              
-              <!-- Add Ticket Addon Button -->
-              <button
-                @click="$emit('open-ticket-addon', cell.row.original)"
-                class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                title="Add Ticket Addon"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </button>
-            </div>
             
             <!-- Default Cell Renderer -->
             <FlexRender
@@ -137,8 +207,13 @@
       </tbody>
     </table>
     
-    <!-- Pagination Controls -->
-    <div class="px-6 py-4 flex items-center justify-between border-t border-gray-200">
+    <!-- Business Pagination Controls -->
+    <div 
+      :class="[
+        density === 'compact' ? 'px-3 py-3' : 'px-6 py-4',
+        'flex items-center justify-between border-t border-gray-200 bg-gray-50'
+      ]"
+    >
       <div class="flex-1 flex justify-between sm:hidden">
         <button
           @click="table.previousPage()"
@@ -246,6 +321,11 @@ const props = defineProps({
   timersByTicket: {
     type: Object,
     default: () => ({})
+  },
+  density: {
+    type: String,
+    default: 'compact',
+    validator: (value) => ['comfortable', 'compact'].includes(value)
   }
 })
 
@@ -261,21 +341,52 @@ defineEmits([
 // Helper methods
 const getStatusClasses = (status) => {
   const classes = {
-    'open': 'bg-blue-100 text-blue-800',
-    'in_progress': 'bg-yellow-100 text-yellow-800',
-    'pending_review': 'bg-purple-100 text-purple-800',
-    'resolved': 'bg-green-100 text-green-800',
-    'closed': 'bg-gray-100 text-gray-800'
+    'open': 'bg-blue-50 text-blue-700 border border-blue-200',
+    'in_progress': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+    'pending_review': 'bg-purple-50 text-purple-700 border border-purple-200',
+    'resolved': 'bg-green-50 text-green-700 border border-green-200',
+    'closed': 'bg-gray-50 text-gray-700 border border-gray-200'
   }
   return classes[status] || classes.open
 }
 
 const getPriorityClasses = (priority) => {
   const classes = {
-    'low': 'bg-gray-100 text-gray-800',
-    'normal': 'bg-blue-100 text-blue-800',
-    'high': 'bg-orange-100 text-orange-800',
-    'urgent': 'bg-red-100 text-red-800'
+    'low': 'bg-gray-50 text-gray-700 border border-gray-200',
+    'normal': 'bg-blue-50 text-blue-700 border border-blue-200',
+    'high': 'bg-orange-50 text-orange-700 border border-orange-200',
+    'urgent': 'bg-red-50 text-red-700 border border-red-200'
+  }
+  return classes[priority] || classes.normal
+}
+
+const getStatusDotClass = (status) => {
+  const classes = {
+    'open': 'bg-blue-500',
+    'in_progress': 'bg-yellow-500',
+    'pending_review': 'bg-purple-500',
+    'resolved': 'bg-green-500',
+    'closed': 'bg-gray-500'
+  }
+  return classes[status] || classes.open
+}
+
+const getPriorityIcon = (priority) => {
+  const icons = {
+    'low': '↓',
+    'normal': '→',
+    'high': '↑',
+    'urgent': '⚠'
+  }
+  return icons[priority] || icons.normal
+}
+
+const getPriorityIconClass = (priority) => {
+  const classes = {
+    'low': 'text-gray-600',
+    'normal': 'text-blue-600',
+    'high': 'text-orange-600',
+    'urgent': 'text-red-600'
   }
   return classes[priority] || classes.normal
 }
@@ -302,6 +413,12 @@ const formatDuration = (seconds) => {
   return `${minutes}m`
 }
 
+const formatHours = (seconds) => {
+  if (!seconds) return '0.00 hrs'
+  const hours = (seconds / 3600).toFixed(2)
+  return `${hours} hrs`
+}
+
 const formatDate = (dateString) => {
   if (!dateString) return ''
   
@@ -316,3 +433,60 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString()
 }
 </script>
+
+<style scoped>
+.table-comfortable {
+  @apply text-sm;
+}
+
+.table-compact {
+  @apply text-xs;
+}
+
+.table-compact tbody tr:hover {
+  @apply shadow-sm;
+}
+
+.table-comfortable tbody tr:hover {
+  @apply shadow-md;
+}
+
+/* Business-like table styling */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+tbody tr {
+  transition: all 0.15s ease-in-out;
+}
+
+tbody tr:nth-child(even) {
+  @apply bg-gray-50;
+}
+
+tbody tr:hover {
+  transform: translateY(-1px);
+}
+
+/* Enhanced status and priority badges */
+.inline-flex {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Text truncation utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+</style>

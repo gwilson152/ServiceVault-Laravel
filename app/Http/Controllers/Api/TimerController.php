@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TimerController extends Controller
 {
@@ -302,32 +303,55 @@ class TimerController extends Controller
      */
     public function resume(Timer $timer): JsonResponse
     {
-        $this->authorize('update', $timer);
+        try {
+            $this->authorize('update', $timer);
 
-        if ($timer->status !== 'paused') {
+            if ($timer->status !== 'paused') {
+                return response()->json([
+                    'message' => 'Timer is not paused',
+                ], 400);
+            }
+
+            $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
+            
+            $timer->update([
+                'status' => 'running',
+                'paused_at' => null,
+                'total_paused_duration' => ($timer->total_paused_duration ?? 0) + $pausedDuration,
+            ]);
+
+            // Broadcast update
+            try {
+                broadcast(new TimerUpdated($timer))->toOthers();
+            } catch (\Exception $e) {
+                // Log broadcast error but don't fail the request
+                \Log::warning('Failed to broadcast timer update: ' . $e->getMessage());
+            }
+
+            // Update Redis state
+            try {
+                $this->timerService->updateRedisState($timer);
+            } catch (\Exception $e) {
+                // Log Redis error but don't fail the request
+                \Log::warning('Failed to update Redis state: ' . $e->getMessage());
+            }
+
             return response()->json([
-                'message' => 'Timer is not paused',
-            ], 400);
+                'message' => 'Timer resumed successfully',
+                'data' => new TimerResource($timer),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Timer resume error: ' . $e->getMessage(), [
+                'timer_id' => $timer->id ?? 'unknown',
+                'user_id' => auth()->id() ?? 'unknown',
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to resume timer',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            ], 500);
         }
-
-        $pausedDuration = $timer->paused_at ? now()->diffInSeconds($timer->paused_at) : 0;
-        
-        $timer->update([
-            'status' => 'running',
-            'paused_at' => null,
-            'total_paused_duration' => ($timer->total_paused_duration ?? 0) + $pausedDuration,
-        ]);
-
-        // Broadcast update
-        broadcast(new TimerUpdated($timer))->toOthers();
-
-        // Update Redis state
-        $this->timerService->updateRedisState($timer);
-
-        return response()->json([
-            'message' => 'Timer resumed successfully',
-            'data' => new TimerResource($timer),
-        ]);
     }
 
     /**

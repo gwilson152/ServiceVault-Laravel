@@ -24,28 +24,8 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
   const columns = computed(() => {
     const cols = [
       columnHelper.accessor('ticket_number', {
-        header: 'Ticket',
+        header: 'Ticket Details',
         cell: info => info.getValue(),
-        enableSorting: true,
-      }),
-      
-      columnHelper.accessor('status', {
-        header: 'Status',
-        cell: info => info.getValue(),
-        enableSorting: true,
-        filterFn: 'equals',
-      }),
-      
-      columnHelper.accessor('priority', {
-        header: 'Priority',
-        cell: info => info.getValue(),
-        enableSorting: true,
-        filterFn: 'equals',
-      }),
-      
-      columnHelper.accessor(row => row.assigned_to?.name || 'Unassigned', {
-        id: 'assigned_to',
-        header: 'Assigned To',
         enableSorting: true,
       }),
     ]
@@ -55,7 +35,7 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
       cols.push(
         columnHelper.accessor(row => row.account?.name || '', {
           id: 'account',
-          header: 'Account',
+          header: 'Account/Customer',
           enableSorting: true,
         })
       )
@@ -63,26 +43,15 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
 
     // Add remaining columns
     cols.push(
-      columnHelper.accessor('total_time_logged', {
-        header: 'Time Tracked',
-        cell: info => info.getValue(),
-        enableSorting: true,
-      }),
-      
       columnHelper.display({
         id: 'timer',
-        header: 'Timer',
+        header: 'Timer/Actions',
       }),
       
       columnHelper.accessor('updated_at', {
         header: 'Updated',
         cell: info => info.getValue(),
         enableSorting: true,
-      }),
-      
-      columnHelper.display({
-        id: 'actions',
-        header: () => 'Actions',
       })
     )
 
@@ -139,47 +108,28 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
   })
 
   // Helper functions for filtering
-  const setStatusFilter = (status) => {
-    if (status) {
-      table.setColumnFilters([
-        ...columnFilters.value.filter(f => f.id !== 'status'),
-        { id: 'status', value: status }
-      ])
-    } else {
-      table.setColumnFilters(columnFilters.value.filter(f => f.id !== 'status'))
-    }
-  }
-
-  const setPriorityFilter = (priority) => {
-    if (priority) {
-      table.setColumnFilters([
-        ...columnFilters.value.filter(f => f.id !== 'priority'),
-        { id: 'priority', value: priority }
-      ])
-    } else {
-      table.setColumnFilters(columnFilters.value.filter(f => f.id !== 'priority'))
-    }
-  }
+  // Note: Status and priority filtering now handled through global search
+  // since they are combined into the ticket_number column display
 
   const setAssignmentFilter = (assignment, userId) => {
     if (assignment === 'mine') {
       table.setColumnFilters([
-        ...columnFilters.value.filter(f => f.id !== 'assigned_to'),
+        ...columnFilters.value.filter(f => f.id !== 'account'),
         { 
-          id: 'assigned_to', 
+          id: 'account', 
           value: user.value?.name,
         }
       ])
     } else if (assignment === 'unassigned') {
       table.setColumnFilters([
-        ...columnFilters.value.filter(f => f.id !== 'assigned_to'),
+        ...columnFilters.value.filter(f => f.id !== 'account'),
         { 
-          id: 'assigned_to', 
+          id: 'account', 
           value: 'Unassigned',
         }
       ])
     } else {
-      table.setColumnFilters(columnFilters.value.filter(f => f.id !== 'assigned_to'))
+      table.setColumnFilters(columnFilters.value.filter(f => f.id !== 'account'))
     }
   }
 
@@ -209,8 +159,6 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
     globalFilter,
     columnFilters,
     pagination,
-    setStatusFilter,
-    setPriorityFilter,
     setAssignmentFilter,
     setAccountFilter,
     clearAllFilters,

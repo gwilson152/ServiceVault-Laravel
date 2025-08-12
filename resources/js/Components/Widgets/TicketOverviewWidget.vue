@@ -65,7 +65,7 @@
     <div class="quick-actions mt-4 pt-3 border-t border-gray-100">
       <div class="flex justify-between text-xs">
         <button 
-          @click="createTicket"
+          @click="showCreateModal = true"
           class="text-indigo-600 hover:text-indigo-800"
         >
           Create Ticket
@@ -87,6 +87,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Create Ticket Modal -->
+    <CreateTicketModal
+      :show="showCreateModal"
+      :available-accounts="availableAccounts"
+      :can-assign-tickets="canAssignTickets"
+      @close="showCreateModal = false"
+      @created="onTicketCreated"
+    />
   </div>
 </template>
 
@@ -94,6 +103,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
+import CreateTicketModal from '@/Components/Modals/CreateTicketModal.vue'
 
 // Props
 const props = defineProps({
@@ -116,6 +126,18 @@ const emit = defineEmits(['refresh', 'configure'])
 
 // State
 const isRefreshing = ref(false)
+const showCreateModal = ref(false)
+
+// Computed properties for modal
+const availableAccounts = computed(() => {
+  // For now, return empty array - the modal will handle account selection based on user permissions
+  return []
+})
+
+const canAssignTickets = computed(() => {
+  // This should be determined from user permissions in a real implementation
+  return props.accountContext?.canAssignTickets || false
+})
 
 // Computed
 const recentTickets = computed(() => {
@@ -175,19 +197,26 @@ const formatDate = (dateString) => {
 }
 
 const viewTicket = (ticketId) => {
-  // Navigate to ticket detail page
-  console.log('Viewing ticket:', ticketId)
-  // router.visit(route('tickets.show', ticketId))
+  // Navigate to ticket detail page using Inertia router
+  router.visit(`/tickets/${ticketId}`)
 }
 
-const createTicket = () => {
-  console.log('Creating new ticket')
-  // router.visit(route('tickets.create'))
+const onTicketCreated = (newTicket) => {
+  // Handle successful ticket creation
+  showCreateModal.value = false
+  
+  // Refresh the widget data to show the new ticket
+  emit('refresh')
+  
+  // Optionally navigate to the new ticket
+  if (newTicket?.id) {
+    router.visit(`/tickets/${newTicket.id}`)
+  }
 }
 
 const viewAllTickets = () => {
-  console.log('Viewing all tickets')
-  // router.visit(route('tickets.index'))
+  // Navigate to tickets index page
+  router.visit('/tickets')
 }
 
 const refreshTickets = () => {

@@ -172,36 +172,35 @@
                   </span>
                 </h3>
                 
-                <!-- View Toggle -->
-                <div class="flex items-center space-x-1">
-                  <button
-                    @click="viewMode = 'table'"
-                    :class="[
-                      'px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors',
-                      viewMode === 'table' 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'text-gray-600 hover:text-gray-700'
-                    ]"
-                  >
-                    <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                    </svg>
-                    <span class="hidden sm:inline">Table</span>
-                  </button>
-                  <button
-                    @click="viewMode = 'cards'"
-                    :class="[
-                      'px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors',
-                      viewMode === 'cards' 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'text-gray-600 hover:text-gray-700'
-                    ]"
-                  >
-                    <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                    <span class="hidden sm:inline">Cards</span>
-                  </button>
+                <!-- Table Density Toggle -->
+                <div class="flex items-center space-x-2">
+                  <span class="text-sm text-gray-500">Density:</span>
+                  <div class="flex items-center space-x-1">
+                    <button
+                      @click="tableDensity = 'comfortable'"
+                      :class="[
+                        'px-2 py-1 rounded text-xs font-medium transition-colors',
+                        tableDensity === 'comfortable' 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                      ]"
+                      title="Comfortable spacing"
+                    >
+                      Comfortable
+                    </button>
+                    <button
+                      @click="tableDensity = 'compact'"
+                      :class="[
+                        'px-2 py-1 rounded text-xs font-medium transition-colors',
+                        tableDensity === 'compact' 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                      ]"
+                      title="Compact spacing for maximum data density"
+                    >
+                      Compact
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -232,13 +231,14 @@
               </div>
             </div>
             
-            <!-- Table View (with horizontal scroll on mobile) -->
-            <div v-else-if="viewMode === 'table'" class="overflow-hidden">
+            <!-- Business Table View -->
+            <div v-else class="overflow-hidden">
               <div class="overflow-x-auto">
                 <TicketsTable
                   :table="table"
                   :user="user"
                   :timersByTicket="timersByTicket"
+                  :density="tableDensity"
                   @timer-started="handleTimerEvent"
                   @timer-stopped="handleTimerEvent"
                   @timer-paused="handleTimerEvent"
@@ -249,98 +249,6 @@
               </div>
             </div>
             
-            <!-- Cards View - Responsive Grid -->
-            <div v-else-if="viewMode === 'cards'" class="p-4 sm:p-6">
-              <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                <div
-                  v-for="ticket in filteredTickets"
-                  :key="ticket.id"
-                  class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <!-- Card Header -->
-                  <div class="flex items-start justify-between mb-3">
-                    <div class="min-w-0 flex-1">
-                      <h4 class="text-sm font-medium text-blue-600 hover:text-blue-800">
-                        <a :href="`/tickets/${ticket.id}`" class="hover:underline">
-                          {{ ticket.ticket_number }}
-                        </a>
-                      </h4>
-                      <p class="text-sm text-gray-900 mt-1 truncate">
-                        {{ ticket.title }}
-                      </p>
-                    </div>
-                    <span :class="getPriorityClasses(ticket.priority)" class="ml-2 px-2 py-1 text-xs font-medium rounded-full flex-shrink-0">
-                      {{ formatPriority(ticket.priority) }}
-                    </span>
-                  </div>
-                  
-                  <!-- Card Content -->
-                  <div class="space-y-2 mb-4">
-                    <div class="flex items-center justify-between text-sm">
-                      <span class="text-gray-600">Status:</span>
-                      <span :class="getStatusClasses(ticket.status)" class="px-2 py-1 text-xs font-medium rounded-full">
-                        {{ formatStatus(ticket.status) }}
-                      </span>
-                    </div>
-                    
-                    <div class="flex items-center justify-between text-sm">
-                      <span class="text-gray-600">Assigned:</span>
-                      <span class="text-gray-900 truncate ml-2">{{ ticket.assigned_to?.name || 'Unassigned' }}</span>
-                    </div>
-                    
-                    <div v-if="canViewAllAccounts" class="flex items-center justify-between text-sm">
-                      <span class="text-gray-600">Account:</span>
-                      <span class="text-gray-900 truncate ml-2">{{ ticket.account?.name }}</span>
-                    </div>
-                    
-                    <div class="flex items-center justify-between text-sm">
-                      <span class="text-gray-600">Time:</span>
-                      <span class="text-gray-900">{{ formatDuration(ticket.total_time_logged) }}</span>
-                    </div>
-                  </div>
-                  
-                  <!-- Card Footer -->
-                  <div class="flex items-center justify-between">
-                    <TicketTimerControls
-                      :ticket="ticket"
-                      :currentUser="user"
-                      :compact="true"
-                      :initialTimerData="timersByTicket[ticket.id] || []"
-                      :availableBillingRates="[]"
-                      :assignableUsers="[]"
-                      @timer-started="handleTimerEvent"
-                      @timer-stopped="handleTimerEvent"
-                      @timer-paused="handleTimerEvent"
-                      @time-entry-created="handleTimeEntryCreated"
-                    />
-                    
-                    <div class="flex items-center space-x-1">
-                      <!-- Manual Time Entry Button -->
-                      <button
-                        @click="openManualTimeEntry(ticket)"
-                        class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="Add Manual Time Entry"
-                      >
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </button>
-                      
-                      <!-- Add Ticket Addon Button -->
-                      <button
-                        @click="openTicketAddon(ticket)"
-                        class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                        title="Add Ticket Addon"
-                      >
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
         
@@ -479,7 +387,13 @@ const activeTimers = ref(props.initialActiveTimers || [])
 const timersByTicket = ref({}) // Store timers grouped by ticket_id
 const isLoading = ref(false)
 const showCreateModal = ref(false)
-const viewMode = ref('table')
+// Load table density preference from localStorage
+const tableDensity = ref(localStorage.getItem('tickets-table-density') || 'compact')
+
+// Watch for density changes and save to localStorage
+watch(tableDensity, (newDensity) => {
+  localStorage.setItem('tickets-table-density', newDensity)
+}, { immediate: false })
 const showMobileFilters = ref(false)
 const showMobileSidebar = ref(false)
 const isMobile = ref(window.innerWidth < 1024)
@@ -499,8 +413,6 @@ const user = computed(() => page.props.auth?.user)
 const {
   table,
   globalFilter,
-  setStatusFilter,
-  setPriorityFilter,
   setAssignmentFilter,
   setAccountFilter,
   clearAllFilters,
@@ -521,13 +433,7 @@ watch(searchQuery, (newValue) => {
 })
 
 // Sync individual filters with TanStack column filters
-watch(statusFilter, (newValue) => {
-  setStatusFilter(newValue)
-})
-
-watch(priorityFilter, (newValue) => {
-  setPriorityFilter(newValue)
-})
+// Status and priority filters removed - now handled through global search
 
 watch(assignmentFilter, (newValue) => {
   setAssignmentFilter(newValue, user.value?.id)

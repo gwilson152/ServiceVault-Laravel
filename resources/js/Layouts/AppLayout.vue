@@ -3,11 +3,27 @@
     <!-- Main Content -->
     <div class="flex h-screen overflow-hidden">
       <!-- Sidebar -->
-      <div class="hidden md:flex md:w-64 md:flex-col">
-        <div class="flex flex-col flex-grow pt-5 overflow-y-auto bg-white border-r border-gray-200">
+      <div :class="[
+        'hidden md:flex md:flex-col transition-all duration-300',
+        sidebarCollapsed ? 'md:w-20' : 'md:w-64'
+      ]">
+        <div class="flex flex-col flex-grow pt-5 overflow-y-auto bg-white border-r border-gray-200 shadow-sm">
           <!-- Logo -->
-          <div class="flex items-center flex-shrink-0 px-4">
-            <h1 class="text-xl font-semibold text-gray-900">Service Vault</h1>
+          <div class="flex items-center justify-between flex-shrink-0 px-4">
+            <h1 v-show="!sidebarCollapsed" class="text-xl font-semibold text-gray-900 transition-opacity duration-300">Service Vault</h1>
+            <div v-show="sidebarCollapsed" class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <span class="text-white font-bold text-sm">SV</span>
+            </div>
+            
+            <!-- Pin/Collapse Button -->
+            <button
+              @click="toggleSidebar"
+              class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 hover:scale-105 active:scale-95"
+              :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            >
+              <ChevronDoubleLeftIcon v-if="!sidebarCollapsed" class="h-5 w-5" />
+              <ChevronDoubleRightIcon v-else class="h-5 w-5" />
+            </button>
           </div>
           
           <!-- Navigation -->
@@ -19,26 +35,31 @@
                 :href="route(item.route)"
                 :class="[
                   isActive(item)
-                    ? 'bg-indigo-50 border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                  'group flex items-center px-3 py-2 text-sm font-medium border-l-4'
+                    ? 'bg-indigo-50 border-indigo-600 text-indigo-600 shadow-sm'
+                    : 'border-transparent text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300',
+                  sidebarCollapsed ? 'justify-center px-3 py-3 mx-2 rounded-lg border-l-0' : 'px-3 py-2.5',
+                  'group flex items-center text-sm font-medium border-l-4 transition-all duration-200 hover:translate-x-1'
                 ]"
+                :title="sidebarCollapsed ? item.label : ''"
               >
                 <component
                   v-if="getIconComponent(item.icon)"
                   :is="getIconComponent(item.icon)"
                   :class="[
                     isActive(item) ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500',
-                    'mr-3 h-5 w-5'
+                    sidebarCollapsed ? 'h-6 w-6' : 'mr-3 h-5 w-5'
                   ]"
                 />
-                {{ item.label }}
+                <span v-show="!sidebarCollapsed" class="transition-opacity duration-200">{{ item.label }}</span>
               </Link>
             </template>
             
             <!-- Loading state -->
             <div v-else class="space-y-2">
-              <div v-for="n in 5" :key="n" class="h-10 bg-gray-200 animate-pulse rounded"></div>
+              <div v-for="n in 5" :key="n" :class="[
+                sidebarCollapsed ? 'h-12 w-12 mx-auto rounded-lg' : 'h-10 rounded',
+                'bg-gray-200 animate-pulse'
+              ]"></div>
             </div>
           </nav>
         </div>
@@ -56,6 +77,17 @@
                 class="md:hidden -ml-2 mr-2 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
               >
                 <span class="sr-only">Open sidebar</span>
+                <Bars3Icon class="h-6 w-6" />
+              </button>
+              
+              <!-- Desktop sidebar toggle when collapsed -->
+              <button
+                v-if="sidebarCollapsed"
+                @click="toggleSidebar"
+                class="hidden md:inline-flex -ml-2 mr-2 items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                title="Expand sidebar"
+              >
+                <span class="sr-only">Expand sidebar</span>
                 <Bars3Icon class="h-6 w-6" />
               </button>
               
@@ -247,7 +279,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import {
   Dialog,
@@ -272,6 +304,11 @@ import {
   TicketIcon,
   UserGroupIcon,
   ShieldCheckIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
+  CalendarIcon,
+  BuildingOfficeIcon,
+  CurrencyDollarIcon,
 } from '@heroicons/vue/24/outline'
 
 // Components
@@ -281,30 +318,63 @@ import TimerBroadcastOverlay from '@/Components/Timer/TimerBroadcastOverlay.vue'
 import { useNavigationQuery } from '@/Composables/queries/useNavigationQuery.js'
 
 const sidebarOpen = ref(false)
+const sidebarCollapsed = ref(false)
 const page = usePage()
+
+// Load sidebar preference from localStorage
+onMounted(() => {
+  const savedState = localStorage.getItem('sidebar-collapsed')
+  if (savedState !== null) {
+    sidebarCollapsed.value = JSON.parse(savedState)
+  }
+})
+
+// Toggle sidebar and save preference
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem('sidebar-collapsed', JSON.stringify(sidebarCollapsed.value))
+}
 
 // Use navigation query composable for dynamic permission-based navigation
 const { navigation, loading: navigationLoading, isActive } = useNavigationQuery()
 
 // Icon mapping for dynamic navigation items
 const iconMap = {
+  // Primary mappings - exact matches from NavigationService
+  'HomeIcon': HomeIcon,
+  'DocumentTextIcon': DocumentTextIcon,
+  'ClockIcon': ClockIcon,
+  'CalendarIcon': CalendarIcon,
+  'BuildingOfficeIcon': BuildingOfficeIcon,
+  'UserGroupIcon': UserGroupIcon,
+  'CurrencyDollarIcon': CurrencyDollarIcon,
+  'ChartBarIcon': ChartBarIcon,
+  'ShieldCheckIcon': ShieldCheckIcon,
+  'CogIcon': CogIcon,
+  
+  // Legacy/alternative mappings for backward compatibility
   'home': HomeIcon,
   'dashboard': HomeIcon,
-  'ticket': TicketIcon,
-  'tickets': TicketIcon,
+  'ticket': DocumentTextIcon,
+  'tickets': DocumentTextIcon,
   'clock': ClockIcon,
   'timer': ClockIcon,
   'timers': ClockIcon,
   'document-text': DocumentTextIcon,
-  'time-entries': DocumentTextIcon,
-  'chart-bar': ChartBarIcon,
-  'reports': ChartBarIcon,
-  'cog': CogIcon,
-  'settings': CogIcon,
+  'time-entries': CalendarIcon,
+  'calendar': CalendarIcon,
+  'building-office': BuildingOfficeIcon,
+  'accounts': BuildingOfficeIcon,
   'user-group': UserGroupIcon,
   'users': UserGroupIcon,
+  'currency-dollar': CurrencyDollarIcon,
+  'billing': CurrencyDollarIcon,
+  'chart-bar': ChartBarIcon,
+  'reports': ChartBarIcon,
   'shield-check': ShieldCheckIcon,
   'roles': ShieldCheckIcon,
+  'cog': CogIcon,
+  'settings': CogIcon,
 }
 
 // Get icon component based on icon string

@@ -561,7 +561,7 @@ class TicketController extends Controller
         $user = $request->user();
         
         // Check permissions
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.write'])) {
+        if (!$user->hasAnyPermission(['tickets.assign', 'tickets.assign.account', 'admin.write'])) {
             return response()->json(['error' => 'Insufficient permissions to manage ticket teams.'], 403);
         }
         
@@ -604,7 +604,7 @@ class TicketController extends Controller
         $user = $request->user();
         
         // Check permissions
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.write'])) {
+        if (!$user->hasAnyPermission(['tickets.assign', 'tickets.assign.account', 'admin.write'])) {
             return response()->json(['error' => 'Insufficient permissions to manage ticket teams.'], 403);
         }
         
