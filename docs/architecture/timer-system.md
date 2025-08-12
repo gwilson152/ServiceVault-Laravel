@@ -7,6 +7,9 @@ Simplified user-global timer system with real-time synchronization across all de
 ### Core Features
 - **User-Global Timers**: Timers belong to users, not devices - start on desktop, control from mobile
 - **Real-Time Sync**: Database as single source of truth with WebSocket broadcasting
+- **Enhanced Timer Overlays**: Floating timer widgets with real-time counting and professional UX
+- **Settings Management**: In-timer configuration for description, billing rates, and metadata
+- **Advanced Commit Workflow**: Pause-then-commit with time rounding and note capabilities
 - **Admin Oversight**: Cross-user timer monitoring and control
 - **Seamless Cross-Device Experience**: Same timer state visible and controllable from any device
 - **Service Ticket Integration**: Timers directly linked to tickets for service delivery
@@ -100,6 +103,90 @@ class AdminTimerController extends Controller
     public function adminPauseTimer(Timer $timer) // Admin pause
     public function adminResumeTimer(Timer $timer)// Admin resume  
     public function adminStopTimer(Timer $timer)  // Admin stop
+}
+```
+
+## Enhanced Frontend Features
+
+### Timer Overlay System
+The floating timer overlay provides a professional, non-intrusive timer management interface:
+
+#### Visual Modes
+- **Mini Badge Mode**: Compact horizontal badges showing status, duration, and value
+- **Expanded Panel Mode**: Full control interface with settings, actions, and detailed information
+- **Real-Time Updates**: Live counting with 1-second precision updates
+
+#### Enhanced UX Components
+```javascript
+// TimerBroadcastOverlay.vue - Enhanced Features
+const features = {
+  // Real-time counting with Vue reactivity
+  realTimeUpdates: setInterval(() => currentTime.value = new Date(), 1000),
+  
+  // Settings management modal
+  timerSettings: {
+    description: 'Edit timer descriptions',
+    billingRate: 'Change billing rates on-the-fly',
+    preview: 'Live duration and value preview'
+  },
+  
+  // Advanced commit workflow
+  commitWorkflow: {
+    pauseFirst: 'Pause timer before committing',
+    roundingOptions: [5, 10, 15], // minutes
+    roundUpBehavior: 'Always round up for accurate billing',
+    notes: 'Add context notes to time entries'
+  }
+}
+```
+
+#### Layout and Design
+- **Horizontal Right-to-Left**: Timers stack from right to left for natural flow
+- **Minimum Width**: 192px minimum ensures readability across all content
+- **Professional Styling**: Clean shadows, borders, and hover effects
+- **Header Totals**: Summary information positioned above timer controls
+- **Icon-Based Actions**: Intuitive SVG icons for all timer operations
+
+### Settings Management System
+Advanced in-timer configuration without interrupting workflow:
+
+```vue
+<template>
+  <!-- Settings Modal with Live Preview -->
+  <div class="timer-settings-modal">
+    <input v-model="description" placeholder="Timer description..." />
+    <select v-model="billing_rate_id">
+      <option value="">No billing rate</option>
+      <option value="uuid">Standard Rate - $75/hr</option>
+    </select>
+    
+    <!-- Live Preview -->
+    <div class="preview">
+      <div>Duration: {{ formatDuration(currentDuration) }}</div>
+      <div>Value: ${{ calculateValue().toFixed(2) }}</div>
+    </div>
+  </div>
+</template>
+```
+
+### Advanced Commit Workflow
+Professional time entry creation with business-friendly features:
+
+#### Commit Process
+1. **Pause Timer**: Stop timing without losing state
+2. **Populate Dialog**: Auto-fill with timer information
+3. **Add Context**: Notes field for additional details
+4. **Round Up**: 5/10/15 minute rounding options (always round up)
+5. **Create Entry**: Generate billable time entry
+6. **Remove Timer**: Clean up completed timer
+
+#### Rounding Logic (Backend)
+```php
+// TimerService.php - Round-up behavior
+if ($roundTo > 0) {
+    $minutes = ceil($duration / 60);           // Round up to next minute
+    $roundedMinutes = ceil($minutes / $roundTo) * $roundTo; // Round up to interval
+    $duration = $roundedMinutes * 60;          // Convert back to seconds
 }
 ```
 

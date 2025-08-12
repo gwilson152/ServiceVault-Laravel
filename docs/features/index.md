@@ -18,6 +18,7 @@ Functional specifications and user guides for Service Vault features.
 - **[Multi-tenant Theming](theming.md)** - Brand customization
 
 ## Timer System
+- **[Timer Enhancements](timer-enhancements.md)** - Enhanced overlays, settings management, and commit workflows ✅ NEW
 - **[Timer Controls](timer-controls.md)** - Start, stop, pause functionality with admin oversight ✅ UPDATED
 - **[Cross-device Sync](timer-sync.md)** - Real-time synchronization
 - **[Conflict Resolution](timer-conflicts.md)** - Multiple timer handling

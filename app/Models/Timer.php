@@ -106,7 +106,7 @@ class Timer extends Model
     }
 
     /**
-     * Calculate the duration of the timer in seconds.
+     * Calculate the duration of the timer in minutes.
      *
      * @return int
      */
@@ -117,18 +117,19 @@ class Timer extends Model
         }
 
         $endTime = $this->stopped_at ?? now();
-        $totalDuration = $this->started_at->diffInSeconds($endTime);
+        $totalDurationSeconds = $this->started_at->diffInSeconds($endTime);
         
-        // Subtract paused duration
-        $pausedDuration = $this->total_paused_duration ?? 0;
+        // Subtract paused duration (stored in minutes, convert to seconds for calculation)
+        $pausedDurationSeconds = ($this->total_paused_duration ?? 0) * 60;
         
         // If currently paused, add the current pause duration
         if ($this->status === 'paused' && $this->paused_at) {
-            $pausedDuration += now()->diffInSeconds($this->paused_at);
+            $pausedDurationSeconds += now()->diffInSeconds($this->paused_at);
         }
         
-        // Ensure we return a positive integer
-        return (int) max(0, $totalDuration - $pausedDuration);
+        // Calculate net duration in seconds, then convert to minutes
+        $netDurationSeconds = max(0, $totalDurationSeconds - $pausedDurationSeconds);
+        return (int) max(0, round($netDurationSeconds / 60));
     }
 
     /**
@@ -138,17 +139,16 @@ class Timer extends Model
      */
     public function getDurationFormattedAttribute(): string
     {
-        $duration = $this->duration;
+        $durationMinutes = $this->duration;
         
-        $hours = floor($duration / 3600);
-        $minutes = floor(($duration % 3600) / 60);
-        $seconds = $duration % 60;
+        $hours = floor($durationMinutes / 60);
+        $minutes = $durationMinutes % 60;
         
         if ($hours > 0) {
-            return sprintf('%d:%02d:%02d', $hours, $minutes, $seconds);
+            return sprintf('%d:%02d', $hours, $minutes);
         }
         
-        return sprintf('%02d:%02d', $minutes, $seconds);
+        return sprintf('%d min', $minutes);
     }
 
     /**
@@ -182,7 +182,7 @@ class Timer extends Model
             return null;
         }
 
-        $hours = $this->duration / 3600;
+        $hours = $this->duration / 60; // Convert minutes to hours
         
         return round($hours * $this->billingRate->rate, 2);
     }
@@ -279,9 +279,10 @@ class Timer extends Model
     public function stop(): void
     {
         if ($this->status === 'paused' && $this->paused_at) {
-            // Calculate paused duration safely and ensure it's a positive integer
-            $additionalPaused = max(0, now()->diffInSeconds($this->paused_at));
-            $this->total_paused_duration = max(0, ($this->total_paused_duration ?? 0) + $additionalPaused);
+            // Calculate paused duration in minutes and ensure it's a positive integer
+            $additionalPausedSeconds = max(0, now()->diffInSeconds($this->paused_at));
+            $additionalPausedMinutes = round($additionalPausedSeconds / 60);
+            $this->total_paused_duration = max(0, ($this->total_paused_duration ?? 0) + $additionalPausedMinutes);
             $this->paused_at = null;
         }
 
@@ -312,7 +313,9 @@ class Timer extends Model
     public function resume(): void
     {
         if ($this->status === 'paused' && $this->paused_at) {
-            $this->total_paused_duration += now()->diffInSeconds($this->paused_at);
+            // Calculate paused duration safely and ensure it's a positive integer
+            $additionalPaused = max(0, now()->diffInSeconds($this->paused_at));
+            $this->total_paused_duration = max(0, ($this->total_paused_duration ?? 0) + $additionalPaused);
             $this->paused_at = null;
             $this->status = 'running';
             $this->save();

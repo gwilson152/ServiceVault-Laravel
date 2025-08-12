@@ -19,7 +19,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Configurable Ticket Status & Category System**: Complete workflow management with business logic and SLA integration
 - **Widget-Based Dashboard System**: 14+ permission-filtered widgets with auto-discovery and responsive grid layout
 - **Comprehensive Tickets Page**: Full-featured ticket management with advanced filtering, dual view modes, and addon integration
-- **Multi-Timer System with Admin Oversight**: Cross-user timer management with permission-based visibility
+- **Enhanced Multi-Timer System**: Real-time timer overlays with settings management, commit workflows, and admin oversight
 - **Service Ticket Integration**: Complete workflow system with timer integration, inline controls, and addon cost tracking
 - **TimeEntry Management**: Comprehensive approval workflows with bulk operations and statistical tracking
 - **User Invitation System**: Email-based invitations with automatic account setup and role assignment
