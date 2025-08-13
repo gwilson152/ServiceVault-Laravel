@@ -25,6 +25,7 @@ class User extends Authenticatable
         'email',
         'password',
         'account_id',
+        'user_type',
         'role_template_id',
         'preferences',
         'timezone',
@@ -64,6 +65,41 @@ class User extends Authenticatable
     }
 
     /**
+     * User Type Constants - Service Vault Architecture
+     */
+    public const USER_TYPE_AGENT = 'agent';
+    public const USER_TYPE_ACCOUNT_USER = 'account_user';
+
+    /**
+     * User Type Methods
+     */
+
+    /**
+     * Check if user is an Agent (service provider who can log time entries).
+     */
+    public function isAgent(): bool
+    {
+        return $this->user_type === self::USER_TYPE_AGENT;
+    }
+
+    /**
+     * Check if user is an Account User (customer who submits tickets but cannot log time).
+     */
+    public function isAccountUser(): bool
+    {
+        return $this->user_type === self::USER_TYPE_ACCOUNT_USER;
+    }
+
+    /**
+     * Check if user can create time entries.
+     * Only Agents are allowed to log time in the Service Vault architecture.
+     */
+    public function canCreateTimeEntries(): bool
+    {
+        return $this->isAgent();
+    }
+
+    /**
      * Service Vault Relationships
      */
 
@@ -73,6 +109,31 @@ class User extends Authenticatable
     public function account()
     {
         return $this->belongsTo(Account::class);
+    }
+
+    /**
+     * Get accounts the user has access to (for now, just their primary account)
+     * Returns an Eloquent relationship that can be chained
+     */
+    public function accounts()
+    {
+        // For now, return just the user's primary account as a queryable relationship
+        // Use the Account model's query builder with proper table aliasing
+        return Account::query()->where('accounts.id', $this->account_id ?? '00000000-0000-0000-0000-000000000000');
+    }
+
+    /**
+     * Get accessible account IDs for queries
+     */
+    public function getAccessibleAccountIds(?string $permission = null): array
+    {
+        if (!$this->account_id) {
+            return [];
+        }
+
+        // For now, just return the user's primary account ID
+        // This can be expanded later for hierarchical access
+        return [$this->account_id];
     }
 
     /**

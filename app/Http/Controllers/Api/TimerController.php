@@ -97,9 +97,18 @@ class TimerController extends Controller
      */
     public function store(StoreTimerRequest $request): JsonResponse
     {
+        // Validate that user is an Agent (can create timers for time entry conversion)
+        $user = $request->user();
+        if (!$user->canCreateTimeEntries()) {
+            return response()->json([
+                'message' => 'Only Agents can create timers for time tracking purposes.',
+                'error' => 'User type validation failed'
+            ], 403);
+        }
+
         DB::beginTransaction();
         try {
-            $userId = $request->user()->id;
+            $userId = $user->id;
             $ticketId = $request->input('ticket_id');
             
             // If ticket_id is provided, enforce per-ticket timer limitation
@@ -714,12 +723,21 @@ class TimerController extends Controller
      */
     public function startForTicket(Request $request, string $ticketId): JsonResponse
     {
+        // Validate that user is an Agent (can create timers for time entry conversion)
+        $user = $request->user();
+        if (!$user->canCreateTimeEntries()) {
+            return response()->json([
+                'message' => 'Only Agents can create timers for time tracking purposes.',
+                'error' => 'User type validation failed'
+            ], 403);
+        }
+
         $request->validate([
             'description' => 'required|string|max:1000',
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
         ]);
         
-        $userId = $request->user()->id;
+        $userId = $user->id;
         
         // Check if user already has an active timer for this ticket
         if (Timer::userHasActiveTimerForTicket($userId, $ticketId)) {

@@ -332,6 +332,70 @@ watch(broadcastTimers, (newTimers) => {
 })
 ```
 
+## Time Entry System Enhancements
+
+### Streamlined Time Entry Modals
+
+The time entry system has been significantly enhanced for optimal user experience through the removal of unnecessary complexity:
+
+#### Simplified Form Structure
+```javascript
+const form = ref({
+  user_id: window.auth?.user?.id || '',
+  date: new Date().toISOString().split('T')[0],
+  start_time: '',
+  hours: 0,
+  minutes: 0,
+  description: '',
+  billable: true
+  // Break duration logic completely removed for UX simplification
+})
+```
+
+#### Key UX Improvements
+- **Removed Break Duration Fields**: Eliminated confusing duplicate duration fields that caused user confusion
+- **Streamlined Duration Calculation**: Focus solely on work time tracking without break time complications
+- **Cleaner API Payload**: Simplified data structure without break-related fields in submission
+- **Enhanced User Experience**: Intuitive time tracking interface with minimal cognitive load
+- **Consistent Interface**: Both Add and Edit time entry modals share the same simplified structure
+
+#### Before vs After Comparison
+
+**Before (Confusing):**
+- Work Duration: Hours + Minutes
+- Break Duration: Hours + Minutes
+- Complex calculation combining both durations
+- User confusion about which fields to use
+
+**After (Streamlined):**
+- Duration: Hours + Minutes (work time only)
+- Single, clear duration calculation
+- Simplified form validation
+- Intuitive user experience
+
+#### Technical Implementation
+```javascript
+// Simplified duration calculation
+const totalDuration = computed(() => {
+  return (form.value.hours * 3600) + (form.value.minutes * 60)
+})
+
+// Clean API payload structure
+const payload = {
+  user_id: form.value.user_id,
+  started_at: `${form.value.date} ${form.value.start_time}:00`,
+  duration: totalDuration.value,
+  description: form.value.description.trim(),
+  billable: form.value.billable
+  // No break_duration field - completely removed
+}
+```
+
+#### Components Affected
+- **`AddTimeEntryModal.vue`**: Simplified form for creating new time entries
+- **`EditTimeEntryModal.vue`**: Streamlined editing interface for existing entries
+- Both modals now provide consistent user experience with identical field structures
+
 ## Future Enhancements
 
 ### Completed in Latest Release
@@ -341,6 +405,7 @@ watch(broadcastTimers, (newTimers) => {
 - ✅ **Manual Time Override**: Flexible time entry with business rule support
 - ✅ **Broadcasting Integration**: Real-time WebSocket updates across all components
 - ✅ **Dual Storage Precision**: Timers in seconds, time entries in minutes
+- ✅ **Time Entry UX Enhancement**: Removed break duration logic for simplified user experience
 
 ### Planned Features
 - **Timer Templates**: Pre-configured timer settings for common tasks

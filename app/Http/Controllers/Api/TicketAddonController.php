@@ -265,4 +265,92 @@ class TicketAddonController extends Controller
             'message' => 'Failed to reject addon'
         ], 422);
     }
+    
+    /**
+     * Get addons for a specific ticket
+     */
+    public function forTicket(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Cannot view this ticket.'], 403);
+        }
+        
+        $query = $ticket->addons()
+            ->with(['addedBy:id,name', 'approvedBy:id,name', 'timeEntries']);
+        
+        // Apply filters
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        if ($request->has('type')) {
+            $query->where('type', $request->type);
+        }
+        
+        if ($request->has('billable')) {
+            $billable = $request->boolean('billable');
+            if ($billable) {
+                $query->where('status', 'approved');
+            }
+        }
+        
+        $addons = $query->orderBy('created_at', 'desc')->get();
+        
+        return response()->json(['data' => $addons]);
+    }
+    
+    /**
+     * Mark an addon as complete
+     */
+    public function complete(Request $request, TicketAddon $ticketAddon): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticketAddon->ticket->canBeEditedBy($user)) {
+            return response()->json(['error' => 'Cannot edit this ticket.'], 403);
+        }
+        
+        if ($ticketAddon->status !== 'approved') {
+            return response()->json([
+                'error' => 'Only approved add-ons can be marked as complete.'
+            ], 422);
+        }
+        
+        $validated = $request->validate([
+            'completion_notes' => 'nullable|string|max:1000',
+            'actual_hours' => 'nullable|numeric|min:0|max:1000',
+            'actual_cost' => 'nullable|numeric|min:0|max:999999.99'
+        ]);
+        
+        $ticketAddon->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+            'completed_by' => $user->id,
+            'completion_notes' => $validated['completion_notes'] ?? null,
+            'actual_hours' => $validated['actual_hours'] ?? $ticketAddon->actual_hours,
+            'actual_cost' => $validated['actual_cost'] ?? $ticketAddon->actual_cost
+        ]);
+        
+        // Log activity
+        $ticketAddon->ticket->activities()->create([
+            'user_id' => $user->id,
+            'type' => 'addon',
+            'description' => "Completed add-on: {$ticketAddon->title}",
+            'details' => [
+                'addon_id' => $ticketAddon->id,
+                'action' => 'completed',
+                'title' => $ticketAddon->title,
+                'actual_hours' => $ticketAddon->actual_hours,
+                'actual_cost' => $ticketAddon->actual_cost,
+                'notes' => $validated['completion_notes'] ?? null
+            ]
+        ]);
+        
+        return response()->json([
+            'data' => $ticketAddon->fresh(),
+            'message' => 'Add-on marked as complete.'
+        ]);
+    }
 }

@@ -36,10 +36,10 @@
 
           <!-- Form -->
           <form @submit.prevent="startTimer" class="space-y-4">
-            <!-- Timer Type Selection -->
+            <!-- Timer Assignment Type -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Timer Type</label>
-              <div class="grid grid-cols-2 gap-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Timer Assignment</label>
+              <div class="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   @click="timerType = 'general'"
@@ -50,8 +50,8 @@
                       : 'border-gray-200 hover:border-gray-300'
                   ]"
                 >
-                  <div class="font-medium text-sm">General Timer</div>
-                  <div class="text-xs text-gray-500">For general work tracking</div>
+                  <div class="font-medium text-sm">General</div>
+                  <div class="text-xs text-gray-500">No assignment</div>
                 </button>
                 <button
                   type="button"
@@ -63,10 +63,26 @@
                       : 'border-gray-200 hover:border-gray-300'
                   ]"
                 >
-                  <div class="font-medium text-sm">Ticket Timer</div>
-                  <div class="text-xs text-gray-500">Link to a ticket</div>
+                  <div class="font-medium text-sm">Ticket</div>
+                  <div class="text-xs text-gray-500">Specific ticket work</div>
+                </button>
+                <button
+                  type="button"
+                  @click="timerType = 'account'"
+                  :class="[
+                    'p-3 rounded-lg border-2 transition-colors text-left',
+                    timerType === 'account' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  ]"
+                >
+                  <div class="font-medium text-sm">Account</div>
+                  <div class="text-xs text-gray-500">Account-level work</div>
                 </button>
               </div>
+              <p class="mt-2 text-xs text-gray-500">
+                <strong>Note:</strong> Assignment to a ticket or account is required to commit time entries for billing.
+              </p>
             </div>
 
             <!-- Ticket Selection (if ticket type) -->
@@ -91,6 +107,31 @@
               </select>
               <p v-if="errors.ticket_id" class="mt-1 text-sm text-red-600">
                 {{ errors.ticket_id }}
+              </p>
+            </div>
+
+            <!-- Account Selection (if account type) -->
+            <div v-if="timerType === 'account'">
+              <label for="account_id" class="block text-sm font-medium text-gray-700 mb-1">
+                Customer Account
+              </label>
+              <select
+                id="account_id"
+                v-model="form.account_id"
+                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                :class="{ 'border-red-500': errors.account_id }"
+              >
+                <option value="">Select a customer account...</option>
+                <option
+                  v-for="account in availableAccounts"
+                  :key="account.id"
+                  :value="account.id"
+                >
+                  {{ account.name }}
+                </option>
+              </select>
+              <p v-if="errors.account_id" class="mt-1 text-sm text-red-600">
+                {{ errors.account_id }}
               </p>
             </div>
 
@@ -220,11 +261,13 @@ const loading = ref(false)
 const timerType = ref('general')
 const showAdvancedOptions = ref(false)
 const availableTickets = ref([])
+const availableAccounts = ref([])
 const availableBillingRates = ref([])
 const errors = ref({})
 
 const form = ref({
   ticket_id: '',
+  account_id: '',
   description: '',
   billing_rate_id: '',
   stop_others: false,
@@ -235,9 +278,12 @@ const form = ref({
 const isFormValid = computed(() => {
   if (timerType.value === 'general') {
     return form.value.description.trim() !== ''
-  } else {
+  } else if (timerType.value === 'ticket') {
     return form.value.ticket_id !== ''
+  } else if (timerType.value === 'account') {
+    return form.value.account_id !== ''
   }
+  return false
 })
 
 // Load initial data
@@ -252,6 +298,21 @@ const loadTickets = async () => {
     availableTickets.value = response.data.data || []
   } catch (error) {
     console.error('Failed to load tickets:', error)
+  }
+}
+
+const loadAccounts = async () => {
+  try {
+    const response = await axios.get('/api/accounts', {
+      params: {
+        limit: 50,
+        user_accessible: true // Only accounts user can log time for
+      }
+    })
+    availableAccounts.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load accounts:', error)
+    availableAccounts.value = []
   }
 }
 
@@ -283,11 +344,15 @@ const startTimer = async () => {
     }
 
     if (timerType.value === 'ticket' && form.value.ticket_id) {
-      payload.ticket_id = parseInt(form.value.ticket_id)
+      payload.ticket_id = form.value.ticket_id
+    }
+
+    if (timerType.value === 'account' && form.value.account_id) {
+      payload.account_id = form.value.account_id
     }
 
     if (form.value.billing_rate_id) {
-      payload.billing_rate_id = parseInt(form.value.billing_rate_id)
+      payload.billing_rate_id = form.value.billing_rate_id
     }
 
     const response = await axios.post('/api/timers', payload)
@@ -311,6 +376,7 @@ const startTimer = async () => {
 // Lifecycle
 onMounted(() => {
   loadTickets()
+  loadAccounts()
   loadBillingRates()
 })
 </script>

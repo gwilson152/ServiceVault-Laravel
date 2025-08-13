@@ -188,6 +188,42 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Ticket time tracking endpoints  
     Route::get('tickets/{ticket}/time-entries', [TimeEntryController::class, 'forTicket'])
         ->name('tickets.time-entries');
+    Route::get('tickets/{ticket}/time-summary', [TicketController::class, 'timeSummary'])
+        ->name('tickets.time-summary');
+    
+    // Ticket add-on endpoints
+    Route::get('tickets/{ticket}/addons', [App\Http\Controllers\Api\TicketAddonController::class, 'forTicket'])
+        ->name('tickets.addons');
+    Route::post('ticket-addons/{ticketAddon}/complete', [App\Http\Controllers\Api\TicketAddonController::class, 'complete'])
+        ->name('ticket-addons.complete');
+    
+    // Ticket activity and audit trail
+    Route::get('tickets/{ticket}/activity', [TicketController::class, 'activity'])
+        ->name('tickets.activity');
+    Route::get('tickets/{ticket}/activity-stats', [TicketController::class, 'activityStats'])
+        ->name('tickets.activity-stats');
+    
+    // Ticket billing endpoints
+    Route::get('tickets/{ticket}/billing-summary', [TicketController::class, 'billingSummary'])
+        ->name('tickets.billing-summary');
+    Route::get('tickets/{ticket}/billing-rate', [TicketController::class, 'getBillingRate'])
+        ->name('tickets.billing-rate.get');
+    Route::post('tickets/{ticket}/billing-rate', [TicketController::class, 'setBillingRate'])
+        ->name('tickets.billing-rate.set');
+    Route::get('tickets/{ticket}/invoices', [TicketController::class, 'getInvoices'])
+        ->name('tickets.invoices');
+    Route::get('tickets/{ticket}/billing-report', [TicketController::class, 'billingReport'])
+        ->name('tickets.billing-report');
+    
+    // Ticket status and assignment endpoints
+    Route::put('tickets/{ticket}/status', [TicketController::class, 'updateStatus'])
+        ->name('tickets.status.update');
+    Route::put('tickets/{ticket}/assignment', [TicketController::class, 'updateAssignment'])
+        ->name('tickets.assignment.update');
+    
+    // Ticket statuses and management
+    Route::get('ticket-statuses', [TicketController::class, 'getStatuses'])
+        ->name('ticket-statuses.list');
 
     // Ticket Addon Management routes
     Route::apiResource('ticket-addons', App\Http\Controllers\Api\TicketAddonController::class);
@@ -332,6 +368,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('settings.user-management.update');
     });
 
+    // Billing Rate Management routes
+    Route::apiResource('billing-rates', App\Http\Controllers\Api\BillingRateController::class);
+    
     // Billing Management routes
     Route::prefix('billing')->group(function () {
         // Invoice Management

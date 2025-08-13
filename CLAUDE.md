@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring hierarchical customer account management, three-dimensional permission system (functional + widget + page access), account hierarchy permissions, and enterprise-level customization for multi-tenant service delivery.
 
-### Current Status: Phase 13B Complete (100% MVP Ready)
+### Current Status: Phase 13B Complete (100% MVP Ready + Full Billing System)
 **✅ Fully Implemented Features:**
+- **Complete Billing & Financial Management System**: Enterprise-grade invoicing, payment tracking, billing rate management, and financial reporting with TanStack Tables
 - **Three-Dimensional Permission System**: Complete functional + widget + page permission architecture with role template management
 - **Dashboard Preview System**: Real-time role preview with mock data generation and context switching (service provider vs account user)
 - **Widget Assignment Interface**: Drag & drop widget management with 12-column grid layout designer and permission validation
@@ -25,7 +26,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Advanced Email Configuration System**: Wizard-style SMTP/IMAP setup with OAuth2 and app password support, provider templates, manual port configuration, real-time testing, and horizontal scrolling navigation
 - **Service Ticket Integration**: Complete workflow system with timer integration, inline controls, and addon cost tracking
 - **TimeEntry Management**: Comprehensive approval workflows with bulk operations and statistical tracking
-- **User Invitation System**: Email-based invitations with automatic account setup and role assignment
+- **Complete User Management System**: Invitation-based user onboarding with nullable passwords, visibility controls, automatic timezone detection, and conditional password requirements
 - **Laravel Sanctum Authentication**: Hybrid session/token auth with 23 granular abilities
 - **Domain-Based User Assignment**: Automatic account assignment via email domain patterns
 - **Real-Time Broadcasting Infrastructure**: Laravel Echo + Vue composables with cross-component timer synchronization

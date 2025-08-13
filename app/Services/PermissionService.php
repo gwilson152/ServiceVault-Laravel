@@ -103,7 +103,8 @@ class PermissionService
         $cacheKey = "user_accessible_accounts:{$user->id}:" . ($permission ?? 'any');
 
         return Cache::remember($cacheKey, 300, function () use ($user, $permission) {
-            $userAccounts = $user->accounts()->get();
+            // Get user's accessible accounts (for now, just their primary account)
+            $userAccounts = $user->accounts();
 
             if (!$permission) {
                 return $userAccounts;

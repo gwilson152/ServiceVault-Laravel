@@ -15,8 +15,8 @@ RESTful API specifications, authentication, and integration guides.
 - **[Tickets API](tickets.md)** - Service ticket workflow and management ✅ NEW
 - **[Widgets API](widgets.md)** - Widget registry and dashboard APIs ✅ CURRENT
 
-## Billing & Invoicing
-*Documentation pending - APIs exist but need documentation*
+## Billing & Financial Management
+- **[Billing API](billing.md)** - Complete billing workflow with invoices, payments, and rates ✅ NEW
 
 ## Administration
 - **[Domain Mappings API](domain-mappings.md)** - Email domain to account assignment ✅ NEW

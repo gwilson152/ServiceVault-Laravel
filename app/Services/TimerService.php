@@ -65,16 +65,22 @@ class TimerService
 
         // Convert to time entry if requested
         if ($convertToEntry) {
-            $timeEntry = $timer->convertToTimeEntry([
-                'duration' => $timeEntryDurationMinutes, // Store duration in minutes for time entry
-                'notes' => $notes,
-                'rounded' => $roundTo > 0 && !$manualDuration,
-                'round_to' => $roundTo,
-                'manual_override' => $manualDuration ? true : false,
-                'original_timer_duration' => $timerDurationSeconds, // Track original timer duration
-            ]);
+            try {
+                $timeEntry = $timer->convertToTimeEntry([
+                    'duration' => $timeEntryDurationMinutes, // Store duration in minutes for time entry
+                    'notes' => $notes,
+                    'rounded' => $roundTo > 0 && !$manualDuration,
+                    'round_to' => $roundTo,
+                    'manual_override' => $manualDuration ? true : false,
+                    'original_timer_duration' => $timerDurationSeconds, // Track original timer duration
+                ]);
 
-            $result['time_entry'] = $timeEntry;
+                $result['time_entry'] = $timeEntry;
+            } catch (\Exception $e) {
+                // If conversion fails (e.g., validation errors), include error in result
+                $result['error'] = $e->getMessage();
+                $result['conversion_failed'] = true;
+            }
             
             // Calculate billed amount (convert time entry minutes to hours)
             if ($timer->billingRate) {

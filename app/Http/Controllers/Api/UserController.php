@@ -115,16 +115,21 @@ class UserController extends Controller
             ], 403);
         }
         
+        // Determine if password is required based on invitation and active status
+        $passwordRequired = !$request->boolean('send_invitation') && $request->boolean('is_active', true);
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => $passwordRequired ? 'required|string|min:8|confirmed' : 'nullable|string|min:8|confirmed',
             'timezone' => 'nullable|string|max:50',
             'locale' => 'nullable|string|max:10',
             'is_active' => 'boolean',
+            'is_visible' => 'boolean',
             'account_id' => 'nullable|exists:accounts,id',
             'role_template_id' => 'nullable|exists:role_templates,id',
-            'preferences' => 'nullable|array'
+            'preferences' => 'nullable|array',
+            'send_invitation' => 'boolean'
         ]);
         
         if ($validator->fails()) {
@@ -136,8 +141,25 @@ class UserController extends Controller
         
         // Create user
         $userData = $validator->validated();
-        $userData['password'] = Hash::make($userData['password']);
-        $userData['email_verified_at'] = now();
+        
+        // Handle password - only hash if provided
+        if (!empty($userData['password'])) {
+            $userData['password'] = Hash::make($userData['password']);
+        } else {
+            // Remove password field if empty (for invitations/inactive users)
+            unset($userData['password']);
+        }
+        
+        // Set email verification based on whether invitation is sent
+        if ($request->boolean('send_invitation')) {
+            // Don't verify email if sending invitation - user will verify through invitation
+            unset($userData['email_verified_at']);
+        } else {
+            $userData['email_verified_at'] = now();
+        }
+        
+        // Remove invitation flag from stored data
+        unset($userData['send_invitation']);
         
         $newUser = User::create($userData);
         
@@ -216,6 +238,7 @@ class UserController extends Controller
             'timezone' => 'nullable|string|max:50',
             'locale' => 'nullable|string|max:10',
             'is_active' => 'boolean',
+            'is_visible' => 'boolean',
             'account_id' => 'nullable|exists:accounts,id',
             'role_template_id' => 'nullable|exists:role_templates,id',
             'preferences' => 'nullable|array'

@@ -26,7 +26,7 @@ class CustomerPortalController extends Controller
         }
 
         // Get customer's account (customers are usually assigned to one primary account)
-        $customerAccount = $user->currentAccount ?? $user->accounts()->first();
+        $customerAccount = $user->currentAccount ?? $user->account;
         
         if (!$customerAccount) {
             return Inertia::render('Portal/NoAccess', [
@@ -64,7 +64,7 @@ class CustomerPortalController extends Controller
     public function projects(Request $request)
     {
         $user = $request->user();
-        $customerAccount = $user->currentAccount ?? $user->accounts()->first();
+        $customerAccount = $user->currentAccount ?? $user->account;
         
         if (!$customerAccount) {
             abort(404, 'No account access.');
@@ -109,7 +109,7 @@ class CustomerPortalController extends Controller
     public function timeTracking(Request $request)
     {
         $user = $request->user();
-        $customerAccount = $user->currentAccount ?? $user->accounts()->first();
+        $customerAccount = $user->currentAccount ?? $user->account;
         
         if (!$customerAccount) {
             abort(404, 'No account access.');
@@ -171,7 +171,7 @@ class CustomerPortalController extends Controller
     public function billing(Request $request)
     {
         $user = $request->user();
-        $customerAccount = $user->currentAccount ?? $user->accounts()->first();
+        $customerAccount = $user->currentAccount ?? $user->account;
         
         if (!$customerAccount) {
             abort(404, 'No account access.');
@@ -228,7 +228,7 @@ class CustomerPortalController extends Controller
     public function settings(Request $request)
     {
         $user = $request->user();
-        $customerAccount = $user->currentAccount ?? $user->accounts()->first();
+        $customerAccount = $user->currentAccount ?? $user->account;
         
         if (!$customerAccount) {
             abort(404, 'No account access.');

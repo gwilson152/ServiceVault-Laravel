@@ -179,6 +179,48 @@ class TimeEntry extends Model
     }
 
     /**
+     * Validate that a user can create time entries.
+     * Only Agents (service providers) can create time entries.
+     * 
+     * @param User $user
+     * @return bool
+     * @throws \Exception
+     */
+    public static function validateUserCanCreateTimeEntry(User $user): bool
+    {
+        if (!$user->canCreateTimeEntries()) {
+            throw new \Exception('Only Agents can create time entries. Account Users (customers) cannot log time.');
+        }
+        
+        return true;
+    }
+
+    /**
+     * Validate time entry data before creation.
+     * 
+     * @param array $data
+     * @return bool
+     * @throws \Exception
+     */
+    public static function validateTimeEntryData(array $data): bool
+    {
+        // Account ID is always required for billing purposes
+        if (empty($data['account_id'])) {
+            throw new \Exception('Time entries must be associated with a customer account for billing purposes.');
+        }
+        
+        // If ticket_id is provided, ensure consistency with account_id
+        if (!empty($data['ticket_id']) && !empty($data['account_id'])) {
+            $ticket = Ticket::find($data['ticket_id']);
+            if ($ticket && $ticket->account_id !== $data['account_id']) {
+                throw new \Exception('Time entry account must match the ticket\'s account.');
+            }
+        }
+        
+        return true;
+    }
+
+    /**
      * Check if the time entry can be edited.
      *
      * @return bool

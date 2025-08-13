@@ -158,8 +158,9 @@
                   density === 'compact' ? 'space-x-1 mb-1' : 'space-x-2 mb-2'
                 ]"
               >
-                <!-- Timer Controls -->
+                <!-- Timer Controls (Agents Only) -->
                 <TicketTimerControls
+                  v-if="user?.user_type === 'agent'"
                   :ticket="cell.row.original"
                   :currentUser="user"
                   :compact="true"
@@ -172,8 +173,9 @@
                   @time-entry-created="$emit('time-entry-created', $event)"
                 />
                 
-                <!-- Manual Time Entry Button -->
+                <!-- Manual Time Entry Button (Agents Only) -->
                 <button
+                  v-if="user?.user_type === 'agent'"
                   @click="$emit('open-manual-time-entry', cell.row.original)"
                   class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                   title="Add Manual Time Entry"

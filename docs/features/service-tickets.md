@@ -1,16 +1,19 @@
 # Service Tickets
 
-Comprehensive service ticket management system with workflow engine, timer integration, and real-time collaboration features.
+Comprehensive service ticket management system with enhanced detail pages, workflow engine, timer integration, and real-time collaboration features.
 
 ## Overview
 
 ### Service Ticket System Features
+- **Enhanced Detail Page**: Comprehensive central hub for all ticket interactions with tabbed interface
+- **Real-Time Messaging**: Internal and external communication with live updates
 - **Workflow Engine**: Comprehensive ticket lifecycle management
 - **Timer Integration**: Inline timer controls per ticket with real-time tracking
 - **Account-Aware**: Multi-organization service delivery with account context
 - **Permission-Based**: Granular access control for service providers and customers
-- **Real-Time Updates**: Live collaboration with broadcasting events
-- **Addon Management**: Additional items and services per ticket (Phase 12B)
+- **Billing Integration**: Complete billing overview showing time entry invoice status
+- **Addon Management**: Additional items and services per ticket with approval workflows
+- **Activity Timeline**: Full audit trail with comprehensive event tracking
 
 ### Ticket Workflow States
 - **draft**: Initial ticket creation state
@@ -708,4 +711,133 @@ public function generateInvoiceLineItems(): array
 }
 ```
 
-Service Vault's service ticket system provides comprehensive workflow management with seamless timer integration, real-time collaboration, and extensive customization options for enterprise service delivery.
+## Enhanced Ticket Detail Page
+
+### Comprehensive Ticket Management Hub
+
+The ticket detail page (`/tickets/{id}`) serves as the central hub for all ticket interactions, featuring:
+
+#### Tabbed Interface Design
+- **Messages**: Real-time communication system with internal and external comments
+- **Time Tracking**: Comprehensive time management with active timers and time entry history
+- **Add-ons**: Item and service management with approval workflows
+- **Activity**: Complete audit trail with filtering and detailed event tracking
+- **Billing**: Invoice integration showing which time entries are billed
+
+#### Key Features
+```vue
+<!-- Modern responsive ticket detail layout -->
+<div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+  <!-- Main Content Area (3 columns) -->
+  <div class="xl:col-span-3 space-y-6">
+    <!-- Tabbed Content with Messages, Time, Addons, Activity, Billing -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <!-- Dynamic tab switching with real-time data loading -->
+    </div>
+  </div>
+  
+  <!-- Sidebar (1 column) -->
+  <div class="space-y-6">
+    <!-- Ticket details, status controls, time summary -->
+  </div>
+</div>
+```
+
+#### Real-Time Messaging System
+- **Internal Comments**: Team-only communication for coordination
+- **External Comments**: Customer-visible updates and communications
+- **System Messages**: Automated activity logging
+- **File Attachments**: Document and image sharing
+- **Live Updates**: Real-time message delivery via Laravel Echo
+
+#### Time Tracking Integration
+- **Active Timer Display**: Real-time duration and cost tracking
+- **Timer Controls**: Start, pause, resume, and commit functionality
+- **Time Entry Management**: Create, edit, and approve time entries
+- **Billing Rate Assignment**: Flexible rate management per entry
+- **Duration Calculation**: Streamlined work time tracking (break duration logic removed)
+
+#### Time Entry Modal Enhancements
+The time entry system has been streamlined for optimal user experience:
+
+**Simplified Form Structure:**
+```javascript
+const form = ref({
+  user_id: window.auth?.user?.id || '',
+  date: new Date().toISOString().split('T')[0],
+  start_time: '',
+  hours: 0,
+  minutes: 0,
+  description: '',
+  billable: true
+  // Break duration logic completely removed for UX simplification
+})
+```
+
+**Key Improvements:**
+- Removed unnecessary break duration fields to eliminate confusion
+- Streamlined duration calculation focusing only on work time
+- Cleaner API payload without break-related data
+- Enhanced user experience with simplified time tracking
+
+#### Addon Management System
+- **Template-Based Creation**: Pre-defined addon types and categories
+- **Approval Workflow**: Multi-stage approval process with notes
+- **Cost Tracking**: Detailed pricing and billing integration
+- **Status Management**: Pending, approved, rejected, completed states
+
+#### Activity Timeline
+- **Complete Audit Trail**: Every action and change logged
+- **Filtering Options**: Filter by activity type, user, or date range
+- **Visual Timeline**: Chronological display with activity icons
+- **Detailed Context**: Rich information about each activity
+
+#### Billing Integration
+The billing system provides comprehensive financial tracking:
+
+- **Time Entry Billing**: Shows which time entries are associated with invoices
+- **Invoice Links**: Direct access to related billing documents  
+- **Cost Summaries**: Real-time calculation of billable amounts
+- **Rate Management**: Billing rate assignment and tracking
+- **Revenue Analytics**: Performance and profitability metrics
+
+**Important**: Time entries are billed individually, not tickets as a whole. The billing overview tracks invoice associations through time entries.
+
+### API Enhancements
+
+New endpoints added to support the enhanced ticket detail page:
+
+```php
+// Ticket detail page endpoints
+GET    /api/tickets/{ticket}/time-summary     // Time tracking summary
+GET    /api/tickets/{ticket}/activity         // Activity timeline  
+GET    /api/tickets/{ticket}/activity/stats   // Activity statistics
+GET    /api/tickets/{ticket}/billing-summary  // Billing overview
+GET    /api/tickets/{ticket}/billing-rate     // Current billing rate
+POST   /api/tickets/{ticket}/billing-rate     // Set billing rate
+GET    /api/tickets/{ticket}/invoices         // Related invoices
+POST   /api/tickets/{ticket}/status          // Update ticket status
+POST   /api/tickets/{ticket}/assignment      // Update assignment
+
+// Addon management endpoints
+GET    /api/ticket-addons                     // List addons
+POST   /api/ticket-addons                     // Create addon
+PUT    /api/ticket-addons/{addon}             // Update addon
+DELETE /api/ticket-addons/{addon}             // Delete addon
+POST   /api/ticket-addons/{addon}/approve     // Approve addon
+POST   /api/ticket-addons/{addon}/reject      // Reject addon
+POST   /api/ticket-addons/{addon}/complete    // Complete addon
+```
+
+### Component Architecture
+
+The enhanced ticket detail page utilizes modular Vue.js components:
+
+- **`TimeTrackingManager.vue`**: Comprehensive time management interface
+- **`TicketAddonManager.vue`**: Addon creation and approval workflows  
+- **`ActivityTimeline.vue`**: Interactive activity history display
+- **`BillingOverview.vue`**: Financial tracking and invoice integration
+- **`AddTimeEntryModal.vue`**: Streamlined time entry creation
+- **`EditTimeEntryModal.vue`**: Time entry modification interface
+
+Service Vault's service ticket system provides comprehensive workflow management with an enhanced detail page interface, seamless timer integration, real-time collaboration, and extensive customization options for enterprise service delivery.

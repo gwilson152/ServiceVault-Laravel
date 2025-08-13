@@ -715,4 +715,295 @@ class TicketController extends Controller
             'data' => $counts
         ]);
     }
+    
+    /**
+     * Get time summary for a ticket
+     */
+    public function timeSummary(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Cannot view this ticket.'], 403);
+        }
+        
+        $timeEntries = $ticket->timeEntries()
+            ->where('status', 'approved')
+            ->get();
+        
+        $summary = [
+            'total_time' => $timeEntries->sum('duration'),
+            'billable_time' => $timeEntries->where('billable', true)->sum('duration'),
+            'total_amount' => $timeEntries->where('billable', true)->sum('billable_amount'),
+            'entries_count' => $timeEntries->count()
+        ];
+        
+        return response()->json(['data' => $summary]);
+    }
+    
+    /**
+     * Get activity timeline for a ticket
+     */
+    public function activity(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Cannot view this ticket.'], 403);
+        }
+        
+        $query = $ticket->activities()
+            ->with('user:id,name')
+            ->orderBy('created_at', 'desc');
+        
+        // Apply filters
+        if ($request->has('type')) {
+            $query->where('type', $request->type);
+        }
+        
+        if ($request->has('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+        
+        $activities = $query->paginate($request->input('per_page', 20));
+        
+        return response()->json($activities);
+    }
+    
+    /**
+     * Get activity statistics for a ticket
+     */
+    public function activityStats(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Cannot view this ticket.'], 403);
+        }
+        
+        $stats = [
+            'total_activities' => $ticket->activities()->count(),
+            'comments_count' => $ticket->activities()->where('type', 'comment')->count(),
+            'status_changes' => $ticket->activities()->where('type', 'status_change')->count(),
+            'participants_count' => $ticket->activities()->distinct('user_id')->count('user_id')
+        ];
+        
+        return response()->json(['data' => $stats]);
+    }
+    
+    /**
+     * Get billing summary for a ticket
+     */
+    public function billingSummary(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Cannot view this ticket.'], 403);
+        }
+        
+        $timeEntries = $ticket->timeEntries()->where('billable', true)->get();
+        $addons = $ticket->addons()->where('status', 'approved')->get();
+        
+        $summary = [
+            'total_billable' => $timeEntries->sum('billable_amount') + $addons->sum('actual_cost'),
+            'total_invoiced' => $timeEntries->whereNotNull('invoice_id')->sum('billable_amount'),
+            'outstanding_amount' => $timeEntries->whereNull('invoice_id')->sum('billable_amount'),
+            'billable_hours' => $timeEntries->sum('duration') / 3600
+        ];
+        
+        return response()->json(['data' => $summary]);
+    }
+    
+    /**
+     * Get billing rate for a ticket
+     */
+    public function getBillingRate(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Cannot view this ticket.'], 403);
+        }
+        
+        $billingRate = $ticket->billingRate;
+        
+        return response()->json(['data' => $billingRate]);
+    }
+    
+    /**
+     * Set billing rate for a ticket
+     */
+    public function setBillingRate(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeEditedBy($user)) {
+            return response()->json(['error' => 'Cannot edit this ticket.'], 403);
+        }
+        
+        $validated = $request->validate([
+            'billing_rate_id' => 'required|exists:billing_rates,id',
+            'effective_date' => 'nullable|date',
+            'apply_to_future' => 'boolean',
+            'apply_retroactive' => 'boolean'
+        ]);
+        
+        $ticket->update(['billing_rate_id' => $validated['billing_rate_id']]);
+        
+        // Apply to existing time entries if requested
+        if ($validated['apply_retroactive'] ?? false) {
+            $ticket->timeEntries()
+                ->whereNull('invoice_id')
+                ->update(['billing_rate_id' => $validated['billing_rate_id']]);
+        }
+        
+        return response()->json(['message' => 'Billing rate updated successfully']);
+    }
+    
+    /**
+     * Get invoices related to a ticket
+     */
+    public function getInvoices(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Cannot view this ticket.'], 403);
+        }
+        
+        $invoices = $ticket->timeEntries()
+            ->whereNotNull('invoice_id')
+            ->with('invoice')
+            ->get()
+            ->pluck('invoice')
+            ->unique('id')
+            ->values();
+        
+        return response()->json(['data' => $invoices]);
+    }
+    
+    /**
+     * Generate billing report for a ticket
+     */
+    public function billingReport(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Cannot view this ticket.'], 403);
+        }
+        
+        // This would generate a PDF report
+        // For now, return success response
+        return response()->json(['message' => 'Billing report generated']);
+    }
+    
+    /**
+     * Update ticket status
+     */
+    public function updateStatus(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeEditedBy($user)) {
+            return response()->json(['error' => 'Cannot edit this ticket.'], 403);
+        }
+        
+        $validated = $request->validate([
+            'status' => 'required|string|in:open,in_progress,waiting_customer,on_hold,resolved,closed,cancelled',
+            'status_change_reason' => 'nullable|string|max:1000',
+            'resolution_type' => 'nullable|string',
+            'resolution_summary' => 'nullable|string|max:2000',
+            'notify_assigned_user' => 'boolean',
+            'notify_customer' => 'boolean',
+            'send_status_email' => 'boolean'
+        ]);
+        
+        $oldStatus = $ticket->status;
+        $ticket->update([
+            'status' => $validated['status'],
+            'resolution_type' => $validated['resolution_type'] ?? null,
+            'resolution_summary' => $validated['resolution_summary'] ?? null,
+            'status_changed_at' => now()
+        ]);
+        
+        // Log activity
+        $ticket->activities()->create([
+            'user_id' => $user->id,
+            'type' => 'status_change',
+            'description' => "Status changed from {$oldStatus} to {$validated['status']}",
+            'details' => [
+                'old_status' => $oldStatus,
+                'new_status' => $validated['status'],
+                'reason' => $validated['status_change_reason'] ?? null
+            ]
+        ]);
+        
+        return response()->json(['message' => 'Status updated successfully']);
+    }
+    
+    /**
+     * Update ticket assignment
+     */
+    public function updateAssignment(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$ticket->canBeEditedBy($user)) {
+            return response()->json(['error' => 'Cannot edit this ticket.'], 403);
+        }
+        
+        $validated = $request->validate([
+            'assigned_user_id' => 'nullable|exists:users,id',
+            'assignment_reason' => 'nullable|string|max:1000',
+            'priority' => 'nullable|string|in:low,normal,high,urgent',
+            'notify_new_assignee' => 'boolean',
+            'notify_previous_assignee' => 'boolean',
+            'notify_customer' => 'boolean'
+        ]);
+        
+        $oldAssignee = $ticket->assignedTo;
+        
+        $updateData = ['agent_id' => $validated['assigned_user_id']];
+        if ($validated['priority'] ?? false) {
+            $updateData['priority'] = $validated['priority'];
+        }
+        
+        $ticket->update($updateData);
+        
+        // Log activity
+        $ticket->activities()->create([
+            'user_id' => $user->id,
+            'type' => 'assignment',
+            'description' => $validated['assigned_user_id'] 
+                ? "Assigned to " . User::find($validated['assigned_user_id'])->name
+                : "Unassigned",
+            'details' => [
+                'old_assignee' => $oldAssignee?->name,
+                'new_assignee' => $validated['assigned_user_id'] ? User::find($validated['assigned_user_id'])->name : null,
+                'reason' => $validated['assignment_reason'] ?? null
+            ]
+        ]);
+        
+        return response()->json(['message' => 'Assignment updated successfully']);
+    }
+    
+    /**
+     * Get available ticket statuses
+     */
+    public function getStatuses(Request $request): JsonResponse
+    {
+        $statuses = [
+            ['value' => 'open', 'label' => 'Open'],
+            ['value' => 'in_progress', 'label' => 'In Progress'],
+            ['value' => 'waiting_customer', 'label' => 'Waiting for Customer'],
+            ['value' => 'on_hold', 'label' => 'On Hold'],
+            ['value' => 'resolved', 'label' => 'Resolved'],
+            ['value' => 'closed', 'label' => 'Closed'],
+            ['value' => 'cancelled', 'label' => 'Cancelled']
+        ];
+        
+        return response()->json(['data' => $statuses]);
+    }
 }

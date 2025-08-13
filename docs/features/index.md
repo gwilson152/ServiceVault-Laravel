@@ -3,10 +3,11 @@
 Functional specifications and user guides for Service Vault features.
 
 ## Core Features
+- **[Agent/Customer Architecture](agent-customer-architecture.md)** - Enhanced user type system with role-based time entry creation ✅ NEW
 - **[Business Account Management](business-account-management.md)** - Comprehensive B2B customer relationship management ✅ UPDATED
-- **[User Management](user-management.md)** - Multi-tenant user system
+- **[User Management](user-management.md)** - Invitation-based user onboarding with visibility controls ✅ COMPLETED
 - **[Roles & Permissions](roles-permissions.md)** - Three-dimensional permission system with dashboard preview ✅ COMPLETED
-- **[Time Tracking](time-tracking.md)** - Timer and time entry system with admin oversight ✅ UPDATED
+- **[Time Tracking](time-tracking.md)** - Enhanced timer assignment system with Agent/Customer integration ✅ UPDATED
 - **[Service Tickets](service-tickets.md)** - Comprehensive ticket workflow system ✅ NEW
 - **[Ticket Configuration](ticket-configuration.md)** - Drag-drop workflow management with optimistic UI updates ✅ NEW
 - **[Widget-Based Dashboard](widget-dashboard.md)** - Dynamic dashboard with auto-discovery ✅ NEW
@@ -19,14 +20,15 @@ Functional specifications and user guides for Service Vault features.
 - **[Multi-tenant Theming](theming.md)** - Brand customization
 
 ## Timer System
+- **[Enhanced Timer Assignment](enhanced-timer-assignment.md)** - Flexible assignment to tickets OR accounts with billing validation ✅ NEW
 - **[Timer Enhancements](timer-enhancements.md)** - Enhanced overlays, settings management, and commit workflows ✅ NEW
 - **[Persistent Timer Overlay](persistent-timer-overlay.md)** - Inertia.js persistent layouts for seamless navigation ✅ COMPLETED
-- **[Timer Controls](timer-controls.md)** - Start, stop, pause functionality with admin oversight ✅ UPDATED
+- **[Timer Controls](timer-controls.md)** - Start, stop, pause functionality with Agent permission validation ✅ UPDATED
 - **[Cross-device Sync](timer-sync.md)** - Real-time synchronization
 - **[Conflict Resolution](timer-conflicts.md)** - Multiple timer handling
 - **[Admin Timer Management](admin-timer-management.md)** - Cross-user timer oversight ✅ NEW
 - **[Multi-Timer Support](multi-timer-support.md)** - Concurrent timer management ✅ NEW
-- **[Time Entry Management](time-entry-management.md)** - Manual time entry
+- **[Time Entry Management](time-entry-management.md)** - Agent-only time entry creation with database integrity ✅ UPDATED
 
 ## Reporting & Analytics
 - **[Time Reports](time-reports.md)** - Time tracking reports

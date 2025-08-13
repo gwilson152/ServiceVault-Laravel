@@ -90,6 +90,14 @@ class Timer extends Model
     }
 
     /**
+     * Get the account associated with the timer.
+     */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+
+    /**
      * Get the ticket associated with the timer.
      */
     public function ticket(): BelongsTo
@@ -324,10 +332,38 @@ class Timer extends Model
     }
 
     /**
+     * Check if timer can be converted to a time entry.
+     * Requires either ticket_id or account_id to be set for billing context.
+     *
+     * @return bool
+     */
+    public function canConvertToTimeEntry(): bool
+    {
+        return $this->ticket_id || $this->account_id;
+    }
+
+    /**
+     * Get the account ID for billing purposes.
+     * If timer is assigned to a ticket, use ticket's account.
+     * Otherwise use timer's direct account assignment.
+     *
+     * @return string|null
+     */
+    public function getBillingAccountId(): ?string
+    {
+        if ($this->ticket_id && $this->ticket) {
+            return $this->ticket->account_id;
+        }
+        
+        return $this->account_id;
+    }
+
+    /**
      * Convert the timer to a time entry.
      *
      * @param array $additionalData
      * @return TimeEntry|null
+     * @throws \Exception
      */
     public function convertToTimeEntry(array $additionalData = []): ?TimeEntry
     {
@@ -335,15 +371,27 @@ class Timer extends Model
             return $this->timeEntry;
         }
 
+        // Validate that timer can be converted (needs ticket OR account assignment)
+        if (!$this->canConvertToTimeEntry()) {
+            throw new \Exception('Timer must be assigned to either a ticket or account before converting to time entry');
+        }
+
         if ($this->status !== 'stopped') {
             $this->stop();
         }
 
+        // Get the account ID for billing (from ticket or direct assignment)
+        $billingAccountId = $this->getBillingAccountId();
+        
+        if (!$billingAccountId) {
+            throw new \Exception('Cannot determine billing account for time entry');
+        }
+
         $timeEntry = TimeEntry::create(array_merge([
             'user_id' => $this->user_id,
-            'account_id' => $this->account_id,
+            'account_id' => $billingAccountId, // Always required for billing
             'billing_rate_id' => $this->billing_rate_id,
-            'ticket_id' => $this->ticket_id,
+            'ticket_id' => $this->ticket_id, // Optional - for ticket-specific work
             'description' => $this->description,
             'started_at' => $this->started_at,
             'ended_at' => $this->stopped_at,

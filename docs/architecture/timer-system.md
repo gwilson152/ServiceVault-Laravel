@@ -1,10 +1,12 @@
 # Timer System Architecture
 
-Simplified user-global timer system with real-time synchronization across all devices.
+Advanced timer assignment system with Agent/Customer architecture and real-time synchronization across all devices.
 
 ## Architecture Overview
 
 ### Core Features
+- **Enhanced Timer Assignment**: Flexible assignment to tickets OR accounts with billing context validation
+- **Agent/Customer Architecture**: Timer creation restricted to Agents, with Account User transparency
 - **User-Global Timers**: Timers belong to users, not devices - start on desktop, control from mobile
 - **Real-Time Sync**: Database as single source of truth with WebSocket broadcasting
 - **Enhanced Timer Overlays**: Floating timer widgets with real-time counting and professional UX
@@ -13,6 +15,7 @@ Simplified user-global timer system with real-time synchronization across all de
 - **Admin Oversight**: Cross-user timer monitoring and control
 - **Seamless Cross-Device Experience**: Same timer state visible and controllable from any device
 - **Service Ticket Integration**: Timers directly linked to tickets for service delivery
+- **Database Integrity**: PostgreSQL triggers ensure data consistency
 
 ### Technology Stack
 - **Backend**: Laravel 12 with Redis state management
@@ -29,13 +32,19 @@ CREATE TABLE timers (
     id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(id),
     account_id UUID REFERENCES accounts(id),
-    ticket_id UUID REFERENCES tickets(id),
-    description TEXT NOT NULL,
-    status VARCHAR(20) DEFAULT 'stopped',
-    started_at TIMESTAMP NULL,
+    ticket_id UUID REFERENCES tickets(id), 
+    task_id UUID REFERENCES tasks(id),
+    billing_rate_id UUID REFERENCES billing_rates(id),
+    time_entry_id UUID REFERENCES time_entries(id),
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'running',
+    started_at TIMESTAMP NOT NULL,
     paused_at TIMESTAMP NULL,
     stopped_at TIMESTAMP NULL,
-    total_duration INTEGER DEFAULT 0,
+    total_paused_duration INTEGER DEFAULT 0,
+    device_id VARCHAR(255),
+    is_synced BOOLEAN DEFAULT true,
+    metadata JSON,
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
     deleted_at TIMESTAMP NULL
@@ -43,7 +52,71 @@ CREATE TABLE timers (
 
 -- Performance indexes
 CREATE INDEX idx_timers_user_status ON timers(user_id, status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_timers_active ON timers(user_id, started_at) WHERE status IN ('running', 'paused');
+CREATE INDEX idx_timers_user_ticket_status ON timers(user_id, ticket_id, status);
+CREATE INDEX idx_timers_device ON timers(device_id);
+CREATE INDEX idx_timers_billing_rate ON timers(billing_rate_id);
+```
+
+### Timer Assignment Logic
+
+**Enhanced Assignment System:**
+- **General Timer**: No assignment (`ticket_id = NULL`, `account_id = NULL`)
+- **Ticket Timer**: Assigned to ticket (`ticket_id` set, `account_id` from ticket)
+- **Account Timer**: Direct account assignment (`account_id` set, `ticket_id = NULL`)
+
+**Billing Context Resolution:**
+```php
+public function getBillingAccountId(): ?string
+{
+    if ($this->ticket_id && $this->ticket) {
+        return $this->ticket->account_id; // From ticket
+    }
+    return $this->account_id; // Direct assignment
+}
+```
+
+### Agent/Customer Architecture Integration
+
+**User Type Validation:**
+```php
+// Timer creation validation
+public function store(Request $request): JsonResponse
+{
+    if (!$request->user()->canCreateTimeEntries()) {
+        return response()->json([
+            'message' => 'Only Agents can create timers for time tracking purposes.',
+            'error' => 'User type validation failed'
+        ], 403);
+    }
+    // ... timer creation logic
+}
+```
+
+**Permission-Based UI Rendering:**
+```vue
+<!-- Timer Controls (Agents Only) -->
+<TicketTimerControls v-if="user?.user_type === 'agent'" />
+
+<!-- Account Users see read-only time entry information -->
+<TimeEntryReadOnlyView v-else />
+```
+
+**Time Entry Data Model:**
+```sql
+-- Time entries with required account context
+CREATE TABLE time_entries (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id),       -- AGENT who performed work
+    account_id UUID NOT NULL REFERENCES accounts(id), -- Customer being billed
+    ticket_id UUID REFERENCES tickets(id),            -- Optional ticket context
+    -- ... other fields
+);
+
+-- Database trigger ensures ticket/account consistency
+CREATE TRIGGER time_entry_ticket_account_consistency_trigger
+BEFORE INSERT OR UPDATE ON time_entries
+FOR EACH ROW
+EXECUTE FUNCTION check_time_entry_ticket_account_consistency();
 ```
 
 ## State Management

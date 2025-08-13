@@ -104,6 +104,61 @@ The codebase contains inefficient permission checking patterns that create unnec
 - **Improved Maintainability**: Single source of truth for permission logic
 - **Consistent Architecture**: All permission checks use the same efficient pattern
 
+## System Architecture Improvements
+
+-   [x] **Enhanced Timer Assignment System**
+
+    Successfully implemented flexible timer assignment system that aligns with Service Vault's ticketing platform architecture.
+
+    **Implemented Features:**
+    - ✅ Timers can be assigned to either a ticket OR an account (not both)
+    - ✅ General timers with no assignment (for tracking before commitment)
+    - ✅ Timer-to-time-entry commitment requires ticket or account assignment
+    - ✅ Ticket assignment automatically implies ticket's account for billing
+    - ✅ Account-only assignment for general administrative or overhead time
+
+    **Technical Implementation Completed:**
+    - ✅ Updated Timer model with proper account relationship and validation methods
+    - ✅ Enhanced timer creation UI with three assignment options (General, Ticket, Account)
+    - ✅ Added validation logic preventing time entry commitment without assignment
+    - ✅ Updated API controllers with Agent-only validation and assignment handling
+    - ✅ Integrated billing system to handle both ticket-based and account-based entries
+
+-   [x] **Refine Time Entry Data Model for Agent/Customer Architecture**
+
+    Successfully implemented proper time entry relationships that align with Service Vault's B2B platform architecture.
+
+    **User Type Distinction Implemented:**
+    - ✅ **Agents**: Internal service provider users with `user_type = 'agent'` who can create timers and time entries
+    - ✅ **Account Users (Customers)**: External customer users with `user_type = 'account_user'` who submit tickets but cannot log time
+
+    **Database Schema Updates Completed:**
+    ```
+    ✅ users table: Added user_type enum field (agent/account_user)
+    ✅ time_entries.account_id: Made NOT NULL (always required for billing)
+    ✅ Database constraints: Added ticket/account consistency validation
+    ✅ Timer model: Added account relationship and billing account resolution
+    ```
+
+    **Business Logic & Validation Implemented:**
+    - ✅ **Agent-Only Time Creation**: `User::canCreateTimeEntries()` validation in controllers
+    - ✅ **Account Context Required**: Database constraint enforcing account_id NOT NULL
+    - ✅ **Multi-Agent Support**: Multiple agents can log time on same ticket
+    - ✅ **Ticket Consistency**: Automatic validation that ticket.account_id matches time_entry.account_id
+    - ✅ **Permission Validation**: Agent permission checks for accessible accounts
+
+    **API Integration Completed:**
+    - ✅ Timer creation validates user is Agent before allowing timer start
+    - ✅ Time entry creation validates Agent permissions and data consistency
+    - ✅ Timer-to-time-entry conversion includes billing account resolution
+    - ✅ Enhanced error handling for validation failures
+
+    **Benefits Achieved:**
+    - ✅ Perfect alignment with service ticket workflow architecture
+    - ✅ Accurate time tracking with proper Agent/Customer separation
+    - ✅ Improved reporting capabilities (time per ticket, time per account)
+    - ✅ Enhanced billing accuracy with mandatory account context
+
 ## Frontend Enhancements
 
 -   [ ] **Remove Cards View and Enhance Table View on Tickets Page**

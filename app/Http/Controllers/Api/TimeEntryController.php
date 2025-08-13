@@ -94,45 +94,54 @@ class TimeEntryController extends Controller
     {
         $user = $request->user();
         
+        // Validate that user is an Agent (can create time entries)
+        try {
+            TimeEntry::validateUserCanCreateTimeEntry($user);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
+        }
+        
         $validated = $request->validate([
             'description' => 'required|string|max:1000',
-            'duration' => 'required|integer|min:60|max:86400', // 1 minute to 24 hours
-            'date' => 'required|date|before_or_equal:today',
+            'duration' => 'required|integer|min:60|max:86400', // 1 minute to 24 hours (in seconds)
+            'started_at' => 'required|date',
+            'ended_at' => 'nullable|date|after:started_at',
             'account_id' => 'required|exists:accounts,id',
-            'project_id' => 'nullable|exists:projects,id',
+            'ticket_id' => 'nullable|exists:tickets,id',
             'billable' => 'boolean',
             'notes' => 'nullable|string|max:2000',
             'billing_rate_id' => 'nullable|exists:billing_rates,id'
         ]);
         
-        // Verify user has access to the account
-        if (!$user->accounts()->where('accounts.id', $validated['account_id'])->exists()) {
-            return response()->json(['error' => 'You do not have access to this account.'], 403);
+        // Validate time entry data for Agent/Customer architecture compliance
+        try {
+            TimeEntry::validateTimeEntryData($validated);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
         }
         
-        // Verify project belongs to account if specified
-        if (!empty($validated['project_id'])) {
-            $project = Project::find($validated['project_id']);
-            if ($project->account_id !== $validated['account_id']) {
-                return response()->json(['error' => 'Project does not belong to the specified account.'], 422);
-            }
+        // Verify user has permission to log time for this account
+        $accessibleAccountIds = $user->getAccessibleAccountIds('time.create');
+        if (!in_array($validated['account_id'], $accessibleAccountIds)) {
+            return response()->json(['error' => 'You do not have permission to log time for this account.'], 403);
         }
         
-        // Create time entry
+        // Create time entry with Agent/Customer architecture
         $timeEntry = TimeEntry::create([
-            'user_id' => $user->id,
+            'user_id' => $user->id, // Agent who performed the work
             'description' => $validated['description'],
-            'duration' => $validated['duration'],
-            'date' => $validated['date'],
-            'account_id' => $validated['account_id'],
-            'project_id' => $validated['project_id'] ?? null,
+            'duration' => intval($validated['duration'] / 60), // Convert seconds to minutes for storage
+            'started_at' => $validated['started_at'],
+            'ended_at' => $validated['ended_at'] ?? Carbon::parse($validated['started_at'])->addSeconds($validated['duration']),
+            'account_id' => $validated['account_id'], // Customer account (always required)
+            'ticket_id' => $validated['ticket_id'] ?? null, // Optional ticket association
             'billable' => $validated['billable'] ?? true,
             'notes' => $validated['notes'] ?? null,
             'billing_rate_id' => $validated['billing_rate_id'] ?? null,
-            'status' => 'pending', // Default status
+            'status' => 'pending', // Default status for approval workflow
         ]);
         
-        $timeEntry->load(['user:id,name', 'account:id,name', 'project:id,name']);
+        $timeEntry->load(['user:id,name', 'account:id,name', 'ticket:id,title']);
         
         return response()->json([
             'data' => new TimeEntryResource($timeEntry),
