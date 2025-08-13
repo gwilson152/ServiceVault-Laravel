@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import axios from 'axios'
+import { useCreateAccountMutation, useUpdateAccountMutation, useAccountSelectorQuery } from '@/Composables/queries/useAccountsQuery'
 
 const props = defineProps({
     open: {
@@ -40,19 +40,20 @@ const form = ref({
     is_active: true
 })
 
-const availableParents = ref([])
-const loading = ref(false)
-const saving = ref(false)
 const errors = ref({})
+
+// TanStack Query hooks
+const { data: availableParents, isLoading: loadingParents } = useAccountSelectorQuery()
+const createMutation = useCreateAccountMutation()
+const updateMutation = useUpdateAccountMutation()
 
 const isEditing = computed(() => !!props.account?.id)
 const modalTitle = computed(() => isEditing.value ? 'Edit Account' : 'Create Account')
+const saving = computed(() => createMutation.isPending.value || updateMutation.isPending.value)
 
 // Watch for changes to populate form
-watch(() => props.open, async (isOpen) => {
+watch(() => props.open, (isOpen) => {
     if (isOpen) {
-        await loadParentAccounts()
-        
         if (props.account) {
             // Editing existing account
             form.value = {
@@ -114,31 +115,21 @@ const resetForm = () => {
     }
 }
 
-const loadParentAccounts = async () => {
-    try {
-        loading.value = true
-        const response = await axios.get('/api/accounts/selector/hierarchical')
-        availableParents.value = response.data.data
-    } catch (error) {
-        console.error('Failed to load parent accounts:', error)
-    } finally {
-        loading.value = false
-    }
-}
-
 const saveAccount = async () => {
     try {
-        saving.value = true
         errors.value = {}
         
-        let response
         if (isEditing.value) {
-            response = await axios.put(`/api/accounts/${props.account.id}`, form.value)
+            const result = await updateMutation.mutateAsync({
+                id: props.account.id,
+                data: form.value
+            })
+            emit('saved', result.data.data)
         } else {
-            response = await axios.post('/api/accounts', form.value)
+            const result = await createMutation.mutateAsync(form.value)
+            emit('saved', result.data.data)
         }
         
-        emit('saved', response.data.data)
         emit('close')
     } catch (error) {
         if (error.response?.data?.errors) {
@@ -146,8 +137,6 @@ const saveAccount = async () => {
         } else {
             errors.value = { general: ['An error occurred while saving the account.'] }
         }
-    } finally {
-        saving.value = false
     }
 }
 
@@ -180,7 +169,7 @@ const flattenAccountTree = (accounts, depth = 0) => {
     return flattened
 }
 
-const flatParents = computed(() => flattenAccountTree(availableParents.value))
+const flatParents = computed(() => flattenAccountTree(availableParents.value?.data || []))
 </script>
 
 <template>

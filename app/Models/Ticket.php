@@ -119,7 +119,7 @@ class Ticket extends Model
      */
     public function assignedUsers()
     {
-        return $this->belongsToMany(User::class, 'service_ticket_user');
+        return $this->belongsToMany(User::class, 'service_ticket_agent');
     }
     
     /**
@@ -369,12 +369,12 @@ class Ticket extends Model
         }
         
         // Admin can see all tickets in their accounts
-        if ($user->roleTemplate && in_array('admin.manage', $user->roleTemplate->getAllPermissions())) {
+        if ($user->roleTemplate && $user->roleTemplate->getAllPermissions() && in_array('admin.manage', $user->roleTemplate->getAllPermissions())) {
             return true;
         }
         
         // Manager can see all tickets in managed accounts
-        if ($user->roleTemplate && in_array('teams.manage', $user->roleTemplate->getAllPermissions())) {
+        if ($user->roleTemplate && $user->roleTemplate->getAllPermissions() && in_array('teams.manage', $user->roleTemplate->getAllPermissions())) {
             return true;
         }
         
@@ -395,7 +395,7 @@ class Ticket extends Model
         }
         
         // Admin and managers can edit any ticket
-        if ($user->roleTemplate && 
+        if ($user->roleTemplate && $user->roleTemplate->getAllPermissions() && 
             (in_array('admin.manage', $user->roleTemplate->getAllPermissions()) ||
              in_array('teams.manage', $user->roleTemplate->getAllPermissions()))) {
             return true;

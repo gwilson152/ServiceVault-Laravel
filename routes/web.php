@@ -59,7 +59,6 @@ Route::middleware(['auth', 'verified', 'dashboard.role:manager'])->prefix('dashb
     Route::get('/', [ManagerDashboardController::class, 'index'])->name('index');
     Route::get('/team', [ManagerDashboardController::class, 'team'])->name('team');
     Route::get('/approvals', [ManagerDashboardController::class, 'approvals'])->name('approvals');
-    Route::get('/projects', [ManagerDashboardController::class, 'projects'])->name('projects');
     Route::get('/analytics', [ManagerDashboardController::class, 'analytics'])->name('analytics');
 });
 
@@ -74,7 +73,6 @@ Route::middleware(['auth', 'verified', 'dashboard.role:employee'])->prefix('dash
 // Customer Portal Routes
 Route::middleware(['auth', 'verified', 'dashboard.role:portal'])->prefix('portal')->name('portal.')->group(function () {
     Route::get('/', [CustomerPortalController::class, 'index'])->name('index');
-    Route::get('/projects', [CustomerPortalController::class, 'projects'])->name('projects');
     Route::get('/time-tracking', [CustomerPortalController::class, 'timeTracking'])->name('time-tracking');
     Route::get('/billing', [CustomerPortalController::class, 'billing'])->name('billing');
     Route::get('/settings', [CustomerPortalController::class, 'settings'])->name('settings');

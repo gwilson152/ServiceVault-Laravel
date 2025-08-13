@@ -263,9 +263,24 @@ rates:write                  # Manage billing rates
 ## Integration with Core Systems
 
 ### 1. Timer Integration
-- **Automatic Rate Assignment**: Timers automatically use appropriate billing rates
-- **Time-to-Invoice**: Convert time entries to invoice line items
-- **Rate Calculation**: Real-time billing amount calculation during timer operation
+
+#### Individual Time Entry Billing
+- **Per-Entry Rate Assignment**: Each time entry gets its own billing rate, not inherited from tickets
+- **Historical Rate Capture**: `rate_at_time` field preserves the billing rate when time entry was created
+- **User-Specific Rates**: Different team members can have different billing rates on the same ticket
+- **Rate Change Protection**: Future rate changes don't affect previously logged time entries
+
+#### Timer-to-Time Entry Conversion
+- **Automatic Rate Capture**: When timers are committed to time entries, current billing rate is automatically captured
+- **Real-time Rate Display**: Timer overlays show calculated billing amounts using current rates
+- **Manual Time Entry Creation**: Add Time Entry modal requires billing rate selection with real-time cost preview
+- **Agent Permission Filtering**: Only service providers (agents) can create time entries, not customers
+
+#### Billing Rate Management
+- **Account-Scoped Rates**: Billing rates can be configured per account for customer-specific pricing
+- **User-Specific Rates**: Individual agents can have personalized billing rates
+- **Rate Templates**: System-wide default rates for common service types
+- **Time-to-Invoice**: Convert approved time entries to invoice line items with preserved historical rates
 
 ### 2. Service Ticket Integration
 - **Addon Billing**: Attach billable addons to service tickets

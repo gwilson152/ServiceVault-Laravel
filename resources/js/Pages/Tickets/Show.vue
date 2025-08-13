@@ -141,15 +141,15 @@
       </div>
       
       <!-- Error State -->
-      <div v-else-if="error" class="text-center py-12">
+      <div v-else-if="ticketError" class="text-center py-12">
         <div class="text-red-600 mb-4">
           <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
         <p class="text-red-600 font-medium">Failed to load ticket</p>
-        <p class="text-gray-500 text-sm mt-1">{{ error }}</p>
-        <button @click="loadTicketDetails" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+        <p class="text-gray-500 text-sm mt-1">{{ ticketError }}</p>
+        <button @click="refetchTicket" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
           Try Again
         </button>
       </div>
@@ -674,6 +674,15 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import axios from 'axios'
+import { 
+  useTicketQuery, 
+  useTicketCommentsQuery, 
+  useTicketTimersQuery, 
+  useTicketTimeEntriesQuery, 
+  useTicketRelatedQuery,
+  useUpdateTicketMutation,
+  useAddCommentMutation 
+} from '@/Composables/queries/useTicketsQuery'
 
 // Import components
 import TimeTrackingManager from '@/Components/Tickets/TimeTrackingManager.vue'
@@ -701,25 +710,27 @@ const props = defineProps({
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
-// Reactive data - handle both direct ticket object and TicketResource wrapper
-const ticket = ref(props.ticket?.data || props.ticket)
-const loading = ref(!props.ticket) // Show loading if no ticket prop provided
-const error = ref(null)
+// Get ticket ID from props or route
+const ticketId = computed(() => props.ticket?.id || props.ticket?.data?.id || usePage().props.ticketId)
+
+// TanStack Query hooks for data fetching
+const { data: ticket, isLoading: ticketLoading, error: ticketError, refetch: refetchTicket } = useTicketQuery(ticketId)
+const { data: messages, isLoading: messagesLoading, refetch: refetchMessages } = useTicketCommentsQuery(ticketId)
+const { data: activeTimers, isLoading: timersLoading } = useTicketTimersQuery(ticketId) 
+const { data: timeEntries, isLoading: timeEntriesLoading } = useTicketTimeEntriesQuery(ticketId)
+const { data: relatedTickets, isLoading: relatedLoading } = useTicketRelatedQuery(ticketId)
+
+// Mutations
+const updateTicketMutation = useUpdateTicketMutation()
+const addCommentMutation = useAddCommentMutation()
+
+// UI State
 const activeTab = ref('messages')
-const messages = ref([])
 const newMessage = ref('')
 const messageIsInternal = ref(false)
-const sendingMessage = ref(false)
-const activeTimers = ref([])
-const totalTimeLogged = ref(0)
-const relatedTickets = ref([])
-
-// Debug log to see what we received
-console.log('Ticket Show page initialized with ticket prop:', props.ticket)
-console.log('Extracted ticket data:', ticket.value)
-
-// UI States
-const showActionsMenu = ref(false)
+const sendingMessage = computed(() => addCommentMutation.isPending.value)
+const selectedFiles = ref([])
+const uploadingFiles = ref(false)
 const editingDescription = ref(false)
 const editedDescription = ref('')
 const savingDescription = ref(false)
@@ -727,18 +738,30 @@ const editingTitle = ref(false)
 const showStatusModal = ref(false)
 const showAssignModal = ref(false)
 const activeTimer = ref(null)
+const showActionsMenu = ref(false)
+
+// Debug log to see what we received
+console.log('Ticket Show page initialized with ticket prop:', props.ticket)
+console.log('Extracted ticket data:', ticket.value)
+
 
 // Computed properties
+const loading = computed(() => ticketLoading.value || messagesLoading.value)
+const totalTimeLogged = computed(() => {
+  if (!timeEntries.value) return 0
+  return timeEntries.value.reduce((total, entry) => total + (entry.duration || 0), 0)
+})
+
 const tabs = computed(() => [
   { 
     id: 'messages', 
     label: 'Messages', 
-    badge: messages.value.length > 0 ? messages.value.length : null 
+    badge: messages.value?.length > 0 ? messages.value.length : null 
   },
   { 
     id: 'time', 
     label: 'Time Tracking',
-    badge: activeTimers.value.length > 0 ? activeTimers.value.length : null
+    badge: activeTimers.value?.length > 0 ? activeTimers.value.length : null
   },
   { 
     id: 'addons', 
@@ -896,152 +919,64 @@ const formatMessage = (content) => {
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
 }
 
-// Data loading methods
-const loadTicketDetails = async () => {
-  loading.value = true
-  error.value = null
-  
-  // Get ticket ID from prop or URL
-  let ticketId = ticket.value?.id
-  
-  if (!ticketId) {
-    // Extract ticket ID from current URL path
-    const urlPath = window.location.pathname
-    const matches = urlPath.match(/\/tickets\/(\d+)/)
-    ticketId = matches ? matches[1] : null
-  }
-  
-  if (!ticketId) {
-    error.value = 'No ticket ID found in URL'
-    loading.value = false
-    console.error('No ticket ID available')
-    return
-  }
-  
-  try {
-    // Only fetch ticket data if we don't already have it from props
-    if (!ticket.value) {
-      console.log('Fetching ticket data for ID:', ticketId)
-      const response = await axios.get(`/api/tickets/${ticketId}`)
-      ticket.value = response.data.data
-      console.log('Loaded ticket data:', ticket.value)
-    }
-    
-    if (!ticket.value) {
-      throw new Error('No ticket data returned from server')
-    }
-    
-    // Load all related data
-    await Promise.all([
-      loadMessages(),
-      loadTimeTrackingData(),  
-      loadRelatedTickets(),
-      loadTicketAttachments()
-    ])
-    
-  } catch (err) {
-    console.error('Failed to load ticket details:', err)
-    if (err.response?.status === 404) {
-      error.value = 'Ticket not found'
-    } else if (err.response?.status === 403) {
-      error.value = 'You do not have permission to view this ticket'
-    } else {
-      error.value = err.response?.data?.message || err.message || 'Failed to load ticket details'
-    }
-  } finally {
-    loading.value = false
-  }
-}
+// Computed properties for active timer (from the current user)
+const activeTimerFromData = computed(() => {
+  if (!activeTimers.value || !user.value?.id) return null
+  return activeTimers.value.find(timer => timer.user_id === user.value.id)
+})
 
-const loadMessages = async () => {
-  if (!ticket.value?.id) return
-  
-  try {
-    const response = await axios.get(`/api/tickets/${ticket.value.id}/comments`)
-    messages.value = response.data.data || []
-  } catch (error) {
-    console.error('Failed to load messages:', error)
-    messages.value = []
-  }
-}
-
-const loadTimeTrackingData = async () => {
-  if (!ticket.value?.id) return
-  
-  try {
-    // Load active timers
-    const timersResponse = await axios.get(`/api/tickets/${ticket.value.id}/timers`)
-    activeTimers.value = timersResponse.data.data || []
-    
-    // Find current user's active timer
-    const currentUserId = user.value?.id
-    activeTimer.value = activeTimers.value.find(timer => timer.user_id === currentUserId)
-    
-    // Load time entries for total calculation
-    const timeEntriesResponse = await axios.get(`/api/tickets/${ticket.value.id}/time-entries`)
-    const timeEntries = timeEntriesResponse.data.data || []
-    totalTimeLogged.value = timeEntries.reduce((total, entry) => total + (entry.duration || 0), 0)
-    
-  } catch (error) {
-    console.error('Failed to load time tracking data:', error)
-    activeTimers.value = []
-    totalTimeLogged.value = 0
-    activeTimer.value = null
-  }
-}
-
-const loadRelatedTickets = async () => {
-  if (!ticket.value?.id) return
-  
-  try {
-    const response = await axios.get(`/api/tickets/${ticket.value.id}/related`)
-    relatedTickets.value = response.data.data || []
-  } catch (error) {
-    console.error('Failed to load related tickets:', error)
-    relatedTickets.value = []
-  }
-}
+// Update activeTimer to use the computed value
+watch(activeTimerFromData, (newTimer) => {
+  activeTimer.value = newTimer
+}, { immediate: true })
 
 // Action methods
 const sendMessage = async () => {
   if ((!newMessage.value.trim() && selectedFiles.value.length === 0) || sendingMessage.value || !ticket.value?.id) return
   
-  sendingMessage.value = true
   uploadingFiles.value = true
   
   try {
     // Create FormData for file upload
     const formData = new FormData()
-    formData.append('content', newMessage.value.trim() || 'File attachment')
-    formData.append('is_internal', messageIsInternal.value)
+    
+    // Only add content if there is some
+    const content = newMessage.value.trim()
+    if (content) {
+      formData.append('content', content)
+    } else if (selectedFiles.value.length > 0) {
+      formData.append('content', 'File attachment')
+    }
+    
+    // Convert boolean to string for FormData
+    formData.append('is_internal', messageIsInternal.value ? '1' : '0')
     
     // Add files to FormData
     selectedFiles.value.forEach((file, index) => {
       formData.append(`attachments[${index}]`, file)
     })
     
-    const response = await axios.post(`/api/tickets/${ticket.value.id}/comments`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      }
+    await addCommentMutation.mutateAsync({
+      ticketId: ticket.value.id,
+      formData
     })
-    
-    // Add new message to the list
-    messages.value.unshift(response.data.data)
     
     // Reset form
     newMessage.value = ''
     messageIsInternal.value = false
     selectedFiles.value = []
     
-    // Reload attachments in sidebar
-    await loadTicketAttachments()
-    
   } catch (error) {
     console.error('Failed to send message:', error)
-    // TODO: Show error notification
+    
+    // Show validation errors to user
+    if (error.response?.status === 422 && error.response?.data?.errors) {
+      const errors = error.response.data.errors
+      const errorMessages = Object.values(errors).flat()
+      console.error('Validation errors:', errorMessages)
+      // TODO: Show error notification with specific validation messages
+    }
   } finally {
-    sendingMessage.value = false
     uploadingFiles.value = false
   }
 }
@@ -1134,28 +1069,28 @@ const startEditingTitle = () => {
   editingTitle.value = true
 }
 
-// Modal handlers
+// Modal handlers  
 const handleTitleSaved = (newTitle) => {
-  ticket.value.title = newTitle
   editingTitle.value = false
+  // Refetch ticket data and messages to get updated info and activity log
+  refetchTicket()
+  refetchMessages()
 }
 
 const handleStatusChanged = (newStatus) => {
-  ticket.value.status = newStatus
   showStatusModal.value = false
-  loadMessages() // Reload to show status change activity
+  // Refetch data to get updated status and activity log
+  refetchTicket()
+  refetchMessages()
 }
 
 const handleAssignmentChanged = (newAgent) => {
-  ticket.value.agent = newAgent
-  ticket.value.agent_id = newAgent?.id
   showAssignModal.value = false
-  loadMessages() // Reload to show assignment change activity
+  // Refetch data to get updated assignment and activity log
+  refetchTicket()
+  refetchMessages()
 }
 
-// File upload state
-const selectedFiles = ref([])
-const uploadingFiles = ref(false)
 const ticketAttachments = ref([])
 
 // Load all attachments for the ticket
@@ -1225,31 +1160,6 @@ const handleClickOutside = (event) => {
 
 // Lifecycle
 onMounted(() => {
-  // If we have a ticket prop, just load related data. Otherwise, load everything.
-  if (props.ticket) {
-    console.log('Using ticket from props:', props.ticket)
-    loading.value = false
-    // Load related data for the existing ticket
-    Promise.all([
-      loadMessages(),
-      loadTimeTrackingData(),
-      loadRelatedTickets(),
-      loadTicketAttachments()
-    ]).catch(err => {
-      console.error('Failed to load related data:', err)
-    })
-  } else {
-    console.log('No ticket prop provided, will fetch from API')
-    loadTicketDetails()
-  }
-  
   document.addEventListener('click', handleClickOutside)
-})
-
-// Watchers for real-time updates
-watch(() => ticket.value?.id, (newId) => {
-  if (newId) {
-    loadTicketDetails()
-  }
 })
 </script>

@@ -31,7 +31,7 @@ class InvoiceResource extends JsonResource
             'notes' => $this->notes,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
+
             // Relationships
             'account' => $this->whenLoaded('account', function () {
                 return [
@@ -39,17 +39,17 @@ class InvoiceResource extends JsonResource
                     'name' => $this->account->name,
                 ];
             }),
-            
+
             'user' => $this->whenLoaded('user', function () {
                 return [
                     'id' => $this->user->id,
                     'name' => $this->user->name,
                 ];
             }),
-            
+
             'line_items' => InvoiceLineItemResource::collection($this->whenLoaded('lineItems')),
             'payments' => PaymentResource::collection($this->whenLoaded('payments')),
-            
+
             // Computed fields
             'line_items_count' => $this->whenCounted('lineItems'),
             'payments_count' => $this->whenCounted('payments'),
@@ -58,5 +58,6 @@ class InvoiceResource extends JsonResource
                 fn() => number_format($this->payments->where('status', 'completed')->sum('amount'), 2)
             ),
         ];
-    
+
+    }
 }

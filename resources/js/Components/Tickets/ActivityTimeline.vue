@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <!-- Filter Controls -->
     <div class="flex items-center justify-between">
       <h3 class="text-lg font-semibold text-gray-900">Activity Timeline</h3>
@@ -30,12 +30,13 @@
       </div>
     </div>
 
-    <!-- Timeline -->
+    <!-- Loading State -->
     <div v-if="loading" class="text-center py-8">
       <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       <p class="mt-2 text-gray-600">Loading activity...</p>
     </div>
 
+    <!-- Empty State -->
     <div v-else-if="activities.length === 0" class="text-center py-12 text-gray-500">
       <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -44,63 +45,64 @@
       <p class="text-sm mt-1">Activity will appear here as actions are taken on this ticket.</p>
     </div>
 
+    <!-- Activity Timeline -->
     <div v-else class="relative">
       <!-- Timeline Line -->
-      <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+      <div class="absolute left-6 top-0 bottom-0 w-px bg-gray-200"></div>
       
       <!-- Activity Items -->
-      <div class="space-y-8">
+      <div class="space-y-4">
         <div 
           v-for="(activity, index) in activities" 
           :key="activity.id"
-          class="relative flex items-start space-x-4"
+          class="relative flex items-start space-x-3"
         >
           <!-- Timeline Dot -->
-          <div class="relative flex items-center justify-center">
-            <div :class="getActivityDotClasses(activity.type)" class="w-4 h-4 rounded-full border-2 border-white shadow-sm z-10">
-              <svg v-if="getActivityIcon(activity.type)" class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+          <div class="relative flex items-center justify-center flex-shrink-0">
+            <div :class="getActivityDotClasses(activity.type)" class="w-3 h-3 rounded-full border-2 border-white shadow-sm z-10">
+              <svg v-if="getActivityIcon(activity.type)" class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path :d="getActivityIcon(activity.type)" />
               </svg>
             </div>
           </div>
           
           <!-- Activity Content -->
-          <div class="flex-1 min-w-0 pb-8">
+          <div class="flex-1 min-w-0">
             <!-- Activity Card -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
               <!-- Activity Header -->
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center space-x-2">
-                  <div class="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
+                  <div class="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
                     <span class="text-xs font-medium text-gray-700">
                       {{ activity.user?.name?.charAt(0)?.toUpperCase() || '?' }}
                     </span>
                   </div>
                   <span class="text-sm font-medium text-gray-900">{{ activity.user?.name || 'System' }}</span>
-                  <span :class="getActivityTypeClasses(activity.type)" class="px-2 py-1 rounded-full text-xs font-medium">
+                  <span :class="getActivityTypeClasses(activity.type)" class="px-2 py-0.5 rounded-full text-xs font-medium">
                     {{ formatActivityType(activity.type) }}
                   </span>
                 </div>
-                <span class="text-xs text-gray-500" :title="formatDateTime(activity.created_at)">
+                <span class="text-xs text-gray-500 flex-shrink-0" :title="formatDateTime(activity.created_at)">
                   {{ formatRelativeTime(activity.created_at) }}
                 </span>
               </div>
               
               <!-- Activity Description -->
-              <div class="text-sm text-gray-700 mb-3">
+              <div class="text-sm text-gray-700 mb-2">
                 {{ formatActivityDescription(activity) }}
               </div>
               
               <!-- Activity Details -->
-              <div v-if="activity.details" class="space-y-2">
+              <div v-if="activity.details">
                 <!-- Status Change Details -->
                 <div v-if="activity.type === 'status_change'" class="flex items-center space-x-2 text-sm">
                   <span class="text-gray-600">From:</span>
-                  <span :class="getStatusClasses(activity.details.old_status)" class="px-2 py-1 rounded-full text-xs font-medium">
+                  <span :class="getStatusClasses(activity.details.old_status)" class="px-2 py-0.5 rounded-full text-xs font-medium">
                     {{ formatStatus(activity.details.old_status) }}
                   </span>
                   <span class="text-gray-600">→</span>
-                  <span :class="getStatusClasses(activity.details.new_status)" class="px-2 py-1 rounded-full text-xs font-medium">
+                  <span :class="getStatusClasses(activity.details.new_status)" class="px-2 py-0.5 rounded-full text-xs font-medium">
                     {{ formatStatus(activity.details.new_status) }}
                   </span>
                 </div>
@@ -147,34 +149,34 @@
                 </div>
                 
                 <!-- Comment Details -->
-                <div v-if="activity.type === 'comment' && activity.details.content" class="text-sm text-gray-700 bg-gray-50 rounded-md p-3">
+                <div v-if="activity.type === 'comment' && activity.details.content" class="text-sm text-gray-700 bg-gray-50 rounded-md p-2 mt-1">
                   <div v-html="formatMessage(activity.details.content)"></div>
-                  <div v-if="activity.details.is_internal" class="mt-2">
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  <div v-if="activity.details.is_internal" class="mt-1">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                       Internal Comment
                     </span>
                   </div>
                 </div>
                 
                 <!-- Attachment Details -->
-                <div v-if="activity.type === 'attachment' && activity.details.attachments" class="space-y-2">
+                <div v-if="activity.type === 'attachment' && activity.details.attachments" class="space-y-1 mt-1">
                   <div 
                     v-for="attachment in activity.details.attachments" 
                     :key="attachment.id"
                     class="flex items-center space-x-2 text-sm"
                   >
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                     </svg>
-                    <a :href="attachment.url" target="_blank" class="text-blue-600 hover:text-blue-700">
+                    <a :href="attachment.url" target="_blank" class="text-blue-600 hover:text-blue-700 truncate">
                       {{ attachment.filename }}
                     </a>
-                    <span class="text-xs text-gray-500">({{ formatFileSize(attachment.size) }})</span>
+                    <span class="text-xs text-gray-500 flex-shrink-0">({{ formatFileSize(attachment.size) }})</span>
                   </div>
                 </div>
                 
                 <!-- Additional Notes -->
-                <div v-if="activity.details.notes" class="text-sm text-gray-600 italic mt-2">
+                <div v-if="activity.details.notes" class="text-sm text-gray-600 italic mt-1">
                   "{{ activity.details.notes }}"
                 </div>
               </div>
@@ -185,7 +187,7 @@
     </div>
 
     <!-- Load More Button -->
-    <div v-if="hasMorePages" class="text-center">
+    <div v-if="hasMorePages" class="text-center pt-4">
       <button
         @click="loadMoreActivity"
         :disabled="loadingMore"
@@ -196,23 +198,23 @@
     </div>
 
     <!-- Activity Stats -->
-    <div class="bg-gray-50 rounded-lg p-6">
-      <h4 class="text-lg font-semibold text-gray-900 mb-4">Activity Statistics</h4>
+    <div class="bg-gray-50 rounded-lg p-4 mt-6">
+      <h4 class="text-lg font-semibold text-gray-900 mb-3">Activity Statistics</h4>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="text-center">
-          <div class="text-2xl font-bold text-blue-600">{{ stats.total_activities }}</div>
+          <div class="text-xl font-bold text-blue-600">{{ stats.total_activities }}</div>
           <div class="text-sm text-gray-600">Total Events</div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-bold text-green-600">{{ stats.comments_count }}</div>
+          <div class="text-xl font-bold text-green-600">{{ stats.comments_count }}</div>
           <div class="text-sm text-gray-600">Comments</div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-bold text-purple-600">{{ stats.status_changes }}</div>
+          <div class="text-xl font-bold text-purple-600">{{ stats.status_changes }}</div>
           <div class="text-sm text-gray-600">Status Changes</div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-bold text-orange-600">{{ stats.participants_count }}</div>
+          <div class="text-xl font-bold text-orange-600">{{ stats.participants_count }}</div>
           <div class="text-sm text-gray-600">Participants</div>
         </div>
       </div>

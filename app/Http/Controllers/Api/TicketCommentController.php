@@ -70,18 +70,25 @@ class TicketCommentController extends Controller
         // Get attachment settings with defaults
         $maxFiles = Setting::getValue('tickets.attachments.max_files', 10);
         $maxFileSize = Setting::getValue('tickets.attachments.max_file_size_kb', 10240); // 10MB default
-        $allowedExtensions = Setting::getValue('tickets.attachments.allowed_extensions', [
-            'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'csv', 
-            'xls', 'xlsx', 'doc', 'docx', 'zip'
-        ]);
-
+        
+        // Use basic validation first, then we can add more restrictive rules later
         $validated = $request->validate([
-            'content' => 'required|string|max:10000',
+            'content' => 'string|max:10000',
             'is_internal' => 'boolean',
             'parent_id' => 'nullable|exists:ticket_comments,id',
             'attachments' => "nullable|array|max:{$maxFiles}",
-            'attachments.*' => "file|max:{$maxFileSize}|mimes:" . implode(',', $allowedExtensions)
+            'attachments.*' => "file|max:{$maxFileSize}"
         ]);
+        
+        // Ensure content is provided if no attachments
+        if (empty($validated['content']) && (!isset($validated['attachments']) || empty($validated['attachments']))) {
+            return response()->json([
+                'message' => 'Either content or attachments must be provided.',
+                'errors' => [
+                    'content' => ['Content is required when no files are attached.']
+                ]
+            ], 422);
+        }
         
         // Verify parent comment belongs to same ticket if specified
         if (!empty($validated['parent_id'])) {

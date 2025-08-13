@@ -11,19 +11,37 @@
         <!-- User Selection (if can assign to others) -->
         <div v-if="canAssignToOthers">
           <label class="block text-sm font-medium text-gray-700 mb-1">
-            User <span class="text-red-500">*</span>
+            Agent <span class="text-red-500">*</span>
           </label>
           <select 
             v-model="form.user_id" 
             required
             class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Select User</option>
-            <option v-for="user in availableUsers" :key="user.id" :value="user.id">
-              {{ user.name }}
+            <option value="">Select Agent</option>
+            <option v-for="agent in availableAgents" :key="agent.id" :value="agent.id">
+              {{ agent.name }}
             </option>
           </select>
           <p v-if="errors.user_id" class="text-red-500 text-xs mt-1">{{ errors.user_id }}</p>
+        </div>
+
+        <!-- Billing Rate Selection -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Billing Rate <span class="text-red-500">*</span>
+          </label>
+          <select 
+            v-model="form.billing_rate_id" 
+            required
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select Billing Rate</option>
+            <option v-for="rate in availableBillingRates" :key="rate.id" :value="rate.id">
+              {{ rate.name }} - ${{ rate.rate }}/hr
+            </option>
+          </select>
+          <p v-if="errors.billing_rate_id" class="text-red-500 text-xs mt-1">{{ errors.billing_rate_id }}</p>
         </div>
 
         <!-- Date -->
@@ -82,6 +100,9 @@
             </div>
           </div>
           <p v-if="errors.duration" class="text-red-500 text-xs mt-1">{{ errors.duration }}</p>
+          <p v-if="estimatedCost" class="text-sm text-gray-600 mt-1">
+            Estimated cost: ${{ estimatedCost }}
+          </p>
         </div>
 
         <!-- Description -->
@@ -136,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 
 // Props
@@ -152,11 +173,14 @@ const emit = defineEmits(['saved', 'cancelled'])
 
 // Reactive data
 const submitting = ref(false)
-const availableUsers = ref([])
+const availableAgents = ref([])
+const availableBillingRates = ref([])
+const currentUser = ref(null)
 
 // Form data
 const form = ref({
-  user_id: window.auth?.user?.id || '',
+  user_id: '',
+  billing_rate_id: '',
   date: new Date().toISOString().split('T')[0],
   start_time: '',
   hours: 0,
@@ -170,30 +194,78 @@ const errors = ref({})
 
 // Computed properties
 const canAssignToOthers = computed(() => {
-  // TODO: Implement proper permission checking
-  return true
+  // Only show user selection if current user has permission to assign to others
+  return currentUser.value?.permissions?.includes('time.admin') || 
+         currentUser.value?.permissions?.includes('admin.manage')
 })
 
-const totalDuration = computed(() => {
-  return (form.value.hours * 3600) + (form.value.minutes * 60)
+const totalDurationMinutes = computed(() => {
+  return (form.value.hours * 60) + form.value.minutes
+})
+
+const selectedBillingRate = computed(() => {
+  return availableBillingRates.value.find(rate => rate.id == form.value.billing_rate_id)
+})
+
+const estimatedCost = computed(() => {
+  if (!selectedBillingRate.value || totalDurationMinutes.value <= 0) return null
+  const hours = totalDurationMinutes.value / 60
+  return (hours * selectedBillingRate.value.rate).toFixed(2)
 })
 
 // Methods
-const loadAvailableUsers = async () => {
+const loadCurrentUser = async () => {
   try {
-    const response = await axios.get('/api/users/assignable')
-    availableUsers.value = response.data.data || []
+    const response = await axios.get('/api/auth/user')
+    currentUser.value = response.data.data
+    
+    // If user cannot assign to others, set their ID as default
+    if (!canAssignToOthers.value) {
+      form.value.user_id = currentUser.value.id
+    }
   } catch (error) {
-    console.error('Failed to load available users:', error)
-    availableUsers.value = []
+    console.error('Failed to load current user:', error)
+  }
+}
+
+const loadAvailableAgents = async () => {
+  try {
+    const response = await axios.get('/api/users', {
+      params: {
+        filter: 'can_create_time_entries',
+        account_id: props.ticket.account_id
+      }
+    })
+    availableAgents.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load available agents:', error)
+    availableAgents.value = []
+  }
+}
+
+const loadBillingRates = async () => {
+  try {
+    const response = await axios.get('/api/billing-rates', {
+      params: {
+        account_id: props.ticket.account_id
+      }
+    })
+    availableBillingRates.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load billing rates:', error)
+    availableBillingRates.value = []
   }
 }
 
 const validateForm = () => {
   errors.value = {}
 
-  if (!form.value.user_id && canAssignToOthers.value) {
-    errors.value.user_id = 'User is required'
+  if (!form.value.user_id) {
+    errors.value.user_id = 'Agent is required'
+  }
+
+  if (!form.value.billing_rate_id) {
+    errors.value.billing_rate_id = 'Billing rate is required'
   }
 
   if (!form.value.date) {
@@ -204,7 +276,7 @@ const validateForm = () => {
     errors.value.start_time = 'Start time is required'
   }
 
-  if (totalDuration.value <= 0) {
+  if (totalDurationMinutes.value <= 0) {
     errors.value.duration = 'Duration must be greater than 0'
   }
 
@@ -221,13 +293,18 @@ const submitForm = async () => {
   submitting.value = true
 
   try {
+    const selectedRate = selectedBillingRate.value
     const payload = {
+      user_id: form.value.user_id,
+      account_id: props.ticket.account_id,
       ticket_id: props.ticket.id,
-      user_id: form.value.user_id || window.auth?.user?.id,
+      billing_rate_id: form.value.billing_rate_id,
+      rate_at_time: selectedRate.rate, // Capture current rate
       started_at: `${form.value.date} ${form.value.start_time}:00`,
-      duration: totalDuration.value,
+      duration: totalDurationMinutes.value, // Duration in minutes
       description: form.value.description.trim(),
-      billable: form.value.billable
+      billable: form.value.billable,
+      status: 'pending'
     }
 
     await axios.post('/api/time-entries', payload)
@@ -244,10 +321,26 @@ const submitForm = async () => {
   }
 }
 
+// Watchers
+watch(() => form.value.user_id, (newUserId) => {
+  // Reset billing rate when user changes
+  form.value.billing_rate_id = ''
+  if (newUserId) {
+    loadBillingRates()
+  }
+})
+
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  await loadCurrentUser()
+  
   if (canAssignToOthers.value) {
-    loadAvailableUsers()
+    await loadAvailableAgents()
+  }
+  
+  // Load billing rates for initial user
+  if (form.value.user_id) {
+    await loadBillingRates()
   }
 
   // Set default start time to current time

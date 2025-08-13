@@ -107,28 +107,67 @@
             <!-- Account & Role Column -->
             <div v-else-if="cell.column.id === 'account_role'">
               <!-- Account Information -->
-              <div class="mb-2">
-                <div v-if="cell.row.original.account" class="text-sm font-medium text-gray-900">
-                  {{ cell.row.original.account.name }}
+              <div class="mb-3">
+                <div v-if="cell.row.original.account" class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm font-medium text-gray-900 truncate">
+                        {{ cell.row.original.account.display_name || cell.row.original.account.name }}
+                      </div>
+                      <div class="flex items-center space-x-2 mt-0.5">
+                        <span class="text-xs text-gray-500">{{ formatAccountType(cell.row.original.account.account_type) }}</span>
+                        <span v-if="cell.row.original.account.company_name" class="text-xs text-gray-400">
+                          • {{ cell.row.original.account.company_name }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="flex flex-col items-end space-y-1 ml-2">
+                      <span v-if="!cell.row.original.account.is_active" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                        Inactive
+                      </span>
+                      <span v-if="cell.row.original.account.hierarchy_level" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                        L{{ cell.row.original.account.hierarchy_level }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div v-else class="text-sm text-gray-400 italic">
-                  No Account
-                </div>
-                <div v-if="cell.row.original.account?.account_type" class="text-xs text-gray-500">
-                  {{ formatAccountType(cell.row.original.account.account_type) }}
+                  No Account Assigned
                 </div>
               </div>
               
               <!-- Role Information -->
               <div>
-                <div v-if="cell.row.original.role_template" class="text-sm text-gray-700">
-                  {{ cell.row.original.role_template.name }}
+                <div v-if="cell.row.original.role_template" class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm font-medium text-gray-900 truncate">{{ cell.row.original.role_template.name }}</div>
+                      <div class="flex items-center space-x-2 mt-0.5">
+                        <span class="text-xs text-gray-500">{{ formatContext(cell.row.original.role_template.context) }}</span>
+                        <span v-if="cell.row.original.role_template.description" class="text-xs text-gray-400">
+                          • {{ cell.row.original.role_template.description }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="flex flex-col items-end space-y-1 ml-2">
+                      <span v-if="cell.row.original.role_template.is_system_role" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-600">
+                        System
+                      </span>
+                      <span v-if="cell.row.original.role_template.is_super_admin" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                        Super Admin
+                      </span>
+                      <span v-if="!cell.row.original.role_template.is_modifiable" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                        Protected
+                      </span>
+                    </div>
+                  </div>
+                  <!-- Permissions Summary -->
+                  <div v-if="cell.row.original.permissions && cell.row.original.permissions.length > 0" class="mt-1">
+                    <span class="text-xs text-gray-400">{{ cell.row.original.permissions.length }} permissions</span>
+                  </div>
                 </div>
                 <div v-else class="text-sm text-gray-400 italic">
-                  No Role
-                </div>
-                <div v-if="cell.row.original.role_template?.context" class="text-xs text-gray-500">
-                  {{ formatContext(cell.row.original.role_template.context) }}
+                  No Role Assigned
                 </div>
               </div>
             </div>

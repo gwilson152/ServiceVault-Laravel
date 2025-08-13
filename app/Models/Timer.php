@@ -387,6 +387,9 @@ class Timer extends Model
             throw new \Exception('Cannot determine billing account for time entry');
         }
 
+        // Capture the current billing rate for historical accuracy
+        $currentRate = $this->billingRate?->rate;
+        
         $timeEntry = TimeEntry::create(array_merge([
             'user_id' => $this->user_id,
             'account_id' => $billingAccountId, // Always required for billing
@@ -397,6 +400,7 @@ class Timer extends Model
             'ended_at' => $this->stopped_at,
             'duration' => isset($additionalData['duration']) ? $additionalData['duration'] : ceil($this->duration / 60), // Convert timer seconds to time entry minutes
             'billable' => true,
+            'rate_at_time' => $currentRate, // Capture current rate for historical accuracy
             'status' => 'pending',
         ], $additionalData));
 

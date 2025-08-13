@@ -32,87 +32,98 @@ export const queryKeys = {
   // Timer-related queries
   timers: {
     all: ['timers'],
-    active: () => [...queryKeys.timers.all, 'active'],
-    activeCurrent: () => [...queryKeys.timers.active(), 'current'],
-    byId: (id) => [...queryKeys.timers.all, 'byId', id],
+    active: () => ['timers', 'active'],
+    activeCurrent: () => ['timers', 'active', 'current'],
+    byId: (id) => ['timers', 'byId', id],
   },
   
   // Navigation-related queries
   navigation: {
     all: ['navigation'],
-    items: (grouped = false) => [...queryKeys.navigation.all, 'items', { grouped }],
-    breadcrumbs: (route) => [...queryKeys.navigation.all, 'breadcrumbs', route],
-    access: (routes) => [...queryKeys.navigation.all, 'access', routes],
+    items: (grouped = false) => ['navigation', 'items', { grouped }],
+    breadcrumbs: (route) => ['navigation', 'breadcrumbs', route],
+    access: (routes) => ['navigation', 'access', routes],
   },
   
   // Dashboard-related queries
   dashboard: {
     all: ['dashboard'],
-    widgets: () => [...queryKeys.dashboard.all, 'widgets'],
-    widgetData: (widgetKey) => [...queryKeys.dashboard.all, 'widgetData', widgetKey],
-    meta: () => [...queryKeys.dashboard.all, 'meta'],
+    widgets: () => ['dashboard', 'widgets'],
+    widgetData: (widgetKey) => ['dashboard', 'widgetData', widgetKey],
+    meta: () => ['dashboard', 'meta'],
   },
   
   // User-related queries
   users: {
     all: ['users'],
-    current: () => [...queryKeys.users.all, 'current'],
-    byId: (id) => [...queryKeys.users.all, 'byId', id],
-    list: (filters) => [...queryKeys.users.all, 'list', filters],
+    current: () => ['users', 'current'],
+    byId: (id) => ['users', 'byId', id],
+    list: (filters) => ['users', 'list', filters],
   },
   
   // Role and permission queries
   roles: {
     all: ['roles'],
-    list: () => [...queryKeys.roles.all, 'list'],
-    byId: (id) => [...queryKeys.roles.all, 'byId', id],
-    permissions: (roleId) => [...queryKeys.roles.all, 'permissions', roleId],
+    list: () => ['roles', 'list'],
+    byId: (id) => ['roles', 'byId', id],
+    permissions: (roleId) => ['roles', 'permissions', roleId],
   },
   
   // Ticket-related queries
   tickets: {
     all: ['tickets'],
-    list: (filters) => [...queryKeys.tickets.all, 'list', filters],
-    byId: (id) => [...queryKeys.tickets.all, 'byId', id],
-    stats: () => [...queryKeys.tickets.all, 'stats'],
+    list: (filters) => ['tickets', 'list', filters],
+    byId: (id) => ['tickets', 'byId', id],
+    stats: () => ['tickets', 'stats'],
   },
   
   // Time entries
   timeEntries: {
     all: ['timeEntries'],
-    list: (filters) => [...queryKeys.timeEntries.all, 'list', filters],
-    byId: (id) => [...queryKeys.timeEntries.all, 'byId', id],
-    stats: () => [...queryKeys.timeEntries.all, 'stats'],
+    list: (filters) => ['timeEntries', 'list', filters],
+    byId: (id) => ['timeEntries', 'byId', id],
+    stats: () => ['timeEntries', 'stats'],
+  },
+  
+  // Accounts
+  accounts: {
+    all: ['accounts'],
+    list: (filters) => ['accounts', 'list', filters],
+    byId: (id) => ['accounts', 'byId', id],
+    selector: ['accounts', 'selector'],
   },
 }
 
 // Helper functions for query invalidation patterns
 export const invalidateQueries = {
   // Invalidate all timer-related queries
-  timers: () => queryClient.invalidateQueries({ queryKey: queryKeys.timers.all }),
+  timers: () => queryClient.invalidateQueries({ queryKey: ['timers'] }),
   
   // Invalidate navigation queries (useful after permission changes)
-  navigation: () => queryClient.invalidateQueries({ queryKey: queryKeys.navigation.all }),
+  navigation: () => queryClient.invalidateQueries({ queryKey: ['navigation'] }),
   
   // Invalidate dashboard queries
-  dashboard: () => queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all }),
+  dashboard: () => queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
   
   // Invalidate specific widget data
   widget: (widgetKey) => queryClient.invalidateQueries({ 
-    queryKey: queryKeys.dashboard.widgetData(widgetKey) 
+    queryKey: ['dashboard', 'widgetData', widgetKey] 
   }),
   
   // Invalidate user-related queries
-  users: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.all }),
+  users: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   
   // Invalidate role-related queries
-  roles: () => queryClient.invalidateQueries({ queryKey: queryKeys.roles.all }),
+  roles: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
   
   // Invalidate ticket-related queries
-  tickets: () => queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all }),
+  tickets: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
   
   // Invalidate time entry queries
-  timeEntries: () => queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all }),
+  timeEntries: () => queryClient.invalidateQueries({ queryKey: ['timeEntries'] }),
+  
+  // Invalidate account queries
+  accounts: () => queryClient.invalidateQueries({ queryKey: ['accounts'] }),
 }
 
 export default queryClient

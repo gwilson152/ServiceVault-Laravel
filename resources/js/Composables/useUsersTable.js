@@ -34,9 +34,9 @@ export function useUsersTable(users, canViewAllAccounts = false) {
       // Account & Role Column
       columnHelper.accessor(row => row.account?.name || 'No Account', {
         id: 'account_role',
-        header: 'Account & Role', 
+        header: 'Account & Role Details', 
         enableSorting: true,
-        size: 240,
+        size: 320,
       }),
 
       // Activity Column (tickets, timers, last activity)
@@ -62,13 +62,27 @@ export function useUsersTable(users, canViewAllAccounts = false) {
     const searchValue = value.toLowerCase()
     const name = row.original.name.toLowerCase()
     const email = row.original.email?.toLowerCase() || ''
+    
+    // Search single account/role (legacy support)
     const accountName = row.original.account?.name?.toLowerCase() || ''
     const roleName = row.original.role_template?.name?.toLowerCase() || ''
+    
+    // Search multiple accounts
+    const accountNames = row.original.accounts?.map(acc => 
+      (acc.display_name || acc.name || '').toLowerCase()
+    ).join(' ') || ''
+    
+    // Search multiple roles
+    const roleNames = row.original.role_templates?.map(role => 
+      (role.name || '').toLowerCase()
+    ).join(' ') || ''
     
     return name.includes(searchValue) || 
            email.includes(searchValue) || 
            accountName.includes(searchValue) || 
-           roleName.includes(searchValue)
+           roleName.includes(searchValue) ||
+           accountNames.includes(searchValue) ||
+           roleNames.includes(searchValue)
   }
 
   const customColumnFilter = (row, columnId, value) => {
@@ -78,9 +92,15 @@ export function useUsersTable(users, canViewAllAccounts = false) {
         if (value === 'inactive') return row.original.is_active === false
         return true
       case 'role':
-        return row.original.role_template_id === value
+        // Check both single role and multiple roles
+        if (row.original.role_template_id === value) return true
+        if (row.original.role_templates?.some(role => role.id === value)) return true
+        return false
       case 'account':
-        return row.original.account_id === value
+        // Check both single account and multiple accounts
+        if (row.original.account_id === value) return true
+        if (row.original.accounts?.some(account => account.id === value)) return true
+        return false
       default:
         return true
     }

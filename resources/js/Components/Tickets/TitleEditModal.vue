@@ -123,7 +123,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['updated', 'cancelled'])
+const emit = defineEmits(['saved', 'cancelled'])
 
 // Reactive data
 const submitting = ref(false)
@@ -168,7 +168,7 @@ const submitForm = async () => {
     }
 
     await axios.put(`/api/tickets/${props.ticket.id}`, payload)
-    emit('updated')
+    emit('saved', form.value.title.trim())
   } catch (error) {
     if (error.response?.data?.errors) {
       errors.value = error.response.data.errors

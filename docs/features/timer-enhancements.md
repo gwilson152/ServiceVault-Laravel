@@ -334,6 +334,80 @@ watch(broadcastTimers, (newTimers) => {
 
 ## Time Entry System Enhancements
 
+### Billing Rate Integration for Time Entries
+
+Service Vault now implements proper billing rate assignment at the individual time entry level, providing accurate historical rate tracking and flexible pricing management.
+
+#### Individual Time Entry Billing
+- **Per-Entry Rates**: Each time entry has its own billing rate assignment, not inherited from tickets
+- **Historical Accuracy**: `rate_at_time` field captures the rate when the time entry was created
+- **Flexible Pricing**: Different team members can have different rates on the same ticket
+- **Rate Changes**: Future rate changes don't affect previously logged time
+
+#### Timer-to-TimeEntry Conversion
+```php
+// Timer.php - Enhanced convertToTimeEntry method
+public function convertToTimeEntry(array $additionalData = []): ?TimeEntry
+{
+    // Capture the current billing rate for historical accuracy
+    $currentRate = $this->billingRate?->rate;
+    
+    $timeEntry = TimeEntry::create([
+        'user_id' => $this->user_id,
+        'account_id' => $billingAccountId,
+        'billing_rate_id' => $this->billing_rate_id,
+        'ticket_id' => $this->ticket_id,
+        'rate_at_time' => $currentRate, // Historical rate capture
+        'duration' => $durationInMinutes,
+        'billable' => true,
+        'status' => 'pending',
+        // ... other fields
+    ]);
+}
+```
+
+### Enhanced Add Time Entry Modal
+
+The AddTimeEntryModal has been completely redesigned to provide a professional time entry experience with proper permission handling and billing rate integration.
+
+#### Agent-Only User Selection
+- **Permission Filtering**: Only shows users with `time.create` permissions (agents, not customers)
+- **Role-Based Access**: Customers cannot create time entries, maintaining clear service provider boundaries
+- **Account Context**: Filters available agents by account relationship for security
+
+#### Comprehensive Billing Rate Management
+```javascript
+// Enhanced form structure with billing rate selection
+const form = ref({
+  user_id: '',
+  billing_rate_id: '', // Required billing rate selection
+  date: new Date().toISOString().split('T')[0],
+  start_time: '',
+  hours: 0,
+  minutes: 0,
+  description: '',
+  billable: true
+})
+
+// Real-time cost estimation
+const estimatedCost = computed(() => {
+  if (!selectedBillingRate.value || totalDurationMinutes.value <= 0) return null
+  const hours = totalDurationMinutes.value / 60
+  return (hours * selectedBillingRate.value.rate).toFixed(2)
+})
+```
+
+#### Smart Permission Detection
+- **Dynamic UI**: User selection only appears if current user has `time.admin` or `admin.manage` permissions
+- **Self-Assignment**: Regular agents default to themselves, administrators can assign to others
+- **Context-Aware Loading**: Billing rates reload when agent selection changes
+
+#### Enhanced User Experience
+- **Real-Time Cost Preview**: Shows estimated billing amount as user enters duration and selects rate
+- **Account-Filtered Data**: Only shows agents and billing rates relevant to the ticket's account
+- **Comprehensive Validation**: Ensures all required fields including billing rate are selected
+- **Professional Labels**: Clear "Agent" vs "User" terminology for service provider context
+
 ### Streamlined Time Entry Modals
 
 The time entry system has been significantly enhanced for optimal user experience through the removal of unnecessary complexity:
@@ -341,7 +415,8 @@ The time entry system has been significantly enhanced for optimal user experienc
 #### Simplified Form Structure
 ```javascript
 const form = ref({
-  user_id: window.auth?.user?.id || '',
+  user_id: '',
+  billing_rate_id: '', // Now required for proper billing
   date: new Date().toISOString().split('T')[0],
   start_time: '',
   hours: 0,
@@ -354,8 +429,11 @@ const form = ref({
 
 #### Key UX Improvements
 - **Removed Break Duration Fields**: Eliminated confusing duplicate duration fields that caused user confusion
+- **Agent-Only Selection**: Only service providers with time entry permissions can be selected
+- **Required Billing Rates**: Ensures proper billing setup for all time entries
+- **Real-Time Cost Calculation**: Live preview of billing amount based on rate and duration
 - **Streamlined Duration Calculation**: Focus solely on work time tracking without break time complications
-- **Cleaner API Payload**: Simplified data structure without break-related fields in submission
+- **Cleaner API Payload**: Simplified data structure with proper billing rate assignment
 - **Enhanced User Experience**: Intuitive time tracking interface with minimal cognitive load
 - **Consistent Interface**: Both Add and Edit time entry modals share the same simplified structure
 
