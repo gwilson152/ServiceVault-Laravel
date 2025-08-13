@@ -197,6 +197,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('ticket-addons/{ticketAddon}/complete', [App\Http\Controllers\Api\TicketAddonController::class, 'complete'])
         ->name('ticket-addons.complete');
     
+    // Related tickets endpoint
+    Route::get('tickets/{ticket}/related', [TicketController::class, 'relatedTickets'])
+        ->name('tickets.related');
+    
     // Ticket activity and audit trail
     Route::get('tickets/{ticket}/activity', [TicketController::class, 'activity'])
         ->name('tickets.activity');

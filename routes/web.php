@@ -126,6 +126,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Accounts/Index');
     })->name('accounts.index');
     
+    Route::get('/accounts/{account}', function ($account) {
+        return Inertia::render('Accounts/Show', ['accountId' => $account]);
+    })->name('accounts.show');
+    
     // Roles & Permissions Management
     Route::get('/roles', function () {
         return Inertia::render('Roles/Index');

@@ -211,8 +211,8 @@ const getStatusLabel = (status) => {
 // Calculate dropdown position to avoid animations
 const calculateDropdownPosition = async () => {
   await nextTick()
-  if (buttonRef.value) {
-    const rect = buttonRef.value.getBoundingClientRect()
+  if (buttonRef.value && buttonRef.value.$el) {
+    const rect = buttonRef.value.$el.getBoundingClientRect()
     dropdownPosition.value = {
       top: `${rect.bottom + window.scrollY + 4}px`,
       left: `${rect.left + window.scrollX}px`,
@@ -223,7 +223,7 @@ const calculateDropdownPosition = async () => {
 
 // Update position on scroll/resize
 const updatePosition = () => {
-  if (buttonRef.value) {
+  if (buttonRef.value && buttonRef.value.$el) {
     calculateDropdownPosition()
   }
 }

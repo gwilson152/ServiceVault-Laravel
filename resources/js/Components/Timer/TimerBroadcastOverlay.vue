@@ -1,6 +1,6 @@
 <template>
   <div 
-    v-if="timers.length > 0" 
+    v-if="shouldShowOverlay" 
     class="fixed bottom-4 right-4 z-50"
   >
     <!-- Connection Status and Controls -->
@@ -194,8 +194,28 @@
       </div>
     </div>
 
+    <!-- No Active Timers - Quick Start Button -->
+    <div 
+      v-if="timers.length === 0"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 min-w-48"
+    >
+      <div class="text-center">
+        <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">No active timers</div>
+        <button
+          @click="showQuickStart = true"
+          class="w-full p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+          title="Start New Timer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span>Start Timer</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Timer Cards Container - Horizontal Right-to-Left -->
-    <div class="flex flex-row-reverse space-x-reverse space-x-2">
+    <div v-else class="flex flex-row-reverse space-x-reverse space-x-2">
       <!-- Individual Timer -->
       <div 
         v-for="timer in reactiveTimerData" 
@@ -439,6 +459,7 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted, reactive } from 'vue'
 import { useTimerBroadcasting } from '@/Composables/useTimerBroadcasting.js'
+import { usePage } from '@inertiajs/vue3'
 
 const {
   timers,
@@ -479,6 +500,22 @@ const commitForm = reactive({
 
 // Manual time override setting (should be configurable via system settings)
 const allowManualTimeOverride = ref(true) // TODO: Load from system settings
+
+// Access user data from Inertia
+const page = usePage()
+const user = computed(() => page.props.auth?.user)
+
+// Determine when to show the overlay - show if there are active timers OR if user can create timers
+const shouldShowOverlay = computed(() => {
+  // Always show if there are active timers
+  if (timers.value?.length > 0) {
+    return true
+  }
+  
+  // Only show overlay for agents (who can create timers)
+  // Hide for account users (customers) who can't create/manage timers
+  return user.value?.user_type === 'agent'
+})
 
 // Computed properties for timer stats (reactive to currentTime for real-time updates)
 const totalDuration = computed(() => {

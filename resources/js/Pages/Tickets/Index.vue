@@ -173,7 +173,7 @@
                 <h3 class="text-lg font-semibold text-gray-900">
                   Tickets
                   <span class="text-sm font-normal text-gray-500 ml-2">
-                    ({{ filteredTickets.length }} of {{ tickets.length }})
+                    ({{ filteredTickets.length }} of {{ tickets?.length || 0 }})
                   </span>
                 </h3>
                 
@@ -277,7 +277,7 @@
             <div class="p-4 space-y-3">
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Total Tickets</span>
-                <span class="text-lg font-semibold text-gray-900">{{ tickets.length }}</span>
+                <span class="text-lg font-semibold text-gray-900">{{ tickets?.length || 0 }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Open</span>
@@ -361,6 +361,7 @@ import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
 import CreateTicketModal from '@/Components/Modals/CreateTicketModal.vue'
 import TicketsTable from '@/Components/Tables/TicketsTable.vue'
 import { useTicketsTable } from '@/Composables/useTicketsTable'
+import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'
 
 // Define persistent layout
 defineOptions({
@@ -392,10 +393,8 @@ const props = defineProps({
 })
 
 // State
-const tickets = ref(props.initialTickets || [])
 const activeTimers = ref(props.initialActiveTimers || [])
 const timersByTicket = ref({}) // Store timers grouped by ticket_id
-const isLoading = ref(false)
 const showCreateModal = ref(false)
 // Load table density preference from localStorage
 const tableDensity = ref(localStorage.getItem('tickets-table-density') || 'compact')
@@ -420,18 +419,34 @@ const priorityFilter = ref('')
 const assignmentFilter = ref('')
 const accountFilter = ref('')
 
+// TanStack Query for tickets
+const ticketFilters = computed(() => ({
+  search: searchQuery.value,
+  status: statusFilter.value,
+  priority: priorityFilter.value,
+  assignment: assignmentFilter.value,
+  account_id: accountFilter.value
+}))
+
+const { data: tickets, isLoading, error, refetch: refetchTickets } = useTicketsQuery(ticketFilters)
+
 // Page data
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
 // Initialize TanStack Table
+const ticketsForTable = computed(() => {
+  const ticketsData = tickets.value?.data || tickets.value || []
+  return Array.isArray(ticketsData) ? ticketsData : []
+})
+
 const {
   table,
   globalFilter,
   setAssignmentFilter,
   setAccountFilter,
   clearAllFilters,
-} = useTicketsTable(tickets, user, props.canViewAllAccounts)
+} = useTicketsTable(ticketsForTable, user, props.canViewAllAccounts)
 
 // Computed
 const pageTitle = computed(() => {
@@ -465,7 +480,8 @@ const filteredTickets = computed(() => {
 
 const recentActivity = computed(() => {
   // Generate recent activity from ticket updates
-  return tickets.value
+  const ticketsData = tickets.value?.data || tickets.value || []
+  return ticketsData
     .filter(ticket => ticket.updated_at)
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
     .slice(0, 5)
@@ -479,28 +495,8 @@ const recentActivity = computed(() => {
 
 // Methods
 const refreshTickets = async () => {
-  isLoading.value = true
-  try {
-    const response = await fetch('/api/tickets', {
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
-      }
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      tickets.value = data.data || []
-    }
-  } catch (error) {
-    // Only log errors in development mode
-    if (import.meta.env.DEV) {
-      console.error('Failed to refresh tickets:', error)
-    }
-  } finally {
-    isLoading.value = false
-  }
+  // Use TanStack Query's refetch instead of manual fetch
+  await refetchTickets()
 }
 
 // Debounce timer to prevent excessive API calls
@@ -529,10 +525,11 @@ const refreshActiveTimers = async () => {
 }
 
 const fetchTimersForTickets = async () => {
-  if (tickets.value.length === 0) return
+  const ticketsData = tickets.value?.data || tickets.value || []
+  if (!ticketsData.length) return
   
   try {
-    const ticketIds = tickets.value.map(ticket => ticket.id)
+    const ticketIds = ticketsData.map(ticket => ticket.id)
     
     const response = await fetch('/api/timers/bulk-active-for-tickets', {
       method: 'POST',
@@ -661,11 +658,11 @@ const formatDate = (dateString) => {
 }
 
 const getStatusCount = (status) => {
-  return tickets.value.filter(ticket => ticket.status === status).length
+  return tickets?.value?.filter(ticket => ticket.status === status).length || 0
 }
 
 const getMyTicketsCount = () => {
-  return tickets.value.filter(ticket => ticket.assigned_to_id === user.value?.id).length
+  return tickets?.value?.filter(ticket => ticket.assigned_to_id === user.value?.id).length || 0
 }
 
 // Unified timer refresh with debouncing
@@ -688,18 +685,19 @@ const handleTimerEvent = (event) => {
   
   // Only refresh tickets if timer was converted to time entry
   if (event.type === 'timer_stopped' && event.converted_to_time_entry) {
-    refreshTickets()
+    refetchTickets()
   }
 }
 
 const onTicketCreated = (newTicket) => {
-  tickets.value.unshift(newTicket)
+  // TanStack Query mutation already handled the cache update
+  // Just close the modal
   showCreateModal.value = false
 }
 
 const handleTimeEntryCreated = (timeEntry) => {
   // Refresh tickets to show updated time data
-  refreshTickets()
+  refetchTickets()
   // Refresh active timers in case timer was committed
   refreshActiveTimers()
 }
@@ -711,14 +709,8 @@ const handleStatusUpdated = (event) => {
       console.error('Status update failed:', event.error)
     }
   } else {
-    // Update the ticket in the local state
-    const ticketIndex = tickets.value.findIndex(t => t.id === event.ticket.id)
-    if (ticketIndex !== -1 && event.updatedTicket) {
-      tickets.value[ticketIndex] = { ...tickets.value[ticketIndex], ...event.updatedTicket }
-    }
-    
-    // Optionally refresh tickets to get latest data
-    // refreshTickets()
+    // Refetch tickets data to get latest state
+    refetchTickets()
   }
 }
 
@@ -729,14 +721,8 @@ const handlePriorityUpdated = (event) => {
       console.error('Priority update failed:', event.error)
     }
   } else {
-    // Update the ticket in the local state
-    const ticketIndex = tickets.value.findIndex(t => t.id === event.ticket.id)
-    if (ticketIndex !== -1 && event.updatedTicket) {
-      tickets.value[ticketIndex] = { ...tickets.value[ticketIndex], ...event.updatedTicket }
-    }
-    
-    // Optionally refresh tickets to get latest data
-    // refreshTickets()
+    // Refetch tickets data to get latest state
+    refetchTickets()
   }
 }
 

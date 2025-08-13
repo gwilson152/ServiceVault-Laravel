@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -43,6 +44,7 @@ class TicketCommentController extends Controller
                     'was_edited' => $comment->wasEdited(),
                     'created_at' => $comment->created_at,
                     'edited_at' => $comment->edited_at,
+                    'attachments' => $comment->attachments,
                     'user' => $comment->user ? [
                         'id' => $comment->user->id,
                         'name' => $comment->user->name,
@@ -65,19 +67,46 @@ class TicketCommentController extends Controller
             return response()->json(['error' => 'Unauthorized access.'], 403);
         }
         
+        // Get attachment settings with defaults
+        $maxFiles = Setting::getValue('tickets.attachments.max_files', 10);
+        $maxFileSize = Setting::getValue('tickets.attachments.max_file_size_kb', 10240); // 10MB default
+        $allowedExtensions = Setting::getValue('tickets.attachments.allowed_extensions', [
+            'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'csv', 
+            'xls', 'xlsx', 'doc', 'docx', 'zip'
+        ]);
+
         $validated = $request->validate([
             'content' => 'required|string|max:10000',
             'is_internal' => 'boolean',
-            'parent_id' => 'nullable|exists:ticket_comments,id'
+            'parent_id' => 'nullable|exists:ticket_comments,id',
+            'attachments' => "nullable|array|max:{$maxFiles}",
+            'attachments.*' => "file|max:{$maxFileSize}|mimes:" . implode(',', $allowedExtensions)
         ]);
         
         // Verify parent comment belongs to same ticket if specified
-        if ($validated['parent_id']) {
+        if (!empty($validated['parent_id'])) {
             $parentComment = TicketComment::find($validated['parent_id']);
             if (!$parentComment || $parentComment->ticket_id !== $ticket->id) {
                 throw ValidationException::withMessages([
                     'parent_id' => 'Invalid parent comment.'
                 ]);
+            }
+        }
+        
+        // Handle file uploads if provided
+        $attachmentMetadata = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $filename = $file->getClientOriginalName();
+                $path = $file->store('ticket-attachments/' . $ticket->id, 'public');
+                
+                $attachmentMetadata[] = [
+                    'filename' => $filename,
+                    'path' => $path,
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'uploaded_at' => now()->toISOString()
+                ];
             }
         }
         
@@ -87,7 +116,8 @@ class TicketCommentController extends Controller
             'user_id' => $user->id,
             'content' => $validated['content'],
             'is_internal' => $validated['is_internal'] ?? false,
-            'parent_id' => $validated['parent_id'] ?? null,
+            'parent_id' => !empty($validated['parent_id']) ? $validated['parent_id'] : null,
+            'attachments' => count($attachmentMetadata) > 0 ? $attachmentMetadata : null,
         ]);
         
         $comment->load('user:id,name,email');
@@ -100,6 +130,7 @@ class TicketCommentController extends Controller
                 'was_edited' => false,
                 'created_at' => $comment->created_at,
                 'edited_at' => null,
+                'attachments' => $comment->attachments,
                 'user' => [
                     'id' => $comment->user->id,
                     'name' => $comment->user->name,

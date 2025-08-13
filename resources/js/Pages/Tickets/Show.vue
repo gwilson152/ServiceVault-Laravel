@@ -134,9 +134,38 @@
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div v-if="!ticket" class="text-center py-12">
+      <!-- Loading State -->
+      <div v-if="loading" class="text-center py-12">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <p class="mt-2 text-gray-600">Loading ticket details...</p>
+      </div>
+      
+      <!-- Error State -->
+      <div v-else-if="error" class="text-center py-12">
+        <div class="text-red-600 mb-4">
+          <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <p class="text-red-600 font-medium">Failed to load ticket</p>
+        <p class="text-gray-500 text-sm mt-1">{{ error }}</p>
+        <button @click="loadTicketDetails" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+          Try Again
+        </button>
+      </div>
+      
+      <!-- No Ticket Found -->
+      <div v-else-if="!ticket" class="text-center py-12">
+        <div class="text-gray-400 mb-4">
+          <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <p class="text-gray-600 font-medium">Ticket not found</p>
+        <p class="text-gray-500 text-sm mt-1">The ticket you're looking for doesn't exist or you don't have permission to view it.</p>
+        <Link :href="route('tickets.index')" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-block">
+          Back to Tickets
+        </Link>
       </div>
       
       <div v-else class="grid grid-cols-1 xl:grid-cols-4 gap-6">
@@ -253,17 +282,13 @@
                       </div>
                       <div class="text-sm text-gray-700" v-html="formatMessage(message.content)"></div>
                       
-                      <!-- Message Attachments -->
-                      <div v-if="message.attachments?.length" class="mt-3 space-y-2">
-                        <div 
-                          v-for="attachment in message.attachments" 
-                          :key="attachment.id"
-                          class="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-700"
-                        >
+                      <!-- Attachment Indicator -->
+                      <div v-if="message.attachments?.length" class="mt-3">
+                        <div class="flex items-center space-x-2 text-sm text-gray-500">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                           </svg>
-                          <a :href="attachment.url" target="_blank">{{ attachment.filename }}</a>
+                          <span>{{ message.attachments.length }} file{{ message.attachments.length > 1 ? 's' : '' }} attached</span>
                         </div>
                       </div>
                     </div>
@@ -279,8 +304,40 @@
                         placeholder="Type your message..."
                         rows="4"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
+                        :required="selectedFiles.length === 0"
                       ></textarea>
+                    </div>
+                    
+                    <!-- Selected Files Preview -->
+                    <div v-if="selectedFiles.length > 0" class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-700">Selected Files ({{ selectedFiles.length }})</span>
+                        <button type="button" @click="selectedFiles = []" class="text-red-600 hover:text-red-700 text-sm">
+                          Clear All
+                        </button>
+                      </div>
+                      <div class="space-y-1">
+                        <div 
+                          v-for="(file, index) in selectedFiles" 
+                          :key="index"
+                          class="flex items-center justify-between py-1"
+                        >
+                          <div class="flex items-center space-x-2">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span class="text-sm text-gray-700">{{ file.name }}</span>
+                            <span class="text-xs text-gray-500">({{ formatFileSize(file.size) }})</span>
+                          </div>
+                          <button 
+                            type="button" 
+                            @click="selectedFiles.splice(index, 1)"
+                            class="text-red-600 hover:text-red-700 text-xs"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
                     </div>
                     
                     <!-- Message Options -->
@@ -306,10 +363,10 @@
                       
                       <button
                         type="submit"
-                        :disabled="!newMessage.trim() || sendingMessage"
+                        :disabled="(!newMessage.trim() && selectedFiles.length === 0) || sendingMessage"
                         class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center space-x-2"
                       >
-                        <span>{{ sendingMessage ? 'Sending...' : 'Send' }}</span>
+                        <span>{{ sendingMessage ? (uploadingFiles && selectedFiles.length > 0 ? 'Uploading...' : 'Sending...') : 'Send' }}</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
@@ -321,12 +378,17 @@
               
               <!-- Time Tracking Tab -->
               <div v-if="activeTab === 'time'" class="space-y-6">
-                <TimeTrackingManager :ticket="ticket" @updated="loadTimeTrackingData" />
+                <TimeTrackingManager 
+                  :ticket="ticket" 
+                  :current-user-id="currentUserId" 
+                  :can-manage-time="canManageTime"
+                  @updated="loadTimeTrackingData" 
+                />
               </div>
               
               <!-- Addons Tab -->
               <div v-if="activeTab === 'addons'" class="space-y-6">
-                <TicketAddonManager :ticket="ticket" @updated="loadAddons" />
+                <TicketAddonManager :ticket="ticket" @updated="loadTicketDetails" />
               </div>
               
               <!-- Activity Timeline Tab -->
@@ -492,6 +554,61 @@
             </div>
           </div>
           
+          <!-- Attachments Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold text-gray-900">Attachments</h3>
+            </div>
+            <div class="p-6">
+              <div v-if="ticketAttachments.length > 0" class="space-y-3">
+                <div 
+                  v-for="attachment in ticketAttachments" 
+                  :key="`${attachment.message_id}-${attachment.filename}`"
+                  class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <div class="flex items-center space-x-3">
+                    <!-- File icon based on type -->
+                    <div class="flex-shrink-0">
+                      <svg v-if="attachment.mime_type?.startsWith('image/')" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <svg v-else-if="attachment.mime_type === 'application/pdf'" class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <svg v-else class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm font-medium text-gray-900 truncate">
+                        {{ attachment.filename }}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        {{ formatFileSize(attachment.size) }} • {{ formatDateTime(attachment.message_date) }} • {{ attachment.uploaded_by.name }}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <a 
+                    :href="`/storage/${attachment.path}`" 
+                    target="_blank"
+                    class="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+              
+              <div v-else class="text-center py-6">
+                <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+                <p class="text-sm text-gray-500">No attachments yet</p>
+              </div>
+            </div>
+          </div>
+          
           <!-- Related Tickets Card -->
           <div v-if="relatedTickets.length > 0" class="bg-white rounded-lg shadow-sm border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200">
@@ -584,8 +701,10 @@ const props = defineProps({
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
-// Reactive data
-const ticket = ref(props.ticket)
+// Reactive data - handle both direct ticket object and TicketResource wrapper
+const ticket = ref(props.ticket?.data || props.ticket)
+const loading = ref(!props.ticket) // Show loading if no ticket prop provided
+const error = ref(null)
 const activeTab = ref('messages')
 const messages = ref([])
 const newMessage = ref('')
@@ -594,6 +713,10 @@ const sendingMessage = ref(false)
 const activeTimers = ref([])
 const totalTimeLogged = ref(0)
 const relatedTickets = ref([])
+
+// Debug log to see what we received
+console.log('Ticket Show page initialized with ticket prop:', props.ticket)
+console.log('Extracted ticket data:', ticket.value)
 
 // UI States
 const showActionsMenu = ref(false)
@@ -692,6 +815,8 @@ const canManageTime = computed(() => {
   return user.value?.user_type === 'agent'
 })
 
+const currentUserId = computed(() => user.value?.id)
+
 // Methods
 const getStatusClasses = (status) => {
   const statusMap = {
@@ -748,6 +873,14 @@ const formatDuration = (seconds) => {
   }
 }
 
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
 const formatDescription = (description) => {
   if (!description) return ''
   // Simple HTML formatting for line breaks
@@ -765,21 +898,58 @@ const formatMessage = (content) => {
 
 // Data loading methods
 const loadTicketDetails = async () => {
-  if (!ticket.value?.id) return
+  loading.value = true
+  error.value = null
+  
+  // Get ticket ID from prop or URL
+  let ticketId = ticket.value?.id
+  
+  if (!ticketId) {
+    // Extract ticket ID from current URL path
+    const urlPath = window.location.pathname
+    const matches = urlPath.match(/\/tickets\/(\d+)/)
+    ticketId = matches ? matches[1] : null
+  }
+  
+  if (!ticketId) {
+    error.value = 'No ticket ID found in URL'
+    loading.value = false
+    console.error('No ticket ID available')
+    return
+  }
   
   try {
-    const response = await axios.get(`/api/tickets/${ticket.value.id}`)
-    ticket.value = response.data.data
+    // Only fetch ticket data if we don't already have it from props
+    if (!ticket.value) {
+      console.log('Fetching ticket data for ID:', ticketId)
+      const response = await axios.get(`/api/tickets/${ticketId}`)
+      ticket.value = response.data.data
+      console.log('Loaded ticket data:', ticket.value)
+    }
+    
+    if (!ticket.value) {
+      throw new Error('No ticket data returned from server')
+    }
     
     // Load all related data
     await Promise.all([
       loadMessages(),
-      loadTimeTrackingData(),
-      loadRelatedTickets()
+      loadTimeTrackingData(),  
+      loadRelatedTickets(),
+      loadTicketAttachments()
     ])
     
-  } catch (error) {
-    console.error('Failed to load ticket details:', error)
+  } catch (err) {
+    console.error('Failed to load ticket details:', err)
+    if (err.response?.status === 404) {
+      error.value = 'Ticket not found'
+    } else if (err.response?.status === 403) {
+      error.value = 'You do not have permission to view this ticket'
+    } else {
+      error.value = err.response?.data?.message || err.message || 'Failed to load ticket details'
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -804,7 +974,7 @@ const loadTimeTrackingData = async () => {
     activeTimers.value = timersResponse.data.data || []
     
     // Find current user's active timer
-    const currentUserId = window.auth?.user?.id
+    const currentUserId = user.value?.id
     activeTimer.value = activeTimers.value.find(timer => timer.user_id === currentUserId)
     
     // Load time entries for total calculation
@@ -834,14 +1004,26 @@ const loadRelatedTickets = async () => {
 
 // Action methods
 const sendMessage = async () => {
-  if (!newMessage.value.trim() || sendingMessage.value || !ticket.value?.id) return
+  if ((!newMessage.value.trim() && selectedFiles.value.length === 0) || sendingMessage.value || !ticket.value?.id) return
   
   sendingMessage.value = true
+  uploadingFiles.value = true
   
   try {
-    const response = await axios.post(`/api/tickets/${ticket.value.id}/comments`, {
-      content: newMessage.value.trim(),
-      is_internal: messageIsInternal.value
+    // Create FormData for file upload
+    const formData = new FormData()
+    formData.append('content', newMessage.value.trim() || 'File attachment')
+    formData.append('is_internal', messageIsInternal.value)
+    
+    // Add files to FormData
+    selectedFiles.value.forEach((file, index) => {
+      formData.append(`attachments[${index}]`, file)
+    })
+    
+    const response = await axios.post(`/api/tickets/${ticket.value.id}/comments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
     })
     
     // Add new message to the list
@@ -850,12 +1032,17 @@ const sendMessage = async () => {
     // Reset form
     newMessage.value = ''
     messageIsInternal.value = false
+    selectedFiles.value = []
+    
+    // Reload attachments in sidebar
+    await loadTicketAttachments()
     
   } catch (error) {
     console.error('Failed to send message:', error)
     // TODO: Show error notification
   } finally {
     sendingMessage.value = false
+    uploadingFiles.value = false
   }
 }
 
@@ -966,13 +1153,48 @@ const handleAssignmentChanged = (newAgent) => {
   loadMessages() // Reload to show assignment change activity
 }
 
+// File upload state
+const selectedFiles = ref([])
+const uploadingFiles = ref(false)
+const ticketAttachments = ref([])
+
+// Load all attachments for the ticket
+const loadTicketAttachments = async () => {
+  if (!ticket.value?.id) return
+  
+  try {
+    const response = await axios.get(`/api/tickets/${ticket.value.id}/comments`)
+    
+    // Extract all attachments from messages
+    const allAttachments = []
+    response.data.data.forEach(message => {
+      if (message.attachments && message.attachments.length > 0) {
+        message.attachments.forEach(attachment => {
+          allAttachments.push({
+            ...attachment,
+            message_id: message.id,
+            message_date: message.created_at,
+            uploaded_by: message.user
+          })
+        })
+      }
+    })
+    
+    ticketAttachments.value = allAttachments.reverse() // Newest first
+  } catch (error) {
+    console.error('Failed to load ticket attachments:', error)
+  }
+}
+
 // File upload handler
 const handleFileUpload = async (event) => {
   const files = Array.from(event.target.files)
   if (files.length === 0) return
   
-  // TODO: Implement file upload functionality
-  console.log('Files to upload:', files)
+  selectedFiles.value = files
+  
+  // Clear the input to allow re-selecting the same files if needed
+  event.target.value = ''
 }
 
 // Action menu methods
@@ -1003,7 +1225,24 @@ const handleClickOutside = (event) => {
 
 // Lifecycle
 onMounted(() => {
-  loadTicketDetails()
+  // If we have a ticket prop, just load related data. Otherwise, load everything.
+  if (props.ticket) {
+    console.log('Using ticket from props:', props.ticket)
+    loading.value = false
+    // Load related data for the existing ticket
+    Promise.all([
+      loadMessages(),
+      loadTimeTrackingData(),
+      loadRelatedTickets(),
+      loadTicketAttachments()
+    ]).catch(err => {
+      console.error('Failed to load related data:', err)
+    })
+  } else {
+    console.log('No ticket prop provided, will fetch from API')
+    loadTicketDetails()
+  }
+  
   document.addEventListener('click', handleClickOutside)
 })
 

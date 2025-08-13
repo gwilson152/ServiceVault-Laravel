@@ -115,6 +115,7 @@ class SetupController extends Controller
             'password' => Hash::make($request->admin_password),
             'email_verified_at' => now(),
             'account_id' => $account->id,
+            'user_type' => 'agent', // Admin should be an agent to access timer functionality
             'role_template_id' => $superAdminTemplate->id,
         ]);
 

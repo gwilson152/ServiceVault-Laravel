@@ -186,6 +186,7 @@ import { usePage } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
 import SimpleAccountUserSelector from '@/Components/UI/SimpleAccountUserSelector.vue'
 import axios from 'axios'
+import { useCreateTicketMutation } from '@/Composables/queries/useTicketsQuery'
 
 // Props
 const props = defineProps({
@@ -202,6 +203,9 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits(['close', 'created'])
+
+// TanStack Query Mutation
+const createTicketMutation = useCreateTicketMutation()
 
 // State
 const isSubmitting = ref(false)
@@ -293,10 +297,8 @@ const submitForm = async () => {
       delete payload.account_id
     }
 
-    const response = await axios.post('/api/tickets', payload)
-    
-    // Success
-    const newTicket = response.data.data
+    // Use TanStack Query mutation
+    const newTicket = await createTicketMutation.mutateAsync(payload)
     
     // Start timer if requested
     if (form.start_timer) {
@@ -307,7 +309,11 @@ const submitForm = async () => {
     resetForm()
   } catch (error) {
     console.error('Error creating ticket:', error)
-    errors.value = { general: 'Network error. Please try again.' }
+    if (error.response?.data?.errors) {
+      errors.value = error.response.data.errors
+    } else {
+      errors.value = { general: 'Failed to create ticket. Please try again.' }
+    }
   } finally {
     isSubmitting.value = false
   }

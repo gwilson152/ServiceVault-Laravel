@@ -3,14 +3,15 @@
 Functional specifications and user guides for Service Vault features.
 
 ## Core Features
-- **[Agent/Customer Architecture](agent-customer-architecture.md)** - Enhanced user type system with role-based time entry creation ✅ NEW
-- **[Business Account Management](business-account-management.md)** - Comprehensive B2B customer relationship management ✅ UPDATED
-- **[User Management](user-management.md)** - Invitation-based user onboarding with visibility controls ✅ COMPLETED
+- **[Agent/Customer Architecture](agent-customer-architecture.md)** - Enhanced user type system with role-based time entry creation ✅ COMPLETED
+- **[Business Account Management](business-account-management.md)** - Comprehensive B2B customer relationship management with full detail pages ✅ REFINED
+- **[User Management](user-management.md)** - Invitation-based user onboarding with complete acceptance workflow ✅ REFINED  
 - **[Roles & Permissions](roles-permissions.md)** - Three-dimensional permission system with dashboard preview ✅ COMPLETED
-- **[Time Tracking](time-tracking.md)** - Enhanced timer assignment system with Agent/Customer integration ✅ UPDATED
-- **[Service Tickets](service-tickets.md)** - Comprehensive ticket workflow system ✅ NEW
-- **[Ticket Configuration](ticket-configuration.md)** - Drag-drop workflow management with optimistic UI updates ✅ NEW
-- **[Widget-Based Dashboard](widget-dashboard.md)** - Dynamic dashboard with auto-discovery ✅ NEW
+- **[Time Tracking](time-tracking.md)** - Enhanced timer assignment system with refined overlay functionality ✅ REFINED
+- **[Service Tickets](service-tickets.md)** - Comprehensive ticket workflow system with fully functional detail pages ✅ REFINED
+- **[Ticket Configuration](ticket-configuration.md)** - Drag-drop workflow management with optimistic UI updates ✅ COMPLETED
+- **[Widget-Based Dashboard](widget-dashboard.md)** - Dynamic dashboard with auto-discovery and complete widget registry ✅ REFINED
+- **[Customer Portal](customer-portal.md)** - Complete customer interface with dashboard, projects, and billing access ✅ NEW
 
 ## Advanced Features
 - **[Billing & Invoicing](billing-invoicing.md)** - Rate management, invoice generation

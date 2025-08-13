@@ -752,22 +752,101 @@ class TicketController extends Controller
             return response()->json(['error' => 'Cannot view this ticket.'], 403);
         }
         
-        $query = $ticket->activities()
+        $activities = collect();
+        
+        // Get ticket creation activity
+        $activities->push([
+            'id' => 'ticket-created',
+            'type' => 'ticket_created',
+            'description' => 'Ticket was created',
+            'created_at' => $ticket->created_at,
+            'user' => $ticket->customer ? [
+                'id' => $ticket->customer->id,
+                'name' => $ticket->customer->name
+            ] : null,
+            'metadata' => [
+                'priority' => $ticket->priority,
+                'status' => $ticket->status
+            ]
+        ]);
+        
+        // Get comments as activities
+        $comments = $ticket->comments()
             ->with('user:id,name')
-            ->orderBy('created_at', 'desc');
+            ->get();
+            
+        foreach ($comments as $comment) {
+            $activities->push([
+                'id' => 'comment-' . $comment->id,
+                'type' => $comment->is_internal ? 'internal_comment' : 'comment',
+                'description' => $comment->is_internal ? 'Added internal note' : 'Added comment',
+                'created_at' => $comment->created_at,
+                'user' => $comment->user ? [
+                    'id' => $comment->user->id,
+                    'name' => $comment->user->name
+                ] : null,
+                'metadata' => [
+                    'content_preview' => substr(strip_tags($comment->content), 0, 100),
+                    'has_attachments' => !empty($comment->attachments)
+                ]
+            ]);
+        }
+        
+        // Get time entries as activities
+        $timeEntries = $ticket->timeEntries()
+            ->with('user:id,name')
+            ->get();
+            
+        foreach ($timeEntries as $timeEntry) {
+            $activities->push([
+                'id' => 'time-' . $timeEntry->id,
+                'type' => 'time_logged',
+                'description' => 'Logged time: ' . $this->formatDuration($timeEntry->duration),
+                'created_at' => $timeEntry->created_at,
+                'user' => $timeEntry->user ? [
+                    'id' => $timeEntry->user->id,
+                    'name' => $timeEntry->user->name
+                ] : null,
+                'metadata' => [
+                    'duration' => $timeEntry->duration,
+                    'description' => $timeEntry->description,
+                    'billable' => $timeEntry->billable
+                ]
+            ]);
+        }
+        
+        // Sort activities by date (newest first)
+        $activities = $activities->sortByDesc('created_at')->values();
         
         // Apply filters
         if ($request->has('type')) {
-            $query->where('type', $request->type);
+            $activities = $activities->where('type', $request->type)->values();
         }
         
         if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
+            $activities = $activities->where('user.id', $request->user_id)->values();
         }
         
-        $activities = $query->paginate($request->input('per_page', 20));
+        // Manual pagination
+        $page = $request->input('page', 1);
+        $perPage = $request->input('per_page', 20);
+        $total = $activities->count();
+        $items = $activities->forPage($page, $perPage)->values();
         
-        return response()->json($activities);
+        return response()->json([
+            'data' => $items,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'last_page' => ceil($total / $perPage)
+        ]);
+    }
+    
+    private function formatDuration($seconds): string
+    {
+        if ($seconds < 60) return $seconds . 's';
+        if ($seconds < 3600) return floor($seconds / 60) . 'm';
+        return floor($seconds / 3600) . 'h ' . floor(($seconds % 3600) / 60) . 'm';
     }
     
     /**
@@ -781,14 +860,59 @@ class TicketController extends Controller
             return response()->json(['error' => 'Cannot view this ticket.'], 403);
         }
         
+        // Get counts from actual data
+        $commentsCount = $ticket->comments()->count();
+        $timeEntriesCount = $ticket->timeEntries()->count();
+        
+        // Get unique participants (users who have interacted with the ticket)
+        $commentUsers = $ticket->comments()->distinct()->pluck('user_id');
+        $timeEntryUsers = $ticket->timeEntries()->distinct()->pluck('user_id');
+        $allParticipants = $commentUsers->merge($timeEntryUsers)->unique();
+        
+        // Add ticket creator if exists
+        if ($ticket->customer_id) {
+            $allParticipants->push($ticket->customer_id);
+        }
+        
         $stats = [
-            'total_activities' => $ticket->activities()->count(),
-            'comments_count' => $ticket->activities()->where('type', 'comment')->count(),
-            'status_changes' => $ticket->activities()->where('type', 'status_change')->count(),
-            'participants_count' => $ticket->activities()->distinct('user_id')->count('user_id')
+            'total_activities' => 1 + $commentsCount + $timeEntriesCount, // +1 for ticket creation
+            'comments_count' => $commentsCount,
+            'internal_comments_count' => $ticket->comments()->where('is_internal', true)->count(),
+            'time_entries_count' => $timeEntriesCount,
+            'total_time_logged' => $ticket->timeEntries()->sum('duration'),
+            'participants_count' => $allParticipants->filter()->count(),
+            'last_activity' => $this->getLastActivityDate($ticket),
+            'activity_types' => [
+                'ticket_created' => 1,
+                'comment' => $ticket->comments()->where('is_internal', false)->count(),
+                'internal_comment' => $ticket->comments()->where('is_internal', true)->count(),
+                'time_logged' => $timeEntriesCount
+            ]
         ];
         
         return response()->json(['data' => $stats]);
+    }
+    
+    private function getLastActivityDate(Ticket $ticket)
+    {
+        $dates = collect([
+            $ticket->created_at,
+            $ticket->updated_at
+        ]);
+        
+        // Add last comment date
+        $lastComment = $ticket->comments()->latest()->first();
+        if ($lastComment) {
+            $dates->push($lastComment->created_at);
+        }
+        
+        // Add last time entry date  
+        $lastTimeEntry = $ticket->timeEntries()->latest()->first();
+        if ($lastTimeEntry) {
+            $dates->push($lastTimeEntry->created_at);
+        }
+        
+        return $dates->max();
     }
     
     /**
@@ -872,13 +996,34 @@ class TicketController extends Controller
             return response()->json(['error' => 'Cannot view this ticket.'], 403);
         }
         
-        $invoices = $ticket->timeEntries()
-            ->whereNotNull('invoice_id')
-            ->with('invoice')
-            ->get()
-            ->pluck('invoice')
-            ->unique('id')
-            ->values();
+        // Get invoices that contain time entries for this ticket
+        $invoiceIds = \DB::table('invoice_line_items')
+            ->join('time_entries', 'invoice_line_items.time_entry_id', '=', 'time_entries.id')
+            ->where('time_entries.ticket_id', $ticket->id)
+            ->whereNotNull('invoice_line_items.time_entry_id')
+            ->distinct()
+            ->pluck('invoice_line_items.invoice_id');
+        
+        // Also get invoices that contain ticket addons for this ticket
+        $ticketAddonInvoiceIds = \DB::table('invoice_line_items')
+            ->join('ticket_addons', 'invoice_line_items.ticket_addon_id', '=', 'ticket_addons.id')
+            ->where('ticket_addons.ticket_id', $ticket->id)
+            ->whereNotNull('invoice_line_items.ticket_addon_id')
+            ->distinct()
+            ->pluck('invoice_line_items.invoice_id');
+        
+        // Combine and get unique invoice IDs
+        $allInvoiceIds = $invoiceIds->merge($ticketAddonInvoiceIds)->unique();
+        
+        if ($allInvoiceIds->isEmpty()) {
+            return response()->json(['data' => []]);
+        }
+        
+        // Get the actual invoices with account information
+        $invoices = \App\Models\Invoice::whereIn('id', $allInvoiceIds)
+            ->with(['account:id,name', 'user:id,name'])
+            ->orderBy('invoice_date', 'desc')
+            ->get();
         
         return response()->json(['data' => $invoices]);
     }
@@ -1005,5 +1150,64 @@ class TicketController extends Controller
         ];
         
         return response()->json(['data' => $statuses]);
+    }
+    
+    /**
+     * Get related tickets for a specific ticket
+     */
+    public function relatedTickets(Request $request, Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        // Check permissions
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+        
+        // Find related tickets based on:
+        // 1. Same account
+        // 2. Same customer 
+        // 3. Similar keywords in title/description
+        $relatedTickets = Ticket::query()
+            ->with(['account:id,name'])
+            ->where('id', '!=', $ticket->id) // Exclude current ticket
+            ->where(function ($query) use ($ticket) {
+                // Same account tickets
+                $query->where('account_id', $ticket->account_id);
+                
+                // Same customer tickets (if customer_id exists)
+                if ($ticket->customer_id) {
+                    $query->orWhere('customer_id', $ticket->customer_id);
+                }
+                
+                // Similar title tickets (basic keyword matching)
+                if ($ticket->title) {
+                    $keywords = array_filter(explode(' ', $ticket->title), function($word) {
+                        return strlen($word) > 3; // Only words longer than 3 chars
+                    });
+                    
+                    foreach (array_slice($keywords, 0, 3) as $keyword) { // Limit to 3 keywords
+                        $query->orWhere('title', 'LIKE', '%' . $keyword . '%');
+                    }
+                }
+            })
+            ->limit(10) // Limit to 10 related tickets
+            ->get()
+            ->map(function ($relatedTicket) {
+                return [
+                    'id' => $relatedTicket->id,
+                    'ticket_number' => $relatedTicket->ticket_number,
+                    'title' => $relatedTicket->title,
+                    'status' => $relatedTicket->status,
+                    'priority' => $relatedTicket->priority,
+                    'created_at' => $relatedTicket->created_at,
+                    'account' => $relatedTicket->account ? [
+                        'id' => $relatedTicket->account->id,
+                        'name' => $relatedTicket->account->name,
+                    ] : null,
+                ];
+            });
+        
+        return response()->json(['data' => $relatedTickets]);
     }
 }

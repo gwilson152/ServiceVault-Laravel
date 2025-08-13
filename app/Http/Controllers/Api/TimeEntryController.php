@@ -518,4 +518,67 @@ class TimeEntryController extends Controller
             
         return $total > 0 ? ($approved / $total * 100) : 0;
     }
+
+    /**
+     * Get time entries for a specific ticket
+     */
+    public function forTicket(Request $request, \App\Models\Ticket $ticket): JsonResponse
+    {
+        $user = $request->user();
+        
+        // Check if user can view this ticket
+        if (!$ticket->canBeViewedBy($user)) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+        
+        // Get time entries for this ticket
+        $query = TimeEntry::with(['user:id,name,email', 'billingRate:id,rate,currency'])
+            ->where('ticket_id', $ticket->id)
+            ->orderBy('started_at', 'desc');
+        
+        // Apply pagination
+        $perPage = min($request->get('per_page', 15), 50);
+        $timeEntries = $query->paginate($perPage);
+        
+        // Calculate totals
+        $totalDuration = TimeEntry::where('ticket_id', $ticket->id)->sum('duration');
+        $totalCost = TimeEntry::where('ticket_id', $ticket->id)
+            ->whereHas('billingRate')
+            ->get()
+            ->sum(function ($entry) {
+                return $entry->billingRate ? ($entry->duration / 60) * $entry->billingRate->rate : 0;
+            });
+        
+        return response()->json([
+            'data' => TimeEntryResource::collection($timeEntries->items()),
+            'pagination' => [
+                'current_page' => $timeEntries->currentPage(),
+                'per_page' => $timeEntries->perPage(),
+                'total' => $timeEntries->total(),
+                'last_page' => $timeEntries->lastPage(),
+                'has_more' => $timeEntries->hasMorePages(),
+            ],
+            'totals' => [
+                'total_duration' => $totalDuration,
+                'total_duration_formatted' => $this->formatDuration($totalDuration * 60), // Convert minutes to seconds for formatting
+                'total_cost' => round($totalCost, 2),
+                'entries_count' => $timeEntries->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Format duration in seconds to human-readable format
+     */
+    private function formatDuration(int $seconds): string
+    {
+        $hours = floor($seconds / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+        
+        if ($hours > 0) {
+            return "{$hours}h {$minutes}m";
+        } else {
+            return "{$minutes}m";
+        }
+    }
 }

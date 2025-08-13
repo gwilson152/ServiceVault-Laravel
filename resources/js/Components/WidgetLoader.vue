@@ -105,6 +105,9 @@ const widgetComponents = {
   'TicketTimerStatsWidget': () => import('@/Components/Widgets/TicketTimerStatsWidget.vue'),
   'BillingOverviewWidget': () => import('@/Components/Widgets/BillingOverviewWidget.vue'),
   'AccountActivityWidget': () => import('@/Components/Widgets/AccountActivityWidget.vue'),
+  'PaymentTrackingWidget': () => import('@/Components/Widgets/PaymentTrackingWidget.vue'),
+  'BillingRatesWidget': () => import('@/Components/Widgets/BillingRatesWidget.vue'),
+  'InvoiceStatusWidget': () => import('@/Components/Widgets/InvoiceStatusWidget.vue'),
   // TODO: Create these widgets when needed:
   // 'TeamPerformanceWidget': () => import('@/Components/Widgets/TeamPerformanceWidget.vue'),
   // 'AccountUsersWidget': () => import('@/Components/Widgets/AccountUsersWidget.vue'),
