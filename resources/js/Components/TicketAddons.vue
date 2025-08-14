@@ -48,12 +48,7 @@
                 <div
                     v-for="addon in addons"
                     :key="addon.id"
-                    class="border border-gray-200 rounded-lg p-4"
-                    :class="{
-                        'border-green-200 bg-green-50': addon.status === 'approved',
-                        'border-red-200 bg-red-50': addon.status === 'rejected',
-                        'border-yellow-200 bg-yellow-50': addon.status === 'pending'
-                    }"
+                    class="border border-gray-200 rounded-lg p-4 bg-white"
                 >
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
@@ -62,16 +57,16 @@
                                     {{ addon.name }}
                                 </h4>
                                 <span
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                    :class="getStatusClasses(addon.status)"
-                                >
-                                    {{ addon.status.charAt(0).toUpperCase() + addon.status.slice(1) }}
-                                </span>
-                                <span
                                     v-if="addon.category"
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                                 >
                                     {{ getCategoryLabel(addon.category) }}
+                                </span>
+                                <span
+                                    v-if="addon.is_billable"
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                >
+                                    Billable
                                 </span>
                             </div>
                             
@@ -91,57 +86,29 @@
                             <div class="mt-2 flex items-center justify-between">
                                 <div class="text-sm text-gray-500">
                                     Added by {{ addon.added_by?.name || 'Unknown' }} on {{ formatDate(addon.created_at) }}
-                                    <span v-if="addon.approved_by && addon.approved_at">
-                                        • {{ addon.status === 'approved' ? 'Approved' : 'Rejected' }} by {{ addon.approved_by.name }} on {{ formatDate(addon.approved_at) }}
-                                    </span>
                                 </div>
                                 <div class="text-lg font-semibold text-gray-900">
                                     {{ formatPrice(addon.total_amount) }}
                                 </div>
                             </div>
-                            
-                            <div v-if="addon.approval_notes" class="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700">
-                                <strong>Notes:</strong> {{ addon.approval_notes }}
-                            </div>
                         </div>
 
                         <!-- Actions Menu -->
-                        <div class="flex items-center space-x-2 ml-4">
-                            <!-- Approval Actions -->
-                            <div v-if="canApproveAddons && addon.status === 'pending'" class="flex space-x-2">
-                                <button
-                                    @click="approveAddon(addon)"
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded hover:bg-green-200"
-                                >
-                                    <CheckIcon class="h-3 w-3 mr-1" />
-                                    Approve
-                                </button>
-                                <button
-                                    @click="rejectAddon(addon)"
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded hover:bg-red-200"
-                                >
-                                    <XMarkIcon class="h-3 w-3 mr-1" />
-                                    Reject
-                                </button>
-                            </div>
-
-                            <!-- Edit/Delete Actions -->
-                            <div v-if="canManageAddons && (addon.status === 'pending' || addon.status === 'rejected')" class="flex space-x-2">
-                                <button
-                                    @click="editAddon(addon)"
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded hover:bg-indigo-200"
-                                >
-                                    <PencilIcon class="h-3 w-3 mr-1" />
-                                    Edit
-                                </button>
-                                <button
-                                    @click="deleteAddon(addon)"
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded hover:bg-red-200"
-                                >
-                                    <TrashIcon class="h-3 w-3 mr-1" />
-                                    Delete
-                                </button>
-                            </div>
+                        <div v-if="canManageAddons" class="flex items-center space-x-2 ml-4">
+                            <button
+                                @click="editAddon(addon)"
+                                class="inline-flex items-center px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded hover:bg-indigo-200"
+                            >
+                                <PencilIcon class="h-3 w-3 mr-1" />
+                                Edit
+                            </button>
+                            <button
+                                @click="deleteAddon(addon)"
+                                class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded hover:bg-red-200"
+                            >
+                                <TrashIcon class="h-3 w-3 mr-1" />
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -149,17 +116,13 @@
                 <!-- Summary -->
                 <div class="border-t border-gray-200 pt-4 mt-6">
                     <div class="bg-gray-50 rounded-lg p-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
-                                <span class="text-gray-500">Pending:</span>
-                                <span class="ml-2 font-medium">{{ formatPrice(pendingTotal) }}</span>
+                                <span class="text-gray-500">Total Items:</span>
+                                <span class="ml-2 font-medium">{{ addons.length }}</span>
                             </div>
                             <div>
-                                <span class="text-gray-500">Approved:</span>
-                                <span class="ml-2 font-medium text-green-600">{{ formatPrice(approvedTotal) }}</span>
-                            </div>
-                            <div>
-                                <span class="text-gray-500">Total:</span>
+                                <span class="text-gray-500">Total Cost:</span>
                                 <span class="ml-2 font-semibold text-lg">{{ formatPrice(totalAddonCost) }}</span>
                             </div>
                         </div>
@@ -175,23 +138,13 @@
             @close="showAddAddonModal = false"
             @added="handleAddonAdded"
         />
-
-        <!-- Approval Modal -->
-        <ApprovalModal
-            :show="showApprovalModal"
-            :addon="selectedAddon"
-            :is-rejection="isRejection"
-            @close="closeApprovalModal"
-            @approved="handleApprovalAction"
-        />
     </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { PlusIcon, CubeIcon, CheckIcon, XMarkIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, CubeIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import AddAddonModal from '@/Components/Modals/AddAddonModal.vue'
-import ApprovalModal from '@/Components/Modals/ApprovalModal.vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -202,10 +155,6 @@ const props = defineProps({
     canManageAddons: {
         type: Boolean,
         default: false
-    },
-    canApproveAddons: {
-        type: Boolean,
-        default: false
     }
 })
 
@@ -214,9 +163,6 @@ const emit = defineEmits(['addon-updated'])
 const loading = ref(false)
 const addons = ref([])
 const showAddAddonModal = ref(false)
-const showApprovalModal = ref(false)
-const selectedAddon = ref(null)
-const isRejection = ref(false)
 
 const categoryLabels = {
     product: 'Product',
@@ -229,18 +175,6 @@ const categoryLabels = {
 }
 
 // Computed values
-const pendingTotal = computed(() => {
-    return addons.value
-        .filter(addon => addon.status === 'pending' && addon.is_billable)
-        .reduce((total, addon) => total + parseFloat(addon.total_amount), 0)
-})
-
-const approvedTotal = computed(() => {
-    return addons.value
-        .filter(addon => addon.status === 'approved' && addon.is_billable)
-        .reduce((total, addon) => total + parseFloat(addon.total_amount), 0)
-})
-
 const totalAddonCost = computed(() => {
     return addons.value
         .filter(addon => addon.is_billable)
@@ -252,15 +186,6 @@ const getCategoryLabel = (category) => {
     return categoryLabels[category] || category.charAt(0).toUpperCase() + category.slice(1)
 }
 
-const getStatusClasses = (status) => {
-    const classes = {
-        pending: 'bg-yellow-100 text-yellow-800',
-        approved: 'bg-green-100 text-green-800',
-        rejected: 'bg-red-100 text-red-800',
-        billed: 'bg-blue-100 text-blue-800'
-    }
-    return classes[status] || 'bg-gray-100 text-gray-800'
-}
 
 const formatPrice = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -300,33 +225,6 @@ const handleAddonAdded = (newAddon) => {
     emit('addon-updated')
 }
 
-// Approval actions
-const approveAddon = (addon) => {
-    selectedAddon.value = addon
-    isRejection.value = false
-    showApprovalModal.value = true
-}
-
-const rejectAddon = (addon) => {
-    selectedAddon.value = addon
-    isRejection.value = true
-    showApprovalModal.value = true
-}
-
-const closeApprovalModal = () => {
-    showApprovalModal.value = false
-    selectedAddon.value = null
-    isRejection.value = false
-}
-
-const handleApprovalAction = (updatedAddon) => {
-    const index = addons.value.findIndex(a => a.id === updatedAddon.id)
-    if (index !== -1) {
-        addons.value[index] = updatedAddon
-    }
-    emit('addon-updated')
-    closeApprovalModal()
-}
 
 // Edit addon
 const editAddon = (addon) => {

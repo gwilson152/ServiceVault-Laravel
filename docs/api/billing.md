@@ -482,10 +482,32 @@ DELETE /api/billing/rates/{id}
 
 ## Addon Templates API
 
+### Get Addon Categories
+
+```http
+GET /api/settings/addon-categories
+```
+
+#### Response
+
+```json
+{
+  "data": {
+    "product": "Product",
+    "service": "Service", 
+    "license": "License",
+    "hardware": "Hardware",
+    "software": "Software",
+    "expense": "Expense",
+    "other": "Other"
+  }
+}
+```
+
 ### List Addon Templates
 
 ```http
-GET /api/billing/addons
+GET /api/addon-templates
 ```
 
 #### Query Parameters
@@ -521,7 +543,25 @@ GET /api/billing/addons
 ### Create Addon Template
 
 ```http
-POST /api/billing/addons
+POST /api/addon-templates
+```
+
+### Get Addon Template
+
+```http
+GET /api/addon-templates/{id}
+```
+
+### Update Addon Template
+
+```http
+PUT /api/addon-templates/{id}
+```
+
+### Delete Addon Template
+
+```http
+DELETE /api/addon-templates/{id}
 ```
 
 #### Request Body
@@ -785,4 +825,4 @@ POST /api/billing/payments/bulk
 
 **Service Vault Billing API** - Complete financial management API for B2B service platforms.
 
-*Last Updated: August 12, 2025 - Phase 13B Complete*
+*Last Updated: August 14, 2025 - Phase 15A Refinements: Dynamic Addon Categories & Settings Integration*

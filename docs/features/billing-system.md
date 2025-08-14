@@ -77,10 +77,12 @@ $billingRate = [
 ```
 
 #### Addon Templates
-- **Predefined Services**: Template library for common billing items
-- **Custom Addons**: Create custom billing items for specific needs
+- **Dynamic Template Management**: Full CRUD operations for addon templates with API-driven categories
+- **Settings Integration**: Addon categories managed through settings API instead of hardcoded values
+- **Product/Service Focus**: Templates designed for products and services rather than time-based billing
 - **Approval Workflows**: Multi-stage approval for addon billing
-- **Category Management**: Organize addons by service categories
+- **Category Management**: Organize addons by configurable service categories from settings
+- **Cost vs Price Distinction**: Internal cost tracking with customer-facing price display
 
 ## User Interface
 
@@ -100,11 +102,16 @@ $billingRate = [
 
 ### 2. Settings Integration (`/settings/billing`)
 
-#### Configuration Sections
-- **Company Information**: Business details for invoice headers
-- **Invoice Settings**: Number prefixes, payment terms, tax configuration
-- **Billing Rates**: Rate management and configuration
-- **Addon Templates**: Service addon library management
+#### Configuration Sections (Tabbed Interface)
+- **Billing Rates Tab**: Complete CRUD operations for hourly billing rate management
+- **Addon Templates Tab**: Dynamic addon template management with category filtering and CRUD operations
+- **Invoice Settings Tab**: Invoice numbering, payment terms, and tax configuration
+
+#### Key Features
+- **TanStack Query Integration**: Optimistic updates, caching, and error handling
+- **Modal-based Editing**: Professional modal interfaces for all CRUD operations
+- **Dynamic Categories**: Addon categories loaded from API instead of hardcoded values
+- **Responsive Design**: Modern card-based layouts with Headless UI components
 
 ### 3. Reports & Analytics (`/reports`)
 
@@ -246,6 +253,15 @@ PUT    /api/billing/rates/{id}         # Update rate
 DELETE /api/billing/rates/{id}         # Delete rate
 ```
 
+#### Addon Templates & Categories
+```
+GET    /api/addon-templates            # List addon templates
+POST   /api/addon-templates            # Create template
+PUT    /api/addon-templates/{id}       # Update template
+DELETE /api/addon-templates/{id}       # Delete template
+GET    /api/settings/addon-categories  # Get addon categories (product, service, license, etc.)
+```
+
 ### API Token Abilities
 ```
 billing:read                 # View billing data
@@ -383,4 +399,4 @@ INVOICE_PREFIX=INV-
 
 **Service Vault Billing System** - Complete enterprise-grade financial management for B2B service delivery platforms.
 
-*Last Updated: August 12, 2025 - Phase 13B Complete*
+*Last Updated: August 14, 2025 - Phase 15A Refinements: Dynamic Addon Categories & Settings Integration*

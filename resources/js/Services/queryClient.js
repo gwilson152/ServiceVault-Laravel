@@ -101,6 +101,23 @@ export const queryKeys = {
     permissions: ['roleTemplates', 'permissions'],
     widgets: (id) => ['roleTemplates', 'widgets', id],
   },
+  
+  // Billing and Financial
+  billing: {
+    all: ['billing'],
+    config: ['billing', 'config'],
+    settings: ['billing', 'settings'],
+    rates: ['billing', 'rates'],
+    rateById: (id) => ['billing', 'rates', id],
+  },
+  
+  // Addon Templates
+  addonTemplates: {
+    all: ['addonTemplates'],
+    list: (filters) => ['addonTemplates', 'list', filters],
+    byId: (id) => ['addonTemplates', 'byId', id],
+    categories: ['addonTemplates', 'categories'],
+  },
 }
 
 // Helper functions for query invalidation patterns
@@ -136,6 +153,12 @@ export const invalidateQueries = {
   
   // Invalidate role template queries
   roleTemplates: () => queryClient.invalidateQueries({ queryKey: ['roleTemplates'] }),
+  
+  // Invalidate billing queries
+  billing: () => queryClient.invalidateQueries({ queryKey: ['billing'] }),
+  
+  // Invalidate addon template queries
+  addonTemplates: () => queryClient.invalidateQueries({ queryKey: ['addonTemplates'] }),
 }
 
 export default queryClient

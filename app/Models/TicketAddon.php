@@ -25,7 +25,8 @@ class TicketAddon extends Model
         'discount_amount',
         'tax_rate',
         'total_amount',
-        'billable',
+        'is_billable',
+        'is_taxable',
         'billing_category',
         'addon_template_id',
         'status',
@@ -41,9 +42,19 @@ class TicketAddon extends Model
         'discount_amount' => 'decimal:2',
         'tax_rate' => 'decimal:4',
         'total_amount' => 'decimal:2',
-        'billable' => 'boolean',
+        'is_billable' => 'boolean',
+        'is_taxable' => 'boolean',
         'approved_at' => 'datetime',
         'metadata' => 'array'
+    ];
+
+    protected $attributes = [
+        'status' => 'approved',
+        'is_billable' => true,
+        'is_taxable' => true,
+        'quantity' => 1,
+        'discount_amount' => 0,
+        'tax_rate' => 0
     ];
 
 

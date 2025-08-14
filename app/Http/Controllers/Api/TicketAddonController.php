@@ -67,7 +67,7 @@ class TicketAddonController extends Controller
         $user = $request->user();
         
         $validated = $request->validate([
-            'service_ticket_id' => 'required|exists:service_tickets,id',
+            'ticket_id' => 'required|exists:service_tickets,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category' => 'required|string|in:product,service,expense,license,hardware,software,other',
@@ -84,7 +84,7 @@ class TicketAddonController extends Controller
         ]);
         
         // Check permissions on the ticket
-        $ticket = Ticket::findOrFail($validated['service_ticket_id']);
+        $ticket = Ticket::findOrFail($validated['ticket_id']);
         $this->authorize('update', $ticket);
         
         // Add user context
@@ -95,6 +95,11 @@ class TicketAddonController extends Controller
         $validated['tax_rate'] = $validated['tax_rate'] ?? 0.0000;
         $validated['is_billable'] = $validated['is_billable'] ?? true;
         $validated['is_taxable'] = $validated['is_taxable'] ?? true;
+        
+        // Auto-approve addons - no approval workflow needed
+        $validated['status'] = 'approved';
+        $validated['approved_by_user_id'] = $user->id;
+        $validated['approved_at'] = now();
         
         $addon = TicketAddon::create($validated);
         $addon->load(['addedBy:id,name', 'template:id,name']);

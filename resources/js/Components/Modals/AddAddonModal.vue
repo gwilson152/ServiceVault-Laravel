@@ -63,11 +63,11 @@
                                                 </div>
                                             </div>
 
-                                            <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                                            <div class="space-y-4">
                                                 <!-- Name -->
-                                                <div class="sm:col-span-2">
+                                                <div>
                                                     <label for="name" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        Name <span class="text-red-500">*</span>
+                                                        Item Name <span class="text-red-500">*</span>
                                                     </label>
                                                     <div class="mt-2">
                                                         <input
@@ -75,204 +75,117 @@
                                                             v-model="form.name"
                                                             type="text"
                                                             required
+                                                            placeholder="e.g., SSL Certificate, Additional Storage, Setup Service"
                                                             class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                                                         />
                                                     </div>
                                                 </div>
 
                                                 <!-- Description -->
-                                                <div class="sm:col-span-2">
+                                                <div>
                                                     <label for="description" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        Description
+                                                        Description (Optional)
                                                     </label>
                                                     <div class="mt-2">
                                                         <textarea
                                                             id="description"
                                                             v-model="form.description"
-                                                            rows="3"
+                                                            rows="2"
+                                                            placeholder="Brief description of this addon..."
                                                             class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                                                         />
                                                     </div>
                                                 </div>
 
-                                                <!-- Category -->
-                                                <div>
-                                                    <label for="category" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        Category <span class="text-red-500">*</span>
-                                                    </label>
-                                                    <div class="mt-2">
-                                                        <select
-                                                            id="category"
-                                                            v-model="form.category"
-                                                            required
-                                                            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                                                        >
-                                                            <option value="">Select category...</option>
-                                                            <option value="product">Product</option>
-                                                            <option value="service">Service</option>
-                                                            <option value="license">License</option>
-                                                            <option value="hardware">Hardware</option>
-                                                            <option value="software">Software</option>
-                                                            <option value="expense">Expense</option>
-                                                            <option value="other">Other</option>
-                                                        </select>
+                                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                                    <!-- Category -->
+                                                    <div>
+                                                        <label for="category" class="block text-sm font-medium leading-6 text-gray-900">
+                                                            Category
+                                                        </label>
+                                                        <div class="mt-2">
+                                                            <select
+                                                                id="category"
+                                                                v-model="form.category"
+                                                                class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                            >
+                                                                <option 
+                                                                    v-for="(label, key) in addonCategories" 
+                                                                    :key="key" 
+                                                                    :value="key"
+                                                                >
+                                                                    {{ label }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
                                                     </div>
-                                                </div>
 
-                                                <!-- SKU -->
-                                                <div>
-                                                    <label for="sku" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        SKU
-                                                    </label>
-                                                    <div class="mt-2">
-                                                        <input
-                                                            id="sku"
-                                                            v-model="form.sku"
-                                                            type="text"
-                                                            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <!-- Unit Price -->
-                                                <div>
-                                                    <label for="unit_price" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        Unit Price <span class="text-red-500">*</span>
-                                                    </label>
-                                                    <div class="mt-2">
-                                                        <div class="relative">
-                                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                                <span class="text-gray-500 sm:text-sm">$</span>
+                                                    <!-- Unit Price -->
+                                                    <div>
+                                                        <label for="unit_price" class="block text-sm font-medium leading-6 text-gray-900">
+                                                            Price <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <div class="mt-2">
+                                                            <div class="relative">
+                                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                                    <span class="text-gray-500 sm:text-sm">$</span>
+                                                                </div>
+                                                                <input
+                                                                    id="unit_price"
+                                                                    v-model="form.unit_price"
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    required
+                                                                    placeholder="0.00"
+                                                                    class="block w-full rounded-md border-0 py-1.5 pl-8 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                                />
                                                             </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Quantity -->
+                                                    <div>
+                                                        <label for="quantity" class="block text-sm font-medium leading-6 text-gray-900">
+                                                            Quantity <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <div class="mt-2">
                                                             <input
-                                                                id="unit_price"
-                                                                v-model="form.unit_price"
+                                                                id="quantity"
+                                                                v-model="form.quantity"
                                                                 type="number"
                                                                 step="0.01"
-                                                                min="0"
+                                                                min="0.01"
                                                                 required
-                                                                class="block w-full rounded-md border-0 py-1.5 pl-8 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                                placeholder="1"
+                                                                class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                                                             />
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <!-- Quantity -->
-                                                <div>
-                                                    <label for="quantity" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        Quantity <span class="text-red-500">*</span>
-                                                    </label>
-                                                    <div class="mt-2">
+                                                <!-- Checkboxes -->
+                                                <div class="flex items-center space-x-6">
+                                                    <label class="flex items-center">
                                                         <input
-                                                            id="quantity"
-                                                            v-model="form.quantity"
-                                                            type="number"
-                                                            step="0.01"
-                                                            min="0.01"
-                                                            required
-                                                            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                            v-model="form.is_billable"
+                                                            type="checkbox"
+                                                            class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
                                                         />
-                                                    </div>
-                                                </div>
-
-                                                <!-- Discount Amount -->
-                                                <div>
-                                                    <label for="discount_amount" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        Discount Amount
+                                                        <span class="ml-2 text-sm text-gray-700">Charge customer for this item</span>
                                                     </label>
-                                                    <div class="mt-2">
-                                                        <div class="relative">
-                                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                                <span class="text-gray-500 sm:text-sm">$</span>
-                                                            </div>
-                                                            <input
-                                                                id="discount_amount"
-                                                                v-model="form.discount_amount"
-                                                                type="number"
-                                                                step="0.01"
-                                                                min="0"
-                                                                class="block w-full rounded-md border-0 py-1.5 pl-8 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                                                            />
-                                                        </div>
-                                                    </div>
                                                 </div>
-
-                                                <!-- Tax Rate -->
-                                                <div>
-                                                    <label for="tax_rate" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        Tax Rate (%)
-                                                    </label>
-                                                    <div class="mt-2">
-                                                        <input
-                                                            id="tax_rate"
-                                                            v-model="form.tax_rate_percent"
-                                                            type="number"
-                                                            step="0.01"
-                                                            min="0"
-                                                            max="100"
-                                                            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <!-- Billing Category -->
-                                                <div>
-                                                    <label for="billing_category" class="block text-sm font-medium leading-6 text-gray-900">
-                                                        Billing Category <span class="text-red-500">*</span>
-                                                    </label>
-                                                    <div class="mt-2">
-                                                        <select
-                                                            id="billing_category"
-                                                            v-model="form.billing_category"
-                                                            required
-                                                            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                                                        >
-                                                            <option value="addon">Addon</option>
-                                                            <option value="expense">Expense</option>
-                                                            <option value="product">Product</option>
-                                                            <option value="service">Service</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Checkboxes -->
-                                            <div class="flex items-center space-x-6">
-                                                <label class="flex items-center">
-                                                    <input
-                                                        v-model="form.is_billable"
-                                                        type="checkbox"
-                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                                                    />
-                                                    <span class="ml-2 text-sm text-gray-700">Billable</span>
-                                                </label>
-                                                <label class="flex items-center">
-                                                    <input
-                                                        v-model="form.is_taxable"
-                                                        type="checkbox"
-                                                        class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                                                    />
-                                                    <span class="ml-2 text-sm text-gray-700">Taxable</span>
-                                                </label>
                                             </div>
 
                                             <!-- Calculated Total -->
                                             <div class="bg-gray-50 px-4 py-3 rounded-lg">
-                                                <div class="flex justify-between text-sm">
-                                                    <span>Subtotal:</span>
-                                                    <span>{{ formatPrice(calculatedSubtotal) }}</span>
-                                                </div>
-                                                <div v-if="calculatedDiscount > 0" class="flex justify-between text-sm text-orange-600">
-                                                    <span>Discount:</span>
-                                                    <span>-{{ formatPrice(calculatedDiscount) }}</span>
-                                                </div>
-                                                <div v-if="calculatedTax > 0" class="flex justify-between text-sm text-gray-600">
-                                                    <span>Tax:</span>
-                                                    <span>{{ formatPrice(calculatedTax) }}</span>
-                                                </div>
-                                                <div class="flex justify-between text-base font-medium border-t pt-2 mt-2">
-                                                    <span>Total:</span>
+                                                <div class="flex justify-between text-base font-medium">
+                                                    <span>Total Cost:</span>
                                                     <span>{{ formatPrice(calculatedTotal) }}</span>
+                                                </div>
+                                                <div class="text-sm text-gray-500 mt-1">
+                                                    {{ form.quantity }} × {{ formatPrice(form.unit_price) }}
+                                                    <span v-if="!form.is_billable" class="text-orange-600 ml-2">(Internal - not billable)</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -308,6 +221,7 @@
 <script setup>
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useAddonCategoriesQuery } from '@/Composables/queries/useBillingQuery'
 import axios from 'axios'
 
 const props = defineProps({
@@ -322,29 +236,27 @@ const form = reactive({
     selectedTemplate: '',
     name: '',
     description: '',
-    category: '',
-    sku: '',
+    category: 'service',
     unit_price: 0,
     quantity: 1,
-    discount_amount: 0,
-    tax_rate_percent: 0,
-    is_billable: true,
-    is_taxable: false,
-    billing_category: 'addon'
+    is_billable: true
 })
 
 const processing = ref(false)
 const templates = ref([])
 
-const categoryLabels = {
-    product: 'Products',
-    service: 'Services', 
-    license: 'Licenses',
+// TanStack Query for addon categories
+const addonCategoriesQuery = useAddonCategoriesQuery()
+const addonCategories = computed(() => addonCategoriesQuery.data.value || {
+    product: 'Product',
+    service: 'Service',
+    license: 'License',
     hardware: 'Hardware',
     software: 'Software',
-    expense: 'Expenses',
+    expense: 'Expense',
     other: 'Other'
-}
+})
+
 
 // Group templates by category
 const groupedTemplates = computed(() => {
@@ -359,23 +271,8 @@ const groupedTemplates = computed(() => {
 })
 
 // Calculated values
-const calculatedSubtotal = computed(() => {
-    return (parseFloat(form.unit_price) || 0) * (parseFloat(form.quantity) || 0)
-})
-
-const calculatedDiscount = computed(() => {
-    return Math.min(parseFloat(form.discount_amount) || 0, calculatedSubtotal.value)
-})
-
-const calculatedTax = computed(() => {
-    if (!form.is_taxable) return 0
-    const afterDiscount = calculatedSubtotal.value - calculatedDiscount.value
-    const taxRate = (parseFloat(form.tax_rate_percent) || 0) / 100
-    return afterDiscount * taxRate
-})
-
 const calculatedTotal = computed(() => {
-    return calculatedSubtotal.value - calculatedDiscount.value + calculatedTax.value
+    return (parseFloat(form.unit_price) || 0) * (parseFloat(form.quantity) || 0)
 })
 
 // Load templates
@@ -398,13 +295,10 @@ const applyTemplate = () => {
     form.name = template.name
     form.description = template.description || ''
     form.category = template.category
-    form.sku = template.sku || ''
     form.unit_price = parseFloat(template.default_unit_price)
     form.quantity = parseFloat(template.default_quantity)
     form.is_billable = template.is_billable
-    form.is_taxable = template.is_taxable
     form.billing_category = template.billing_category
-    form.tax_rate_percent = (parseFloat(template.default_tax_rate) * 100).toFixed(2)
 }
 
 // Reset form
@@ -412,14 +306,10 @@ const resetForm = () => {
     form.selectedTemplate = ''
     form.name = ''
     form.description = ''
-    form.category = ''
-    form.sku = ''
+    form.category = 'service'
     form.unit_price = 0
     form.quantity = 1
-    form.discount_amount = 0
-    form.tax_rate_percent = 0
     form.is_billable = true
-    form.is_taxable = false
     form.billing_category = 'addon'
 }
 
@@ -433,13 +323,9 @@ const submitAddon = async () => {
             name: form.name,
             description: form.description,
             category: form.category,
-            sku: form.sku,
             unit_price: parseFloat(form.unit_price),
             quantity: parseFloat(form.quantity),
-            discount_amount: parseFloat(form.discount_amount) || 0,
-            tax_rate: (parseFloat(form.tax_rate_percent) || 0) / 100,
             is_billable: form.is_billable,
-            is_taxable: form.is_taxable,
             billing_category: form.billing_category
         }
         

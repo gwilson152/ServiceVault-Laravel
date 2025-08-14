@@ -181,7 +181,7 @@ const props = defineProps({
 import SystemConfiguration from "@/Pages/Settings/Components/SystemConfiguration.vue";
 import EmailConfiguration from "@/Pages/Settings/Components/EmailConfiguration.vue";
 import TicketConfiguration from "@/Pages/Settings/Components/TicketConfiguration.vue";
-import BillingConfiguration from "@/Pages/Settings/Components/BillingConfiguration.vue";
+import BillingConfiguration from "@/Pages/Settings/Components/BillingConfigurationNew.vue";
 import TimerSettings from "@/Pages/Settings/Components/TimerSettings.vue";
 import UserManagement from "@/Pages/Settings/Components/UserManagement.vue";
 import {
