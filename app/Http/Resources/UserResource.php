@@ -28,48 +28,33 @@ class UserResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             
-            // Current account information
-            'current_account_id' => $this->current_account_id,
-            'current_account' => $this->whenLoaded('currentAccount', function () {
+            // Account information (single relationship)
+            'account_id' => $this->account_id,
+            'account' => $this->whenLoaded('account', function () {
                 return [
-                    'id' => $this->currentAccount->id,
-                    'name' => $this->currentAccount->name,
-                    'display_name' => $this->currentAccount->display_name,
-                    'account_type' => $this->currentAccount->account_type,
+                    'id' => $this->account->id,
+                    'name' => $this->account->name,
+                    'display_name' => $this->account->display_name,
+                    'company_name' => $this->account->company_name,
+                    'account_type' => $this->account->account_type,
+                    'is_active' => $this->account->is_active,
+                    'hierarchy_level' => $this->account->hierarchy_level,
                 ];
             }),
             
-            // Account assignments
-            'accounts' => $this->whenLoaded('accounts', function () {
-                return $this->accounts->map(function ($account) {
-                    return [
-                        'id' => $account->id,
-                        'name' => $account->name,
-                        'display_name' => $account->display_name,
-                        'company_name' => $account->company_name,
-                        'account_type' => $account->account_type,
-                        'is_active' => $account->is_active,
-                        'users_count' => $account->users_count ?? $account->users()->count(),
-                        'hierarchy_level' => $account->hierarchy_level,
-                        'assigned_at' => $account->pivot->created_at ?? null,
-                    ];
-                });
-            }),
-            
-            // Role template assignments
-            'role_templates' => $this->whenLoaded('roleTemplates', function () {
-                return $this->roleTemplates->map(function ($roleTemplate) {
-                    return [
-                        'id' => $roleTemplate->id,
-                        'name' => $roleTemplate->name,
-                        'description' => $roleTemplate->description,
-                        'context' => $roleTemplate->context,
-                        'is_system_role' => $roleTemplate->is_system_role,
-                        'is_modifiable' => $roleTemplate->is_modifiable,
-                        'account_id' => $roleTemplate->pivot->account_id ?? null,
-                        'assigned_at' => $roleTemplate->pivot->created_at ?? null,
-                    ];
-                });
+            // Role template information (single relationship)
+            'role_template_id' => $this->role_template_id,
+            'role_template' => $this->whenLoaded('roleTemplate', function () {
+                return [
+                    'id' => $this->roleTemplate->id,
+                    'name' => $this->roleTemplate->name,
+                    'description' => $this->roleTemplate->description,
+                    'context' => $this->roleTemplate->context,
+                    'is_system_role' => $this->roleTemplate->is_system_role,
+                    'is_super_admin' => $this->roleTemplate->is_super_admin,
+                    'is_modifiable' => $this->roleTemplate->is_modifiable,
+                    'permissions' => $this->roleTemplate->getAllPermissions(),
+                ];
             }),
             
             // Permission information
@@ -99,7 +84,7 @@ class UserResource extends JsonResource
                         'status' => $timer->status,
                         'started_at' => $timer->started_at,
                         'updated_at' => $timer->updated_at,
-                        'duration' => $timer->getCurrentDuration(),
+                        'duration' => $timer->duration,
                     ];
                 });
             }),
@@ -120,23 +105,6 @@ class UserResource extends JsonResource
                 });
             }),
             
-            // Account summary for overview
-            'accounts_summary' => $this->when($this->relationLoaded('accounts'), function () {
-                return [
-                    'total_accounts' => $this->accounts->count(),
-                    'account_types' => $this->accounts->groupBy('account_type')->map->count(),
-                    'active_accounts' => $this->accounts->where('is_active', true)->count(),
-                ];
-            }),
-            
-            // Role template summary
-            'roles_summary' => $this->when($this->relationLoaded('roleTemplates'), function () {
-                return [
-                    'total_roles' => $this->roleTemplates->count(),
-                    'contexts' => $this->roleTemplates->pluck('context')->unique()->values(),
-                    'system_roles' => $this->roleTemplates->where('is_system_role', true)->count(),
-                ];
-            }),
         ];
     }
 }

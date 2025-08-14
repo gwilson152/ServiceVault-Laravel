@@ -92,6 +92,15 @@ export const queryKeys = {
     byId: (id) => ['accounts', 'byId', id],
     selector: ['accounts', 'selector'],
   },
+  
+  // Role Templates
+  roleTemplates: {
+    all: ['roleTemplates'],
+    list: (filters) => ['roleTemplates', 'list', filters],
+    byId: (id) => ['roleTemplates', 'byId', id],
+    permissions: ['roleTemplates', 'permissions'],
+    widgets: (id) => ['roleTemplates', 'widgets', id],
+  },
 }
 
 // Helper functions for query invalidation patterns
@@ -124,6 +133,9 @@ export const invalidateQueries = {
   
   // Invalidate account queries
   accounts: () => queryClient.invalidateQueries({ queryKey: ['accounts'] }),
+  
+  // Invalidate role template queries
+  roleTemplates: () => queryClient.invalidateQueries({ queryKey: ['roleTemplates'] }),
 }
 
 export default queryClient

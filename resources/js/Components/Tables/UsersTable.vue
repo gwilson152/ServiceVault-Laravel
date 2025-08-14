@@ -52,6 +52,7 @@
           v-for="row in table.getRowModel().rows"
           :key="row.id"
           class="hover:bg-blue-50 transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-blue-300 hover:shadow-sm"
+          @click="navigateToUser(row.original)"
         >
           <td
             v-for="cell in row.getVisibleCells()"
@@ -207,7 +208,7 @@
               <div class="flex items-center justify-end space-x-2">
                 <!-- Status Toggle -->
                 <button 
-                  @click="$emit('toggle-status', cell.row.original)"
+                  @click.stop="$emit('toggle-status', cell.row.original)"
                   :class="[
                     'text-xs font-medium px-2 py-1 rounded',
                     cell.row.original.is_active 
@@ -220,7 +221,7 @@
                 
                 <!-- Edit Button -->
                 <button 
-                  @click="$emit('edit-user', cell.row.original)"
+                  @click.stop="$emit('edit-user', cell.row.original)"
                   class="text-xs font-medium text-indigo-600 hover:text-indigo-900 px-2 py-1 rounded hover:bg-indigo-50"
                 >
                   Edit
@@ -229,6 +230,7 @@
                 <!-- View Profile -->
                 <a 
                   :href="`/users/${cell.row.original.id}`"
+                  @click.stop
                   class="text-xs font-medium text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50"
                 >
                   View
@@ -236,7 +238,7 @@
                 
                 <!-- Delete Button -->
                 <button 
-                  @click="$emit('delete-user', cell.row.original)"
+                  @click.stop="$emit('delete-user', cell.row.original)"
                   class="text-xs font-medium text-red-600 hover:text-red-900 px-2 py-1 rounded hover:bg-red-50"
                 >
                   Delete
@@ -260,6 +262,7 @@
 
 <script setup>
 import { FlexRender } from '@tanstack/vue-table'
+import { router } from '@inertiajs/vue3'
 
 defineProps({
   table: {
@@ -274,6 +277,11 @@ defineProps({
 })
 
 defineEmits(['toggle-status', 'edit-user', 'delete-user'])
+
+// Navigation function
+const navigateToUser = (user) => {
+  router.visit(`/users/${user.id}`)
+}
 
 // Helper functions
 const formatAccountType = (type) => {

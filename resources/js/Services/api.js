@@ -94,6 +94,24 @@ export const usersApi = {
   create: (data) => api.post('/users', data),
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
+  getAssignable: () => api.get('/users/assignable'),
+  getTickets: (id) => api.get(`/users/${id}/tickets`),
+  getTimeEntries: (id) => api.get(`/users/${id}/time-entries`),
+  getActivity: (id) => api.get(`/users/${id}/activity`),
+  getAccounts: (id) => api.get(`/users/${id}/accounts`),
+}
+
+// Role Templates API functions
+export const roleTemplatesApi = {
+  getAll: (params = {}) => api.get('/role-templates', { params }),
+  getById: (id) => api.get(`/role-templates/${id}`),
+  create: (data) => api.post('/role-templates', data),
+  update: (id, data) => api.put(`/role-templates/${id}`, data),
+  delete: (id) => api.delete(`/role-templates/${id}`),
+  getPermissions: () => api.get('/role-templates/permissions/available'),
+  clone: (id, data) => api.post(`/role-templates/${id}/clone`, data),
+  getWidgets: (id) => api.get(`/role-templates/${id}/widgets`),
+  updateWidgets: (id, data) => api.put(`/role-templates/${id}/widgets`, data),
 }
 
 export default api

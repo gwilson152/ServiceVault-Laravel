@@ -59,16 +59,21 @@ curl -X GET "/api/users?search=john&status=active&sort=name&direction=asc&per_pa
       "locale": "en",
       "last_active_at": "2025-08-11T15:30:00Z",
       "created_at": "2025-08-01T10:00:00Z",
-      "accounts_summary": {
-        "total_accounts": 3,
-        "account_types": {
-          "customer": 2,
-          "internal": 1
-        }
+      "account_id": 1,
+      "account": {
+        "id": 1,
+        "name": "ACME Corp",
+        "display_name": "ACME Corporation",
+        "account_type": "customer",
+        "is_active": true
       },
-      "roles_summary": {
-        "total_roles": 2,
-        "contexts": ["service_provider", "account_user"]
+      "role_template_id": 2,
+      "role_template": {
+        "id": 2,
+        "name": "Account Manager",
+        "context": "service_provider",
+        "is_system_role": false,
+        "is_super_admin": false
       },
       "statistics": {
         "total_assigned_tickets": 15,
@@ -105,8 +110,8 @@ Create a new user with account assignments and role templates.
   "timezone": "America/Los_Angeles",
   "locale": "en",
   "is_active": true,
-  "account_ids": [1, 3, 5],
-  "role_template_ids": [2, 4],
+  "account_id": 1,
+  "role_template_id": 2,
   "preferences": {
     "notification_email": true,
     "dashboard_layout": "compact"
@@ -122,8 +127,8 @@ Create a new user with account assignments and role templates.
 - `timezone`: optional, valid timezone string
 - `locale`: optional, valid locale code
 - `is_active`: optional, boolean (default: true)
-- `account_ids`: optional, array of existing account IDs
-- `role_template_ids`: optional, array of existing role template IDs
+- `account_id`: optional, existing account ID
+- `role_template_id`: optional, existing role template ID
 - `preferences`: optional, object
 
 **Example Response:**
@@ -136,20 +141,20 @@ Create a new user with account assignments and role templates.
     "name": "Jane Smith",
     "email": "jane@company.com",
     "is_active": true,
-    "accounts": [
-      {
-        "id": 1,
-        "name": "ACME Corp",
-        "account_type": "customer"
-      }
-    ],
-    "role_templates": [
-      {
-        "id": 2,
-        "name": "Account Manager",
-        "context": "service_provider"
-      }
-    ]
+    "account": {
+      "id": 1,
+      "name": "ACME Corp",
+      "display_name": "ACME Corporation",
+      "account_type": "customer",
+      "is_active": true
+    },
+    "role_template": {
+      "id": 2,
+      "name": "Account Manager",
+      "context": "service_provider",
+      "is_system_role": false,
+      "is_super_admin": false
+    }
   }
 }
 ```
@@ -174,30 +179,26 @@ Retrieve comprehensive user information including relationships, statistics, and
     "is_super_admin": false,
     "timezone": "America/New_York",
     "locale": "en",
-    "current_account": {
+    "account_id": 1,
+    "account": {
       "id": 1,
       "name": "ACME Corp",
-      "account_type": "customer"
+      "display_name": "ACME Corporation",
+      "company_name": "ACME Corporation",
+      "account_type": "customer",
+      "is_active": true,
+      "hierarchy_level": 0
     },
-    "accounts": [
-      {
-        "id": 1,
-        "name": "ACME Corp",
-        "display_name": "ACME Corporation",
-        "account_type": "customer",
-        "hierarchy_level": 0,
-        "assigned_at": "2025-08-01T10:00:00Z"
-      }
-    ],
-    "role_templates": [
-      {
-        "id": 2,
-        "name": "Account Manager",
-        "context": "service_provider",
-        "account_id": 1,
-        "assigned_at": "2025-08-01T10:00:00Z"
-      }
-    ],
+    "role_template_id": 2,
+    "role_template": {
+      "id": 2,
+      "name": "Account Manager",
+      "description": "Manages customer account relationships",
+      "context": "service_provider",
+      "is_system_role": false,
+      "is_super_admin": false,
+      "is_modifiable": true
+    },
     "statistics": {
       "total_assigned_tickets": 15,
       "total_created_tickets": 3,
@@ -235,15 +236,15 @@ Update user information, account assignments, and role templates.
   "password_confirmation": "new_password",
   "timezone": "America/Chicago",
   "is_active": true,
-  "account_ids": [1, 2, 4],
-  "role_template_ids": [2, 3]
+  "account_id": 1,
+  "role_template_id": 2
 }
 ```
 
 **Notes:**
 - Password fields are optional when updating
-- Account and role assignments will be synced (replaced, not merged)
-- Omit arrays to leave assignments unchanged
+- Account and role assignments will be updated with new values
+- Omit fields to leave assignments unchanged
 
 ### Deactivate User
 
@@ -485,8 +486,8 @@ curl -X POST "/api/users" \
     "email": "manager@serviceprovider.com",
     "password": "secure_password",
     "password_confirmation": "secure_password",
-    "account_ids": [1, 2, 3],
-    "role_template_ids": [2],
+    "account_id": 1,
+    "role_template_id": 2,
     "timezone": "America/New_York"
   }'
 ```
@@ -502,8 +503,8 @@ curl -X POST "/api/users" \
     "email": "admin@customercorp.com",
     "password": "secure_password",
     "password_confirmation": "secure_password",
-    "account_ids": [5],
-    "role_template_ids": [5],
+    "account_id": 5,
+    "role_template_id": 5,
     "timezone": "America/Los_Angeles"
   }'
 ```
@@ -519,8 +520,8 @@ curl -X GET "/api/users?search=manager&status=active&role_template_id=2" \
 
 ### User Creation
 
-1. **Always assign appropriate accounts** - Users need account access to be functional
-2. **Choose correct role templates** - Match role templates to user responsibilities
+1. **Always assign an appropriate account** - Users need account access to be functional
+2. **Choose correct role template** - Match role template to user responsibilities
 3. **Set proper timezone** - Important for time tracking and scheduling
 4. **Use strong passwords** - Enforce password policies in your client application
 
@@ -528,7 +529,7 @@ curl -X GET "/api/users?search=manager&status=active&role_template_id=2" \
 
 1. **Use soft delete** - Deactivate users instead of hard deleting to preserve data integrity
 2. **Monitor user activity** - Regular activity checks help identify inactive accounts
-3. **Review permissions regularly** - Audit user permissions and account assignments
+3. **Review permissions regularly** - Audit user permissions and account assignment
 4. **Batch operations** - Use filtering to manage multiple users efficiently
 
 ### Security Considerations

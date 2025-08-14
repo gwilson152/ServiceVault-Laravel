@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import AccountFormModal from '@/Components/AccountFormModal.vue'
 import { ref, onMounted, computed } from 'vue'
@@ -108,13 +108,11 @@ const deleteAccount = async () => {
 }
 
 const viewAccountDetails = (account) => {
-    // Navigate to account details page (to be implemented)
-    console.log('View account details:', account)
+    router.visit(`/accounts/${account.id}`)
 }
 
 const manageAccountUsers = (account) => {
-    // Navigate to account users management (to be implemented)
-    console.log('Manage account users:', account)
+    router.visit(`/users?account=${account.id}`)
 }
 
 onMounted(() => {
@@ -229,7 +227,10 @@ onMounted(() => {
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="account in filteredAccounts" :key="account.id" class="hover:bg-gray-50">
+                                    <tr v-for="account in filteredAccounts" :key="account.id" 
+                                        class="hover:bg-blue-50 cursor-pointer transition-colors duration-150"
+                                        @click="viewAccountDetails(account)"
+                                        title="Click to view account details">
                                         <!-- Company / Account -->
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center">
@@ -309,28 +310,14 @@ onMounted(() => {
                                             <div class="flex items-center justify-end space-x-2">
                                                 <button 
                                                     type="button" 
-                                                    @click="viewAccountDetails(account)"
-                                                    class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                                                >
-                                                    View
-                                                </button>
-                                                <button 
-                                                    type="button" 
-                                                    @click="openEditModal(account)"
-                                                    class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button 
-                                                    type="button" 
-                                                    @click="manageAccountUsers(account)"
+                                                    @click.stop="manageAccountUsers(account)"
                                                     class="text-gray-600 hover:text-gray-900 text-sm font-medium"
                                                 >
                                                     Users
                                                 </button>
                                                 <button 
                                                     type="button" 
-                                                    @click="confirmDelete(account)"
+                                                    @click.stop="confirmDelete(account)"
                                                     class="text-red-600 hover:text-red-900 text-sm font-medium"
                                                 >
                                                     Delete

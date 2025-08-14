@@ -55,7 +55,7 @@ class UserController extends Controller
             ], 403);
         }
         
-        $query = User::with(['account', 'roleTemplate', 'accounts', 'roleTemplates']);
+        $query = User::with(['account', 'roleTemplate']);
         
         // Search functionality
         if ($request->filled('search')) {

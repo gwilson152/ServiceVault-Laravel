@@ -4,19 +4,23 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import UserFormModal from '@/Components/UserFormModal.vue'
 import UsersTable from '@/Components/Tables/UsersTable.vue'
 import { useUsersTable } from '@/Composables/useUsersTable'
+import { useUsersQuery, useRoleTemplatesQuery, useDeleteUserMutation, useToggleUserStatusMutation } from '@/Composables/queries/useUsersQuery'
+import { useAccountSelectorQuery } from '@/Composables/queries/useAccountsQuery'
 import { ref, onMounted, computed, watch } from 'vue'
-import axios from 'axios'
 
 // Define persistent layout
 defineOptions({
   layout: AppLayout
 })
 
-const users = ref([])
-const accounts = ref([])
-const roleTemplates = ref([])
-const loading = ref(true)
-const error = ref(null)
+// TanStack Query hooks
+const { data: usersData, isLoading: usersLoading, error: usersError, refetch: refetchUsers } = useUsersQuery({ per_page: 1000 })
+const { data: accountsData, isLoading: accountsLoading } = useAccountSelectorQuery()
+const { data: roleTemplatesData, isLoading: roleTemplatesLoading } = useRoleTemplatesQuery()
+const deleteUserMutation = useDeleteUserMutation()
+const toggleStatusMutation = useToggleUserStatusMutation()
+
+// Local state
 const searchQuery = ref('')
 const selectedStatus = ref('all')
 const selectedRoleTemplate = ref(null)
@@ -25,6 +29,13 @@ const showCreateModal = ref(false)
 const selectedUser = ref(null)
 const showDeleteConfirm = ref(false)
 const userToDelete = ref(null)
+
+// Computed properties for data
+const users = computed(() => usersData.value?.data || [])
+const accounts = computed(() => accountsData.value?.data || [])
+const roleTemplates = computed(() => roleTemplatesData.value?.data || [])
+const loading = computed(() => usersLoading.value || accountsLoading.value || roleTemplatesLoading.value)
+const error = computed(() => usersError.value ? 'Failed to load users' : null)
 
 // Table density preference (like tickets page)
 const tableDensity = ref(localStorage.getItem('users-table-density') || 'compact')
@@ -47,42 +58,7 @@ const {
   totalPages,
 } = useUsersTable(users, false)
 
-const loadUsers = async () => {
-    try {
-        loading.value = true
-        
-        // Load all users for client-side filtering/sorting
-        const response = await axios.get('/api/users', {
-            params: {
-                per_page: 1000 // Load more users for client-side operations
-            }
-        })
-        users.value = response.data.data
-    } catch (err) {
-        error.value = 'Failed to load users'
-        console.error('Users loading error:', err)
-    } finally {
-        loading.value = false
-    }
-}
-
-const loadRoleTemplates = async () => {
-    try {
-        const response = await axios.get('/api/role-templates')
-        roleTemplates.value = response.data.data
-    } catch (err) {
-        console.error('Role templates loading error:', err)
-    }
-}
-
-const loadAccounts = async () => {
-    try {
-        const response = await axios.get('/api/accounts')
-        accounts.value = response.data.data
-    } catch (err) {
-        console.error('Accounts loading error:', err)
-    }
-}
+// Data loading is now handled by TanStack Query hooks
 
 // Removed manual sorting - now handled by TanStack Table
 
@@ -97,8 +73,8 @@ const openEditModal = (user) => {
 }
 
 const handleUserSaved = () => {
-    loadUsers()
     showCreateModal.value = false
+    // TanStack Query will automatically invalidate and refetch
 }
 
 const confirmDelete = (user) => {
@@ -108,8 +84,7 @@ const confirmDelete = (user) => {
 
 const deleteUser = async () => {
     try {
-        await axios.delete(`/api/users/${userToDelete.value.id}`)
-        loadUsers()
+        await deleteUserMutation.mutateAsync(userToDelete.value.id)
         showDeleteConfirm.value = false
         userToDelete.value = null
     } catch (error) {
@@ -119,11 +94,7 @@ const deleteUser = async () => {
 
 const toggleUserStatus = async (user) => {
     try {
-        await axios.put(`/api/users/${user.id}`, {
-            ...user,
-            is_active: !user.is_active
-        })
-        loadUsers()
+        await toggleStatusMutation.mutateAsync({ id: user.id, user })
     } catch (error) {
         console.error('Failed to toggle user status:', error)
     }
@@ -161,9 +132,13 @@ const clearFilters = () => {
 }
 
 onMounted(() => {
-    loadUsers()
-    loadRoleTemplates()
-    loadAccounts()
+    // Check URL parameters for account filter
+    const urlParams = new URLSearchParams(window.location.search)
+    const accountParam = urlParams.get('account')
+    if (accountParam) {
+        selectedAccount.value = accountParam
+    }
+    // Data loading is now handled automatically by TanStack Query hooks
 })
 </script>
 

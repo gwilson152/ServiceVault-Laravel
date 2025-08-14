@@ -1,9 +1,16 @@
 <template>
     <AppLayout title="User Details">
-        <!-- Loading state if user is not available -->
-        <div v-if="!user" class="flex items-center justify-center py-12">
+        <!-- Loading state -->
+        <div v-if="loading" class="flex items-center justify-center py-12">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span class="ml-2 text-gray-600">Loading user details...</span>
+        </div>
+        
+        <!-- Error state -->
+        <div v-else-if="error" class="flex items-center justify-center py-12">
+            <div class="rounded-md bg-red-50 p-4">
+                <div class="text-sm text-red-700">{{ error }}</div>
+            </div>
         </div>
         
         <!-- User details content -->
@@ -1552,83 +1559,69 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed } from "vue";
 import { router, Link } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import UserFormModal from "@/Components/UserFormModal.vue";
+import { useUserQuery, useUpdateUserMutation, useDeleteUserMutation, useUserActivityQuery, useUserTicketsQuery, useUserTimeEntriesQuery } from '@/Composables/queries/useUsersQuery'
+import { useAccountSelectorQuery } from '@/Composables/queries/useAccountsQuery'
+import { useRoleTemplatesQuery } from '@/Composables/queries/useUsersQuery'
 
 // Props
 const props = defineProps({
-    user: Object,
-    accounts: Array,
-    roleTemplates: Array,
-});
+  userId: {
+    type: [String, Number],
+    required: true
+  }
+})
+
+// Create reactive user ID
+const userId = computed(() => {
+  const id = props.userId
+  // Ensure it's a string
+  return typeof id === 'string' ? id : String(id)
+})
+
+// TanStack Query hooks
+const { data: userData, isLoading: userLoading, error: userError } = useUserQuery(userId)
+const { data: accountsData, isLoading: accountsLoading } = useAccountSelectorQuery()
+const { data: roleTemplatesData, isLoading: roleTemplatesLoading } = useRoleTemplatesQuery()
+const updateUserMutation = useUpdateUserMutation()
+const deleteUserMutation = useDeleteUserMutation()
+
+// Tab-specific query hooks
+const { data: activityData, isLoading: activityLoading } = useUserActivityQuery(userId)
+const { data: ticketsData, isLoading: ticketsLoading } = useUserTicketsQuery(userId)
+const { data: timeEntriesData, isLoading: timeEntriesLoading } = useUserTimeEntriesQuery(userId)
+
+// Computed properties for data
+const user = computed(() => userData.value?.data)
+const accounts = computed(() => accountsData.value?.data || [])
+const roleTemplates = computed(() => roleTemplatesData.value?.data || [])
+const userActivity = computed(() => activityData.value?.data)
+const userTickets = computed(() => ticketsData.value?.data || [])
+const userTimeEntries = computed(() => timeEntriesData.value?.data || [])
+const loading = computed(() => userLoading.value || accountsLoading.value || roleTemplatesLoading.value)
+const error = computed(() => {
+  if (userError.value) return 'Failed to load user details'
+  return null
+})
 
 // Reactive data
 const activeTab = ref("overview");
 const showEditModal = ref(false);
 const showDeleteConfirm = ref(false);
-const userActivity = ref(null);
-const userTickets = ref([]);
-const userTimeEntries = ref([]);
-const ticketsLoading = ref(false);
-const timeEntriesLoading = ref(false);
 
 // Methods
 const setActiveTab = (tab) => {
     activeTab.value = tab;
-
-    if (tab === "activity" && !userActivity.value) {
-        loadUserActivity();
-    } else if (tab === "tickets" && userTickets.value.length === 0) {
-        loadUserTickets();
-    } else if (tab === "time-entries" && userTimeEntries.value.length === 0) {
-        loadUserTimeEntries();
-    }
+    // TanStack Query will automatically load data when needed
 };
 
-const loadUserActivity = async () => {
-    try {
-        const response = await fetch(`/api/users/${props.user.id}/activity`);
-        const data = await response.json();
-        userActivity.value = data.data;
-    } catch (error) {
-        console.error("Error loading user activity:", error);
-    }
-};
 
-const loadUserTickets = async () => {
-    ticketsLoading.value = true;
-    try {
-        const response = await fetch(`/api/users/${props.user.id}/tickets`);
-        const data = await response.json();
-        userTickets.value = data.data;
-    } catch (error) {
-        console.error("Error loading user tickets:", error);
-    } finally {
-        ticketsLoading.value = false;
-    }
-};
-
-const loadUserTimeEntries = async () => {
-    timeEntriesLoading.value = true;
-    try {
-        const response = await fetch(
-            `/api/users/${props.user.id}/time-entries`
-        );
-        const data = await response.json();
-        userTimeEntries.value = data.data;
-    } catch (error) {
-        console.error("Error loading user time entries:", error);
-    } finally {
-        timeEntriesLoading.value = false;
-    }
-};
-
-const handleUserUpdated = (updatedUser) => {
+const handleUserUpdated = () => {
     showEditModal.value = false;
-    // Reload the page to reflect changes
-    router.reload();
+    // TanStack Query will automatically invalidate and refetch
 };
 
 const getStatusBadge = (status) => {
@@ -1742,21 +1735,16 @@ const getPagePermissions = (permissions) => {
 
 // Action methods
 const toggleUserStatus = async () => {
+    if (!user.value) return;
+    
     try {
-        await fetch(`/api/users/${props.user.id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": document.head.querySelector(
-                    'meta[name="csrf-token"]'
-                ).content,
-            },
-            body: JSON.stringify({
-                ...props.user,
-                is_active: !props.user.is_active,
-            }),
+        await updateUserMutation.mutateAsync({
+            id: user.value.id,
+            data: {
+                ...user.value,
+                is_active: !user.value.is_active,
+            }
         });
-        router.reload();
     } catch (error) {
         console.error("Failed to toggle user status:", error);
     }
@@ -1767,26 +1755,15 @@ const confirmDelete = () => {
 };
 
 const deleteUser = async () => {
+    if (!user.value) return;
+    
     try {
-        await fetch(`/api/users/${props.user.id}`, {
-            method: "DELETE",
-            headers: {
-                "X-CSRF-TOKEN": document.head.querySelector(
-                    'meta[name="csrf-token"]'
-                ).content,
-            },
-        });
+        await deleteUserMutation.mutateAsync(user.value.id);
         router.visit("/users");
     } catch (error) {
         console.error("Failed to delete user:", error);
     }
 };
 
-// Lifecycle
-onMounted(() => {
-    // Load initial activity data if the activity tab is the default
-    if (activeTab.value === "activity") {
-        loadUserActivity();
-    }
-});
+// No lifecycle hooks needed - TanStack Query handles data loading automatically
 </script>
