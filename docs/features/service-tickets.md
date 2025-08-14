@@ -30,14 +30,71 @@ Comprehensive service ticket management system with enhanced detail pages, workf
 
 ### Creating Service Tickets
 
-#### Basic Ticket Creation
+#### CreateTicketModal Component
+
+**Enhanced Ticket Creation Workflow (August 2025)**
+
+The CreateTicketModal provides a streamlined ticket creation experience with flexible customer user assignment:
+
+**Required Fields:**
+- **Account Selection**: Must select an account for the ticket (using HierarchicalAccountSelector)
+- **Title**: Brief description of the issue or request
+- **Description**: Detailed ticket information  
+- **Priority**: Low, Normal, High, or Urgent
+
+**Optional Fields:**
+- **Customer User**: Select specific customer user the ticket is for (completely optional)
+- **Agent Assignment**: Pre-assign to available agents (permission-dependent)
+- **Category**: Ticket categorization for workflow routing
+
+**Key Features:**
+- **Optional Customer User Assignment**: Customer user selection is no longer required - tickets can be account-level without specific user assignment
+- **UserSelector Integration**: Built-in "Create New User" functionality with account context preselection
+- **Smart User Filtering**: Only shows customer users for the selected account
+- **Account Context Flow**: Account must be selected first, then customer user options appear
+- **Agent Permission Filtering**: Only users with appropriate permissions can assign agents
+
+**Workflow Pattern:**
+```
+1. Select Account (required) → HierarchicalAccountSelector
+2. Select Customer User (optional) → UserSelector with create option
+3. Assign Agent (optional, permission-dependent)
+4. Set Priority & Category
+5. Submit ticket
+```
+
+**Component Integration:**
+```vue
+<!-- Account Selection (required) -->
+<HierarchicalAccountSelector
+  v-model="form.account_id"
+  label="Account"
+  placeholder="Select account for this ticket..."
+  required
+  @account-selected="handleAccountSelected"
+/>
+
+<!-- Customer User Selection (optional, conditional on account) -->
+<UserSelector
+  v-if="form.account_id"
+  v-model="form.customer_id"
+  :users="availableCustomers"
+  :preselected-account-id="form.account_id"
+  label="Customer User"
+  placeholder="No specific customer user"
+  @user-selected="handleCustomerSelected"
+/>
+```
+
+#### API Ticket Creation
 ```php
 $ticket = ServiceTicket::create([
     'title' => 'User Authentication Issue',
     'description' => 'Users unable to login with correct credentials',
     'status' => 'open',
     'priority' => 'high',
-    'account_id' => $account->id,
+    'account_id' => $account->id,            // Required
+    'customer_id' => $customer->id ?? null,  // Optional - can be null
     'created_by' => $user->id,
     'category' => 'technical_support',
     'estimated_hours' => 4,

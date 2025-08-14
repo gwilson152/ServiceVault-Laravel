@@ -50,11 +50,56 @@ export default {
 
 ## Form Components
 
+### UserSelector
+
+**Purpose**: Professional user selection with integrated user creation capabilities  
+**File**: `/resources/js/Components/UI/UserSelector.vue`
+
+Reusable user selection component with built-in "Create New User" functionality and context-aware account preselection:
+
+```vue
+<UserSelector
+  v-model="selectedUserId"
+  :users="availableUsers"
+  :is-loading="usersLoading"
+  label="Assign to User"
+  placeholder="Select a user..."
+  required
+  :error="errors.user_id"
+  :show-create-option="true"
+  :accounts="accounts"
+  :role-templates="roleTemplates"
+  :preselected-account-id="currentAccountId"
+  @user-selected="handleUserSelection"
+/>
+```
+
+**Key Features:**
+- **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared
+- **Built-in User Creation**: Integrated UserFormModal with preselected context
+- **Smart Viewport Positioning**: Dropup/dropdown mode based on available space
+- **Professional Selection Display**: Shows user card instead of search input when selected
+- **Context-Aware**: Pre-fills account context in user creation modal
+
+**Props:**
+- `modelValue: string | object` - Selected user ID or user object
+- `users: Array` - Available users for selection
+- `isLoading: boolean` - Loading state indicator
+- `label: string` - Input label text
+- `placeholder: string` - Search placeholder text
+- `required: boolean` - Show required indicator
+- `error: string` - Error message to display
+- `reopenOnClear: boolean` - Auto-reopen on clear (default: true)
+- `showCreateOption: boolean` - Enable user creation (default: false)
+- `accounts: Array` - Accounts for user creation modal
+- `roleTemplates: Array` - Role templates for user creation modal
+- `preselectedAccountId: string | number` - Account to preselect in modal
+
 ### Account Selector
 Hierarchical account selection with permission filtering:
 
 ```vue
-<AccountSelector 
+<HierarchicalAccountSelector 
   v-model="selectedAccountId"
   :show-hierarchy="true"
   :filter-accessible="true"
@@ -68,6 +113,37 @@ Hierarchical account selection with permission filtering:
 - `showHierarchy: boolean` - Show hierarchical structure
 - `filterAccessible: boolean` - Filter by user permissions
 - `placeholder: string` - Input placeholder text
+
+### BillingRateSelector
+
+**Purpose**: Billing rate selection optimized for timer creation workflows  
+**File**: `/resources/js/Components/UI/BillingRateSelector.vue`
+
+Specialized selector for billing rates with auto-default selection and timer integration:
+
+```vue
+<BillingRateSelector
+  v-model="selectedRateId"
+  :rates="billingRates"
+  :is-loading="ratesLoading"
+  placeholder="No billing rate"
+  :reopen-on-clear="true"
+  @rate-selected="handleRateSelection"
+/>
+```
+
+**Timer Integration Features:**
+- **Auto-Default Selection**: Automatically selects default billing rate when rates load
+- **Smart Viewport Positioning**: Critical for timer overlay positioning at screen bottom
+- **Professional Rate Display**: Shows rate name, hourly amount, and default indicators
+- **Auto-Reopen on Clear**: Seamless UX when users clear selections
+
+**Props:**
+- `modelValue: string | number` - Selected billing rate ID
+- `rates: Array` - Available billing rates
+- `isLoading: boolean` - Loading state indicator
+- `placeholder: string` - Input placeholder
+- `reopenOnClear: boolean` - Auto-reopen behavior (default: true)
 
 ### Role Template Selector
 Role template selection with context filtering:

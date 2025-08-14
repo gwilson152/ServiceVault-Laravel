@@ -226,17 +226,22 @@ const locales = [
 
                             <!-- Email -->
                             <div>
-                                <label for="email" class="block text-sm font-medium text-gray-700">Email Address *</label>
+                                <label for="email" class="block text-sm font-medium text-gray-700">
+                                    Email Address {{ form.is_active ? '*' : '(optional for inactive users)' }}
+                                </label>
                                 <input
                                     id="email"
                                     v-model="form.email"
                                     type="email"
-                                    required
+                                    :required="form.is_active"
                                     placeholder="john@company.com"
                                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.email }"
                                 />
                                 <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email[0] }}</p>
+                                <p v-if="!form.is_active" class="mt-1 text-xs text-gray-500">
+                                    Email is optional for inactive users since they cannot log in.
+                                </p>
                             </div>
 
                             <!-- Invitation Option (New Users Only) -->

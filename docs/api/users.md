@@ -110,8 +110,10 @@ Create a new user with account assignments and role templates.
   "timezone": "America/Los_Angeles",
   "locale": "en",
   "is_active": true,
+  "is_visible": true,
   "account_id": 1,
   "role_template_id": 2,
+  "send_invitation": false,
   "preferences": {
     "notification_email": true,
     "dashboard_layout": "compact"
@@ -119,17 +121,66 @@ Create a new user with account assignments and role templates.
 }
 ```
 
-**Validation Rules:**
+**Invitation Workflow Example:**
 
-- `name`: required, string, max 255 chars
-- `email`: required, email, unique
-- `password`: required, min 8 chars, confirmed
-- `timezone`: optional, valid timezone string
-- `locale`: optional, valid locale code
+```json
+{
+  "name": "New Employee",
+  "email": "new.employee@company.com",
+  "timezone": "America/New_York",
+  "locale": "en",
+  "is_active": true,
+  "is_visible": true,
+  "account_id": 1,
+  "role_template_id": 3,
+  "send_invitation": true
+}
+```
+
+**Inactive Placeholder User Example:**
+
+```json
+{
+  "name": "Future Employee",
+  "timezone": "America/Chicago",
+  "locale": "en",
+  "is_active": false,
+  "is_visible": true,
+  "account_id": 1,
+  "role_template_id": 2
+}
+```
+
+**Dynamic Validation Rules:**
+
+```php
+// Email requirement depends on user state and workflow
+$emailRequired = $request->boolean('is_active', true) && !$request->boolean('send_invitation', false);
+$passwordRequired = !$request->boolean('send_invitation') && $request->boolean('is_active', true);
+```
+
+**Field Requirements:**
+
+- `name`: **required**, string, max 255 chars
+- `email`: **conditional** - required for active users unless using invitation workflow
+- `password`: **conditional** - required for direct creation of active users
+- `password_confirmation`: required when password provided
+- `timezone`: optional, valid timezone string (default: 'UTC')
+- `locale`: optional, valid locale code (default: 'en')
 - `is_active`: optional, boolean (default: true)
+- `is_visible`: optional, boolean (default: true)
+- `send_invitation`: optional, boolean (default: false)
 - `account_id`: optional, existing account ID
 - `role_template_id`: optional, existing role template ID
 - `preferences`: optional, object
+
+**Validation Matrix:**
+
+| User Type | Active | Send Invitation | Email Required | Password Required |
+|-----------|--------|-----------------|----------------|-----------------|
+| **Standard User** | ✅ | ❌ | ✅ Required | ✅ Required |
+| **Invitation User** | ✅ | ✅ | ✅ Required | ❌ Optional |
+| **Inactive User** | ❌ | N/A | ❌ Optional | ❌ Optional |
 
 **Example Response:**
 
@@ -236,15 +287,30 @@ Update user information, account assignments, and role templates.
   "password_confirmation": "new_password",
   "timezone": "America/Chicago",
   "is_active": true,
+  "is_visible": true,
   "account_id": 1,
   "role_template_id": 2
 }
 ```
 
+**Update Validation Rules:**
+
+```php
+// For updates, email is always optional but unique
+$rules = [
+    'name' => 'required|string|max:255',
+    'email' => ['nullable', 'email', Rule::unique('users')->ignore($user->id)],
+    'password' => 'nullable|string|min:8|confirmed', // Always optional for updates
+    // ... other fields
+];
+```
+
 **Notes:**
-- Password fields are optional when updating
-- Account and role assignments will be updated with new values
-- Omit fields to leave assignments unchanged
+- **Email field** is optional for updates but must be unique when provided
+- **Password fields** are always optional when updating (leave empty to keep current password)
+- **Account and role assignments** will be updated with new values
+- **Omit fields** to leave current values unchanged
+- **Email removal**: Set email to null for inactive users (requires `is_active: false`)
 
 ### Deactivate User
 
@@ -541,5 +607,5 @@ curl -X GET "/api/users?search=manager&status=active&role_template_id=2" \
 
 ---
 
-**Last Updated**: August 11, 2025  
-**Status**: ✅ Complete - Full user management API with dual context support
+**Last Updated**: August 14, 2025  
+**Status**: ✅ Complete - Full user management API with nullable email support, conditional validation, and invitation workflow integration

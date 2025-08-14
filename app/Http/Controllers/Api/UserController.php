@@ -118,9 +118,12 @@ class UserController extends Controller
         // Determine if password is required based on invitation and active status
         $passwordRequired = !$request->boolean('send_invitation') && $request->boolean('is_active', true);
         
+        // Determine if email is required based on active status
+        $emailRequired = $request->boolean('is_active', true);
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'email' => $emailRequired ? 'required|email|unique:users,email' : 'nullable|email|unique:users,email',
             'password' => $passwordRequired ? 'required|string|min:8|confirmed' : 'nullable|string|min:8|confirmed',
             'timezone' => 'nullable|string|max:50',
             'locale' => 'nullable|string|max:10',
@@ -231,9 +234,14 @@ class UserController extends Controller
             ], 403);
         }
         
+        // Determine if email is required based on active status
+        $emailRequired = $request->boolean('is_active', $user->is_active);
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'email' => $emailRequired 
+                ? ['required', 'email', Rule::unique('users')->ignore($user->id)]
+                : ['nullable', 'email', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8|confirmed',
             'timezone' => 'nullable|string|max:50',
             'locale' => 'nullable|string|max:10',

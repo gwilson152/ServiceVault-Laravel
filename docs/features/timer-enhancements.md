@@ -70,7 +70,7 @@ const previewValue = computed(() => {
 ## Professional Selector Components
 
 ### Enhanced UI Component Architecture
-Service Vault now provides three polished selector components that deliver consistent, high-quality user experience across the timer creation interface:
+Service Vault now provides four polished selector components that deliver consistent, high-quality user experience across the timer creation interface:
 
 #### HierarchicalAccountSelector Component
 - **Hierarchical Display**: Shows account relationships with proper indentation and visual hierarchy
@@ -85,10 +85,22 @@ Service Vault now provides three polished selector components that deliver consi
 - **Real-Time Loading**: Integrates with TanStack Query for efficient data management
 
 #### BillingRateSelector Component
-- **Rate Information Display**: Shows rate name, hourly amount, and default indicator
-- **Default Rate Preselection**: Automatically selects default billing rate on component load
-- **Search Functionality**: Filter rates by name, amount, or description
+- **Rate Information Display**: Shows rate name, hourly amount ($X.XX/hr), and default indicator with blue badge
+- **Default Rate Preselection**: Automatically selects default billing rate on component load for streamlined workflow
+- **Auto-Reopen on Clear**: Automatically reopens dropdown when selection is cleared for seamless UX
+- **Smart Viewport Positioning**: Dropup/dropdown mode based on screen position (critical for timer overlay at bottom)
+- **Search Functionality**: Filter rates by name, amount, or description text
+- **Professional Selection Display**: Shows selected rate card instead of search input when selected
 - **Rate Descriptions**: Optional rate descriptions for additional context
+- **Enhanced Keyboard Navigation**: Arrow keys, Enter, and Escape support for efficient interaction
+
+#### UserSelector Component
+- **Built-in User Creation**: Integrated "Create New User" option with UserFormModal integration
+- **Context-Aware Preselection**: Pre-fills account context when creating new users from ticket/timer contexts
+- **Smart User Search**: Filters by name, email, role, and account information
+- **Professional User Display**: Shows user name, email, role, and account with user avatar icons
+- **Auto-Reopen Behavior**: Reopens dropdown automatically when selections are cleared
+- **Account Context Integration**: Works seamlessly with account-based workflows for user assignment
 
 ### Unified Component Features
 
@@ -212,6 +224,17 @@ The timer overlay provides a streamlined creation interface with professional se
     v-model="quickStartForm.billingRateId"
     :rates="billingRates"
     placeholder="No billing rate"
+  />
+  
+  <!-- Optional User Assignment -->
+  <UserSelector
+    v-if="showUserAssignment"
+    v-model="quickStartForm.assignedUserId"
+    :users="availableUsers"
+    :is-loading="usersLoading"
+    label="Assign to"
+    placeholder="Select user..."
+    :show-create-option="false"
   />
 </template>
 ```
@@ -504,8 +527,9 @@ await axios.post('/api/timers', {
 const quickStartForm = reactive({
   description: '',
   accountId: '',           // Bound to HierarchicalAccountSelector
-  ticketId: '',           // Bound to TicketSelector
-  billingRateId: ''       // Bound to BillingRateSelector with default preselection
+  ticketId: '',           // Bound to TicketSelector (conditional on account)
+  billingRateId: '',      // Bound to BillingRateSelector with default preselection
+  assignedUserId: ''      // Bound to UserSelector (optional user assignment)
 })
 ```
 

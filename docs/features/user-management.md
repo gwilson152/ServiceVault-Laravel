@@ -63,9 +63,9 @@ POST /api/users
 
 ```php
 // User Model Attributes
-'name'              // Full display name
-'email'             // Unique email address (login identifier)
-'password'          // Nullable - supports invitation workflow
+'name'              // Full display name (required)
+'email'             // Email address (nullable for inactive users, unique when provided)
+'password'          // Nullable - supports invitation workflow and inactive users
 'timezone'          // User's timezone (defaults to system timezone)
 'locale'            // Language preference (default: 'en')
 'is_active'         // Can user log in and access system
@@ -75,6 +75,42 @@ POST /api/users
 'preferences'       // JSON user preferences
 'last_active_at'    // Last activity timestamp
 'last_login_at'     // Last login timestamp
+```
+
+### Email Address Requirements
+
+**Service Vault supports optional email addresses for specific use cases:**
+
+#### Email Required (Most Users)
+- **Active users**: Must have email for login and communication
+- **Invitation workflow**: Email required to send invitation links
+- **Standard operation**: Email serves as login identifier
+
+#### Email Optional (Special Cases)
+- **Inactive users**: Placeholder users don't need email until activated
+- **Template users**: System role templates or examples
+- **Future employees**: Users created in advance of hiring
+- **Archived users**: Former employees who no longer need email communication
+
+#### Database Constraints
+```sql
+-- PostgreSQL partial unique constraint
+CREATE UNIQUE INDEX users_email_unique ON users (email) WHERE email IS NOT NULL;
+
+-- Email is nullable but unique when provided
+email VARCHAR(255) NULL
+```
+
+#### API Validation Logic
+```php
+// Email is required for active users unless using invitation workflow
+$emailRequired = $request->boolean('is_active', true) && !$request->boolean('send_invitation', false);
+
+$rules = [
+    'email' => $emailRequired 
+        ? 'required|email|unique:users,email' 
+        : 'nullable|email|unique:users,email'
+];
 ```
 
 ### Relationship Constraints
@@ -119,11 +155,12 @@ POST /api/users
 
 ### Dynamic Field Behavior
 
-The user creation/editing form adapts based on user state:
+The user creation/editing form adapts based on user state with intelligent field visibility:
 
 #### New User - Invitation Mode (Default)
 ```
 ✅ Send invitation email    [checked by default]
+✅ Email Address *          [visible - required for invitation]
 ❌ Password fields          [hidden - not required]
 ❌ Confirm Password         [hidden - not required]
 ```
@@ -131,14 +168,65 @@ The user creation/editing form adapts based on user state:
 #### New User - Direct Creation
 ```
 ❌ Send invitation email    [unchecked]
+✅ Email Address *          [visible - required for login]
 ✅ Password *               [visible - required]
 ✅ Confirm Password *       [visible - required]
 ```
 
-#### Inactive User
+#### Inactive User (Placeholder)
 ```
 ❌ User is active          [unchecked]
+❌ Email Address           [visible - optional for inactive users]
 ❌ Password fields         [hidden - not required regardless of invitation]
+❌ Send invitation email   [hidden - cannot invite inactive users]
+```
+
+#### UserFormModal Integration
+
+The `UserFormModal.vue` component includes enhanced context-aware behavior:
+
+```javascript
+// Smart field visibility based on user state
+const showEmailField = computed(() => {
+  // Always show email field, but requirements change based on state
+  return true
+})
+
+const emailRequired = computed(() => {
+  // Email required for active users unless using invitation workflow
+  return form.value.is_active && !form.value.send_invitation
+})
+
+const showPasswordFields = computed(() => {
+  // Show password fields only for direct creation of active users
+  return form.value.is_active && !form.value.send_invitation
+})
+
+const showInvitationToggle = computed(() => {
+  // Only show invitation option for active users
+  return form.value.is_active
+})
+```
+
+#### Account Context Preselection
+
+```javascript
+// UserFormModal supports preselected account context
+const props = defineProps({
+  preselectedAccountId: {
+    type: [String, Number],
+    default: null
+  }
+})
+
+// Auto-populate account when creating users from specific contexts
+const resetForm = () => {
+  form.value = {
+    // ... other fields
+    account_id: props.preselectedAccountId || null,
+    // ... rest of form
+  }
+}
 ```
 
 #### Editing Existing User
@@ -198,13 +286,18 @@ Intl.DateTimeFormat().resolvedOptions().timeZone
 
 ### User Creation
 ```php
-// Dynamic password validation based on context
+// Dynamic validation based on user state and workflow
+$emailRequired = $request->boolean('is_active', true) && !$request->boolean('send_invitation', false);
 $passwordRequired = !$request->boolean('send_invitation') && $request->boolean('is_active', true);
 
 $rules = [
     'name' => 'required|string|max:255',
-    'email' => 'required|email|unique:users,email',
-    'password' => $passwordRequired ? 'required|string|min:8|confirmed' : 'nullable|string|min:8|confirmed',
+    'email' => $emailRequired 
+        ? 'required|email|unique:users,email' 
+        : 'nullable|email|unique:users,email',
+    'password' => $passwordRequired 
+        ? 'required|string|min:8|confirmed' 
+        : 'nullable|string|min:8|confirmed',
     'timezone' => 'nullable|string|max:50',
     'locale' => 'nullable|string|max:10',
     'is_active' => 'boolean',
@@ -215,6 +308,15 @@ $rules = [
     'send_invitation' => 'boolean'
 ];
 ```
+
+#### Validation Matrix
+
+| User State | Active | Send Invitation | Email Required | Password Required |
+|------------|--------|-----------------|----------------|-------------------|
+| **Standard Active User** | ✅ Yes | ❌ No | ✅ Required | ✅ Required |
+| **Invitation User** | ✅ Yes | ✅ Yes | ✅ Required | ❌ Optional |
+| **Inactive User** | ❌ No | N/A | ❌ Optional | ❌ Optional |
+| **Placeholder User** | ❌ No | ❌ No | ❌ Optional | ❌ Optional |
 
 ### User Updates
 ```php
@@ -239,18 +341,18 @@ $rules = [
 CREATE TABLE users (
     id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) NULL,                  -- Nullable for inactive users
     email_verified_at TIMESTAMP NULL,
-    password VARCHAR(255) NULL,              -- Nullable for invitation workflow
-    account_id UUID NULL,                    -- Single account relationship
-    role_template_id UUID NULL,              -- Single role relationship
+    password VARCHAR(255) NULL,               -- Nullable for invitation workflow
+    account_id UUID NULL,                     -- Single account relationship
+    role_template_id UUID NULL,               -- Single role relationship
     preferences JSON NULL,
     timezone VARCHAR(50) DEFAULT 'UTC',
     locale VARCHAR(10) DEFAULT 'en',
     last_active_at TIMESTAMP NULL,
     last_login_at TIMESTAMP NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    is_visible BOOLEAN DEFAULT TRUE,         -- New field for visibility control
+    is_visible BOOLEAN DEFAULT TRUE,          -- Visibility control
     remember_token VARCHAR(100) NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
@@ -258,7 +360,40 @@ CREATE TABLE users (
     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL,
     FOREIGN KEY (role_template_id) REFERENCES role_templates(id) ON DELETE SET NULL
 );
+
+-- Partial unique constraint: email is unique only when not null
+CREATE UNIQUE INDEX users_email_unique ON users (email) WHERE email IS NOT NULL;
 ```
+
+#### Migration Details
+
+The email nullable change was implemented with a sophisticated migration:
+
+```php
+// Migration: 2025_08_14_151943_make_email_nullable_on_users_table.php
+public function up(): void
+{
+    // Step 1: Drop existing unique constraint
+    Schema::table('users', function (Blueprint $table) {
+        $table->dropUnique(['email']);
+    });
+    
+    // Step 2: Make email column nullable
+    Schema::table('users', function (Blueprint $table) {
+        $table->string('email')->nullable()->change();
+    });
+    
+    // Step 3: Create PostgreSQL partial unique constraint
+    // This ensures email uniqueness only for non-null values
+    DB::statement('CREATE UNIQUE INDEX users_email_unique ON users (email) WHERE email IS NOT NULL');
+}
+```
+
+**Benefits of Partial Unique Constraint:**
+- Multiple users can have `NULL` email addresses
+- Email addresses are still unique when provided
+- Supports both active users (with email) and inactive placeholder users (without email)
+- Database-level integrity maintained
 
 ## Permission Integration
 
@@ -409,4 +544,4 @@ Users can be assigned to tickets based on their account and role permissions. Se
 
 **User Management System** - Complete lifecycle management with invitation workflows and three-dimensional permission integration.
 
-_Updated: August 12, 2025 - Added invitation workflow, nullable passwords, and visibility controls_
+_Updated: August 14, 2025 - Added nullable email support with partial unique constraints, enhanced UserFormModal with context-aware preselection, and comprehensive validation matrix for all user creation scenarios_

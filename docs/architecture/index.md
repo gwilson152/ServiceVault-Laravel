@@ -42,12 +42,21 @@ System architecture, design patterns, and technical specifications for Service V
 - **Soft Deletes**: Audit trail preservation with deleted_at timestamps
 - **Hierarchical Data**: Account parent-child relationships with unlimited nesting
 - **Polymorphic Relations**: Flexible associations (comments, attachments, etc.)
+- **Partial Unique Constraints**: PostgreSQL partial indexes for nullable unique fields
 
 ### Key Database Features
 - **Account Hierarchy**: Parent-child account relationships
 - **Role Templates**: JSON-based permission storage
 - **Timer State**: PostgreSQL + Redis hybrid storage
 - **Audit Logging**: Comprehensive change tracking
+- **User Management**: Nullable email fields with partial unique constraints for inactive users
+- **Invitation Workflow**: Support for users without initial email/password requirements
+
+### Recent Schema Enhancements (August 2025)
+- **Nullable Email Addresses**: Users table supports optional email for inactive/placeholder users
+- **Partial Unique Constraints**: `CREATE UNIQUE INDEX users_email_unique ON users (email) WHERE email IS NOT NULL`
+- **Enhanced User States**: Support for active/inactive and visible/hidden user states
+- **Flexible User Creation**: Accommodates invitation workflow, direct creation, and placeholder users
 
 ## Security Architecture
 

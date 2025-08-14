@@ -4,9 +4,97 @@ Professional, reusable selector components providing consistent user experience 
 
 ## Overview
 
-Service Vault features three polished selector components that provide standardized user interactions for complex data selection. These components follow unified design patterns and deliver professional UX with smart features like viewport-aware positioning, conditional display logic, and comprehensive keyboard navigation.
+Service Vault features four polished selector components that provide standardized user interactions for complex data selection. These components follow unified design patterns and deliver professional UX with smart features like viewport-aware positioning, conditional display logic, auto-reopen behavior, and comprehensive keyboard navigation.
 
 ## Component Architecture
+
+### UserSelector
+
+**Purpose**: Select system users with built-in create new user functionality  
+**File**: `/resources/js/Components/UI/UserSelector.vue`  
+**Data Source**: User data via TanStack Query with account and role filtering
+
+#### Features
+- **Intelligent User Search**: Filters users by name, email, role, and account information
+- **Built-in User Creation**: Integrated "Create New User" option that opens UserFormModal
+- **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared for seamless UX
+- **Smart Viewport Positioning**: Dropup/dropdown mode based on available screen space
+- **Context-Aware Account Preselection**: Pre-fills account context in user creation modal
+- **Rich User Display**: Shows user name, email, role, and account information
+- **Conditional Display Logic**: Hides search input when user is selected, shows selected user card
+- **Loading and Empty States**: Professional loading indicators and "no users found" messaging
+- **Account Integration**: Filters and displays users with account and role context
+
+#### User Creation Integration
+```javascript
+// Automatically opens UserFormModal with preselected account context
+const openCreateModal = () => {
+  showCreateUserModal.value = true
+  // UserFormModal receives preselectedAccountId from parent context
+}
+
+const handleUserCreated = (user) => {
+  // New user automatically selected after creation
+  selectUser(user)
+  closeCreateModal()
+}
+```
+
+#### Props
+- `modelValue`: Selected user ID or user object (String/Object)
+- `users`: Array of available users for selection
+- `isLoading`: Loading state indicator (Boolean)
+- `label`: Input label text (default: "User")
+- `placeholder`: Search placeholder text
+- `required`: Show required indicator (Boolean)
+- `error`: Error message to display
+- `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
+- `showCreateOption`: Enable "Create New User" functionality (default: false)
+- `noUsersMessage`: Custom message when no users available
+- `accounts`: Array of accounts for user creation modal
+- `roleTemplates`: Array of role templates for user creation modal
+- `preselectedAccountId`: Account ID to preselect in user creation modal
+
+#### Usage Example
+```vue
+<UserSelector
+  v-model="selectedUserId"
+  :users="availableUsers"
+  :is-loading="usersLoading"
+  label="Assign to User"
+  placeholder="Select a user..."
+  required
+  :error="errors.user_id"
+  :show-create-option="true"
+  :accounts="accounts"
+  :role-templates="roleTemplates"
+  :preselected-account-id="currentAccountId"
+  @user-selected="handleUserSelection"
+/>
+```
+
+#### Smart Selection Display
+When a user is selected, the component shows a professional user card instead of the search input:
+```vue
+<!-- Selected User Card -->
+<div class="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center">
+      <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+        <!-- User Icon -->
+      </div>
+      <div>
+        <p class="text-sm font-medium text-blue-900">{{ selectedUser.name }}</p>
+        <p class="text-xs text-blue-700">{{ selectedUser.email }}</p>
+        <p class="text-xs text-blue-600">{{ selectedUser.role_template?.name }}</p>
+      </div>
+    </div>
+    <button @click="clearSelection" class="text-blue-600 hover:text-blue-800">
+      <!-- Clear Icon -->
+    </button>
+  </div>
+</div>
+```
 
 ### HierarchicalAccountSelector
 
@@ -111,10 +199,14 @@ const getStatusClasses = (statusName) => {
 #### Features
 - **Rate Information Display**: Shows rate name, hourly amount ($X.XX/hr), and default indicator
 - **Default Rate Preselection**: Automatically selects default billing rate when component loads
+- **Auto-Reopen on Clear**: Automatically reopens dropdown when selection is cleared for seamless UX
+- **Smart Viewport Positioning**: Dropup/dropdown mode based on screen position (critical for timer overlay)
 - **Search Functionality**: Filter rates by name, hourly amount, or description text
-- **Default Badge**: Visual indicator for organization default rates
+- **Default Badge**: Visual indicator for organization default rates with blue styling
 - **Currency Formatting**: Proper financial formatting for hourly rates
 - **Rate Descriptions**: Optional additional context for billing rate selection
+- **Enhanced Keyboard Navigation**: Arrow keys, Enter, and Escape support
+- **Professional Selection Display**: Shows selected rate card instead of search input when selected
 
 #### Data Structure
 ```javascript
@@ -136,6 +228,20 @@ const getStatusClasses = (statusName) => {
 - `placeholder`: Input placeholder text (default: "Select billing rate...")
 - `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
 
+#### Timer Integration
+BillingRateSelector is specifically optimized for timer creation workflows:
+```javascript
+// Auto-select default rate when rates load
+watch(() => billingRates.value, (newRates) => {
+  if (newRates && !quickStartForm.billingRateId) {
+    const defaultRate = newRates.find(rate => rate.is_default) || newRates[0]
+    if (defaultRate) {
+      quickStartForm.billingRateId = defaultRate.id
+    }
+  }
+}, { immediate: true })
+```
+
 #### Usage Example
 ```vue
 <BillingRateSelector
@@ -146,6 +252,34 @@ const getStatusClasses = (statusName) => {
   :reopen-on-clear="true"
   @rate-selected="handleRateSelection"
 />
+```
+
+#### Smart Clear and Reopen
+When users click the clear button on a selected rate, the component automatically:
+1. **Clears the selection** and emits the change
+2. **Reopens the dropdown** to show available options
+3. **Focuses the search input** for immediate typing
+4. **Checks viewport position** to ensure proper dropdown placement
+
+```javascript
+const clearSelection = () => {
+  selectedRate.value = null
+  searchTerm.value = ''
+  emit('update:modelValue', null)
+  emit('rate-selected', null)
+  
+  // Optionally reopen dropdown and focus input
+  if (props.reopenOnClear) {
+    isOpen.value = true
+    setTimeout(() => {
+      const input = document.getElementById(inputId)
+      if (input) {
+        input.focus()
+        checkDropdownPosition()
+      }
+    }, 10)
+  }
+}
 ```
 
 ## Unified Design Patterns
@@ -318,7 +452,7 @@ const dropdownId = `dropdown-${Math.random().toString(36).substr(2, 9)}`
 
 ### Timer Overlay Integration
 
-The timer quick start form demonstrates optimal integration of all three selector components:
+The timer quick start form demonstrates optimal integration of all four selector components:
 
 ```vue
 <template>
@@ -348,7 +482,7 @@ The timer quick start form demonstrates optimal integration of all three selecto
       @ticket-selected="handleTicketSelected"
     />
     
-    <!-- Billing Rate Selection -->
+    <!-- Billing Rate Selection (with auto-default selection) -->
     <BillingRateSelector
       v-model="quickStartForm.billingRateId"
       :rates="billingRates"
@@ -356,6 +490,18 @@ The timer quick start form demonstrates optimal integration of all three selecto
       placeholder="No billing rate"
       :reopen-on-clear="true"
       @rate-selected="handleRateSelected"
+    />
+    
+    <!-- Optional User Assignment (for ticket assignment scenarios) -->
+    <UserSelector
+      v-if="showUserAssignment"
+      v-model="quickStartForm.assignedUserId"
+      :users="availableUsers"
+      :is-loading="usersLoading"
+      label="Assign to"
+      placeholder="Select user..."
+      :show-create-option="false"
+      @user-selected="handleUserSelected"
     />
   </div>
 </template>
@@ -368,9 +514,10 @@ Reactive form state with proper defaults and reset logic:
 ```javascript
 const quickStartForm = reactive({
   description: '',
-  accountId: '',     // Bound to HierarchicalAccountSelector
-  ticketId: '',      // Bound to TicketSelector (conditional)
-  billingRateId: ''  // Bound to BillingRateSelector (auto-default)
+  accountId: '',        // Bound to HierarchicalAccountSelector
+  ticketId: '',         // Bound to TicketSelector (conditional)
+  billingRateId: '',    // Bound to BillingRateSelector (auto-default)
+  assignedUserId: ''    // Bound to UserSelector (optional)
 })
 
 // Clear ticket selection when account changes
@@ -498,4 +645,4 @@ const filteredItems = computed(() => {
 
 **UI Selector Components** provide the foundation for consistent, professional user interactions across Service Vault's complex data selection scenarios.
 
-_Last Updated: August 14, 2025 - Enhanced UX with Auto-Reopen Behavior and Built-in Label Support_
+_Last Updated: August 14, 2025 - Added UserSelector with create new user functionality, enhanced auto-reopen behavior, and timer integration optimizations_
