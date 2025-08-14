@@ -47,6 +47,8 @@ export function useCreateUserMutation() {
       // Invalidate and refetch users list
       queryClient.invalidateQueries({ queryKey: queryKeys.users.all })
       queryClient.invalidateQueries({ queryKey: ['users', 'assignable'] })
+      // Also invalidate account selector to refresh hierarchical data
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.selector })
     },
     onError: (error) => {
       console.error('Failed to create user:', error)
@@ -64,6 +66,8 @@ export function useUpdateUserMutation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.byId(id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.users.all })
       queryClient.invalidateQueries({ queryKey: ['users', 'assignable'] })
+      // Also invalidate account selector to refresh hierarchical data
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.selector })
     },
     onError: (error) => {
       console.error('Failed to update user:', error)

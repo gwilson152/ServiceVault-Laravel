@@ -46,7 +46,7 @@
           <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
         </div>
 
-        <!-- Account & Agent Selection -->
+        <!-- Account Selection -->
         <SimpleAccountUserSelector
           v-model:account-id="form.account_id"
           v-model:user-id="form.agent_id"
@@ -54,6 +54,37 @@
           :user-error="errors.agent_id"
           :show-user-selector="canAssignTickets"
         />
+        
+        <!-- Customer Selection -->
+        <div v-if="form.account_id">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Customer/Reporter <span class="text-red-500">*</span>
+          </label>
+          
+          <div class="relative">
+            <select
+              v-model="form.customer_id"
+              :disabled="isLoadingCustomers"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+            >
+              <option value="">{{ isLoadingCustomers ? 'Loading customers...' : 'Select customer/reporter...' }}</option>
+              <option
+                v-for="customer in availableCustomers"
+                :key="customer.id"
+                :value="customer.id"
+              >
+                {{ customer.name }} ({{ customer.email }})
+              </option>
+            </select>
+            
+            <div v-if="isLoadingCustomers" class="absolute inset-y-0 right-0 flex items-center pr-3">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            </div>
+          </div>
+          
+          <p v-if="errors.customer_id" class="mt-1 text-sm text-red-600">{{ errors.customer_id }}</p>
+        </div>
 
         <!-- Form Row: Priority & Category -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -212,6 +243,8 @@ const isSubmitting = ref(false)
 const errors = ref({})
 const isLoadingCategories = ref(false)
 const availableCategories = ref([])
+const isLoadingCustomers = ref(false)
+const availableCustomers = ref([])
 
 // Form data
 const form = reactive({
@@ -219,6 +252,7 @@ const form = reactive({
   description: '',
   priority: 'normal',
   account_id: '',
+  customer_id: '',
   category: '',
   due_date: '',
   agent_id: '',
@@ -237,6 +271,7 @@ const resetForm = () => {
   form.description = ''
   form.priority = 'normal'
   form.account_id = user.value?.account_id || ''
+  form.customer_id = ''
   form.category = ''
   form.due_date = ''
   form.agent_id = ''
@@ -244,6 +279,7 @@ const resetForm = () => {
   form.start_timer = false
   form.send_notifications = true
   errors.value = {}
+  availableCustomers.value = []
 }
 
 const loadCategories = async () => {
@@ -331,9 +367,45 @@ const startTimerForTicket = async (ticketId) => {
   }
 }
 
+const loadCustomers = async (accountId) => {
+  if (!accountId) {
+    availableCustomers.value = []
+    return
+  }
+  
+  isLoadingCustomers.value = true
+  try {
+    const response = await axios.get(`/api/accounts/${accountId}/users`, {
+      params: {
+        role_context: 'account_user', // Only get customer users, not service providers
+        per_page: 100
+      }
+    })
+    
+    availableCustomers.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load customers:', error)
+    availableCustomers.value = []
+  } finally {
+    isLoadingCustomers.value = false
+  }
+}
+
 // Watchers & Lifecycle
 onMounted(() => {
   loadCategories()
+})
+
+// Watch for account changes to load customers
+watch(() => form.account_id, (newAccountId) => {
+  if (newAccountId) {
+    loadCustomers(newAccountId)
+    // Clear customer selection when account changes
+    form.customer_id = ''
+  } else {
+    availableCustomers.value = []
+    form.customer_id = ''
+  }
 })
 
 // Watch for modal show/hide
@@ -341,6 +413,10 @@ watch(() => props.show, (show) => {
   if (show) {
     resetForm()
     loadCategories()
+    // Load customers if account is already selected
+    if (form.account_id) {
+      loadCustomers(form.account_id)
+    }
   }
 }, { immediate: true })
 

@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Http\Requests\StoreAccountRequest;
 use App\Http\Requests\UpdateAccountRequest;
 use App\Http\Resources\AccountResource;
+use App\Http\Resources\UserResource;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -41,6 +42,42 @@ class AccountController extends Controller
                 'total' => $accounts->count(),
                 'hierarchical' => true
             ]
+        ]);
+    }
+
+    /**
+     * Get users belonging to a specific account
+     */
+    public function users(Request $request, Account $account): JsonResponse
+    {
+        $user = $request->user();
+        
+        // Check if user has permission to view this account's users
+        if (!$user->hasAnyPermission(['admin.read', 'admin.write', 'accounts.manage', 'users.manage.account'])) {
+            // If not admin, only allow if it's their own account or they have hierarchy access
+            if ($account->id !== $user->account_id && !$user->hasPermission('accounts.hierarchy.access')) {
+                return response()->json(['error' => 'Unauthorized access.'], 403);
+            }
+        }
+        
+        $roleContext = $request->input('role_context'); // 'account_user' for customers, 'service_provider' for agents
+        
+        $query = $account->users()->with(['roleTemplate']);
+        
+        // Filter by role context if specified
+        if ($roleContext) {
+            $query->whereHas('roleTemplate', function ($roleQuery) use ($roleContext) {
+                $roleQuery->where('context', $roleContext);
+            });
+        }
+        
+        // Apply pagination
+        $perPage = min($request->input('per_page', 15), 100);
+        $users = $query->paginate($perPage);
+        
+        return response()->json([
+            'data' => UserResource::collection($users),
+            'meta' => $users->toArray()
         ]);
     }
 
@@ -245,6 +282,9 @@ class AccountController extends Controller
         $node = [
             'id' => $account->id,
             'name' => $account->name,
+            'display_name' => $account->company_name ?: $account->name, // Computed display_name
+            'company_name' => $account->company_name,
+            'account_type' => $account->account_type,
             'parent_id' => $account->parent_id,
             'depth' => $depth,
             'has_children' => $account->children()->count() > 0,

@@ -30,9 +30,36 @@ const selectedUser = ref(null)
 const showDeleteConfirm = ref(false)
 const userToDelete = ref(null)
 
+// Helper function to flatten hierarchical account structure
+const flattenAccounts = (accounts) => {
+  const flattened = []
+  
+  const flatten = (accountList) => {
+    for (const account of accountList) {
+      flattened.push({
+        id: account.id,
+        name: account.name,
+        display_name: account.display_name,
+        company_name: account.company_name,
+        account_type: account.account_type,
+        parent_id: account.parent_id,
+        depth: account.depth
+      })
+      
+      if (account.children && account.children.length > 0) {
+        flatten(account.children)
+      }
+    }
+  }
+  
+  flatten(accounts)
+  return flattened
+}
+
 // Computed properties for data
 const users = computed(() => usersData.value?.data || [])
-const accounts = computed(() => accountsData.value?.data || [])
+const hierarchicalAccounts = computed(() => accountsData.value?.data || [])
+const accounts = computed(() => flattenAccounts(hierarchicalAccounts.value))
 const roleTemplates = computed(() => roleTemplatesData.value?.data || [])
 const loading = computed(() => usersLoading.value || accountsLoading.value || roleTemplatesLoading.value)
 const error = computed(() => usersError.value ? 'Failed to load users' : null)

@@ -1,23 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { queryKeys, invalidateQueries } from "@/Services/queryClient";
-import { unref } from "vue";
+import { computed, unref } from "vue";
 import axios from "axios";
 
 // Fetch tickets with filters
 export function useTicketsQuery(filters = {}) {
     return useQuery({
-        queryKey: queryKeys.tickets.list(filters),
+        queryKey: computed(() => queryKeys.tickets.list(unref(filters))),
         queryFn: async () => {
             const params = new URLSearchParams();
+            const currentFilters = unref(filters);
 
             // Add filter parameters
-            if (filters.search) params.append("search", filters.search);
-            if (filters.status) params.append("status", filters.status);
-            if (filters.priority) params.append("priority", filters.priority);
-            if (filters.assignment)
-                params.append("assignment", filters.assignment);
-            if (filters.account_id)
-                params.append("account_id", filters.account_id);
+            if (currentFilters.search) params.append("search", currentFilters.search);
+            if (currentFilters.status) params.append("status", currentFilters.status);
+            if (currentFilters.priority) params.append("priority", currentFilters.priority);
+            if (currentFilters.assignment)
+                params.append("assignment", currentFilters.assignment);
+            if (currentFilters.account_id)
+                params.append("account_id", currentFilters.account_id);
 
             const response = await axios.get(
                 `/api/tickets?${params.toString()}`

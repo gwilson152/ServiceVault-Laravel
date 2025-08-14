@@ -216,6 +216,21 @@
               <p class="mt-2 text-gray-500">Loading tickets...</p>
             </div>
             
+            <!-- Error State -->
+            <div v-else-if="error" class="p-8 text-center">
+              <div class="rounded-md bg-red-50 p-4">
+                <div class="text-sm text-red-700">
+                  Failed to load tickets. Please try again.
+                </div>
+                <button 
+                  @click="refetchTickets"
+                  class="mt-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+            
             <!-- Empty State -->
             <div v-else-if="filteredTickets.length === 0" class="p-8 text-center">
               <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

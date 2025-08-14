@@ -130,6 +130,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::get('accounts/selector/hierarchical', [AccountController::class, 'selector'])
         ->name('accounts.selector');
+        
+    // Account users endpoint
+    Route::get('accounts/{account}/users', [AccountController::class, 'users'])
+        ->name('accounts.users');
 
     // Domain mapping routes (admin/account manager access)
     Route::apiResource('domain-mappings', DomainMappingController::class);

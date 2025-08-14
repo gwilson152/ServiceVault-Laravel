@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import axios from 'axios'
+import { useCreateUserMutation, useUpdateUserMutation } from '@/Composables/queries/useUsersQuery'
 
 const props = defineProps({
     open: {
@@ -38,9 +38,14 @@ const form = ref({
     send_invitation: true
 })
 
-const saving = ref(false)
 const errors = ref({})
 const showPassword = ref(false)
+
+// TanStack Query mutations
+const createUserMutation = useCreateUserMutation()
+const updateUserMutation = useUpdateUserMutation()
+
+const saving = computed(() => createUserMutation.isPending.value || updateUserMutation.isPending.value)
 
 const isEditing = computed(() => !!props.user?.id)
 const modalTitle = computed(() => isEditing.value ? 'Edit User' : 'Create User')
@@ -90,7 +95,6 @@ const resetForm = () => {
 
 const saveUser = async () => {
     try {
-        saving.value = true
         errors.value = {}
         
         const formData = { ...form.value }
@@ -114,9 +118,9 @@ const saveUser = async () => {
         
         let response
         if (isEditing.value) {
-            response = await axios.put(`/api/users/${props.user.id}`, formData)
+            response = await updateUserMutation.mutateAsync({ id: props.user.id, data: formData })
         } else {
-            response = await axios.post('/api/users', formData)
+            response = await createUserMutation.mutateAsync(formData)
         }
         
         emit('saved', response.data.data)
@@ -127,8 +131,6 @@ const saveUser = async () => {
         } else {
             errors.value = { general: ['An error occurred while saving the user.'] }
         }
-    } finally {
-        saving.value = false
     }
 }
 
