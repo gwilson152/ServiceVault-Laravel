@@ -195,10 +195,10 @@
                                 <div class="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
                                     <button
                                         type="submit"
-                                        :disabled="processing"
+                                        :disabled="createTicketAddonMutation.isPending"
                                         class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:ml-3 sm:w-auto disabled:opacity-50"
                                     >
-                                        <span v-if="processing">Adding...</span>
+                                        <span v-if="createTicketAddonMutation.isPending">Adding...</span>
                                         <span v-else>Add Addon</span>
                                     </button>
                                     <button
@@ -220,8 +220,10 @@
 
 <script setup>
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useAddonCategoriesQuery } from '@/Composables/queries/useBillingQuery'
+import { useAddonTemplatesQuery } from '@/Composables/queries/useAddonTemplatesQuery'
+import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import axios from 'axios'
 
 const props = defineProps({
@@ -239,11 +241,12 @@ const form = reactive({
     category: 'service',
     unit_price: 0,
     quantity: 1,
-    is_billable: true
+    is_billable: true,
+    billing_category: 'addon'
 })
 
 const processing = ref(false)
-const templates = ref([])
+const queryClient = useQueryClient()
 
 // TanStack Query for addon categories
 const addonCategoriesQuery = useAddonCategoriesQuery()
@@ -257,6 +260,9 @@ const addonCategories = computed(() => addonCategoriesQuery.data.value || {
     other: 'Other'
 })
 
+// TanStack Query for addon templates
+const addonTemplatesQuery = useAddonTemplatesQuery()
+const templates = computed(() => addonTemplatesQuery.data.value || [])
 
 // Group templates by category
 const groupedTemplates = computed(() => {
@@ -270,20 +276,24 @@ const groupedTemplates = computed(() => {
     }, {})
 })
 
+// Create ticket addon mutation
+const createTicketAddonMutation = useMutation({
+    mutationFn: (data) => axios.post('/api/ticket-addons', data).then(res => res.data),
+    onSuccess: (data) => {
+        emit('added', data.data)
+        emit('close')
+        resetForm()
+    },
+    onError: (error) => {
+        console.error('Failed to add addon:', error)
+        // Handle error (could emit error event or show notification)
+    }
+})
+
 // Calculated values
 const calculatedTotal = computed(() => {
     return (parseFloat(form.unit_price) || 0) * (parseFloat(form.quantity) || 0)
 })
-
-// Load templates
-const loadTemplates = async () => {
-    try {
-        const response = await axios.get('/api/addon-templates')
-        templates.value = response.data.data || []
-    } catch (error) {
-        console.error('Failed to load addon templates:', error)
-    }
-}
 
 // Apply template
 const applyTemplate = () => {
@@ -295,10 +305,10 @@ const applyTemplate = () => {
     form.name = template.name
     form.description = template.description || ''
     form.category = template.category
-    form.unit_price = parseFloat(template.default_unit_price)
+    form.unit_price = parseFloat(template.default_unit_price || template.default_price)
     form.quantity = parseFloat(template.default_quantity)
-    form.is_billable = template.is_billable
-    form.billing_category = template.billing_category
+    form.is_billable = template.is_billable ?? true
+    form.billing_category = template.billing_category || 'addon'
 }
 
 // Reset form
@@ -314,32 +324,19 @@ const resetForm = () => {
 }
 
 // Submit addon
-const submitAddon = async () => {
-    processing.value = true
-    
-    try {
-        const data = {
-            ticket_id: props.ticket.id,
-            name: form.name,
-            description: form.description,
-            category: form.category,
-            unit_price: parseFloat(form.unit_price),
-            quantity: parseFloat(form.quantity),
-            is_billable: form.is_billable,
-            billing_category: form.billing_category
-        }
-        
-        const response = await axios.post('/api/ticket-addons', data)
-        
-        emit('added', response.data.data)
-        emit('close')
-        resetForm()
-    } catch (error) {
-        console.error('Failed to add addon:', error)
-        // Handle error (could emit error event or show notification)
-    } finally {
-        processing.value = false
+const submitAddon = () => {
+    const data = {
+        ticket_id: props.ticket.id,
+        name: form.name,
+        description: form.description,
+        category: form.category,
+        unit_price: parseFloat(form.unit_price),
+        quantity: parseFloat(form.quantity),
+        is_billable: form.is_billable,
+        billing_category: form.billing_category
     }
+    
+    createTicketAddonMutation.mutate(data)
 }
 
 // Format price helper
@@ -354,11 +351,6 @@ const formatPrice = (amount) => {
 watch(() => props.show, (show) => {
     if (show) {
         resetForm()
-        loadTemplates()
     }
-})
-
-onMounted(() => {
-    loadTemplates()
 })
 </script>

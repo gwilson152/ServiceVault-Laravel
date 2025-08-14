@@ -9,7 +9,7 @@ export function useNavigationQuery() {
     
     // Get current route name
     const currentRoute = computed(() => {
-        return page.props.route || route().current() || 'dashboard'
+        return page.component || 'dashboard'
     })
 
     // Query for navigation items

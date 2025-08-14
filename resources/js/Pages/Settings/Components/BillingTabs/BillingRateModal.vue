@@ -157,17 +157,9 @@ const form = reactive({
   is_active: true
 })
 
-// Reset form function (defined before watchers)
-const resetForm = () => {
-  form.name = ''
-  form.description = ''
-  form.rate = 0
-  form.is_active = true
-}
-
 // Computed
 const isEditing = computed(() => !!props.rate?.id)
-const saving = computed(() => createRateMutation.isPending.value || updateRateMutation.isPending.value)
+const saving = computed(() => createRateMutation.isPending || updateRateMutation.isPending)
 
 // Watch for rate changes to populate form
 watch(() => props.rate, (rate) => {
@@ -177,12 +169,15 @@ watch(() => props.rate, (rate) => {
     form.rate = parseFloat(rate.rate) || 0
     form.is_active = rate.is_active ?? true
   }
-}, { immediate: true })
+})
 
-// Reset form when modal opens/closes
+// Watch for modal show/hide to reset form when creating new rate
 watch(() => props.show, (show) => {
   if (show && !props.rate) {
-    resetForm()
+    form.name = ''
+    form.description = ''
+    form.rate = 0
+    form.is_active = true
   }
 })
 

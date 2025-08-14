@@ -310,6 +310,23 @@ const calculatedTotal = computed(() => {
   return subtotal + taxAmount
 })
 
+// Reset form function - moved before watcher to fix initialization error
+const resetForm = () => {
+  Object.assign(form, {
+    name: '',
+    description: '',
+    category: 'service',
+    sku: '',
+    default_unit_price: 0,
+    default_quantity: 1,
+    default_tax_rate: 0,
+    billing_category: 'addon',
+    is_billable: true,
+    is_taxable: false,
+    is_active: true
+  })
+}
+
 // Watch for template changes and populate form
 watch(() => props.template, (template) => {
   if (template) {
@@ -330,23 +347,6 @@ watch(() => props.template, (template) => {
     resetForm()
   }
 }, { immediate: true })
-
-// Reset form
-const resetForm = () => {
-  Object.assign(form, {
-    name: '',
-    description: '',
-    category: 'service',
-    sku: '',
-    default_unit_price: 0,
-    default_quantity: 1,
-    default_tax_rate: 0,
-    billing_category: 'addon',
-    is_billable: true,
-    is_taxable: false,
-    is_active: true
-  })
-}
 
 // Format price helper
 const formatPrice = (amount) => {

@@ -194,6 +194,17 @@ const form = reactive({
   is_active: true
 })
 
+// Reset form function - moved before watcher to fix initialization error
+const resetForm = () => {
+  Object.assign(form, {
+    name: '',
+    description: '',
+    rate: 0,
+    assignment_type: 'global',
+    is_active: true
+  })
+}
+
 // Watch for rate changes and populate form
 watch(() => props.rate, (rate) => {
   if (rate) {
@@ -208,17 +219,6 @@ watch(() => props.rate, (rate) => {
     resetForm()
   }
 }, { immediate: true })
-
-// Reset form
-const resetForm = () => {
-  Object.assign(form, {
-    name: '',
-    description: '',
-    rate: 0,
-    assignment_type: 'global',
-    is_active: true
-  })
-}
 
 // Save rate
 const saveRate = async () => {

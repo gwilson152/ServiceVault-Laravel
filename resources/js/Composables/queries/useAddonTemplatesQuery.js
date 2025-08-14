@@ -19,7 +19,7 @@ const addonTemplatesApi = {
 export function useAddonTemplatesQuery() {
   return useQuery({
     queryKey: queryKeys.addonTemplates.all,
-    queryFn: () => addonTemplatesApi.getAll().then(res => res.data),
+    queryFn: () => addonTemplatesApi.getAll(),
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 }
@@ -28,7 +28,7 @@ export function useAddonTemplatesQuery() {
 export function useAddonTemplateQuery(id) {
   return useQuery({
     queryKey: queryKeys.addonTemplates.byId(id),
-    queryFn: () => addonTemplatesApi.getById(id).then(res => res.data),
+    queryFn: () => addonTemplatesApi.getById(id),
     enabled: !!id,
   })
 }
