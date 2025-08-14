@@ -18,6 +18,10 @@ const props = defineProps({
     roleTemplates: {
         type: Array,
         default: () => []
+    },
+    preselectedAccountId: {
+        type: [String, Number],
+        default: null
     }
 })
 
@@ -86,7 +90,7 @@ const resetForm = () => {
         locale: 'en',
         is_active: true,
         is_visible: true,
-        account_id: null,
+        account_id: props.preselectedAccountId || null,
         role_template_id: null,
         preferences: {},
         send_invitation: true
@@ -136,6 +140,12 @@ const saveUser = async () => {
 
 const closeModal = () => {
     emit('close')
+}
+
+const getAccountDisplayName = () => {
+    if (!props.preselectedAccountId) return ''
+    const account = props.accounts.find(acc => acc.id == props.preselectedAccountId)
+    return account ? `${account.display_name || account.name} (${account.account_type || 'Account'})` : 'Selected Account'
 }
 
 const timezones = [
@@ -325,7 +335,7 @@ const locales = [
                     </div>
 
                     <!-- Account Assignment Section -->
-                    <div class="border-b border-gray-200 pb-4">
+                    <div v-if="!preselectedAccountId" class="border-b border-gray-200 pb-4">
                         <h4 class="text-lg font-medium text-gray-900 mb-4">Account Assignment</h4>
                         <div>
                             <label for="account_id" class="block text-sm font-medium text-gray-700">Primary Account</label>
@@ -340,6 +350,22 @@ const locales = [
                                 </option>
                             </select>
                             <p class="mt-1 text-xs text-gray-500">Select the primary account this user belongs to.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Preselected Account Display -->
+                    <div v-else class="border-b border-gray-200 pb-4">
+                        <h4 class="text-lg font-medium text-gray-900 mb-4">Account Assignment</h4>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-6 0H3m2 0h4m6 0v-3.87a3.37 3.37 0 00-.94-2.61c-.26-.26-.70-.26-.96 0L9.47 16.1a3.37 3.37 0 00-.94 2.61V21"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-blue-900">Account: {{ getAccountDisplayName() }}</p>
+                                    <p class="text-xs text-blue-700">User will be assigned to this account</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

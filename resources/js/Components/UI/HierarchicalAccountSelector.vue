@@ -122,6 +122,10 @@ const props = defineProps({
   error: {
     type: String,
     default: null
+  },
+  reopenOnClear: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -198,6 +202,19 @@ const clearSelection = () => {
   searchTerm.value = ''
   emit('update:modelValue', null)
   emit('account-selected', null)
+  
+  // Optionally reopen dropdown and focus input
+  if (props.reopenOnClear) {
+    showDropdown.value = true
+    // Focus the input on next tick
+    setTimeout(() => {
+      const input = document.getElementById(inputId)
+      if (input) {
+        input.focus()
+        checkDropdownPosition()
+      }
+    }, 10)
+  }
 }
 
 const handleFocus = () => {

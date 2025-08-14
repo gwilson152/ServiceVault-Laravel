@@ -38,11 +38,23 @@ const { data: accounts, isLoading } = useAccountsQuery({
 // }
 ```
 
+#### Props
+- `modelValue`: Selected account ID (String/Object)
+- `label`: Label text (default: "Account")
+- `placeholder`: Input placeholder text
+- `required`: Show required indicator (Boolean)
+- `error`: Error message to display
+- `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
+
 #### Usage Example
 ```vue
 <HierarchicalAccountSelector
   v-model="selectedAccountId"
+  label="Customer Account"
   placeholder="No account (general timer)"
+  required
+  :error="errors.account_id"
+  :reopen-on-clear="true"
   @account-selected="handleAccountSelection"
 />
 ```
@@ -117,6 +129,13 @@ const getStatusClasses = (statusName) => {
 // }
 ```
 
+#### Props
+- `modelValue`: Selected billing rate ID (String/Number)
+- `rates`: Array of available billing rates
+- `isLoading`: Loading state indicator (Boolean)
+- `placeholder`: Input placeholder text (default: "Select billing rate...")
+- `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
+
 #### Usage Example
 ```vue
 <BillingRateSelector
@@ -124,11 +143,55 @@ const getStatusClasses = (statusName) => {
   :rates="billingRates"
   :is-loading="ratesLoading"
   placeholder="No billing rate"
+  :reopen-on-clear="true"
   @rate-selected="handleRateSelection"
 />
 ```
 
 ## Unified Design Patterns
+
+### Auto-Reopen on Clear Behavior
+
+All selector components feature intelligent "reopen on clear" functionality that provides seamless user experience when changing selections:
+
+#### Smart Clear Behavior
+When a user clears a selection (clicks the X button), the component automatically:
+1. **Reopens the dropdown** to show available options
+2. **Focuses the search input** for immediate typing
+3. **Checks viewport position** to ensure proper dropdown placement
+4. **Provides smooth UX** without requiring additional clicks
+
+```javascript
+const clearSelection = () => {
+  selectedItem.value = null
+  searchTerm.value = ''
+  emit('update:modelValue', null)
+  emit('item-selected', null)
+  
+  // Optionally reopen dropdown and focus input
+  if (props.reopenOnClear) {
+    showDropdown.value = true
+    setTimeout(() => {
+      const input = document.getElementById(inputId)
+      if (input) {
+        input.focus()
+        checkDropdownPosition()
+      }
+    }, 10)
+  }
+}
+```
+
+#### Configurable Behavior
+The `reopenOnClear` prop (default: `true`) allows disabling this behavior when needed:
+
+```vue
+<!-- Default behavior: auto-reopen on clear -->
+<HierarchicalAccountSelector v-model="accountId" />
+
+<!-- Disable auto-reopen -->
+<HierarchicalAccountSelector v-model="accountId" :reopen-on-clear="false" />
+```
 
 ### Conditional UI Display
 
@@ -291,6 +354,7 @@ The timer quick start form demonstrates optimal integration of all three selecto
       :rates="billingRates"
       :is-loading="billingRatesLoading"
       placeholder="No billing rate"
+      :reopen-on-clear="true"
       @rate-selected="handleRateSelected"
     />
   </div>
@@ -434,4 +498,4 @@ const filteredItems = computed(() => {
 
 **UI Selector Components** provide the foundation for consistent, professional user interactions across Service Vault's complex data selection scenarios.
 
-_Last Updated: August 14, 2025 - Enhanced Timer Creation with Professional Selector Components_
+_Last Updated: August 14, 2025 - Enhanced UX with Auto-Reopen Behavior and Built-in Label Support_

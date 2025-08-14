@@ -58,6 +58,25 @@
           />
         </div>
         
+        <!-- Customer User Selection (optional) -->
+        <div v-if="form.account_id">
+          <UserSelector
+            v-model="form.customer_id"
+            :users="availableCustomers"
+            :is-loading="isLoadingCustomers"
+            :accounts="flatAccounts"
+            :role-templates="roleTemplates"
+            :preselected-account-id="form.account_id"
+            label="Customer User"
+            placeholder="No specific customer user"
+            :error="errors.customer_id"
+            no-users-message="No customer users available for this account"
+            @user-selected="handleCustomerSelected"
+            @user-created="handleUserCreated"
+          />
+          <p class="mt-1 text-xs text-gray-500">Select the customer user this ticket is for (if applicable)</p>
+        </div>
+        
         <!-- Agent Assignment (optional) -->
         <div v-if="canAssignTickets">
           <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -218,8 +237,10 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
 import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
+import UserSelector from '@/Components/UI/UserSelector.vue'
 import axios from 'axios'
 import { useCreateTicketMutation } from '@/Composables/queries/useTicketsQuery'
+import { useRoleTemplatesQuery } from '@/Composables/queries/useUsersQuery'
 
 // Props
 const props = defineProps({
@@ -237,8 +258,9 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['close', 'created'])
 
-// TanStack Query Mutation
+// TanStack Query Mutation & Queries
 const createTicketMutation = useCreateTicketMutation()
+const { data: roleTemplatesData } = useRoleTemplatesQuery()
 
 // State
 const isSubmitting = ref(false)
@@ -247,6 +269,8 @@ const isLoadingCategories = ref(false)
 const availableCategories = ref([])
 const isLoadingAgents = ref(false)
 const availableAgents = ref([])
+const isLoadingCustomers = ref(false)
+const availableCustomers = ref([])
 
 // Form data
 const form = reactive({
@@ -254,6 +278,7 @@ const form = reactive({
   description: '',
   priority: 'normal',
   account_id: '',
+  customer_id: '', // Added customer user selection
   category: '',
   due_date: '',
   agent_id: '',
@@ -266,12 +291,27 @@ const form = reactive({
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
+// Computed properties for UserSelector
+const flatAccounts = computed(() => {
+  if (!props.availableAccounts) return []
+  return props.availableAccounts.map(account => ({
+    id: account.id,
+    name: account.name,
+    display_name: account.display_name || account.name,
+    company_name: account.company_name,
+    account_type: account.account_type
+  }))
+})
+
+const roleTemplates = computed(() => roleTemplatesData.value?.data || [])
+
 // Methods
 const resetForm = () => {
   form.title = ''
   form.description = ''
   form.priority = 'normal'
   form.account_id = user.value?.account_id || ''
+  form.customer_id = ''
   form.category = ''
   form.due_date = ''
   form.agent_id = ''
@@ -280,6 +320,7 @@ const resetForm = () => {
   form.send_notifications = true
   errors.value = {}
   availableAgents.value = []
+  availableCustomers.value = []
 }
 
 const loadCategories = async () => {
@@ -379,6 +420,18 @@ const handleAccountSelected = (account) => {
   }
 }
 
+const handleCustomerSelected = (customer) => {
+  // Handle customer selection if needed
+  // Currently just updates the form value via v-model
+  console.log('Customer selected:', customer)
+}
+
+const handleUserCreated = (newUser) => {
+  // Add the newly created user to the available customers list
+  availableCustomers.value.push(newUser)
+  console.log('New user created and added to customer list:', newUser)
+}
+
 const loadAgentsForAccount = async (accountId) => {
   if (!accountId) {
     availableAgents.value = []
@@ -415,19 +468,53 @@ const loadAgentsForAccount = async (accountId) => {
   }
 }
 
+const loadCustomersForAccount = async (accountId) => {
+  if (!accountId) {
+    availableCustomers.value = []
+    return
+  }
+  
+  isLoadingCustomers.value = true
+  try {
+    const response = await axios.get(`/api/accounts/${accountId}/users`, {
+      params: {
+        per_page: 100,
+        role_context: 'account_user' // Filter for customer users only
+      }
+    })
+    
+    availableCustomers.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load customers:', error)
+    availableCustomers.value = []
+  } finally {
+    isLoadingCustomers.value = false
+  }
+}
+
 // Watchers & Lifecycle
 onMounted(() => {
   loadCategories()
 })
 
-// Watch for account changes to load agents
+// Watch for account changes to load agents and customers
 watch(() => form.account_id, (newAccountId) => {
-  if (newAccountId && props.canAssignTickets) {
-    loadAgentsForAccount(newAccountId)
-    // Clear agent selection when account changes
-    form.agent_id = ''
+  if (newAccountId) {
+    // Load customers for any account
+    loadCustomersForAccount(newAccountId)
+    // Clear customer selection when account changes
+    form.customer_id = ''
+    
+    // Load agents only if user can assign tickets
+    if (props.canAssignTickets) {
+      loadAgentsForAccount(newAccountId)
+      // Clear agent selection when account changes
+      form.agent_id = ''
+    }
   } else {
+    availableCustomers.value = []
     availableAgents.value = []
+    form.customer_id = ''
     form.agent_id = ''
   }
 })
@@ -437,9 +524,12 @@ watch(() => props.show, (show) => {
   if (show) {
     resetForm()
     loadCategories()
-    // Load agents if account is already selected and user can assign tickets
-    if (form.account_id && props.canAssignTickets) {
-      loadAgentsForAccount(form.account_id)
+    // Load data if account is already selected
+    if (form.account_id) {
+      loadCustomersForAccount(form.account_id)
+      if (props.canAssignTickets) {
+        loadAgentsForAccount(form.account_id)
+      }
     }
   }
 }, { immediate: true })

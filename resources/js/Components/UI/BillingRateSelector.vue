@@ -107,6 +107,10 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: 'Select billing rate...'
+  },
+  reopenOnClear: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -187,11 +191,15 @@ const clearSelection = () => {
   emit('update:modelValue', null)
   emit('rate-selected', null)
   searchTerm.value = ''
-  isOpen.value = true
-  nextTick(() => {
-    const input = document.getElementById(inputId)
-    if (input) input.focus()
-  })
+  
+  // Optionally reopen dropdown and focus input
+  if (props.reopenOnClear) {
+    isOpen.value = true
+    nextTick(() => {
+      const input = document.getElementById(inputId)
+      if (input) input.focus()
+    })
+  }
 }
 
 const closeDropdown = () => {

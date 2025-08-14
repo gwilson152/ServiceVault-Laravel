@@ -1,10 +1,10 @@
 # Timer System Enhancements
 
-Comprehensive enhancements to the timer system providing professional time tracking with advanced workflow management.
+Comprehensive enhancements to the timer system providing professional time tracking with advanced workflow management and billing rate integration.
 
 ## Overview
 
-The enhanced timer system provides a complete professional time tracking experience with real-time overlays, settings management, streamlined commit workflows, and optimized bulk query performance. Features include live duration updates, cross-component synchronization, and efficient API usage.
+The enhanced timer system provides a complete professional time tracking experience with real-time overlays, billing rate selection, settings management, streamlined commit workflows, and optimized bulk query performance. Features include live duration updates, cross-component synchronization, billing rate preselection, and efficient API usage.
 
 ## Enhanced Timer Overlays
 
@@ -91,6 +91,40 @@ Service Vault now provides three polished selector components that deliver consi
 - **Rate Descriptions**: Optional rate descriptions for additional context
 
 ### Unified Component Features
+
+#### Auto-Reopen on Clear Behavior
+All selector components provide seamless user experience when changing selections:
+- **Smart Clear Action**: Clearing a selection automatically reopens the dropdown
+- **Input Focus**: Search field receives focus immediately after clearing
+- **Viewport Check**: Dropdown position recalculated to prevent overflow
+- **Configurable**: `reopenOnClear` prop allows disabling this behavior if needed
+
+```javascript
+// Example: clearing account selection automatically shows dropdown for new selection
+const clearSelection = () => {
+  selectedItem.value = null
+  if (props.reopenOnClear) {
+    showDropdown.value = true
+    setTimeout(() => input.focus(), 10)
+  }
+}
+```
+
+#### Built-in Label Support
+Components include integrated label and error handling:
+- **HierarchicalAccountSelector**: Built-in `label`, `required`, and `error` props
+- **Consistent Styling**: Eliminates duplicate labels and ensures uniform appearance
+- **Required Indicators**: Automatic red asterisk for required fields
+
+```vue
+<!-- Built-in label support -->
+<HierarchicalAccountSelector
+  v-model="accountId"
+  label="Customer Account"
+  required
+  :error="errors.account_id"
+/>
+```
 
 #### Smart Viewport Positioning
 All selector components implement intelligent dropdown positioning:

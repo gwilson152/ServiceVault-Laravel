@@ -26,7 +26,7 @@ A comprehensive B2B **ticketing/service request platform** with time management 
 - **Invitation-Based User Onboarding**: Complete invitation acceptance workflow with timezone detection and role assignment
 - **Live Dashboard Preview System**: Real-time role preview with mock data generation and context switching
 - **Advanced Widget Assignment Interface**: Drag & drop widget management with 12-column grid layout designer
-- **Enhanced Multi-Timer System**: Professional timer overlays with streamlined time entry and commit workflows
+- **Enhanced Multi-Timer System**: Professional timer overlays with billing rate selection, streamlined time entry, and commit workflows
 - **Service Ticket Management**: Comprehensive workflow with timer integration and addon support
 - **Business Account Management**: Hierarchical customer account relationships with visual display
 - **Real-Time Broadcasting**: Laravel Echo + Vue composables for live updates
@@ -111,7 +111,9 @@ Service Vault is **fully production-ready** with comprehensive feature set and a
 - **Customer Portal Architecture**: Full portal interface components for customer ticket management, project tracking, and billing access
 - **Enhanced Error Handling**: Comprehensive error states, loading indicators, and user-friendly error messages across all components
 - **Database-level Data Integrity**: PostgreSQL triggers for consistency validation and referential integrity
-- **Smart Viewport Positioning**: Intelligent dropdown positioning to prevent overflow, especially for bottom-positioned timer overlay
+- **Professional UI Selector Components**: HierarchicalAccountSelector, TicketSelector, and BillingRateSelector with unified UX patterns
+- **Auto-Reopen UX Enhancement**: Smart dropdown behavior with automatic focus and viewport positioning after clearing selections
+- **Built-in Label Support**: Integrated label, error, and validation handling eliminating duplicate UI elements
 
 ### ✅ **API & Integration Layer**
 - **58+ REST API endpoints** with comprehensive coverage for all features
@@ -134,4 +136,4 @@ For detailed progress information, see [Development Progress Report](development
 
 **Service Vault** - Complete B2B Service Management Platform with Enhanced Ticket Management and Professional UI Components
 
-_Last Updated: August 14, 2025 - Phase 15A+ Complete - Professional UI Selector Components with Enhanced Timer Creation Workflow_
+_Last Updated: August 14, 2025 - Phase 15A+ Complete - Enhanced UX with Auto-Reopen Behavior and Billing Rate Integration_
