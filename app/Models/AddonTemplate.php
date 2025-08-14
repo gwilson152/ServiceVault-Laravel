@@ -18,6 +18,7 @@ class AddonTemplate extends Model
         'category',
         'unit_type',
         'default_price',
+        'default_unit_price', // Virtual field that maps to default_price
         'default_quantity',
         'is_taxable',
         'requires_approval',
@@ -33,6 +34,10 @@ class AddonTemplate extends Model
         'requires_approval' => 'boolean',
         'is_system' => 'boolean',
         'is_active' => 'boolean'
+    ];
+
+    protected $appends = [
+        'default_unit_price'
     ];
 
     /**
@@ -105,6 +110,22 @@ class AddonTemplate extends Model
         }
 
         return TicketAddon::create($addonData);
+    }
+
+    /**
+     * Get default unit price (alias for default_price)
+     */
+    public function getDefaultUnitPriceAttribute()
+    {
+        return $this->default_price;
+    }
+
+    /**
+     * Set default unit price (alias for default_price)
+     */
+    public function setDefaultUnitPriceAttribute($value)
+    {
+        $this->attributes['default_price'] = $value;
     }
 
     /**

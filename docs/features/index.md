@@ -12,6 +12,7 @@ Functional specifications and user guides for Service Vault features.
 - **[Ticket Configuration](ticket-configuration.md)** - Drag-drop workflow management with optimistic UI updates ✅ COMPLETED
 - **[Widget-Based Dashboard](widget-dashboard.md)** - Dynamic dashboard with auto-discovery and complete widget registry ✅ REFINED
 - **[Customer Portal](customer-portal.md)** - Complete customer interface with dashboard, projects, and billing access ✅ NEW
+- **[UI Selector Components](ui-selector-components.md)** - Professional selector components with unified UX patterns ✅ NEW
 
 ## Advanced Features
 - **[Billing & Invoicing](billing-invoicing.md)** - Rate management, invoice generation

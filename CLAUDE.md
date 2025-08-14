@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring hierarchical customer account management, three-dimensional permission system (functional + widget + page access), account hierarchy permissions, and enterprise-level customization for multi-tenant service delivery.
 
-### Current Status: Phase 13B Complete (100% MVP Ready + Full Billing System)
+### Current Status: Phase 15A+ Complete (100% MVP Ready + Full Billing System + TanStack Query Migration)
 **✅ Fully Implemented Features:**
-- **Complete Billing & Financial Management System**: Enterprise-grade invoicing, payment tracking, billing rate management, dynamic addon templates with API-driven categories, and financial reporting with TanStack Tables
+- **Complete Billing & Financial Management System**: Enterprise-grade invoicing, payment tracking, simplified billing rate management (no currency complexity), dynamic addon templates with API-driven categories, and financial reporting with TanStack Tables and Query optimization
 - **Three-Dimensional Permission System**: Complete functional + widget + page permission architecture with role template management
 - **Dashboard Preview System**: Real-time role preview with mock data generation and context switching (service provider vs account user)
 - **Widget Assignment Interface**: Drag & drop widget management with 12-column grid layout designer and permission validation
@@ -39,13 +39,15 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 
 **🎯 Platform Status:** Fully Production-Ready - All core workflows refined and comprehensive UX improvements completed
 
-**Phase 15A Refinements Completed:**
+**Phase 15A+ Recent Completions:**
 - **Enhanced Ticket Detail Pages**: Fully functional central hub with all tabs working (messages, time tracking, addons, activity, billing)
 - **Refined Timer Broadcast Overlay**: Smart overlay with Agent/Customer filtering and quick-start functionality  
 - **Complete Account Management**: Full account detail pages with comprehensive CRUD operations
 - **Invitation Acceptance Workflow**: Complete user onboarding with timezone detection and role assignment
 - **Customer Portal Foundation**: Portal dashboard and project interfaces for customer users
 - **Enhanced Error Handling**: Comprehensive error states and user-friendly messaging across all components
+- **TanStack Query Migration**: Complete migration from axios to TanStack Query for optimized caching, error handling, and data synchronization
+- **Simplified Billing System**: Removed currency complexity from billing rates, streamlined settings organization, resolved modal initialization issues
 
 ## Documentation
 

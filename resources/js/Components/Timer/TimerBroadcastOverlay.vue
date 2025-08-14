@@ -70,17 +70,55 @@
       v-if="showQuickStart"
       class="mb-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3"
     >
-      <input
-        v-model="quickStartDescription"
-        type="text"
-        placeholder="Timer description..."
-        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-        @keyup.enter="startQuickTimer"
-      />
-      <div class="flex space-x-2 mt-2">
+      <div class="space-y-3">
+        <!-- Timer Description -->
+        <div>
+          <input
+            v-model="quickStartForm.description"
+            type="text"
+            placeholder="Timer description..."
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            @keyup.enter="startQuickTimer"
+          />
+        </div>
+        
+        <!-- Account Selection -->
+        <div>
+          <HierarchicalAccountSelector
+            v-model="quickStartForm.accountId"
+            placeholder="No account (general timer)"
+            @account-selected="handleAccountSelected"
+          />
+        </div>
+        
+        <!-- Ticket Selection (only if account selected) -->
+        <div v-if="quickStartForm.accountId">
+          <TicketSelector
+            v-model="quickStartForm.ticketId"
+            :tickets="availableTickets"
+            :is-loading="ticketsLoading"
+            placeholder="No specific ticket"
+            @ticket-selected="handleTicketSelected"
+          />
+        </div>
+        
+        <!-- Billing Rate Selection -->
+        <div>
+          <BillingRateSelector
+            v-model="quickStartForm.billingRateId"
+            :rates="billingRates"
+            :is-loading="billingRatesLoading"
+            placeholder="No billing rate"
+            @rate-selected="handleRateSelected"
+          />
+        </div>
+      </div>
+      
+      <div class="flex space-x-2 mt-3">
         <button
           @click="startQuickTimer"
-          class="flex-1 p-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
+          :disabled="!quickStartForm.description.trim()"
+          class="flex-1 p-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
           title="Start Timer"
         >
           <svg class="w-4 h-4 mx-auto" fill="currentColor" viewBox="0 0 24 24">
@@ -88,7 +126,7 @@
           </svg>
         </button>
         <button
-          @click="showQuickStart = false"
+          @click="closeQuickStart"
           class="p-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
           title="Cancel"
         >
@@ -147,11 +185,17 @@
             <select
               v-model="timerSettingsForm.billing_rate_id"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              :disabled="billingRatesLoading"
             >
-              <option value="">No billing rate</option>
-              <option value="26ce1500-974a-44e3-8fb4-7bc0b94eafbd">Standard Rate - $75/hr</option>
-              <option value="368f0f35-0fd8-4dc0-b762-361529e22651">Senior Rate - $125/hr</option>
-              <option value="d7b9f798-9f0e-4885-b3b8-e6ddace5c334">Premium Rate - $175/hr</option>
+              <option value="">{{ billingRatesLoading ? 'Loading rates...' : 'No billing rate' }}</option>
+              <option 
+                v-for="rate in billingRates" 
+                :key="rate.id" 
+                :value="rate.id"
+              >
+                {{ rate.name }} - ${{ rate.rate }}/hr
+                <span v-if="rate.is_default" class="text-xs">(Default)</span>
+              </option>
             </select>
           </div>
 
@@ -457,9 +501,14 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted, reactive } from 'vue'
+import { computed, ref, onMounted, onUnmounted, reactive, watch } from 'vue'
 import { useTimerBroadcasting } from '@/Composables/useTimerBroadcasting.js'
 import { usePage } from '@inertiajs/vue3'
+import { useBillingRatesQuery } from '@/Composables/queries/useBillingQuery'
+import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'
+import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
+import TicketSelector from '@/Components/UI/TicketSelector.vue'
+import BillingRateSelector from '@/Components/UI/BillingRateSelector.vue'
 
 const {
   timers,
@@ -472,10 +521,57 @@ const {
   removeTimer
 } = useTimerBroadcasting()
 
+// Billing rates query
+const { data: billingRates, isLoading: billingRatesLoading } = useBillingRatesQuery()
+
+// Quick start form state
+const quickStartForm = reactive({
+  description: '',
+  accountId: '',
+  ticketId: '',
+  billingRateId: ''
+})
+
+// Tickets query (only when account is selected)
+const ticketsFilter = computed(() => ({
+  account_id: quickStartForm.accountId || null
+}))
+
+const { data: tickets, isLoading: ticketsLoading } = useTicketsQuery(ticketsFilter)
+
+// Filter out closed tickets
+const availableTickets = computed(() => {
+  if (!tickets.value) return []
+  return tickets.value.filter(ticket => 
+    ticket.status !== 'closed' && 
+    ticket.status !== 'cancelled'
+  )
+})
+
+// Default billing rate
+const defaultBillingRate = computed(() => {
+  if (!billingRates.value) return null
+  return billingRates.value.find(rate => rate.is_default) || billingRates.value[0] || null
+})
+
+// Clear ticket selection when account changes
+watch(() => quickStartForm.accountId, () => {
+  quickStartForm.ticketId = ''
+})
+
+// Set default billing rate when billing rates are loaded
+watch(() => billingRates.value, (newRates) => {
+  if (newRates && !quickStartForm.billingRateId) {
+    const defaultRate = newRates.find(rate => rate.is_default) || newRates[0] || null
+    if (defaultRate) {
+      quickStartForm.billingRateId = defaultRate.id
+    }
+  }
+}, { immediate: true })
+
 // Timer expansion state
 const expandedTimers = reactive({})
 const showQuickStart = ref(false)
-const quickStartDescription = ref('')
 
 // Real-time update state
 const currentTime = ref(new Date())
@@ -627,16 +723,55 @@ const timerStatusClasses = (status) => ({
   'bg-red-500': status === 'stopped'
 })
 
+// Handle account selection
+const handleAccountSelected = (account) => {
+  // Reset ticket selection when account changes
+  quickStartForm.ticketId = ''
+}
+
+// Handle ticket selection
+const handleTicketSelected = (ticket) => {
+  // Optional: Could add additional logic here if needed
+}
+
+// Handle billing rate selection
+const handleRateSelected = (rate) => {
+  // Optional: Could add additional logic here if needed
+}
+
+// Close quick start modal and reset form
+const closeQuickStart = () => {
+  quickStartForm.description = ''
+  quickStartForm.accountId = ''
+  quickStartForm.ticketId = ''
+  quickStartForm.billingRateId = defaultBillingRate.value?.id || ''
+  showQuickStart.value = false
+}
+
 // Quick start timer
 const startQuickTimer = async () => {
-  if (!quickStartDescription.value.trim()) return
+  if (!quickStartForm.description.trim()) return
   
   try {
-    await startTimer({
-      description: quickStartDescription.value
-    })
-    quickStartDescription.value = ''
-    showQuickStart.value = false
+    const timerData = {
+      description: quickStartForm.description,
+      billing_rate_id: quickStartForm.billingRateId || null
+    }
+    
+    // Add account ID if selected
+    if (quickStartForm.accountId) {
+      timerData.account_id = quickStartForm.accountId
+    }
+    
+    // Add ticket ID if selected
+    if (quickStartForm.ticketId) {
+      timerData.ticket_id = quickStartForm.ticketId
+    }
+    
+    await startTimer(timerData)
+    
+    // Close and reset form
+    closeQuickStart()
   } catch (error) {
     console.error('Failed to start quick timer:', error)
   }
@@ -646,7 +781,7 @@ const startQuickTimer = async () => {
 const openTimerSettings = (timer) => {
   currentTimerSettings.value = timer
   timerSettingsForm.description = timer.description || ''
-  timerSettingsForm.billing_rate_id = timer.billing_rate_id || ''
+  timerSettingsForm.billing_rate_id = timer.billing_rate_id || defaultBillingRate.value?.id || ''
   showTimerSettings.value = true
 }
 
@@ -654,7 +789,7 @@ const closeTimerSettings = () => {
   showTimerSettings.value = false
   currentTimerSettings.value = null
   timerSettingsForm.description = ''
-  timerSettingsForm.billing_rate_id = ''
+  timerSettingsForm.billing_rate_id = defaultBillingRate.value?.id || ''
 }
 
 const saveTimerSettings = async () => {
@@ -675,12 +810,10 @@ const saveTimerSettings = async () => {
 }
 
 const getBillingRateValue = (billingRateId) => {
-  const rates = {
-    '26ce1500-974a-44e3-8fb4-7bc0b94eafbd': 75,   // Standard Rate
-    '368f0f35-0fd8-4dc0-b762-361529e22651': 125,  // Senior Rate
-    'd7b9f798-9f0e-4885-b3b8-e6ddace5c334': 175   // Premium Rate
-  }
-  return rates[billingRateId] || 0
+  if (!billingRates.value || !billingRateId) return 0
+  
+  const rate = billingRates.value.find(r => r.id === billingRateId)
+  return rate ? parseFloat(rate.rate) : 0
 }
 
 // Timer commit workflow functions

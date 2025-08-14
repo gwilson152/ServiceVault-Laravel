@@ -19,7 +19,10 @@ const addonTemplatesApi = {
 export function useAddonTemplatesQuery() {
   return useQuery({
     queryKey: queryKeys.addonTemplates.all,
-    queryFn: () => addonTemplatesApi.getAll(),
+    queryFn: async () => {
+      const response = await addonTemplatesApi.getAll()
+      return response.data // Extract the templates array from the response
+    },
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 }

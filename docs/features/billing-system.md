@@ -58,23 +58,31 @@ Draft → Pending → Sent → Paid/Overdue → Closed
 ### 3. Billing Rate Management
 
 #### Rate Types
-- **Global Rates**: Default rates for all services
+- **Global Rates**: Default rates for all services (system-wide)
 - **Account-Specific Rates**: Custom rates for specific customers
 - **User-Specific Rates**: Individual consultant or employee rates
 - **Service-Type Rates**: Different rates for different types of work
 
 #### Rate Configuration
 ```php
-// Example rate structure
+// Example rate structure (simplified, no currency field)
 $billingRate = [
-    'name' => 'Senior Development',
-    'rate' => 125.00,
+    'name' => 'Standard Hourly',
+    'description' => 'Standard hourly rate for general technical work',
+    'rate' => 90.00,
     'account_id' => $account->id,  // Optional: account-specific
     'user_id' => $user->id,        // Optional: user-specific
     'is_active' => true,
-    'effective_date' => '2024-01-01'
+    'is_default' => false          // Only one default rate allowed system-wide
 ];
 ```
+
+#### Predefined Billing Rates
+The system includes four default billing rates:
+- **Standard Hourly**: $90.00 (default rate)
+- **Critical Hourly**: $130.00 (emergency/critical support)
+- **Development**: $65.00 (software development work)
+- **Travel**: $40.00 (on-site travel time)
 
 #### Addon Templates
 - **Dynamic Template Management**: Full CRUD operations for addon templates with API-driven categories
@@ -103,9 +111,10 @@ $billingRate = [
 ### 2. Settings Integration (`/settings/billing`)
 
 #### Configuration Sections (Tabbed Interface)
-- **Billing Rates Tab**: Complete CRUD operations for hourly billing rate management
-- **Addon Templates Tab**: Dynamic addon template management with category filtering and CRUD operations
-- **Invoice Settings Tab**: Invoice numbering, payment terms, and tax configuration
+- **Billing Rates Tab**: Complete CRUD operations for hourly billing rate management with predefined system rates
+- **Addon Templates Tab**: Dynamic addon template management with API-driven categories and CRUD operations
+
+*Note: Company information is managed in the main Settings/General section, not under billing settings.*
 
 #### Key Features
 - **TanStack Query Integration**: Optimistic updates, caching, and error handling
@@ -247,10 +256,10 @@ POST   /api/billing/payments/{id}/refund # Process refund
 
 #### Billing Rates
 ```
-GET    /api/billing/rates              # List billing rates
-POST   /api/billing/rates              # Create rate
-PUT    /api/billing/rates/{id}         # Update rate
-DELETE /api/billing/rates/{id}         # Delete rate
+GET    /api/billing-rates              # List billing rates (no currency filtering)
+POST   /api/billing-rates              # Create rate (name, description, rate, is_active, is_default)
+PUT    /api/billing-rates/{id}         # Update rate
+DELETE /api/billing-rates/{id}         # Delete rate
 ```
 
 #### Addon Templates & Categories
@@ -350,11 +359,12 @@ Timer belongsTo BillingRate
 ### Environment Variables
 ```
 # Billing Configuration
-BILLING_CURRENCY=USD
 BILLING_TAX_RATE=0.0
 BILLING_PAYMENT_TERMS=30
 INVOICE_PREFIX=INV-
 ```
+
+*Note: Currency is not configurable at the billing rate level. All rates are in the system's base currency.*
 
 ### Settings Management
 - **Company Information**: Business details for invoices
@@ -399,4 +409,4 @@ INVOICE_PREFIX=INV-
 
 **Service Vault Billing System** - Complete enterprise-grade financial management for B2B service delivery platforms.
 
-*Last Updated: August 14, 2025 - Phase 15A Refinements: Dynamic Addon Categories & Settings Integration*
+*Last Updated: August 14, 2025 - TanStack Query Migration: Simplified billing rates (no currency), settings reorganization, and full query optimization*

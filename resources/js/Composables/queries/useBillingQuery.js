@@ -40,7 +40,10 @@ export function useAddonCategoriesQuery() {
 export function useBillingRatesQuery() {
   return useQuery({
     queryKey: queryKeys.billing.rates,
-    queryFn: () => billingApi.getBillingRates(),
+    queryFn: async () => {
+      const response = await billingApi.getBillingRates()
+      return response.data // Extract the rates array from the response
+    },
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 }

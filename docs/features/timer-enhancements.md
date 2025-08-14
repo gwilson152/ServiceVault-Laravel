@@ -14,6 +14,13 @@ The enhanced timer system provides a complete professional time tracking experie
 - **Horizontal Layout**: Right-to-left stacking for natural visual flow
 - **Professional Styling**: Clean shadows, borders, and hover effects with dark mode support
 
+### Enhanced Quick Start Interface
+- **Agent-Only Display**: Timer overlay only shows for service providers (Agents), hidden for customers
+- **No Active Timers State**: Clean quick start interface when no timers are running
+- **Polished Selector Components**: Professional account, ticket, and billing rate selectors
+- **Smart Positioning**: Viewport-aware dropdown positioning to prevent overflow
+- **Default Rate Selection**: Automatically preselects default billing rate for streamlined workflow
+
 ### Real-Time Updates
 - **Live Counting**: 1-second precision updates using Vue reactivity system
 - **Cross-Device Sync**: Instant updates across all user devices via WebSocket broadcasting
@@ -59,6 +66,149 @@ const previewValue = computed(() => {
 - **Rate Validation**: Backend validation ensures rates exist and are accessible
 - **Live Calculation**: Immediate update of timer value when rates change
 - **Historical Tracking**: Rate changes tracked in timer metadata
+
+## Professional Selector Components
+
+### Enhanced UI Component Architecture
+Service Vault now provides three polished selector components that deliver consistent, high-quality user experience across the timer creation interface:
+
+#### HierarchicalAccountSelector Component
+- **Hierarchical Display**: Shows account relationships with proper indentation and visual hierarchy
+- **Smart Search**: Filters accounts by name, account number, and display hierarchy
+- **Default Selection**: "No account (general timer)" option for non-client work
+- **Conditional Display**: Input hides when selection is made, showing selected account with clear option
+
+#### TicketSelector Component  
+- **Account-Filtered Tickets**: Only shows tickets for the selected account context
+- **Status-Based Filtering**: Automatically excludes closed and cancelled tickets
+- **Rich Display**: Shows ticket number, title, status badges, and priority information
+- **Real-Time Loading**: Integrates with TanStack Query for efficient data management
+
+#### BillingRateSelector Component
+- **Rate Information Display**: Shows rate name, hourly amount, and default indicator
+- **Default Rate Preselection**: Automatically selects default billing rate on component load
+- **Search Functionality**: Filter rates by name, amount, or description
+- **Rate Descriptions**: Optional rate descriptions for additional context
+
+### Unified Component Features
+
+#### Smart Viewport Positioning
+All selector components implement intelligent dropdown positioning:
+```javascript
+const checkDropdownPosition = () => {
+  const input = document.getElementById(inputId)
+  if (!input) return
+  
+  const inputRect = input.getBoundingClientRect()
+  const viewportHeight = window.innerHeight
+  const spaceBelow = viewportHeight - inputRect.bottom
+  const spaceAbove = inputRect.top
+  
+  dropupMode.value = spaceBelow < 250 && spaceAbove > spaceBelow
+}
+```
+
+#### Conditional UI Pattern
+Professional UX pattern where dropdown input only shows when no selection is made:
+```vue
+<!-- Search Input (only show when no selection) -->
+<div v-if="!selectedItem" class="relative">
+  <input
+    v-model="searchTerm"
+    type="text"
+    :placeholder="placeholder"
+    class="w-full px-3 py-2 border border-gray-300..."
+  />
+</div>
+
+<!-- Selected Item Display -->
+<div 
+  v-if="selectedItem"
+  class="w-full px-3 py-2 border border-gray-300... cursor-pointer"
+  @click="clearSelection"
+>
+  <!-- Rich display of selected item -->
+</div>
+```
+
+#### Enhanced Keyboard Navigation
+- **Arrow Key Navigation**: Up/down arrows navigate through options
+- **Enter Key Selection**: Enter selects highlighted option
+- **Escape Key**: Closes dropdown without selection
+- **Search Filtering**: Real-time filtering as user types
+
+#### Accessibility Features
+- **ARIA Labels**: Proper screen reader support with semantic markup
+- **Focus Management**: Clear visual focus indicators for keyboard users
+- **Unique IDs**: Generated unique component IDs prevent conflicts
+- **Click Outside**: Automatic dropdown closure when clicking elsewhere
+
+### Enhanced Timer Creation Workflow
+
+#### Quick Start Timer Form
+The timer overlay provides a streamlined creation interface with professional selector components:
+
+```vue
+<template>
+  <!-- Timer Description -->
+  <input
+    v-model="quickStartForm.description"
+    type="text"
+    placeholder="Timer description..."
+    class="w-full px-3 py-2 border border-gray-300..."
+  />
+  
+  <!-- Account Selection -->
+  <HierarchicalAccountSelector
+    v-model="quickStartForm.accountId"
+    placeholder="No account (general timer)"
+    @account-selected="handleAccountSelected"
+  />
+  
+  <!-- Ticket Selection (conditional on account) -->
+  <TicketSelector
+    v-if="quickStartForm.accountId"
+    v-model="quickStartForm.ticketId"
+    :tickets="availableTickets"
+    placeholder="No specific ticket"
+  />
+  
+  <!-- Billing Rate Selection -->
+  <BillingRateSelector
+    v-model="quickStartForm.billingRateId"
+    :rates="billingRates"
+    placeholder="No billing rate"
+  />
+</template>
+```
+
+#### Smart Form Logic
+- **Account-Dependent Tickets**: Ticket selector only appears when account is selected
+- **Real-Time Filtering**: Tickets automatically filtered by selected account
+- **Default Rate Selection**: Billing rate defaults to organization's default rate
+- **Form Reset Logic**: All fields reset to defaults when form is closed
+
+#### Timer Creation API Integration
+```javascript
+const startQuickTimer = async () => {
+  const timerData = {
+    description: quickStartForm.description,
+    billing_rate_id: quickStartForm.billingRateId || null
+  }
+  
+  // Add account ID if selected
+  if (quickStartForm.accountId) {
+    timerData.account_id = quickStartForm.accountId
+  }
+  
+  // Add ticket ID if selected  
+  if (quickStartForm.ticketId) {
+    timerData.ticket_id = quickStartForm.ticketId
+  }
+  
+  await startTimer(timerData)
+}
+```
 
 ## Advanced Commit Workflow
 
@@ -253,6 +403,39 @@ watch(broadcastTimers, (newTimers) => {
 
 ## Configuration
 
+### Selector Component Setup
+
+#### HierarchicalAccountSelector
+```vue
+<HierarchicalAccountSelector
+  v-model="accountId"
+  placeholder="No account (general timer)"
+  @account-selected="handleAccountSelected"
+/>
+```
+
+#### TicketSelector  
+```vue
+<TicketSelector
+  v-model="ticketId"
+  :tickets="availableTickets"
+  :is-loading="ticketsLoading"
+  placeholder="No specific ticket"
+  @ticket-selected="handleTicketSelected"
+/>
+```
+
+#### BillingRateSelector
+```vue
+<BillingRateSelector
+  v-model="billingRateId"
+  :rates="billingRates"
+  :is-loading="billingRatesLoading"
+  placeholder="No billing rate"
+  @rate-selected="handleRateSelected"
+/>
+```
+
 ### Billing Rate Setup
 ```php
 // Create billing rates for timer selection
@@ -260,7 +443,8 @@ BillingRate::create([
     'name' => 'Standard Rate',
     'rate' => 75.00,
     'description' => 'Standard hourly rate for general services',
-    'is_active' => true
+    'is_active' => true,
+    'is_default' => true  // Automatically preselected in BillingRateSelector
 ]);
 ```
 
@@ -271,6 +455,43 @@ BillingRate::create([
 - `timers:settings` - Modify timer configuration
 
 ### API Integration
+
+#### Enhanced Timer Creation
+```javascript
+// Timer creation with selector component integration
+await axios.post('/api/timers', {
+  description: 'Client consultation session',
+  account_id: 'uuid-account-123',      // From HierarchicalAccountSelector
+  ticket_id: 'uuid-ticket-456',        // From TicketSelector  
+  billing_rate_id: 'uuid-rate-789'     // From BillingRateSelector
+})
+
+// Quick start form data structure
+const quickStartForm = reactive({
+  description: '',
+  accountId: '',           // Bound to HierarchicalAccountSelector
+  ticketId: '',           // Bound to TicketSelector
+  billingRateId: ''       // Bound to BillingRateSelector with default preselection
+})
+```
+
+#### Selector Component Data Sources
+```javascript
+// HierarchicalAccountSelector - Uses hierarchical endpoint
+const { data: accounts } = useAccountsQuery({
+  hierarchical: true,
+  with_display_names: true
+})
+
+// TicketSelector - Account-filtered tickets
+const ticketsFilter = computed(() => ({
+  account_id: quickStartForm.accountId || null,
+  status: ['open', 'in_progress', 'assigned'] // Excludes closed tickets
+}))
+
+// BillingRateSelector - Organization billing rates
+const { data: billingRates, isLoading: billingRatesLoading } = useBillingRatesQuery()
+```
 
 #### Individual Timer Operations
 ```javascript
@@ -484,6 +705,10 @@ const payload = {
 - ✅ **Broadcasting Integration**: Real-time WebSocket updates across all components
 - ✅ **Dual Storage Precision**: Timers in seconds, time entries in minutes
 - ✅ **Time Entry UX Enhancement**: Removed break duration logic for simplified user experience
+- ✅ **Professional Selector Components**: HierarchicalAccountSelector, TicketSelector, and BillingRateSelector with unified UX patterns
+- ✅ **Enhanced Timer Creation**: Streamlined quick start form with smart defaults and conditional logic
+- ✅ **Agent-Only Timer Overlay**: Proper user type filtering with enhanced quick start interface
+- ✅ **Viewport-Aware Positioning**: Smart dropdown positioning to prevent overflow from timer overlay at bottom of screen
 
 ### Planned Features
 - **Timer Templates**: Pre-configured timer settings for common tasks

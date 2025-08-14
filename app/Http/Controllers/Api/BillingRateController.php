@@ -24,9 +24,6 @@ class BillingRateController extends Controller
             $query->where('is_template', $request->boolean('is_template'));
         }
         
-        if ($request->has('currency')) {
-            $query->where('currency', $request->currency);
-        }
         
         // Only show rates user can access
         if (!$user->hasAnyPermission(['admin.read', 'billing.manage'])) {
@@ -52,24 +49,21 @@ class BillingRateController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'rate' => 'required|numeric|min:0|max:9999.99',
-            'currency' => 'required|string|size:3|in:USD,EUR,GBP,CAD,AUD',
             'description' => 'nullable|string|max:1000',
             'is_template' => 'boolean',
             'is_default' => 'boolean',
             'is_active' => 'boolean'
         ]);
         
-        // Only one default rate per currency
+        // Only one default rate
         if ($validated['is_default'] ?? false) {
-            BillingRate::where('currency', $validated['currency'])
-                ->where('is_default', true)
+            BillingRate::where('is_default', true)
                 ->update(['is_default' => false]);
         }
         
         $billingRate = BillingRate::create([
             'name' => $validated['name'],
             'rate' => $validated['rate'],
-            'currency' => $validated['currency'],
             'description' => $validated['description'] ?? null,
             'is_template' => $validated['is_template'] ?? false,
             'is_default' => $validated['is_default'] ?? false,
@@ -111,17 +105,15 @@ class BillingRateController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'rate' => 'required|numeric|min:0|max:9999.99',
-            'currency' => 'required|string|size:3|in:USD,EUR,GBP,CAD,AUD',
             'description' => 'nullable|string|max:1000',
             'is_template' => 'boolean',
             'is_default' => 'boolean',
             'is_active' => 'boolean'
         ]);
         
-        // Only one default rate per currency
+        // Only one default rate
         if ($validated['is_default'] ?? false) {
-            BillingRate::where('currency', $validated['currency'])
-                ->where('is_default', true)
+            BillingRate::where('is_default', true)
                 ->where('id', '!=', $billingRate->id)
                 ->update(['is_default' => false]);
         }

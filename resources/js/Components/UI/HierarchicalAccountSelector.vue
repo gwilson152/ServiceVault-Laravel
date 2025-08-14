@@ -5,8 +5,8 @@
       <span v-if="required" class="text-red-500">*</span>
     </label>
     
-    <!-- Search Input -->
-    <div class="relative">
+    <!-- Search Input (only show when no account is selected) -->
+    <div v-if="!selectedAccount" class="relative">
       <input
         :id="inputId"
         v-model="searchTerm"
@@ -14,7 +14,7 @@
         :placeholder="placeholder"
         :required="required"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        @focus="showDropdown = true"
+        @focus="handleFocus"
         @blur="handleBlur"
         @keydown="handleKeydown"
       >
@@ -28,7 +28,7 @@
     </div>
     
     <!-- Selected Account Display -->
-    <div v-if="selectedAccount && !searchTerm" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+    <div v-if="selectedAccount" class="p-2 bg-blue-50 border border-blue-200 rounded-lg">
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm font-medium text-blue-900">{{ selectedAccount.name }}</p>
@@ -48,8 +48,10 @@
     
     <!-- Dropdown -->
     <div
-      v-if="showDropdown"
-      class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+      v-if="showDropdown && !selectedAccount"
+      ref="dropdown"
+      class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+      :class="dropdownPosition"
     >
       <div v-if="isLoading" class="p-4 text-center text-gray-500">
         <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -133,6 +135,8 @@ const showDropdown = ref(false)
 const isLoading = ref(false)
 const accounts = ref([])
 const selectedAccount = ref(null)
+const dropdown = ref(null)
+const dropupMode = ref(false)
 
 // Computed
 const filteredAccounts = computed(() => {
@@ -144,6 +148,10 @@ const filteredAccounts = computed(() => {
     (account.company_name && account.company_name.toLowerCase().includes(term)) ||
     account.account_type.toLowerCase().includes(term)
   )
+})
+
+const dropdownPosition = computed(() => {
+  return dropupMode.value ? 'bottom-full mb-1' : 'top-full mt-1'
 })
 
 // Methods
@@ -192,6 +200,12 @@ const clearSelection = () => {
   emit('account-selected', null)
 }
 
+const handleFocus = () => {
+  showDropdown.value = true
+  // Check position on next tick when dropdown is rendered
+  setTimeout(checkDropdownPosition, 10)
+}
+
 const handleBlur = () => {
   // Delay hiding dropdown to allow for selection
   setTimeout(() => {
@@ -203,6 +217,19 @@ const handleKeydown = (event) => {
   if (event.key === 'Escape') {
     showDropdown.value = false
   }
+}
+
+const checkDropdownPosition = () => {
+  const input = document.getElementById(inputId)
+  if (!input) return
+  
+  const inputRect = input.getBoundingClientRect()
+  const viewportHeight = window.innerHeight
+  const spaceBelow = viewportHeight - inputRect.bottom
+  const spaceAbove = inputRect.top
+  
+  // If there's not enough space below (for 250px dropdown) and more space above, use dropup
+  dropupMode.value = spaceBelow < 250 && spaceAbove > spaceBelow
 }
 
 // Initialize selected account from modelValue

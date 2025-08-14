@@ -31,11 +31,6 @@
 
     <!-- Sub-Tab Content -->
     <div class="mt-8">
-      <!-- Company Information Tab -->
-      <div v-show="activeSubTab === 'company'" class="space-y-8">
-        <CompanyInformation />
-      </div>
-
       <!-- Billing Rates Tab -->
       <div v-show="activeSubTab === 'rates'" class="space-y-8">
         <BillingRates />
@@ -52,23 +47,20 @@
 <script setup>
 import { ref } from 'vue'
 import {
-  BuildingOfficeIcon,
   CurrencyDollarIcon,
   CubeIcon,
 } from '@heroicons/vue/24/outline'
-import CompanyInformation from './Billing/CompanyInformation.vue'
 import BillingRates from './Billing/BillingRates.vue'
 import AddonTemplates from './Billing/AddonTemplates.vue'
 
 // Sub-tab configuration
 const billingTabs = [
-  { id: 'company', name: 'Company Info', icon: BuildingOfficeIcon },
   { id: 'rates', name: 'Billing Rates', icon: CurrencyDollarIcon },
   { id: 'templates', name: 'Addon Templates', icon: CubeIcon },
 ]
 
 // Active sub-tab state
-const activeSubTab = ref('company')
+const activeSubTab = ref('rates')
 
 // Define props interface for compatibility
 defineProps({

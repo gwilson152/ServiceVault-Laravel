@@ -47,43 +47,45 @@
         </div>
 
         <!-- Account Selection -->
-        <SimpleAccountUserSelector
-          v-model:account-id="form.account_id"
-          v-model:user-id="form.agent_id"
-          :account-error="errors.account_id"
-          :user-error="errors.agent_id"
-          :show-user-selector="canAssignTickets"
-        />
+        <div>
+          <HierarchicalAccountSelector
+            v-model="form.account_id"
+            label="Account"
+            placeholder="Select account for this ticket..."
+            required
+            :error="errors.account_id"
+            @account-selected="handleAccountSelected"
+          />
+        </div>
         
-        <!-- Customer Selection -->
-        <div v-if="form.account_id">
+        <!-- Agent Assignment (optional) -->
+        <div v-if="canAssignTickets">
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Customer/Reporter <span class="text-red-500">*</span>
+            Assign Agent <span class="text-gray-500 text-xs">(optional)</span>
           </label>
           
           <div class="relative">
             <select
-              v-model="form.customer_id"
-              :disabled="isLoadingCustomers"
-              required
+              v-model="form.agent_id"
+              :disabled="isLoadingAgents"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
             >
-              <option value="">{{ isLoadingCustomers ? 'Loading customers...' : 'Select customer/reporter...' }}</option>
+              <option value="">{{ isLoadingAgents ? 'Loading agents...' : 'Select an agent...' }}</option>
               <option
-                v-for="customer in availableCustomers"
-                :key="customer.id"
-                :value="customer.id"
+                v-for="agent in availableAgents"
+                :key="agent.id"
+                :value="agent.id"
               >
-                {{ customer.name }} ({{ customer.email }})
+                {{ agent.name }} ({{ agent.email }})
               </option>
             </select>
             
-            <div v-if="isLoadingCustomers" class="absolute inset-y-0 right-0 flex items-center pr-3">
+            <div v-if="isLoadingAgents" class="absolute inset-y-0 right-0 flex items-center pr-3">
               <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
             </div>
           </div>
           
-          <p v-if="errors.customer_id" class="mt-1 text-sm text-red-600">{{ errors.customer_id }}</p>
+          <p v-if="errors.agent_id" class="mt-1 text-sm text-red-600">{{ errors.agent_id }}</p>
         </div>
 
         <!-- Form Row: Priority & Category -->
@@ -215,7 +217,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
-import SimpleAccountUserSelector from '@/Components/UI/SimpleAccountUserSelector.vue'
+import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
 import axios from 'axios'
 import { useCreateTicketMutation } from '@/Composables/queries/useTicketsQuery'
 
@@ -243,8 +245,8 @@ const isSubmitting = ref(false)
 const errors = ref({})
 const isLoadingCategories = ref(false)
 const availableCategories = ref([])
-const isLoadingCustomers = ref(false)
-const availableCustomers = ref([])
+const isLoadingAgents = ref(false)
+const availableAgents = ref([])
 
 // Form data
 const form = reactive({
@@ -252,7 +254,6 @@ const form = reactive({
   description: '',
   priority: 'normal',
   account_id: '',
-  customer_id: '',
   category: '',
   due_date: '',
   agent_id: '',
@@ -271,7 +272,6 @@ const resetForm = () => {
   form.description = ''
   form.priority = 'normal'
   form.account_id = user.value?.account_id || ''
-  form.customer_id = ''
   form.category = ''
   form.due_date = ''
   form.agent_id = ''
@@ -279,7 +279,7 @@ const resetForm = () => {
   form.start_timer = false
   form.send_notifications = true
   errors.value = {}
-  availableCustomers.value = []
+  availableAgents.value = []
 }
 
 const loadCategories = async () => {
@@ -357,37 +357,61 @@ const submitForm = async () => {
 
 const startTimerForTicket = async (ticketId) => {
   try {
+    // TODO: Add billing rate selection to timer creation
+    // Currently creating basic timer without billing rate
+    // Should integrate with BillingRateSelector component for proper rate selection
     await axios.post('/api/timers', {
       ticket_id: ticketId,
+      account_id: form.account_id,
       description: `Working on ticket: ${form.title}`
+      // TODO: billing_rate_id: selectedBillingRateId
     })
   } catch (error) {
     console.error('Failed to start timer:', error)
-    // Don't fail the entire ticket creation for this
+    // Don't fail the entire ticket creation for this - timer can be started manually later
   }
 }
 
-const loadCustomers = async (accountId) => {
+const handleAccountSelected = (account) => {
+  // Load agents for the selected account if needed
+  if (props.canAssignTickets && account) {
+    loadAgentsForAccount(account.id)
+  }
+}
+
+const loadAgentsForAccount = async (accountId) => {
   if (!accountId) {
-    availableCustomers.value = []
+    availableAgents.value = []
     return
   }
   
-  isLoadingCustomers.value = true
+  isLoadingAgents.value = true
   try {
-    const response = await axios.get(`/api/accounts/${accountId}/users`, {
+    const response = await axios.get(`/api/accounts/${accountId}/agents`, {
       params: {
-        role_context: 'account_user', // Only get customer users, not service providers
         per_page: 100
       }
     })
     
-    availableCustomers.value = response.data.data || []
+    availableAgents.value = response.data.data || []
   } catch (error) {
-    console.error('Failed to load customers:', error)
-    availableCustomers.value = []
+    console.error('Failed to load agents:', error)
+    // If specific endpoint doesn't exist, try loading all users with agent role
+    try {
+      const response = await axios.get('/api/users', {
+        params: {
+          role_context: 'agent',
+          account_id: accountId,
+          per_page: 100
+        }
+      })
+      availableAgents.value = response.data.data || []
+    } catch (fallbackError) {
+      console.error('Failed to load agents (fallback):', fallbackError)
+      availableAgents.value = []
+    }
   } finally {
-    isLoadingCustomers.value = false
+    isLoadingAgents.value = false
   }
 }
 
@@ -396,15 +420,15 @@ onMounted(() => {
   loadCategories()
 })
 
-// Watch for account changes to load customers
+// Watch for account changes to load agents
 watch(() => form.account_id, (newAccountId) => {
-  if (newAccountId) {
-    loadCustomers(newAccountId)
-    // Clear customer selection when account changes
-    form.customer_id = ''
+  if (newAccountId && props.canAssignTickets) {
+    loadAgentsForAccount(newAccountId)
+    // Clear agent selection when account changes
+    form.agent_id = ''
   } else {
-    availableCustomers.value = []
-    form.customer_id = ''
+    availableAgents.value = []
+    form.agent_id = ''
   }
 })
 
@@ -413,9 +437,9 @@ watch(() => props.show, (show) => {
   if (show) {
     resetForm()
     loadCategories()
-    // Load customers if account is already selected
-    if (form.account_id) {
-      loadCustomers(form.account_id)
+    // Load agents if account is already selected and user can assign tickets
+    if (form.account_id && props.canAssignTickets) {
+      loadAgentsForAccount(form.account_id)
     }
   }
 }, { immediate: true })
