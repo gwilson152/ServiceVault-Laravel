@@ -25,7 +25,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Enhanced Real-Time Multi-Timer System**: Live duration updates, cross-component sync, manual time override, optimized bulk queries, professional commit workflows, and persistent timer overlay with Inertia.js layouts
 - **Advanced Email Configuration System**: Wizard-style SMTP/IMAP setup with OAuth2 and app password support, provider templates, manual port configuration, real-time testing, and horizontal scrolling navigation
 - **Service Ticket Integration**: Complete workflow system with timer integration, inline controls, and addon cost tracking
-- **TimeEntry Management**: Comprehensive approval workflows with bulk operations and statistical tracking
+- **TimeEntry Management**: Comprehensive approval workflows with bulk operations, statistical tracking, and tabbed interface with integrated timer management
 - **Complete User Management System**: Invitation-based user onboarding with nullable passwords, visibility controls, automatic timezone detection, and conditional password requirements
 - **Laravel Sanctum Authentication**: Hybrid session/token auth with 23 granular abilities
 - **Domain-Based User Assignment**: Automatic account assignment via email domain patterns
@@ -48,6 +48,8 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Enhanced Error Handling**: Comprehensive error states and user-friendly messaging across all components
 - **TanStack Query Migration**: Complete migration from axios to TanStack Query for optimized caching, error handling, and data synchronization
 - **Simplified Billing System**: Removed currency complexity from billing rates, streamlined settings organization, resolved modal initialization issues
+- **Tabbed Time Management Interface**: Unified Time Entries and Active Timers interface with RBAC/ABAC permission-based visibility and URL-based tab navigation
+- **TimeEntry API Fixes**: Resolved 500 errors in TimeEntryResource with proper closure scoping, duration field corrections, and missing field mappings
 
 ## Documentation
 
@@ -120,6 +122,19 @@ npm run dev             # Development with hot reload
 # POST   /api/timers/sync                # Cross-device timer synchronization
 # POST   /api/timers/bulk                # Bulk operations (stop, pause, resume, delete)
 
+# Time Entry Management API
+# GET    /api/time-entries               # List time entries with filtering and pagination
+# POST   /api/time-entries               # Create new time entry 
+# GET    /api/time-entries/{id}          # Show specific time entry
+# PUT    /api/time-entries/{id}          # Update time entry
+# DELETE /api/time-entries/{id}          # Delete time entry
+# POST   /api/time-entries/{id}/approve  # Approve time entry (managers/admins)
+# POST   /api/time-entries/{id}/reject   # Reject time entry (managers/admins)
+# POST   /api/time-entries/bulk/approve  # Bulk approve time entries
+# POST   /api/time-entries/bulk/reject   # Bulk reject time entries
+# GET    /api/time-entries/stats/recent  # Recent statistics for dashboard
+# GET    /api/time-entries/stats/approvals # Approval statistics (managers/admins)
+
 # Authentication & Token Management
 # GET    /api/auth/tokens                # List user's API tokens
 # POST   /api/auth/tokens                # Create new API token
@@ -164,164 +179,50 @@ php artisan tinker       # Interactive shell
 
 ## Authentication Architecture
 
-Service Vault implements a hybrid authentication system supporting both session-based web access and token-based API access:
+Service Vault implements a hybrid authentication system with Laravel Breeze (web sessions) + Laravel Sanctum (API tokens). See [Authentication System Documentation](docs/system/authentication-system.md) for complete details.
 
-### Session Authentication (Laravel Breeze)
-- **Web Dashboard**: Login/register pages with session cookies
-- **Inertia.js Integration**: CSRF-protected single-page application  
-- **User Management**: Role assignment and ABAC permission integration
+**Key Points for Development:**
+- Session-based web authentication with Inertia.js integration
+- Token-based API authentication with 23 granular abilities
+- All policies support both authentication methods
+- Three-dimensional permission system (Functional + Widget + Page)
 
-### Token Authentication (Laravel Sanctum)
-- **API Access**: Bearer token authentication for mobile and external clients
-- **Token Abilities**: Granular permissions system with scoped abilities:
-  - `timers:read`, `timers:write`, `timers:delete`, `timers:sync`
-  - `tickets:read`, `tickets:write`, `accounts:read`, `billing:read`
-  - `widgets:dashboard`, `pages:access` (for UI control)
-  - `admin:read`, `admin:write` (for administrative access)
-- **Predefined Scopes**: Ready-to-use token scopes for common use cases:
-  - `employee`: Basic timer and ticket access with essential widgets
-  - `manager`: Service oversight and approval capabilities with management widgets
-  - `mobile-app`: Full mobile application functionality with optimized widget set
-  - `admin`: Complete administrative access with all widgets and pages
-
-### API Token Management
-- **Token CRUD**: Full REST API for creating, viewing, updating, and deleting tokens
-- **Password Verification**: Security confirmation for token operations
-- **Token Expiration**: Configurable expiration times for enhanced security
-- **Scope-based Creation**: Create tokens with predefined ability sets
-
-### Policy Integration
-All Laravel policies (e.g., `TimerPolicy`) support both authentication methods:
+**Quick Reference:**
 ```php
-// Check token abilities if API authenticated
+// Policy integration pattern
 if ($user->currentAccessToken()) {
     return $user->tokenCan('timers:read');
 }
-// Default ABAC permissions for web users
 return $user->hasPermission('timers.view');
 ```
 
+## Time Management System
+
+Unified time management at `/time-entries` with tabbed interface (Time Entries + Active Timers). See [Time Management Documentation](docs/features/time-management.md) for complete details.
+
+**Key Implementation Notes:**
+- **Time Entries Tab**: CRUD operations with approval workflows
+- **Active Timers Tab**: RBAC-based visibility (own vs all timers)
+- **URL Routes**: `/time-entries/{tab}` where tab = `time-entries|timers`
+- **Permission-Based API Access**: `/api/timers/user/active` vs `/api/admin/timers/all-active`
+- **Auto-Refresh**: 30-second intervals for live updates
+- **Timer Commit Integration**: Automatic tab switching on commit
+
 ## Multi-Timer System Architecture
 
-### Concurrent Timer Management
-Service Vault supports multiple concurrent timers per user with comprehensive state synchronization:
+Service Vault supports concurrent timers with Redis state management and real-time sync. See [Timer System Architecture](docs/architecture/timer-system.md) for complete technical details.
 
-#### Redis State Management
-```php
-// Individual timer state keys
-user:{user_id}:timer:{timer_id}:state
-user:{user_id}:active_timers  // Set of active timer IDs
-user:{user_id}:last_sync      // Last synchronization timestamp
-```
+**Key Implementation Notes:**
+- **Concurrent Timers**: Multiple active timers per user with cross-device sync
+- **Redis State**: `user:{user_id}:timer:{timer_id}:state` pattern
+- **Real-Time Broadcasting**: Laravel Echo + Vue composables  
+- **Timer Overlay**: `TimerBroadcastOverlay.vue` with persistent state
 
-#### API Endpoints
-```bash
-# Multi-timer operations
-POST /api/timers                    # Create timer (stop_others=false)
-GET  /api/timers/active/current     # Get ALL active timers
-POST /api/timers/sync               # Sync all timer states
-POST /api/timers/bulk              # Bulk operations
-```
+**⚠️ CRITICAL Navigation Rule:**
+Always use Inertia.js navigation (`router.visit()` or `<Link>`) to maintain timer overlay persistence. Regular `<a>` tags or `window.location.href` cause full page reloads and break timer state.
 
-#### Frontend Integration
-```vue
-<!-- TimerBroadcastOverlay.vue supports multiple timers -->
-<TimerBroadcastOverlay />
-<!-- Shows all active timers with individual controls -->
-```
-
-### Domain-Based User Assignment
-
-#### Pattern Matching System
-```php
-// Wildcard domain pattern support
-$mapping = DomainMapping::create([
-    'domain_pattern' => '*.company.com',  // Matches subdomains
-    'account_id' => $account->id,
-    'priority' => 1
-]);
-
-// Automatic assignment on registration
-$user = User::create($data);
-$account = DomainAssignmentService::assignUserToAccount($user->email);
-```
-
-#### Management API
-```bash
-GET  /api/domain-mappings                 # List mappings
-POST /api/domain-mappings                 # Create mapping
-POST /api/domain-mappings/preview         # Preview assignment
-GET  /api/domain-mappings/validate/requirements  # Validation
-```
-
-### Laravel Sanctum Token Management
-
-#### Token Abilities System
-```php
-// 23 granular abilities across all system features
-class TokenAbilityService {
-    public const ABILITIES = [
-        // Timer Management
-        'timers:read' => 'View timer data',
-        'timers:write' => 'Create and update timers',
-        'timers:sync' => 'Cross-device synchronization',
-        
-        // Service Tickets
-        'tickets:read' => 'View ticket information',
-        'tickets:write' => 'Create and modify tickets',
-        'tickets:account' => 'Access account hierarchy tickets',
-        
-        // Widget & UI Control
-        'widgets:dashboard' => 'Access dashboard widgets',
-        'widgets:configure' => 'Configure widget settings',
-        'pages:access' => 'Access specific pages',
-        
-        // Account Management
-        'accounts:read' => 'View account data',
-        
-        // Administrative
-        'admin:read' => 'View administrative data',
-        'admin:write' => 'Administrative operations',
-    ];
-}
-```
-
-#### Predefined Token Scopes
-```php
-// Ready-to-use scopes for common scenarios
-public const SCOPES = [
-    'employee' => ['timers:read', 'timers:write', 'tickets:read', 'widgets:dashboard'],
-    'manager' => ['timers:read', 'timers:write', 'tickets:write', 'tickets:account', 'widgets:configure'],
-    'mobile-app' => ['timers:read', 'timers:write', 'timers:sync', 'tickets:read', 'widgets:dashboard'],
-    'admin' => ['*']  // All abilities including widgets and pages
-];
-```
-
-### Real-Time Broadcasting Infrastructure
-
-#### Laravel Echo Configuration
-```javascript
-// Conditional loading based on environment
-if (import.meta.env.VITE_ENABLE_BROADCASTING === 'true') {
-    window.Echo = new Echo({
-        broadcaster: 'pusher',
-        // Production WebSocket configuration
-    });
-} else {
-    // Mock Echo for development
-    window.Echo = mockEchoImplementation;
-}
-```
-
-#### Vue Composable Integration
-```javascript
-// useTimerBroadcasting.js - Real-time timer management
-export function useTimerBroadcasting() {
-    // Handles multiple timer events
-    // Cross-device synchronization
-    // Optimistic UI updates
-}
-```
+**Domain-Based Assignment:**
+Automatic user-to-account mapping via domain patterns. See [Authentication System](docs/system/authentication-system.md#domain-based-user-assignment).
 
 ## Development Standards
 
@@ -351,93 +252,32 @@ php artisan make:resource AccountResource             # API responses
 
 ## Three-Dimensional Permission System
 
-Service Vault implements a sophisticated permission system with three complementary dimensions:
+Service Vault uses a three-dimensional permission system: **Functional** (what users can DO) + **Widget** (what they SEE on dashboard) + **Page** (what pages they can ACCESS). See [Three-Dimensional Permissions](docs/architecture/three-dimensional-permissions.md) for complete details.
 
-### 1. Functional Permissions (What users can DO)
+**Key Development Pattern:**
 ```php
-// Account Hierarchy Permissions
-'accounts.hierarchy.access'  // Access subsidiary accounts under same root
-'accounts.manage'           // Manage account settings
-'users.manage.account'      // Manage users within account hierarchy
-
-// Service Ticket Permissions  
-'tickets.view.account'      // View tickets for accounts user belongs to
-'tickets.edit.account'      // Edit tickets for user's accounts
-'tickets.create.account'    // Create tickets for user's accounts
-'tickets.assign.account'    // Assign tickets within user's accounts
-
-// Time Tracking Permissions
-'time.view.account'         // View time entries for account tickets
-'time.edit.account'         // Edit time entries for account tickets
-'time.admin'               // Administrative time tracking control
-
-// System Administration
-'admin.manage'             // System administration
-'system.configure'         // System configuration
-'billing.manage'           // Billing and financial management
+// Check permission across all dimensions
+$user->hasPermission('tickets.view.account');      // Functional
+$user->hasPermission('widgets.dashboard.tickets'); // Widget  
+$user->hasPermission('pages.tickets.manage');      // Page Access
 ```
 
-### 2. Widget Permissions (What users can SEE on dashboard)
-```php
-// Dashboard Widget Categories
-'widgets.dashboard.system-health'      // System Health widget
-'widgets.dashboard.ticket-overview'    // Service Tickets Overview widget
-'widgets.dashboard.my-tickets'         // My Tickets widget
-'widgets.dashboard.time-tracking'      // Active Timers widget
-'widgets.dashboard.all-timers'         // All Active Timers (Admin only)
-'widgets.dashboard.billing-overview'   // Billing Overview widget
-'widgets.dashboard.account-activity'   // Account Activity widget
-'widgets.dashboard.quick-actions'      // Quick Actions widget
+**Permission Storage:** Role templates store three separate arrays (`permissions`, `widget_permissions`, `page_permissions`) with unified checking via `hasPermission()` method.
 
-// Widget Configuration
-'widgets.configure'                    // Configure widget settings
-'dashboard.customize'                  // Customize dashboard layout
-```
+## 📚 Detailed Technical Documentation
 
-### 3. Page Access Permissions (What pages users can ACCESS)
-```php
-// Administrative Pages
-'pages.admin.system'                   // System Administration page
-'pages.settings.roles'                 // Roles & Permissions page
-'pages.admin.users'                    // User Management page
+For comprehensive technical details, refer to the organized documentation in `/docs/`:
 
-// Service Management Pages  
-'pages.tickets.manage'                 // Tickets Management page
-'pages.tickets.create'                 // Ticket Creation page
-'pages.reports.account'                // Account Reports page
+### **Core System Architecture**
+- **[Authentication System](docs/system/authentication-system.md)** - Laravel Sanctum, token management, domain-based assignment
+- **[Three-Dimensional Permissions](docs/architecture/three-dimensional-permissions.md)** - Functional + Widget + Page permission system
+- **[Timer System Architecture](docs/architecture/timer-system.md)** - Multi-timer design, Redis state, real-time sync
+- **[Time Management](docs/features/time-management.md)** - Tabbed interface, API endpoints, permission matrix
 
-// Financial Pages
-'pages.billing.overview'               // Billing Overview page
-'pages.reports.billing'                // Billing Reports page
+### **Additional Documentation**
+- **[Documentation Index](docs/index.md)** - Complete documentation structure and overview
+- **[API Reference](docs/api/index.md)** - REST API endpoints and specifications  
+- **[Development Guide](docs/development/index.md)** - Development workflows and standards
+- **[Features Documentation](docs/features/index.md)** - User guides and feature specifications
 
-// Customer Portal Pages
-'pages.portal.dashboard'               // Customer Portal Dashboard
-'pages.portal.tickets'                 // Customer Ticket Portal
-```
-
-### Permission Model Example: Account Manager Role
-```php
-// Account Manager gets ALL THREE permission types:
-$accountManagerPermissions = [
-    // Functional Permissions - WHAT they can do
-    'accounts.hierarchy.access',
-    'tickets.view.account',
-    'tickets.edit.account', 
-    'tickets.create.account',
-    'users.manage.account',
-    'time.view.account',
-    
-    // Widget Permissions - WHAT they can see on dashboard
-    'widgets.dashboard.ticket-overview',
-    'widgets.dashboard.account-activity',
-    'widgets.dashboard.billing-overview',
-    'widgets.dashboard.my-tickets',
-    'widgets.configure',
-    
-    // Page Permissions - WHAT pages they can access
-    'pages.tickets.manage',
-    'pages.reports.account', 
-    'pages.billing.overview',
-    'pages.portal.dashboard'
-];
-```
+This CLAUDE.md file focuses on essential information for AI development assistance. For detailed implementation guides, architecture deep-dives, and comprehensive feature documentation, always refer to the structured documentation in the `/docs` folder.

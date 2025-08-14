@@ -18,8 +18,9 @@ class TimeEntryResource extends JsonResource
             'id' => $this->id,
             'description' => $this->description,
             'duration' => $this->duration,
-            'duration_formatted' => $this->formatDuration($this->duration),
-            'date' => $this->date,
+            'duration_formatted' => $this->formatDuration($this->duration), // Duration is already in seconds
+            'started_at' => $this->started_at,
+            'ended_at' => $this->ended_at,
             'billable' => $this->billable,
             'status' => $this->status,
             'notes' => $this->notes,
@@ -28,7 +29,7 @@ class TimeEntryResource extends JsonResource
             'updated_at' => $this->updated_at,
             
             // Relationships
-            'user' => $this->whenLoaded('user', function () {
+            'user' => $this->whenLoaded('user', function () use ($request) {
                 return [
                     'id' => $this->user->id,
                     'name' => $this->user->name,
@@ -76,12 +77,12 @@ class TimeEntryResource extends JsonResource
             
             'approved_at' => $this->approved_at,
             
-            // Calculated fields
-            'hours' => round($this->duration / 3600, 2),
-            'cost' => $this->when(
+            // Calculated fields  
+            'hours' => round($this->duration / 3600, 2), // Convert seconds to hours
+            'calculated_cost' => $this->when(
                 $this->relationLoaded('billingRate') && $this->billingRate,
                 function () {
-                    return round(($this->duration / 3600) * $this->billingRate->rate, 2);
+                    return round(($this->duration / 3600) * $this->billingRate->rate, 2); // Convert seconds to hours
                 }
             ),
             

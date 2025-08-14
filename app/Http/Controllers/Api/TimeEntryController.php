@@ -54,16 +54,23 @@ class TimeEntryController extends Controller
         })->when($request->project_id, function ($q, $projectId) {
             $q->where('project_id', $projectId);
         })->when($request->date_from, function ($q, $dateFrom) {
-            $q->whereDate('date', '>=', $dateFrom);
+            $q->whereDate('started_at', '>=', $dateFrom);
         })->when($request->date_to, function ($q, $dateTo) {
-            $q->whereDate('date', '<=', $dateTo);
+            $q->whereDate('started_at', '<=', $dateTo);
         })->when($request->billable !== null, function ($q) use ($request) {
             $q->where('billable', $request->boolean('billable'));
         });
         
         // Apply sorting
-        $sortField = $request->input('sort', 'date');
+        $sortField = $request->input('sort', 'started_at');
         $sortDirection = $request->input('direction', 'desc');
+        
+        // Validate sort field to prevent SQL injection
+        $allowedSortFields = ['started_at', 'ended_at', 'duration', 'created_at', 'updated_at', 'status'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'started_at';
+        }
+        
         $query->orderBy($sortField, $sortDirection);
         
         // Get paginated results

@@ -18,7 +18,8 @@
       "Bash(grep:*)",
       "Bash(php:*)",
       "Bash(vendor/bin/phpstan analyze:*)",
-      "Bash(./vendor/bin/pint:*)"
+      "Bash(./vendor/bin/pint:*)",
+      "WebFetch(domain:inertiajs.com)"
     ],
     "deny": []
   }

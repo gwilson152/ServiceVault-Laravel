@@ -274,7 +274,7 @@
     </TransitionRoot>
     
     <!-- Timer Broadcast Overlay -->
-    <TimerBroadcastOverlay />
+    <TimerBroadcastOverlay key="timer-overlay-persistent" />
   </div>
 </template>
 

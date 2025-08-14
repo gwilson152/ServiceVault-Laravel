@@ -433,4 +433,39 @@ defineOptions({
 ```
 
 This ensures consistent behavior across the entire application while maintaining the persistent timer overlay functionality.
+
+### Navigation Requirements for Persistent Overlay
+
+**CRITICAL**: For the timer overlay to remain persistent across navigation, all navigation must use Inertia.js patterns:
+
+```javascript
+// ✅ CORRECT - Use router.visit() for programmatic navigation
+import { router } from '@inertiajs/vue3'
+router.visit(`/tickets/${ticketId}`)
+
+// ❌ WRONG - window.location.href breaks persistence
+window.location.href = `/tickets/${ticketId}` // Causes full page reload
+```
+
+```vue
+<!-- ✅ CORRECT - Use Inertia Link component -->
+<Link :href="`/tickets/${ticket.id}`">View Ticket</Link>
+
+<!-- ❌ WRONG - HTML anchor breaks persistence -->
+<a :href="`/tickets/${ticket.id}`">View Ticket</a> <!-- Causes full page reload -->
+```
+
+**Common Components Fixed:**
+- `MyTicketsWidget.vue`: Changed `window.location.href` to `router.visit()`
+- `TicketsTable.vue`: Changed `<a>` tags to `<Link>` components
+
+## Troubleshooting Timer Overlay Issues
+
+If the timer overlay reloads or disappears during navigation:
+
+1. **Check for non-Inertia navigation** - Look for `window.location.href` or HTML `<a>` tags
+2. **Verify persistent layout usage** - All pages should use `defineOptions({ layout: AppLayout })`
+3. **Ensure consistent component keys** - Timer overlay has stable key in AppLayout
+4. **Validate WebSocket connections** - Check console for connection drops
+
 - Cost tracking and project profitability analysis

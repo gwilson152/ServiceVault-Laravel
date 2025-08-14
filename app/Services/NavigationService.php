@@ -85,16 +85,6 @@ class NavigationService
                 'group' => 'service_delivery'
             ],
             [
-                'key' => 'timers',
-                'label' => 'Timers',
-                'icon' => 'ClockIcon',
-                'route' => 'timers.web.index',
-                'active_patterns' => ['timers.*'],
-                'permissions' => ['time.track', 'timers.create', 'timers.view', 'timers.manage.own'],
-                'sort_order' => 3,
-                'group' => 'time_management'
-            ],
-            [
                 'key' => 'time-entries',
                 'label' => 'Time Entries',
                 'icon' => 'CalendarIcon',

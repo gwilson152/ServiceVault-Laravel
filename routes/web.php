@@ -83,17 +83,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Tickets management
     Route::get('/tickets', [App\Http\Controllers\Api\TicketController::class, 'indexView'])->name('tickets.index');
     Route::get('/tickets/create', [App\Http\Controllers\Api\TicketController::class, 'create'])->name('tickets.create');
-    Route::get('/tickets/{ticket}', [App\Http\Controllers\Api\TicketController::class, 'showView'])->name('tickets.show');
+    Route::get('/tickets/{ticket}', function ($ticket) {
+        return Inertia::render('Tickets/Show', ['ticketId' => $ticket]);
+    })->name('tickets.show');
     
-    // Timer management (frontend routes)
-    Route::get('/timers', function () {
-        return Inertia::render('Timer/Index');
-    })->name('timers.web.index');
     
     // Placeholder routes for navigation (to be implemented later)
-    Route::get('/time-entries', function () {
-        return Inertia::render('TimeEntries/Index');
-    })->name('time-entries.index');
+    Route::get('/time-entries/{tab?}', function ($tab = null) {
+        return Inertia::render('TimeEntries/Index', [
+            'activeTab' => $tab ?: 'time-entries'
+        ]);
+    })->name('time-entries.index')->where('tab', '(time-entries|timers)');
     
     Route::get('/reports', function () {
         return Inertia::render('Reports/Index');

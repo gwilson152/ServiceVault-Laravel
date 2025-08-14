@@ -5,14 +5,15 @@
       <div class="flex items-center justify-between">
         <div>
           <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Time Entries
+            Time Management
           </h2>
           <p class="text-sm text-gray-600 mt-1">
-            View and manage time entries with approval workflows.
+            View and manage time entries and active timers.
           </p>
         </div>
         <div class="flex space-x-3">
           <button
+            v-if="activeTab === 'time-entries'"
             @click="showCreateModal = true"
             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
@@ -26,9 +27,41 @@
     </div>
   </div>
 
+  <!-- Navigation Tabs -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="border-b border-gray-200 mb-6">
+      <nav class="-mb-px flex space-x-8">
+        <Link
+          :href="route('time-entries.index', 'time-entries')"
+          :class="[
+            activeTab === 'time-entries'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+            'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm'
+          ]"
+        >
+          Time Entries
+        </Link>
+        <Link
+          :href="route('time-entries.index', 'timers')"
+          :class="[
+            activeTab === 'timers'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+            'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm'
+          ]"
+        >
+          Active Timers
+        </Link>
+      </nav>
+    </div>
+  </div>
+
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-    <!-- Statistics Cards -->
-    <div v-if="stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Time Entries Tab -->
+    <div v-if="activeTab === 'time-entries'">
+      <!-- Statistics Cards -->
+      <div v-if="stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       <div class="bg-white overflow-hidden shadow rounded-lg">
         <div class="p-5">
           <div class="flex items-center">
@@ -115,7 +148,6 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
             <select
               v-model="filters.status"
-              @change="loadTimeEntries"
               class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="">All Statuses</option>
@@ -129,7 +161,6 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Billable</label>
             <select
               v-model="filters.billable"
-              @change="loadTimeEntries"
               class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="">All Entries</option>
@@ -142,7 +173,6 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Date From</label>
             <input
               v-model="filters.date_from"
-              @change="loadTimeEntries"
               type="date"
               class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
@@ -152,7 +182,6 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Date To</label>
             <input
               v-model="filters.date_to"
-              @change="loadTimeEntries"
               type="date"
               class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
@@ -248,14 +277,14 @@
               </button>
               <button
                 v-if="canApprove && entry.status === 'pending'"
-                @click="approveEntry(entry)"
+                @click="approveEntryHandler(entry)"
                 class="text-green-600 hover:text-green-900 text-sm font-medium"
               >
                 Approve
               </button>
               <button
                 v-if="canApprove && entry.status === 'pending'"
-                @click="rejectEntry(entry)"
+                @click="rejectEntryHandler(entry)"
                 class="text-red-600 hover:text-red-900 text-sm font-medium"
               >
                 Reject
@@ -334,31 +363,22 @@
         </div>
       </div>
     </div>
-  </div>
+    </div>
 
-  <!-- Create/Edit Modal -->
-  <div v-if="showCreateModal || editingEntry" class="fixed inset-0 z-10 overflow-y-auto">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal"></div>
-      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <!-- Modal content here - TODO: Implement time entry form -->
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">
-            {{ editingEntry ? 'Edit Time Entry' : 'Add Time Entry' }}
-          </h3>
-          <p class="mt-2 text-sm text-gray-500">Time entry form will be implemented next.</p>
-        </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button
-            @click="closeModal"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
+    <!-- Timers Tab -->
+    <div v-else-if="activeTab === 'timers'">
+      <TimersTab @timer-committed="onTimerCommitted" />
     </div>
   </div>
+
+  <!-- Unified Time Entry Dialog -->
+  <UnifiedTimeEntryDialog
+    :show="showCreateModal || !!editingEntry"
+    :mode="editingEntry ? 'edit' : 'create'"
+    :time-entry="editingEntry"
+    @close="closeModal"
+    @saved="handleTimeEntrySaved"
+  />
 
   <!-- Bulk Approval Modal -->
   <div v-if="showBulkApprovalModal" class="fixed inset-0 z-10 overflow-y-auto">
@@ -383,10 +403,10 @@
         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
           <button
             @click="bulkApprove"
-            :disabled="bulkProcessing"
+            :disabled="isBulkApproving"
             class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
           >
-            {{ bulkProcessing ? 'Processing...' : 'Approve All' }}
+            {{ isBulkApproving ? 'Processing...' : 'Approve All' }}
           </button>
           <button
             @click="showBulkApprovalModal = false"
@@ -401,10 +421,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { usePage } from '@inertiajs/vue3'
-import axios from 'axios'
+import { usePage, Link, router } from '@inertiajs/vue3'
+import TimersTab from '@/Components/TimeEntries/TimersTab.vue'
+import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
+import { useTimeEntriesQuery } from '@/Composables/queries/useTimeEntriesQuery.js'
+
+// Props
+const props = defineProps({
+  activeTab: {
+    type: String,
+    default: 'time-entries'
+  }
+})
 
 // Define persistent layout
 defineOptions({
@@ -414,16 +444,29 @@ defineOptions({
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
+// Initialize TanStack Query composable
+const {
+  useTimeEntriesListQuery,
+  timeEntriesStats,
+  loadingStats,
+  statsError,
+  refetchStats,
+  approveTimeEntry,
+  rejectTimeEntry,
+  bulkApproveTimeEntries,
+  isBulkApproving,
+  createTimeEntryError,
+  updateTimeEntryError
+} = useTimeEntriesQuery()
+
 // Reactive state
-const loading = ref(false)
-const timeEntries = ref({ data: [], total: 0 })
-const stats = ref(null)
+const activeTab = ref(props.activeTab || 'time-entries')
 const selectedEntries = ref([])
 const showCreateModal = ref(false)
 const showBulkApprovalModal = ref(false)
 const editingEntry = ref(null)
 const bulkApprovalNotes = ref('')
-const bulkProcessing = ref(false)
+const currentPage = ref(1)
 
 const filters = reactive({
   status: '',
@@ -432,50 +475,48 @@ const filters = reactive({
   date_to: ''
 })
 
+// Create reactive query options
+const queryOptions = reactive({
+  ...filters,
+  page: currentPage,
+  per_page: 20
+})
+
+// Use TanStack Query for time entries list
+const {
+  data: timeEntriesData,
+  isLoading: loading,
+  error: timeEntriesError,
+  refetch: refetchTimeEntries
+} = useTimeEntriesListQuery(queryOptions)
+
+// Computed properties for backward compatibility
+const timeEntries = computed(() => timeEntriesData.value?.data || { data: [], total: 0 })
+const stats = computed(() => timeEntriesStats.value || {})
+
 // Computed properties
 const canApprove = computed(() => {
   return user.value?.permissions?.includes('teams.manage') || user.value?.permissions?.includes('admin.manage')
 })
 
-// Methods
-const loadTimeEntries = async (page = 1) => {
-  loading.value = true
-  try {
-    const params = new URLSearchParams()
-    if (filters.status) params.append('status', filters.status)
-    if (filters.billable) params.append('billable', filters.billable)
-    if (filters.date_from) params.append('date_from', filters.date_from)
-    if (filters.date_to) params.append('date_to', filters.date_to)
-    params.append('page', page)
-    
-    const response = await axios.get(`/api/time-entries?${params.toString()}`)
-    timeEntries.value = response.data.data
-    selectedEntries.value = []
-  } catch (error) {
-    console.error('Error loading time entries:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadStats = async () => {
-  try {
-    const response = await axios.get('/api/time-entries/stats/recent')
-    stats.value = response.data.data
-  } catch (error) {
-    console.error('Error loading stats:', error)
-  }
-}
-
+// Methods (using TanStack Query)
 const loadPage = (page) => {
-  loadTimeEntries(page)
+  currentPage.value = page
+  // The query will automatically refetch when currentPage changes
 }
+
+// Reactive query that updates when filters or page change
+watch([filters, currentPage], () => {
+  // Clear selections when filters/page change
+  selectedEntries.value = []
+}, { deep: true })
 
 const clearFilters = () => {
   Object.keys(filters).forEach(key => {
     filters[key] = ''
   })
-  loadTimeEntries()
+  currentPage.value = 1
+  // Query will automatically refetch when filters and page change
 }
 
 const editEntry = (entry) => {
@@ -487,21 +528,24 @@ const closeModal = () => {
   editingEntry.value = null
 }
 
-const approveEntry = async (entry) => {
+const handleTimeEntrySaved = () => {
+  closeModal()
+  // Query will automatically refetch due to cache invalidation in the mutation
+}
+
+const approveEntryHandler = async (entry) => {
   try {
-    await axios.post(`/api/time-entries/${entry.id}/approve`)
-    await loadTimeEntries()
+    await approveTimeEntry(entry.id)
   } catch (error) {
     console.error('Error approving entry:', error)
   }
 }
 
-const rejectEntry = async (entry) => {
+const rejectEntryHandler = async (entry) => {
   const reason = prompt('Rejection reason:')
   if (reason) {
     try {
-      await axios.post(`/api/time-entries/${entry.id}/reject`, { reason })
-      await loadTimeEntries()
+      await rejectTimeEntry({ timeEntryId: entry.id, reason })
     } catch (error) {
       console.error('Error rejecting entry:', error)
     }
@@ -511,21 +555,23 @@ const rejectEntry = async (entry) => {
 const bulkApprove = async () => {
   if (selectedEntries.value.length === 0) return
   
-  bulkProcessing.value = true
   try {
-    await axios.post('/api/time-entries/bulk-approve', {
+    await bulkApproveTimeEntries({
       time_entry_ids: selectedEntries.value,
       notes: bulkApprovalNotes.value
     })
     showBulkApprovalModal.value = false
     bulkApprovalNotes.value = ''
     selectedEntries.value = []
-    await loadTimeEntries()
   } catch (error) {
     console.error('Error bulk approving entries:', error)
-  } finally {
-    bulkProcessing.value = false
   }
+}
+
+const onTimerCommitted = () => {
+  // Query will automatically refetch due to cache invalidation in the mutation
+  // Navigate to time entries tab to show the new entry
+  router.visit(route('time-entries.index', 'time-entries'))
 }
 
 // Utility functions
@@ -544,9 +590,5 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString()
 }
 
-// Initialize
-onMounted(() => {
-  loadTimeEntries()
-  loadStats()
-})
+// Initialize - queries will automatically fetch on mount
 </script>

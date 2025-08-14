@@ -377,23 +377,64 @@ class SettingController extends Controller
      */
     public function getTimerSettings(): JsonResponse
     {
-        $this->authorize('system.configure');
+        // Allow access to users with timer permissions or general read access
+        if (!auth()->user()->hasAnyPermission(['timers.read', 'timers.write', 'admin.read', 'system.configure'])) {
+            abort(403, 'Unauthorized');
+        }
 
-        $settings = Setting::getByType('timer');
+        try {
+            // Get timer settings with timer.* prefix
+            $timerSettings = Setting::where('key', 'like', 'timer.%')->pluck('value', 'key');
+            $timerData = [];
+            
+            foreach ($timerSettings as $key => $value) {
+                // Remove 'timer.' prefix from key
+                $shortKey = str_replace('timer.', '', $key);
+                $timerData[$shortKey] = $value;
+            }
 
-        // Provide defaults if not set
-        $defaults = [
-            'default_auto_stop' => false,
-            'allow_concurrent_timers' => true,
-            'sync_interval_seconds' => 5,
-            'auto_commit_on_stop' => false,
-            'require_description' => true,
-            'default_billable' => true,
-        ];
+            // Apply comprehensive defaults for missing settings
+            $defaults = [
+                'default_auto_stop' => false,
+                'allow_concurrent_timers' => true,
+                'auto_commit_on_stop' => false,
+                'require_description' => true,
+                'default_billable' => true,
+                'sync_interval_seconds' => 5,
+                'min_timer_duration_minutes' => 0,
+                'max_timer_duration_hours' => 8,
+                'auto_stop_long_timers' => false,
+                'time_display_format' => 'hms',
+                'show_timer_overlay' => true,
+                'play_timer_sounds' => false,
+                'allow_manual_time_override' => true,
+            ];
 
-        return response()->json([
-            'data' => array_merge($defaults, $settings),
-        ]);
+            foreach ($defaults as $key => $defaultValue) {
+                if (!isset($timerData[$key])) {
+                    $timerData[$key] = $defaultValue;
+                }
+                
+                // Convert string boolean values to actual booleans
+                if (in_array($key, ['default_auto_stop', 'allow_concurrent_timers', 'auto_commit_on_stop', 'require_description', 'default_billable', 'auto_stop_long_timers', 'show_timer_overlay', 'play_timer_sounds', 'allow_manual_time_override'])) {
+                    $timerData[$key] = filter_var($timerData[$key], FILTER_VALIDATE_BOOLEAN);
+                }
+                
+                // Convert string numeric values to numbers
+                if (in_array($key, ['sync_interval_seconds', 'min_timer_duration_minutes', 'max_timer_duration_hours'])) {
+                    $timerData[$key] = (int) $timerData[$key];
+                }
+            }
+
+            return response()->json([
+                'data' => $timerData,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load timer settings: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -404,28 +445,45 @@ class SettingController extends Controller
         $this->authorize('system.configure');
 
         $validator = Validator::make($request->all(), [
-            'default_auto_stop' => 'sometimes|boolean',
-            'allow_concurrent_timers' => 'sometimes|boolean',
-            'sync_interval_seconds' => 'sometimes|integer|min:1|max:60',
-            'auto_commit_on_stop' => 'sometimes|boolean',
-            'require_description' => 'sometimes|boolean',
-            'default_billable' => 'sometimes|boolean',
+            'default_auto_stop' => 'boolean',
+            'allow_concurrent_timers' => 'boolean',
+            'auto_commit_on_stop' => 'boolean',
+            'require_description' => 'boolean',
+            'default_billable' => 'boolean',
+            'sync_interval_seconds' => 'integer|min:1|max:60',
+            'min_timer_duration_minutes' => 'integer|min:0|max:1440',
+            'max_timer_duration_hours' => 'integer|min:1|max:24',
+            'auto_stop_long_timers' => 'boolean',
+            'time_display_format' => 'string|in:hms,hm,decimal',
+            'show_timer_overlay' => 'boolean',
+            'play_timer_sounds' => 'boolean',
+            'allow_manual_time_override' => 'boolean',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Validation failed',
+                'success' => false,
+                'message' => 'Invalid timer settings',
                 'errors' => $validator->errors(),
             ], 422);
         }
 
-        foreach ($validator->validated() as $key => $value) {
-            Setting::setValue("timer.{$key}", $value, 'timer');
-        }
+        try {
+            // Update each setting with timer. prefix
+            foreach ($request->all() as $key => $value) {
+                if (isset($validator->rules()[$key])) {
+                    Setting::setValue("timer.{$key}", $value, 'timer');
+                }
+            }
 
-        return response()->json([
-            'message' => 'Timer settings updated successfully',
-        ]);
+            // Return updated settings
+            return $this->getTimerSettings();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update timer settings: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -494,4 +552,6 @@ class SettingController extends Controller
             'message' => 'Workflow transitions updated successfully'
         ]);
     }
+
+
 }

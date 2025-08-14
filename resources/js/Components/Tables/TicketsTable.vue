@@ -71,9 +71,9 @@
               <!-- Ticket Number & Title -->
               <div class="mb-2">
                 <div class="text-sm font-semibold text-blue-600 hover:text-blue-800">
-                  <a :href="`/tickets/${cell.row.original.id}`" class="hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded">
+                  <Link :href="`/tickets/${cell.row.original.id}`" class="hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded">
                     {{ cell.row.original.ticket_number }}
-                  </a>
+                  </Link>
                 </div>
                 <div 
                   :class="[
@@ -324,6 +324,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { Link } from '@inertiajs/vue3'
 import { FlexRender } from '@tanstack/vue-table'
 import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
 import StatusDropdown from '@/Components/Form/StatusDropdown.vue'

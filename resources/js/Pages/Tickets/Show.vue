@@ -1,697 +1,1229 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Ticket Header -->
+    <!-- Page Header -->
     <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Navigation Bar -->
-        <div class="flex items-center justify-between py-4">
-          <div class="flex items-center space-x-4">
-            <!-- Back Button -->
-            <Link 
-              :href="route('tickets.index')" 
-              class="text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            
-            <!-- Ticket Info -->
-            <div>
-              <div class="flex items-center space-x-3">
-                <h1 class="text-2xl font-bold text-gray-900">
-                  {{ ticket?.title || 'Loading...' }}
-                </h1>
-                <button
-                  v-if="canEdit && ticket?.title"
-                  @click="startEditingTitle"
-                  class="text-blue-600 hover:text-blue-700 text-sm transition-colors"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-              </div>
-              <div class="flex items-center space-x-3 mt-1">
-                <span class="text-sm font-medium text-gray-500">{{ ticket?.ticket_number }}</span>
-                <span v-if="ticket" :class="statusClasses" class="px-2 py-1 rounded-full text-xs font-medium">
-                  {{ formatStatus(ticket.status) }}
-                </span>
-                <span v-if="ticket" :class="priorityClasses" class="px-2 py-1 rounded-full text-xs font-medium">
-                  {{ formatPriority(ticket.priority) }}
-                </span>
-                <span v-if="ticket?.due_date" :class="dueDateClasses" class="px-2 py-1 rounded-full text-xs font-medium">
-                  Due {{ formatDate(ticket.due_date) }}
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Action Buttons -->
-          <div class="flex items-center space-x-3">
-            <!-- Timer Controls -->
-            <div v-if="canManageTime" class="flex items-center space-x-2">
-              <button
-                v-if="!activeTimer"
-                @click="startTimer"
-                class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center space-x-2"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Start Timer</span>
-              </button>
-              
-              <div v-else class="flex items-center space-x-2">
-                <div class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-center space-x-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span class="text-green-700 font-medium">{{ formatDuration(activeTimer.duration) }}</span>
-                </div>
-                <button
-                  @click="stopTimer"
-                  class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
-                  Stop
-                </button>
-              </div>
-            </div>
-            
-            <!-- Status Change -->
-            <div v-if="canChangeStatus" class="relative">
-              <select
-                :value="ticket?.status"
-                @change="changeStatus($event.target.value)"
-                class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="waiting_customer">Waiting Customer</option>
-                <option value="on_hold">On Hold</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
-            
-            <!-- More Actions -->
-            <div class="relative" ref="actionsDropdown">
-              <button
-                @click="showActionsMenu = !showActionsMenu"
-                class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                </svg>
-              </button>
-              
-              <div v-if="showActionsMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-                <div class="py-1">
-                  <button 
-                    @click="duplicateTicket"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Duplicate Ticket
-                  </button>
-                  <button 
-                    @click="exportTicket"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Export to PDF
-                  </button>
-                  <hr class="my-1">
-                  <button 
-                    @click="deleteTicket"
-                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Delete Ticket
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <!-- Loading State -->
-      <div v-if="loading" class="text-center py-12">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p class="mt-2 text-gray-600">Loading ticket details...</p>
-      </div>
-      
-      <!-- Error State -->
-      <div v-else-if="ticketError" class="text-center py-12">
-        <div class="text-red-600 mb-4">
-          <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-        </div>
-        <p class="text-red-600 font-medium">Failed to load ticket</p>
-        <p class="text-gray-500 text-sm mt-1">{{ ticketError }}</p>
-        <button @click="refetchTicket" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-          Try Again
-        </button>
-      </div>
-      
-      <!-- No Ticket Found -->
-      <div v-else-if="!ticket" class="text-center py-12">
-        <div class="text-gray-400 mb-4">
-          <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
-        <p class="text-gray-600 font-medium">Ticket not found</p>
-        <p class="text-gray-500 text-sm mt-1">The ticket you're looking for doesn't exist or you don't have permission to view it.</p>
-        <Link :href="route('tickets.index')" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-block">
-          Back to Tickets
-        </Link>
-      </div>
-      
-      <div v-else class="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <!-- Main Content Area (3 columns) -->
-        <div class="xl:col-span-3 space-y-6">
-          <!-- Ticket Description -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="p-6">
-              <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-gray-900">Description</h2>
-                <button
-                  v-if="canEdit && !editingDescription"
-                  @click="startEditingDescription"
-                  class="text-blue-600 hover:text-blue-700 text-sm transition-colors"
-                >
-                  Edit
-                </button>
-              </div>
-              
-              <div v-if="editingDescription">
-                <textarea
-                  v-model="editedDescription"
-                  rows="6"
-                  class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Describe the issue or request..."
-                ></textarea>
-                <div class="flex items-center space-x-2 mt-3">
-                  <button
-                    @click="saveDescription"
-                    :disabled="savingDescription"
-                    class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                  >
-                    {{ savingDescription ? 'Saving...' : 'Save' }}
-                  </button>
-                  <button
-                    @click="cancelEditingDescription"
-                    class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-              
-              <div v-else class="prose max-w-none text-gray-700">
-                <div v-if="ticket.description" v-html="formatDescription(ticket.description)"></div>
-                <div v-else class="text-gray-500 italic">No description provided.</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tabbed Content Area -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <!-- Tab Navigation -->
-            <div class="border-b border-gray-200">
-              <nav class="flex space-x-8 px-6" aria-label="Tabs">
-                <button
-                  v-for="tab in tabs"
-                  :key="tab.id"
-                  @click="activeTab = tab.id"
-                  :class="[
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                    'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
-                  ]"
-                >
-                  {{ tab.label }}
-                  <span v-if="tab.badge" class="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs font-medium">
-                    {{ tab.badge }}
-                  </span>
-                </button>
-              </nav>
-            </div>
-            
-            <!-- Tab Content -->
-            <div class="p-6">
-              <!-- Comments & Messages Tab -->
-              <div v-if="activeTab === 'messages'" class="space-y-6">
-                <!-- Message Thread -->
-                <div class="space-y-4">
-                  <div v-if="messages.length === 0" class="text-center py-8 text-gray-500">
-                    <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.524A11.956 11.956 0 012 21c0-1.68.322-3.283.913-4.755A12.026 12.026 0 012 12C2 7.582 5.582 4 10 4s8 3.582 8 8z" />
-                    </svg>
-                    <p>No messages yet. Start the conversation!</p>
-                  </div>
-                  
-                  <div 
-                    v-for="message in messages" 
-                    :key="message.id"
-                    :class="[
-                      'flex space-x-3 p-4 rounded-lg',
-                      message.is_internal ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'
-                    ]"
-                  >
-                    <!-- Avatar -->
-                    <div class="flex-shrink-0">
-                      <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span class="text-sm font-medium text-gray-700">
-                          {{ message.user?.name?.charAt(0)?.toUpperCase() || '?' }}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <!-- Message Content -->
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center space-x-2 mb-2">
-                        <p class="text-sm font-medium text-gray-900">{{ message.user?.name || 'Unknown User' }}</p>
-                        <span v-if="message.is_internal" class="px-2 py-1 bg-yellow-200 text-yellow-800 text-xs rounded-full font-medium">
-                          Internal
-                        </span>
-                        <span class="text-xs text-gray-500">{{ formatDateTime(message.created_at) }}</span>
-                        <span v-if="message.was_edited" class="text-xs text-gray-400">(edited)</span>
-                      </div>
-                      <div class="text-sm text-gray-700" v-html="formatMessage(message.content)"></div>
-                      
-                      <!-- Attachment Indicator -->
-                      <div v-if="message.attachments?.length" class="mt-3">
-                        <div class="flex items-center space-x-2 text-sm text-gray-500">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
-                          <span>{{ message.attachments.length }} file{{ message.attachments.length > 1 ? 's' : '' }} attached</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Message Composer -->
-                <div class="border-t border-gray-200 pt-6">
-                  <form @submit.prevent="sendMessage">
-                    <div class="mb-4">
-                      <textarea
-                        v-model="newMessage"
-                        placeholder="Type your message..."
-                        rows="4"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        :required="selectedFiles.length === 0"
-                      ></textarea>
-                    </div>
-                    
-                    <!-- Selected Files Preview -->
-                    <div v-if="selectedFiles.length > 0" class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-700">Selected Files ({{ selectedFiles.length }})</span>
-                        <button type="button" @click="selectedFiles = []" class="text-red-600 hover:text-red-700 text-sm">
-                          Clear All
-                        </button>
-                      </div>
-                      <div class="space-y-1">
-                        <div 
-                          v-for="(file, index) in selectedFiles" 
-                          :key="index"
-                          class="flex items-center justify-between py-1"
+            <div class="px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <!-- Back Button -->
+                        <Link
+                            :href="route('tickets.index')"
+                            class="text-gray-600 hover:text-gray-900 transition-colors"
                         >
-                          <div class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <svg
+                                class="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M15 19l-7-7 7-7"
+                                />
                             </svg>
-                            <span class="text-sm text-gray-700">{{ file.name }}</span>
-                            <span class="text-xs text-gray-500">({{ formatFileSize(file.size) }})</span>
-                          </div>
-                          <button 
-                            type="button" 
-                            @click="selectedFiles.splice(index, 1)"
-                            class="text-red-600 hover:text-red-700 text-xs"
-                          >
-                            Remove
-                          </button>
+                        </Link>
+
+                        <!-- Ticket Info -->
+                        <div>
+                            <div class="flex items-center space-x-3">
+                                <h1 class="text-2xl font-bold text-gray-900">
+                                    {{ ticket?.title || "Loading..." }}
+                                </h1>
+                                <button
+                                    v-if="canEdit && ticket?.title"
+                                    @click="startEditingTitle"
+                                    class="text-blue-600 hover:text-blue-700 text-sm transition-colors"
+                                >
+                                    <svg
+                                        class="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="flex items-center space-x-3 mt-1">
+                                <span
+                                    class="text-sm font-medium text-gray-500"
+                                    >{{ ticket?.ticket_number }}</span
+                                >
+                                <span
+                                    v-if="ticket"
+                                    :class="statusClasses"
+                                    class="px-2 py-1 rounded-full text-xs font-medium"
+                                >
+                                    {{ formatStatus(ticket.status) }}
+                                </span>
+                                <span
+                                    v-if="ticket"
+                                    :class="priorityClasses"
+                                    class="px-2 py-1 rounded-full text-xs font-medium"
+                                >
+                                    {{ formatPriority(ticket.priority) }}
+                                </span>
+                                <span
+                                    v-if="ticket?.due_date"
+                                    :class="dueDateClasses"
+                                    class="px-2 py-1 rounded-full text-xs font-medium"
+                                >
+                                    Due {{ formatDate(ticket.due_date) }}
+                                </span>
+                            </div>
                         </div>
-                      </div>
                     </div>
-                    
-                    <!-- Message Options -->
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center space-x-4">
-                        <label class="flex items-center">
-                          <input 
-                            v-model="messageIsInternal" 
-                            type="checkbox" 
-                            class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          >
-                          <span class="text-sm text-gray-600">Internal (not visible to customer)</span>
-                        </label>
-                        
-                        <label class="flex items-center cursor-pointer">
-                          <input type="file" multiple class="hidden" @change="handleFileUpload">
-                          <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
-                          <span class="text-sm text-gray-600">Attach files</span>
-                        </label>
-                      </div>
-                      
-                      <button
-                        type="submit"
-                        :disabled="(!newMessage.trim() && selectedFiles.length === 0) || sendingMessage"
-                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center space-x-2"
-                      >
-                        <span>{{ sendingMessage ? (uploadingFiles && selectedFiles.length > 0 ? 'Uploading...' : 'Sending...') : 'Send' }}</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
-                      </button>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center space-x-3">
+                        <!-- Timer Controls -->
+                        <div
+                            v-if="canManageTime"
+                            class="flex items-center space-x-2"
+                        >
+                            <button
+                                v-if="!activeTimer"
+                                @click="startTimer"
+                                class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center space-x-2"
+                            >
+                                <svg
+                                    class="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
+                                </svg>
+                                <span>Start Timer</span>
+                            </button>
+
+                            <div v-else class="flex items-center space-x-2">
+                                <div
+                                    class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-center space-x-2"
+                                >
+                                    <div
+                                        class="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                                    ></div>
+                                    <span class="text-green-700 font-medium">{{
+                                        formatDuration(activeTimer.duration)
+                                    }}</span>
+                                </div>
+                                <button
+                                    @click="stopTimer"
+                                    class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                                >
+                                    Stop
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Status Change -->
+                        <div v-if="canChangeStatus" class="relative">
+                            <select
+                                :value="ticket?.status"
+                                @change="changeStatus($event.target.value)"
+                                class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="open">Open</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="waiting_customer">
+                                    Waiting Customer
+                                </option>
+                                <option value="on_hold">On Hold</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                        </div>
+
+                        <!-- More Actions -->
+                        <div class="relative" ref="actionsDropdown">
+                            <button
+                                @click="showActionsMenu = !showActionsMenu"
+                                class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <svg
+                                    class="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                                    />
+                                </svg>
+                            </button>
+
+                            <div
+                                v-if="showActionsMenu"
+                                class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10"
+                            >
+                                <div class="py-1">
+                                    <button
+                                        @click="duplicateTicket"
+                                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                        Duplicate Ticket
+                                    </button>
+                                    <button
+                                        @click="exportTicket"
+                                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                        Export to PDF
+                                    </button>
+                                    <hr class="my-1" />
+                                    <button
+                                        @click="deleteTicket"
+                                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                    >
+                                        Delete Ticket
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                  </form>
                 </div>
-              </div>
-              
-              <!-- Time Tracking Tab -->
-              <div v-if="activeTab === 'time'" class="space-y-6">
-                <TimeTrackingManager 
-                  :ticket="ticket" 
-                  :current-user-id="currentUserId" 
-                  :can-manage-time="canManageTime"
-                  @updated="loadTimeTrackingData" 
-                />
-              </div>
-              
-              <!-- Addons Tab -->
-              <div v-if="activeTab === 'addons'" class="space-y-6">
-                <TicketAddonManager :ticket="ticket" @updated="loadTicketDetails" />
-              </div>
-              
-              <!-- Activity Timeline Tab -->
-              <div v-if="activeTab === 'activity'" class="space-y-6">
-                <ActivityTimeline :ticket="ticket" />
-              </div>
-              
-              <!-- Billing Tab -->
-              <div v-if="activeTab === 'billing'" class="space-y-6">
-                <BillingOverview :ticket="ticket" />
-              </div>
             </div>
-          </div>
         </div>
-        
-        <!-- Sidebar (1 column) -->
-        <div class="xl:col-span-1 space-y-6">
-          <!-- Ticket Details Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Details</h3>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Loading State -->
+            <div v-if="loading" class="text-center py-12">
+                <div
+                    class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
+                ></div>
+                <p class="mt-2 text-gray-600">Loading ticket details...</p>
             </div>
-            <div class="p-6 space-y-4">
-              <!-- Status -->
-              <div>
-                <label class="text-sm font-medium text-gray-600">Status</label>
-                <div class="mt-1 flex items-center space-x-2">
-                  <span :class="statusClasses" class="px-2 py-1 rounded-full text-xs font-medium">
-                    {{ formatStatus(ticket.status) }}
-                  </span>
-                  <button
-                    v-if="canChangeStatus"
-                    @click="showStatusModal = true"
-                    class="text-blue-600 hover:text-blue-700 text-xs"
-                  >
-                    Change
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Priority -->
-              <div>
-                <label class="text-sm font-medium text-gray-600">Priority</label>
-                <div class="mt-1">
-                  <span :class="priorityClasses" class="px-2 py-1 rounded-full text-xs font-medium">
-                    {{ formatPriority(ticket.priority) }}
-                  </span>
-                </div>
-              </div>
-              
-              <!-- Account -->
-              <div>
-                <label class="text-sm font-medium text-gray-600">Account</label>
-                <div class="mt-1">
-                  <Link 
-                    v-if="ticket.account?.id"
-                    :href="route('accounts.show', ticket.account.id)" 
-                    class="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    {{ ticket.account.name }}
-                  </Link>
-                  <span v-else class="text-sm text-gray-500">
-                    No Account Assigned
-                  </span>
-                </div>
-              </div>
-              
-              <!-- Assigned Agent -->
-              <div>
-                <label class="text-sm font-medium text-gray-600">Assigned Agent</label>
-                <div class="mt-1 flex items-center space-x-2">
-                  <span class="text-sm text-gray-900">{{ ticket.agent?.name || 'Unassigned' }}</span>
-                  <button
-                    v-if="canAssign"
-                    @click="showAssignModal = true"
-                    class="text-blue-600 hover:text-blue-700 text-xs"
-                  >
-                    {{ ticket.agent ? 'Reassign' : 'Assign' }}
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Customer -->
-              <div>
-                <label class="text-sm font-medium text-gray-600">Customer</label>
-                <div class="mt-1">
-                  <p class="text-sm text-gray-900">
-                    {{ ticket.customer?.name || ticket.customer_name || 'No customer assigned' }}
-                  </p>
-                  <p v-if="ticket.customer_email" class="text-xs text-gray-500">{{ ticket.customer_email }}</p>
-                </div>
-              </div>
-              
-              <!-- Due Date -->
-              <div v-if="ticket.due_date">
-                <label class="text-sm font-medium text-gray-600">Due Date</label>
-                <div class="mt-1">
-                  <span :class="dueDateClasses" class="text-sm">
-                    {{ formatDate(ticket.due_date) }}
-                  </span>
-                </div>
-              </div>
-              
-              <!-- Estimated Hours -->
-              <div v-if="ticket.estimated_hours">
-                <label class="text-sm font-medium text-gray-600">Estimated Hours</label>
-                <p class="mt-1 text-sm text-gray-900">{{ ticket.estimated_hours }}h</p>
-              </div>
-              
-              <!-- Created -->
-              <div>
-                <label class="text-sm font-medium text-gray-600">Created</label>
-                <p class="mt-1 text-sm text-gray-900">{{ formatDateTime(ticket.created_at) }}</p>
-                <p class="text-xs text-gray-500">by {{ ticket.createdBy?.name || 'Unknown' }}</p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Time Summary Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Time Summary</h3>
-            </div>
-            <div class="p-6 space-y-4">
-              <div>
-                <label class="text-sm font-medium text-gray-600">Total Logged</label>
-                <p class="mt-1 text-2xl font-bold text-gray-900">{{ formatDuration(totalTimeLogged) }}</p>
-              </div>
-              
-              <div v-if="activeTimers.length > 0">
-                <label class="text-sm font-medium text-gray-600">Active Timers</label>
-                <div class="mt-2 space-y-2">
-                  <div 
-                    v-for="timer in activeTimers" 
-                    :key="timer.id"
-                    class="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-lg"
-                  >
-                    <div class="flex items-center space-x-2">
-                      <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span class="text-sm text-gray-700">{{ timer.user?.name || 'Unknown' }}</span>
-                    </div>
-                    <span class="text-sm font-medium text-green-700">{{ formatDuration(timer.duration) }}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div v-if="estimatedVsActual">
-                <label class="text-sm font-medium text-gray-600">Progress</label>
-                <div class="mt-2">
-                  <div class="flex justify-between text-sm text-gray-600">
-                    <span>{{ formatDuration(totalTimeLogged) }} / {{ formatDuration(ticket.estimated_hours * 3600) }}</span>
-                    <span>{{ Math.round(estimatedVsActual) }}%</span>
-                  </div>
-                  <div class="mt-1 bg-gray-200 rounded-full h-2">
-                    <div 
-                      :class="estimatedVsActual > 100 ? 'bg-red-500' : 'bg-blue-500'"
-                      :style="{ width: Math.min(estimatedVsActual, 100) + '%' }"
-                      class="h-2 rounded-full transition-all duration-300"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Attachments Card -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Attachments</h3>
-            </div>
-            <div class="p-6">
-              <div v-if="ticketAttachments.length > 0" class="space-y-3">
-                <div 
-                  v-for="attachment in ticketAttachments" 
-                  :key="`${attachment.message_id}-${attachment.filename}`"
-                  class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
-                  <div class="flex items-center space-x-3">
-                    <!-- File icon based on type -->
-                    <div class="flex-shrink-0">
-                      <svg v-if="attachment.mime_type?.startsWith('image/')" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <svg v-else-if="attachment.mime_type === 'application/pdf'" class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <svg v-else class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    
-                    <div class="min-w-0 flex-1">
-                      <div class="text-sm font-medium text-gray-900 truncate">
-                        {{ attachment.filename }}
-                      </div>
-                      <div class="text-xs text-gray-500">
-                        {{ formatFileSize(attachment.size) }} • {{ formatDateTime(attachment.message_date) }} • {{ attachment.uploaded_by.name }}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <a 
-                    :href="`/storage/${attachment.path}`" 
-                    target="_blank"
-                    class="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    Download
-                  </a>
-                </div>
-              </div>
-              
-              <div v-else class="text-center py-6">
-                <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                </svg>
-                <p class="text-sm text-gray-500">No attachments yet</p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Related Tickets Card -->
-          <div v-if="relatedTickets.length > 0" class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Related Tickets</h3>
-            </div>
-            <div class="p-6">
-              <div class="space-y-3">
-                <div 
-                  v-for="relatedTicket in relatedTickets" 
-                  :key="relatedTicket.id"
-                  class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
-                  <div class="flex-1">
-                    <Link 
-                      v-if="relatedTicket.id"
-                      :href="route('tickets.show', relatedTicket.id)"
-                      class="text-sm font-medium text-blue-600 hover:text-blue-700"
+
+            <!-- Error State -->
+            <div v-else-if="ticketError" class="text-center py-12">
+                <div class="text-red-600 mb-4">
+                    <svg
+                        class="w-12 h-12 mx-auto"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                     >
-                      {{ relatedTicket.title }}
-                    </Link>
-                    <span v-else class="text-sm font-medium text-gray-900">
-                      {{ relatedTicket.title }}
-                    </span>
-                    <p class="text-xs text-gray-500">{{ relatedTicket.ticket_number }}</p>
-                  </div>
-                  <span :class="getStatusClasses(relatedTicket.status)" class="px-2 py-1 rounded-full text-xs font-medium">
-                    {{ formatStatus(relatedTicket.status) }}
-                  </span>
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                        />
+                    </svg>
                 </div>
-              </div>
+                <p class="text-red-600 font-medium">Failed to load ticket</p>
+                <p class="text-gray-500 text-sm mt-1">{{ ticketError }}</p>
+                <button
+                    @click="refetchTicket"
+                    class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                >
+                    Try Again
+                </button>
             </div>
-          </div>
+
+            <!-- No Ticket Found -->
+            <div v-else-if="!ticket" class="text-center py-12">
+                <div class="text-gray-400 mb-4">
+                    <svg
+                        class="w-12 h-12 mx-auto"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                    </svg>
+                </div>
+                <p class="text-gray-600 font-medium">Ticket not found</p>
+                <p class="text-gray-500 text-sm mt-1">
+                    The ticket you're looking for doesn't exist or you don't
+                    have permission to view it.
+                </p>
+                <Link
+                    :href="route('tickets.index')"
+                    class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-block"
+                >
+                    Back to Tickets
+                </Link>
+            </div>
+
+            <div v-else class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                <!-- Main Content Area (3 columns) -->
+                <div class="xl:col-span-3 space-y-6">
+                    <!-- Ticket Description -->
+                    <div
+                        class="bg-white rounded-lg shadow-sm border border-gray-200"
+                    >
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h2 class="text-lg font-semibold text-gray-900">
+                                    Description
+                                </h2>
+                                <button
+                                    v-if="canEdit && !editingDescription"
+                                    @click="startEditingDescription"
+                                    class="text-blue-600 hover:text-blue-700 text-sm transition-colors"
+                                >
+                                    Edit
+                                </button>
+                            </div>
+
+                            <div v-if="editingDescription">
+                                <textarea
+                                    v-model="editedDescription"
+                                    rows="6"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Describe the issue or request..."
+                                ></textarea>
+                                <div class="flex items-center space-x-2 mt-3">
+                                    <button
+                                        @click="saveDescription"
+                                        :disabled="savingDescription"
+                                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                                    >
+                                        {{
+                                            savingDescription
+                                                ? "Saving..."
+                                                : "Save"
+                                        }}
+                                    </button>
+                                    <button
+                                        @click="cancelEditingDescription"
+                                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-else class="prose max-w-none text-gray-700">
+                                <div
+                                    v-if="ticket.description"
+                                    v-html="
+                                        formatDescription(ticket.description)
+                                    "
+                                ></div>
+                                <div v-else class="text-gray-500 italic">
+                                    No description provided.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabbed Content Area -->
+                    <div
+                        class="bg-white rounded-lg shadow-sm border border-gray-200"
+                    >
+                        <!-- Tab Navigation -->
+                        <div class="border-b border-gray-200">
+                            <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                                <button
+                                    v-for="tab in tabs"
+                                    :key="tab.id"
+                                    @click="activeTab = tab.id"
+                                    :class="[
+                                        activeTab === tab.id
+                                            ? 'border-blue-500 text-blue-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors',
+                                    ]"
+                                >
+                                    {{ tab.label }}
+                                    <span
+                                        v-if="tab.badge"
+                                        class="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs font-medium"
+                                    >
+                                        {{ tab.badge }}
+                                    </span>
+                                </button>
+                            </nav>
+                        </div>
+
+                        <!-- Tab Content -->
+                        <div class="p-6">
+                            <!-- Comments & Messages Tab -->
+                            <div
+                                v-if="activeTab === 'messages'"
+                                class="space-y-6"
+                            >
+                                <!-- Message Thread -->
+                                <div class="space-y-4">
+                                    <div
+                                        v-if="messages?.length === 0"
+                                        class="text-center py-8 text-gray-500"
+                                    >
+                                        <svg
+                                            class="w-12 h-12 mx-auto mb-4 text-gray-300"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.524A11.956 11.956 0 012 21c0-1.68.322-3.283.913-4.755A12.026 12.026 0 012 12C2 7.582 5.582 4 10 4s8 3.582 8 8z"
+                                            />
+                                        </svg>
+                                        <p>
+                                            No messages yet. Start the
+                                            conversation!
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        v-for="message in messages"
+                                        :key="message.id"
+                                        :class="[
+                                            'flex space-x-3 p-4 rounded-lg',
+                                            message.is_internal
+                                                ? 'bg-yellow-50 border border-yellow-200'
+                                                : 'bg-gray-50',
+                                        ]"
+                                    >
+                                        <!-- Avatar -->
+                                        <div class="flex-shrink-0">
+                                            <div
+                                                class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center"
+                                            >
+                                                <span
+                                                    class="text-sm font-medium text-gray-700"
+                                                >
+                                                    {{
+                                                        message.user?.name
+                                                            ?.charAt(0)
+                                                            ?.toUpperCase() ||
+                                                        "?"
+                                                    }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Message Content -->
+                                        <div class="flex-1 min-w-0">
+                                            <div
+                                                class="flex items-center space-x-2 mb-2"
+                                            >
+                                                <p
+                                                    class="text-sm font-medium text-gray-900"
+                                                >
+                                                    {{
+                                                        message.user?.name ||
+                                                        "Unknown User"
+                                                    }}
+                                                </p>
+                                                <span
+                                                    v-if="message.is_internal"
+                                                    class="px-2 py-1 bg-yellow-200 text-yellow-800 text-xs rounded-full font-medium"
+                                                >
+                                                    Internal
+                                                </span>
+                                                <span
+                                                    class="text-xs text-gray-500"
+                                                    >{{
+                                                        formatDateTime(
+                                                            message.created_at
+                                                        )
+                                                    }}</span
+                                                >
+                                                <span
+                                                    v-if="message.was_edited"
+                                                    class="text-xs text-gray-400"
+                                                    >(edited)</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="text-sm text-gray-700"
+                                                v-html="
+                                                    formatMessage(
+                                                        message.content
+                                                    )
+                                                "
+                                            ></div>
+
+                                            <!-- Attachment Indicator -->
+                                            <div
+                                                v-if="
+                                                    message.attachments?.length
+                                                "
+                                                class="mt-3"
+                                            >
+                                                <div
+                                                    class="flex items-center space-x-2 text-sm text-gray-500"
+                                                >
+                                                    <svg
+                                                        class="w-4 h-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                                        />
+                                                    </svg>
+                                                    <span
+                                                        >{{
+                                                            message.attachments
+                                                                .length
+                                                        }}
+                                                        file{{
+                                                            message.attachments
+                                                                .length > 1
+                                                                ? "s"
+                                                                : ""
+                                                        }}
+                                                        attached</span
+                                                    >
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Message Composer -->
+                                <div class="border-t border-gray-200 pt-6">
+                                    <form @submit.prevent="sendMessage">
+                                        <div class="mb-4">
+                                            <textarea
+                                                v-model="newMessage"
+                                                placeholder="Type your message..."
+                                                rows="4"
+                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                :required="
+                                                    selectedFiles.length === 0
+                                                "
+                                            ></textarea>
+                                        </div>
+
+                                        <!-- Selected Files Preview -->
+                                        <div
+                                            v-if="selectedFiles.length > 0"
+                                            class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                                        >
+                                            <div
+                                                class="flex items-center justify-between mb-2"
+                                            >
+                                                <span
+                                                    class="text-sm font-medium text-gray-700"
+                                                    >Selected Files ({{
+                                                        selectedFiles.length
+                                                    }})</span
+                                                >
+                                                <button
+                                                    type="button"
+                                                    @click="selectedFiles = []"
+                                                    class="text-red-600 hover:text-red-700 text-sm"
+                                                >
+                                                    Clear All
+                                                </button>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <div
+                                                    v-for="(
+                                                        file, index
+                                                    ) in selectedFiles"
+                                                    :key="index"
+                                                    class="flex items-center justify-between py-1"
+                                                >
+                                                    <div
+                                                        class="flex items-center space-x-2"
+                                                    >
+                                                        <svg
+                                                            class="w-4 h-4 text-gray-400"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                stroke-linecap="round"
+                                                                stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                            />
+                                                        </svg>
+                                                        <span
+                                                            class="text-sm text-gray-700"
+                                                            >{{
+                                                                file.name
+                                                            }}</span
+                                                        >
+                                                        <span
+                                                            class="text-xs text-gray-500"
+                                                            >({{
+                                                                formatFileSize(
+                                                                    file.size
+                                                                )
+                                                            }})</span
+                                                        >
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        @click="
+                                                            selectedFiles.splice(
+                                                                index,
+                                                                1
+                                                            )
+                                                        "
+                                                        class="text-red-600 hover:text-red-700 text-xs"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Message Options -->
+                                        <div
+                                            class="flex items-center justify-between"
+                                        >
+                                            <div
+                                                class="flex items-center space-x-4"
+                                            >
+                                                <label
+                                                    class="flex items-center"
+                                                >
+                                                    <input
+                                                        v-model="
+                                                            messageIsInternal
+                                                        "
+                                                        type="checkbox"
+                                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    />
+                                                    <span
+                                                        class="text-sm text-gray-600"
+                                                        >Internal (not visible
+                                                        to customer)</span
+                                                    >
+                                                </label>
+
+                                                <label
+                                                    class="flex items-center cursor-pointer"
+                                                >
+                                                    <input
+                                                        type="file"
+                                                        multiple
+                                                        class="hidden"
+                                                        @change="
+                                                            handleFileUpload
+                                                        "
+                                                    />
+                                                    <svg
+                                                        class="w-5 h-5 mr-2 text-gray-400"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                                        />
+                                                    </svg>
+                                                    <span
+                                                        class="text-sm text-gray-600"
+                                                        >Attach files</span
+                                                    >
+                                                </label>
+                                            </div>
+
+                                            <button
+                                                type="submit"
+                                                :disabled="
+                                                    (!newMessage.trim() &&
+                                                        selectedFiles.length ===
+                                                            0) ||
+                                                    sendingMessage
+                                                "
+                                                class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center space-x-2"
+                                            >
+                                                <span>{{
+                                                    sendingMessage
+                                                        ? uploadingFiles &&
+                                                          selectedFiles.length >
+                                                              0
+                                                            ? "Uploading..."
+                                                            : "Sending..."
+                                                        : "Send"
+                                                }}</span>
+                                                <svg
+                                                    class="w-4 h-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Time Tracking Tab -->
+                            <div v-if="activeTab === 'time'" class="space-y-6">
+                                <TimeTrackingManager
+                                    :ticket="ticket"
+                                    :current-user-id="currentUserId"
+                                    :can-manage-time="canManageTime"
+                                    @updated="loadTimeTrackingData"
+                                />
+                            </div>
+
+                            <!-- Addons Tab -->
+                            <div
+                                v-if="activeTab === 'addons'"
+                                class="space-y-6"
+                            >
+                                <TicketAddonManager
+                                    :ticket="ticket"
+                                    @updated="loadTicketDetails"
+                                />
+                            </div>
+
+                            <!-- Activity Timeline Tab -->
+                            <div
+                                v-if="activeTab === 'activity'"
+                                class="space-y-6"
+                            >
+                                <ActivityTimeline :ticket="ticket" />
+                            </div>
+
+                            <!-- Billing Tab -->
+                            <div
+                                v-if="activeTab === 'billing'"
+                                class="space-y-6"
+                            >
+                                <BillingOverview :ticket="ticket" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar (1 column) -->
+                <div class="xl:col-span-1 space-y-6">
+                    <!-- Ticket Details Card -->
+                    <div
+                        class="bg-white rounded-lg shadow-sm border border-gray-200"
+                    >
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                Details
+                            </h3>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <!-- Status -->
+                            <div>
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Status</label
+                                >
+                                <div class="mt-1 flex items-center space-x-2">
+                                    <span
+                                        :class="statusClasses"
+                                        class="px-2 py-1 rounded-full text-xs font-medium"
+                                    >
+                                        {{ formatStatus(ticket.status) }}
+                                    </span>
+                                    <button
+                                        v-if="canChangeStatus"
+                                        @click="showStatusModal = true"
+                                        class="text-blue-600 hover:text-blue-700 text-xs"
+                                    >
+                                        Change
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Priority -->
+                            <div>
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Priority</label
+                                >
+                                <div class="mt-1">
+                                    <span
+                                        :class="priorityClasses"
+                                        class="px-2 py-1 rounded-full text-xs font-medium"
+                                    >
+                                        {{ formatPriority(ticket.priority) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Account -->
+                            <div>
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Account</label
+                                >
+                                <div class="mt-1">
+                                    <Link
+                                        v-if="ticket.account?.id"
+                                        :href="
+                                            route(
+                                                'accounts.show',
+                                                ticket.account.id
+                                            )
+                                        "
+                                        class="text-sm text-blue-600 hover:text-blue-700"
+                                    >
+                                        {{ ticket.account.name }}
+                                    </Link>
+                                    <span v-else class="text-sm text-gray-500">
+                                        No Account Assigned
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Assigned Agent -->
+                            <div>
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Assigned Agent</label
+                                >
+                                <div class="mt-1 flex items-center space-x-2">
+                                    <span class="text-sm text-gray-900">{{
+                                        ticket.agent?.name || "Unassigned"
+                                    }}</span>
+                                    <button
+                                        v-if="canAssign"
+                                        @click="showAssignModal = true"
+                                        class="text-blue-600 hover:text-blue-700 text-xs"
+                                    >
+                                        {{
+                                            ticket.agent ? "Reassign" : "Assign"
+                                        }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Customer -->
+                            <div>
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Customer</label
+                                >
+                                <div class="mt-1">
+                                    <p class="text-sm text-gray-900">
+                                        {{
+                                            ticket.customer?.name ||
+                                            ticket.customer_name ||
+                                            "No customer assigned"
+                                        }}
+                                    </p>
+                                    <p
+                                        v-if="ticket.customer_email"
+                                        class="text-xs text-gray-500"
+                                    >
+                                        {{ ticket.customer_email }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Due Date -->
+                            <div v-if="ticket.due_date">
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Due Date</label
+                                >
+                                <div class="mt-1">
+                                    <span
+                                        :class="dueDateClasses"
+                                        class="text-sm"
+                                    >
+                                        {{ formatDate(ticket.due_date) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Estimated Hours -->
+                            <div v-if="ticket.estimated_hours">
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Estimated Hours</label
+                                >
+                                <p class="mt-1 text-sm text-gray-900">
+                                    {{ ticket.estimated_hours }}h
+                                </p>
+                            </div>
+
+                            <!-- Created -->
+                            <div>
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Created</label
+                                >
+                                <p class="mt-1 text-sm text-gray-900">
+                                    {{ formatDateTime(ticket.created_at) }}
+                                </p>
+                                <p class="text-xs text-gray-500">
+                                    by {{ ticket.createdBy?.name || "Unknown" }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Summary Card -->
+                    <div
+                        class="bg-white rounded-lg shadow-sm border border-gray-200"
+                    >
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                Time Summary
+                            </h3>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div>
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Total Logged</label
+                                >
+                                <p
+                                    class="mt-1 text-2xl font-bold text-gray-900"
+                                >
+                                    {{ formatDuration(totalTimeLogged) }}
+                                </p>
+                            </div>
+
+                            <div v-if="activeTimers?.length > 0">
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Active Timers</label
+                                >
+                                <div class="mt-2 space-y-2">
+                                    <div
+                                        v-for="timer in activeTimers"
+                                        :key="timer.id"
+                                        class="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-lg"
+                                    >
+                                        <div
+                                            class="flex items-center space-x-2"
+                                        >
+                                            <div
+                                                class="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                                            ></div>
+                                            <span
+                                                class="text-sm text-gray-700"
+                                                >{{
+                                                    timer.user?.name ||
+                                                    "Unknown"
+                                                }}</span
+                                            >
+                                        </div>
+                                        <span
+                                            class="text-sm font-medium text-green-700"
+                                            >{{
+                                                formatDuration(timer.duration)
+                                            }}</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="estimatedVsActual">
+                                <label class="text-sm font-medium text-gray-600"
+                                    >Progress</label
+                                >
+                                <div class="mt-2">
+                                    <div
+                                        class="flex justify-between text-sm text-gray-600"
+                                    >
+                                        <span
+                                            >{{
+                                                formatDuration(totalTimeLogged)
+                                            }}
+                                            /
+                                            {{
+                                                formatDuration(
+                                                    ticket.estimated_hours *
+                                                        3600
+                                                )
+                                            }}</span
+                                        >
+                                        <span
+                                            >{{
+                                                Math.round(estimatedVsActual)
+                                            }}%</span
+                                        >
+                                    </div>
+                                    <div
+                                        class="mt-1 bg-gray-200 rounded-full h-2"
+                                    >
+                                        <div
+                                            :class="
+                                                estimatedVsActual > 100
+                                                    ? 'bg-red-500'
+                                                    : 'bg-blue-500'
+                                            "
+                                            :style="{
+                                                width:
+                                                    Math.min(
+                                                        estimatedVsActual,
+                                                        100
+                                                    ) + '%',
+                                            }"
+                                            class="h-2 rounded-full transition-all duration-300"
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attachments Card -->
+                    <div
+                        class="bg-white rounded-lg shadow-sm border border-gray-200"
+                    >
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                Attachments
+                            </h3>
+                        </div>
+                        <div class="p-6">
+                            <div
+                                v-if="ticketAttachments.length > 0"
+                                class="space-y-3"
+                            >
+                                <div
+                                    v-for="attachment in ticketAttachments"
+                                    :key="`${attachment.message_id}-${attachment.filename}`"
+                                    class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                                >
+                                    <div class="flex items-center space-x-3">
+                                        <!-- File icon based on type -->
+                                        <div class="flex-shrink-0">
+                                            <svg
+                                                v-if="
+                                                    attachment.mime_type?.startsWith(
+                                                        'image/'
+                                                    )
+                                                "
+                                                class="w-5 h-5 text-blue-500"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                />
+                                            </svg>
+                                            <svg
+                                                v-else-if="
+                                                    attachment.mime_type ===
+                                                    'application/pdf'
+                                                "
+                                                class="w-5 h-5 text-red-500"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                />
+                                            </svg>
+                                            <svg
+                                                v-else
+                                                class="w-5 h-5 text-gray-500"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                />
+                                            </svg>
+                                        </div>
+
+                                        <div class="min-w-0 flex-1">
+                                            <div
+                                                class="text-sm font-medium text-gray-900 truncate"
+                                            >
+                                                {{ attachment.filename }}
+                                            </div>
+                                            <div class="text-xs text-gray-500">
+                                                {{
+                                                    formatFileSize(
+                                                        attachment.size
+                                                    )
+                                                }}
+                                                •
+                                                {{
+                                                    formatDateTime(
+                                                        attachment.message_date
+                                                    )
+                                                }}
+                                                •
+                                                {{
+                                                    attachment.uploaded_by.name
+                                                }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <a
+                                        :href="`/storage/${attachment.path}`"
+                                        target="_blank"
+                                        class="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                                    >
+                                        Download
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div v-else class="text-center py-6">
+                                <svg
+                                    class="w-8 h-8 text-gray-400 mx-auto mb-2"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                    />
+                                </svg>
+                                <p class="text-sm text-gray-500">
+                                    No attachments yet
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Related Tickets Card -->
+                    <div
+                        v-if="relatedTickets?.length > 0"
+                        class="bg-white rounded-lg shadow-sm border border-gray-200"
+                    >
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                Related Tickets
+                            </h3>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-3">
+                                <div
+                                    v-for="relatedTicket in relatedTickets"
+                                    :key="relatedTicket.id"
+                                    class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                                >
+                                    <div class="flex-1">
+                                        <Link
+                                            v-if="relatedTicket.id"
+                                            :href="
+                                                route(
+                                                    'tickets.show',
+                                                    relatedTicket.id
+                                                )
+                                            "
+                                            class="text-sm font-medium text-blue-600 hover:text-blue-700"
+                                        >
+                                            {{ relatedTicket.title }}
+                                        </Link>
+                                        <span
+                                            v-else
+                                            class="text-sm font-medium text-gray-900"
+                                        >
+                                            {{ relatedTicket.title }}
+                                        </span>
+                                        <p class="text-xs text-gray-500">
+                                            {{ relatedTicket.ticket_number }}
+                                        </p>
+                                    </div>
+                                    <span
+                                        :class="
+                                            getStatusClasses(
+                                                relatedTicket.status
+                                            )
+                                        "
+                                        class="px-2 py-1 rounded-full text-xs font-medium"
+                                    >
+                                        {{ formatStatus(relatedTicket.status) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-    
-    <!-- Modals and Overlays -->
-    <TitleEditModal 
-      v-if="editingTitle"
-      :ticket="ticket"
-      @saved="handleTitleSaved"
-      @cancelled="editingTitle = false"
-    />
-    
-    <StatusChangeModal 
-      v-if="showStatusModal"
-      :ticket="ticket"
-      @changed="handleStatusChanged"
-      @cancelled="showStatusModal = false"
-    />
-    
-    <AssignmentModal 
-      v-if="showAssignModal"
-      :ticket="ticket"
-      @assigned="handleAssignmentChanged"
-      @cancelled="showAssignModal = false"
-    />
+
+        <!-- Modals and Overlays -->
+        <TitleEditModal
+            v-if="editingTitle"
+            :ticket="ticket"
+            @saved="handleTitleSaved"
+            @cancelled="editingTitle = false"
+        />
+
+        <StatusChangeModal
+            v-if="showStatusModal"
+            :ticket="ticket"
+            @changed="handleStatusChanged"
+            @cancelled="showStatusModal = false"
+        />
+
+        <AssignmentModal
+            v-if="showAssignModal"
+            :ticket="ticket"
+            @assigned="handleAssignmentChanged"
+            @cancelled="showAssignModal = false"
+        />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { Link, router, usePage } from '@inertiajs/vue3'
-import AppLayout from '@/Layouts/AppLayout.vue'
-import axios from 'axios'
-import { 
-  useTicketQuery, 
-  useTicketCommentsQuery, 
-  useTicketTimersQuery, 
-  useTicketTimeEntriesQuery, 
-  useTicketRelatedQuery,
-  useUpdateTicketMutation,
-  useAddCommentMutation 
-} from '@/Composables/queries/useTicketsQuery'
+import { ref, computed, onMounted, watch } from "vue";
+import { Link, router, usePage } from "@inertiajs/vue3";
+import AppLayout from "@/Layouts/AppLayout.vue";
+import axios from "axios";
+import {
+    useTicketQuery,
+    useTicketCommentsQuery,
+    useTicketTimersQuery,
+    useTicketTimeEntriesQuery,
+    useTicketRelatedQuery,
+    useUpdateTicketMutation,
+    useAddCommentMutation,
+} from "@/Composables/queries/useTicketsQuery";
 
 // Import components
-import TimeTrackingManager from '@/Components/Tickets/TimeTrackingManager.vue'
-import TicketAddonManager from '@/Components/Tickets/TicketAddonManager.vue'
-import ActivityTimeline from '@/Components/Tickets/ActivityTimeline.vue'
-import BillingOverview from '@/Components/Tickets/BillingOverview.vue'
-import TitleEditModal from '@/Components/Tickets/TitleEditModal.vue'
-import StatusChangeModal from '@/Components/Tickets/StatusChangeModal.vue'
-import AssignmentModal from '@/Components/Tickets/AssignmentModal.vue'
+import TimeTrackingManager from "@/Components/Tickets/TimeTrackingManager.vue";
+import TicketAddonManager from "@/Components/Tickets/TicketAddonManager.vue";
+import ActivityTimeline from "@/Components/Tickets/ActivityTimeline.vue";
+import BillingOverview from "@/Components/Tickets/BillingOverview.vue";
+import TitleEditModal from "@/Components/Tickets/TitleEditModal.vue";
+import StatusChangeModal from "@/Components/Tickets/StatusChangeModal.vue";
+import AssignmentModal from "@/Components/Tickets/AssignmentModal.vue";
 
 // Define persistent layout
 defineOptions({
@@ -700,466 +1232,495 @@ defineOptions({
 
 // Props
 const props = defineProps({
-  ticket: {
-    type: Object,
-    default: null
-  }
-})
+    ticketId: {
+        type: String,
+        required: true,
+    },
+});
 
 // Access user data from Inertia page props
-const page = usePage()
-const user = computed(() => page.props.auth?.user)
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
 
-// Get ticket ID from props or route
-const ticketId = computed(() => props.ticket?.id || props.ticket?.data?.id || usePage().props.ticketId)
+// Get ticket ID from props
+const ticketId = computed(() => props.ticketId);
 
 // TanStack Query hooks for data fetching
-const { data: ticket, isLoading: ticketLoading, error: ticketError, refetch: refetchTicket } = useTicketQuery(ticketId)
-const { data: messages, isLoading: messagesLoading, refetch: refetchMessages } = useTicketCommentsQuery(ticketId)
-const { data: activeTimers, isLoading: timersLoading } = useTicketTimersQuery(ticketId) 
-const { data: timeEntries, isLoading: timeEntriesLoading } = useTicketTimeEntriesQuery(ticketId)
-const { data: relatedTickets, isLoading: relatedLoading } = useTicketRelatedQuery(ticketId)
+const {
+    data: ticket,
+    isLoading: ticketLoading,
+    error: ticketError,
+    refetch: refetchTicket,
+} = useTicketQuery(ticketId);
+const {
+    data: messages,
+    isLoading: messagesLoading,
+    refetch: refetchMessages,
+} = useTicketCommentsQuery(ticketId);
+const { data: activeTimers, isLoading: timersLoading } =
+    useTicketTimersQuery(ticketId);
+const { data: timeEntries, isLoading: timeEntriesLoading } =
+    useTicketTimeEntriesQuery(ticketId);
+const { data: relatedTickets, isLoading: relatedLoading } =
+    useTicketRelatedQuery(ticketId);
 
 // Mutations
-const updateTicketMutation = useUpdateTicketMutation()
-const addCommentMutation = useAddCommentMutation()
+const updateTicketMutation = useUpdateTicketMutation();
+const addCommentMutation = useAddCommentMutation();
 
 // UI State
-const activeTab = ref('messages')
-const newMessage = ref('')
-const messageIsInternal = ref(false)
-const sendingMessage = computed(() => addCommentMutation.isPending.value)
-const selectedFiles = ref([])
-const uploadingFiles = ref(false)
-const editingDescription = ref(false)
-const editedDescription = ref('')
-const savingDescription = ref(false)
-const editingTitle = ref(false)
-const showStatusModal = ref(false)
-const showAssignModal = ref(false)
-const activeTimer = ref(null)
-const showActionsMenu = ref(false)
+const activeTab = ref("messages");
+const newMessage = ref("");
+const messageIsInternal = ref(false);
+const sendingMessage = computed(() => addCommentMutation.isPending.value);
+const selectedFiles = ref([]);
+const uploadingFiles = ref(false);
+const editingDescription = ref(false);
+const editedDescription = ref("");
+const savingDescription = ref(false);
+const editingTitle = ref(false);
+const showStatusModal = ref(false);
+const showAssignModal = ref(false);
+const activeTimer = ref(null);
+const showActionsMenu = ref(false);
 
 // Debug log to see what we received
-console.log('Ticket Show page initialized with ticket prop:', props.ticket)
-console.log('Extracted ticket data:', ticket.value)
-
+console.log("Ticket Show page initialized with ticketId:", props.ticketId);
+console.log("Ticket data from TanStack Query:", ticket.value);
 
 // Computed properties
-const loading = computed(() => ticketLoading.value || messagesLoading.value)
+const loading = computed(() => ticketLoading.value || messagesLoading.value);
 const totalTimeLogged = computed(() => {
-  if (!timeEntries.value) return 0
-  return timeEntries.value.reduce((total, entry) => total + (entry.duration || 0), 0)
-})
+    if (!timeEntries.value) return 0;
+    return timeEntries.value.reduce(
+        (total, entry) => total + (entry.duration || 0),
+        0
+    );
+});
 
 const tabs = computed(() => [
-  { 
-    id: 'messages', 
-    label: 'Messages', 
-    badge: messages.value?.length > 0 ? messages.value.length : null 
-  },
-  { 
-    id: 'time', 
-    label: 'Time Tracking',
-    badge: activeTimers.value?.length > 0 ? activeTimers.value.length : null
-  },
-  { 
-    id: 'addons', 
-    label: 'Add-ons' 
-  },
-  { 
-    id: 'activity', 
-    label: 'Activity' 
-  },
-  { 
-    id: 'billing', 
-    label: 'Billing' 
-  }
-])
+    {
+        id: "messages",
+        label: "Messages",
+        badge: messages.value?.length > 0 ? messages.value.length : null,
+    },
+    {
+        id: "time",
+        label: "Time Tracking",
+        badge:
+            activeTimers.value?.length > 0 ? activeTimers.value.length : null,
+    },
+    {
+        id: "addons",
+        label: "Add-ons",
+    },
+    {
+        id: "activity",
+        label: "Activity",
+    },
+    {
+        id: "billing",
+        label: "Billing",
+    },
+]);
 
 const statusClasses = computed(() => {
-  if (!ticket.value) return ''
-  return getStatusClasses(ticket.value.status)
-})
+    if (!ticket.value) return "";
+    return getStatusClasses(ticket.value.status);
+});
 
 const priorityClasses = computed(() => {
-  if (!ticket.value) return ''
-  
-  const priorityMap = {
-    'low': 'bg-gray-100 text-gray-800',
-    'normal': 'bg-blue-100 text-blue-800', 
-    'medium': 'bg-yellow-100 text-yellow-800',
-    'high': 'bg-orange-100 text-orange-800',
-    'urgent': 'bg-red-100 text-red-800'
-  }
-  
-  return priorityMap[ticket.value.priority] || 'bg-gray-100 text-gray-800'
-})
+    if (!ticket.value) return "";
+
+    const priorityMap = {
+        low: "bg-gray-100 text-gray-800",
+        normal: "bg-blue-100 text-blue-800",
+        medium: "bg-yellow-100 text-yellow-800",
+        high: "bg-orange-100 text-orange-800",
+        urgent: "bg-red-100 text-red-800",
+    };
+
+    return priorityMap[ticket.value.priority] || "bg-gray-100 text-gray-800";
+});
 
 const dueDateClasses = computed(() => {
-  if (!ticket.value?.due_date) return ''
-  
-  const dueDate = new Date(ticket.value.due_date)
-  const now = new Date()
-  const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24))
-  
-  if (diffDays < 0) {
-    return 'text-red-600 font-medium' // Overdue
-  } else if (diffDays <= 1) {
-    return 'text-orange-600 font-medium' // Due soon
-  } else {
-    return 'text-gray-600' // Normal
-  }
-})
+    if (!ticket.value?.due_date) return "";
+
+    const dueDate = new Date(ticket.value.due_date);
+    const now = new Date();
+    const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+        return "text-red-600 font-medium"; // Overdue
+    } else if (diffDays <= 1) {
+        return "text-orange-600 font-medium"; // Due soon
+    } else {
+        return "text-gray-600"; // Normal
+    }
+});
 
 const estimatedVsActual = computed(() => {
-  if (!ticket.value?.estimated_hours || !totalTimeLogged.value) return null
-  return (totalTimeLogged.value / (ticket.value.estimated_hours * 3600)) * 100
-})
+    if (!ticket.value?.estimated_hours || !totalTimeLogged.value) return null;
+    return (
+        (totalTimeLogged.value / (ticket.value.estimated_hours * 3600)) * 100
+    );
+});
 
 const canEdit = computed(() => {
-  // TODO: Implement proper permission checking
-  return true
-})
+    // TODO: Implement proper permission checking
+    return true;
+});
 
 const canChangeStatus = computed(() => {
-  // TODO: Implement proper permission checking
-  return true
-})
+    // TODO: Implement proper permission checking
+    return true;
+});
 
 const canAssign = computed(() => {
-  // TODO: Implement proper permission checking
-  return true
-})
+    // TODO: Implement proper permission checking
+    return true;
+});
 
 const canManageTime = computed(() => {
-  // Only Agents can create timers and manage time entries
-  // Account Users (customers) can view time entries but cannot create/manage them
-  return user.value?.user_type === 'agent'
-})
+    // Only Agents can create timers and manage time entries
+    // Account Users (customers) can view time entries but cannot create/manage them
+    return user.value?.user_type === "agent";
+});
 
-const currentUserId = computed(() => user.value?.id)
+const currentUserId = computed(() => user.value?.id);
 
 // Methods
 const getStatusClasses = (status) => {
-  const statusMap = {
-    'open': 'bg-blue-100 text-blue-800',
-    'in_progress': 'bg-yellow-100 text-yellow-800',
-    'waiting_customer': 'bg-purple-100 text-purple-800',
-    'on_hold': 'bg-gray-100 text-gray-800',
-    'resolved': 'bg-green-100 text-green-800',
-    'closed': 'bg-gray-100 text-gray-800',
-    'cancelled': 'bg-red-100 text-red-800'
-  }
-  
-  return statusMap[status] || 'bg-gray-100 text-gray-800'
-}
+    const statusMap = {
+        open: "bg-blue-100 text-blue-800",
+        in_progress: "bg-yellow-100 text-yellow-800",
+        waiting_customer: "bg-purple-100 text-purple-800",
+        on_hold: "bg-gray-100 text-gray-800",
+        resolved: "bg-green-100 text-green-800",
+        closed: "bg-gray-100 text-gray-800",
+        cancelled: "bg-red-100 text-red-800",
+    };
+
+    return statusMap[status] || "bg-gray-100 text-gray-800";
+};
 
 const formatStatus = (status) => {
-  return status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown'
-}
+    return (
+        status?.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase()) ||
+        "Unknown"
+    );
+};
 
 const formatPriority = (priority) => {
-  return priority?.charAt(0).toUpperCase() + priority?.slice(1) || 'Unknown'
-}
+    return priority?.charAt(0).toUpperCase() + priority?.slice(1) || "Unknown";
+};
 
 const formatDate = (date) => {
-  if (!date) return 'N/A'
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short', 
-    day: 'numeric'
-  })
-}
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    });
+};
 
 const formatDateTime = (date) => {
-  if (!date) return 'N/A'
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short', 
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
 
 const formatDuration = (seconds) => {
-  if (!seconds) return '0m'
-  
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  } else {
-    return `${minutes}m`
-  }
-}
+    if (!seconds) return "0m";
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else {
+        return `${minutes}m`;
+    }
+};
 
 const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
 
 const formatDescription = (description) => {
-  if (!description) return ''
-  // Simple HTML formatting for line breaks
-  return description.replace(/\n/g, '<br>')
-}
+    if (!description) return "";
+    // Simple HTML formatting for line breaks
+    return description.replace(/\n/g, "<br>");
+};
 
 const formatMessage = (content) => {
-  if (!content) return ''
-  // Simple HTML formatting for line breaks and basic markdown
-  return content
-    .replace(/\n/g, '<br>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-}
+    if (!content) return "";
+    // Simple HTML formatting for line breaks and basic markdown
+    return content
+        .replace(/\n/g, "<br>")
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.*?)\*/g, "<em>$1</em>");
+};
 
 // Computed properties for active timer (from the current user)
 const activeTimerFromData = computed(() => {
-  if (!activeTimers.value || !user.value?.id) return null
-  return activeTimers.value.find(timer => timer.user_id === user.value.id)
-})
+    if (!activeTimers.value || !user.value?.id) return null;
+    return activeTimers.value.find((timer) => timer.user_id === user.value.id);
+});
 
 // Update activeTimer to use the computed value
-watch(activeTimerFromData, (newTimer) => {
-  activeTimer.value = newTimer
-}, { immediate: true })
+watch(
+    activeTimerFromData,
+    (newTimer) => {
+        activeTimer.value = newTimer;
+    },
+    { immediate: true }
+);
 
 // Action methods
 const sendMessage = async () => {
-  if ((!newMessage.value.trim() && selectedFiles.value.length === 0) || sendingMessage.value || !ticket.value?.id) return
-  
-  uploadingFiles.value = true
-  
-  try {
-    // Create FormData for file upload
-    const formData = new FormData()
-    
-    // Only add content if there is some
-    const content = newMessage.value.trim()
-    if (content) {
-      formData.append('content', content)
-    } else if (selectedFiles.value.length > 0) {
-      formData.append('content', 'File attachment')
+    if (
+        (!newMessage.value.trim() && selectedFiles.value.length === 0) ||
+        sendingMessage.value ||
+        !ticket.value?.id
+    )
+        return;
+
+    uploadingFiles.value = true;
+
+    try {
+        // Create FormData for file upload
+        const formData = new FormData();
+
+        // Only add content if there is some
+        const content = newMessage.value.trim();
+        if (content) {
+            formData.append("content", content);
+        } else if (selectedFiles.value.length > 0) {
+            formData.append("content", "File attachment");
+        }
+
+        // Convert boolean to string for FormData
+        formData.append("is_internal", messageIsInternal.value ? "1" : "0");
+
+        // Add files to FormData
+        selectedFiles.value.forEach((file, index) => {
+            formData.append(`attachments[${index}]`, file);
+        });
+
+        await addCommentMutation.mutateAsync({
+            ticketId: ticket.value.id,
+            formData,
+        });
+
+        // Reset form
+        newMessage.value = "";
+        messageIsInternal.value = false;
+        selectedFiles.value = [];
+    } catch (error) {
+        console.error("Failed to send message:", error);
+
+        // Show validation errors to user
+        if (error.response?.status === 422 && error.response?.data?.errors) {
+            const errors = error.response.data.errors;
+            const errorMessages = Object.values(errors).flat();
+            console.error("Validation errors:", errorMessages);
+            // TODO: Show error notification with specific validation messages
+        }
+    } finally {
+        uploadingFiles.value = false;
     }
-    
-    // Convert boolean to string for FormData
-    formData.append('is_internal', messageIsInternal.value ? '1' : '0')
-    
-    // Add files to FormData
-    selectedFiles.value.forEach((file, index) => {
-      formData.append(`attachments[${index}]`, file)
-    })
-    
-    await addCommentMutation.mutateAsync({
-      ticketId: ticket.value.id,
-      formData
-    })
-    
-    // Reset form
-    newMessage.value = ''
-    messageIsInternal.value = false
-    selectedFiles.value = []
-    
-  } catch (error) {
-    console.error('Failed to send message:', error)
-    
-    // Show validation errors to user
-    if (error.response?.status === 422 && error.response?.data?.errors) {
-      const errors = error.response.data.errors
-      const errorMessages = Object.values(errors).flat()
-      console.error('Validation errors:', errorMessages)
-      // TODO: Show error notification with specific validation messages
-    }
-  } finally {
-    uploadingFiles.value = false
-  }
-}
+};
 
 const startTimer = async () => {
-  if (!ticket.value?.id || activeTimer.value) return
-  
-  try {
-    const response = await axios.post('/api/timers', {
-      ticket_id: ticket.value.id,
-      description: `Working on ${ticket.value.title || 'ticket'}`
-    })
-    
-    // Refresh timer data
-    await loadTimeTrackingData()
-    
-  } catch (error) {
-    console.error('Failed to start timer:', error)
-  }
-}
+    if (!ticket.value?.id || activeTimer.value) return;
+
+    try {
+        const response = await axios.post("/api/timers", {
+            ticket_id: ticket.value.id,
+            description: `Working on ${ticket.value.title || "ticket"}`,
+        });
+
+        // Refresh timer data
+        await loadTimeTrackingData();
+    } catch (error) {
+        console.error("Failed to start timer:", error);
+    }
+};
 
 const stopTimer = async () => {
-  if (!activeTimer.value) return
-  
-  try {
-    await axios.post(`/api/timers/${activeTimer.value.id}/stop`)
-    
-    // Refresh timer data
-    await loadTimeTrackingData()
-    
-  } catch (error) {
-    console.error('Failed to stop timer:', error)
-  }
-}
+    if (!activeTimer.value) return;
+
+    try {
+        await axios.post(`/api/timers/${activeTimer.value.id}/stop`);
+
+        // Refresh timer data
+        await loadTimeTrackingData();
+    } catch (error) {
+        console.error("Failed to stop timer:", error);
+    }
+};
 
 const changeStatus = async (newStatus) => {
-  if (!ticket.value?.id || ticket.value.status === newStatus) return
-  
-  try {
-    const response = await axios.put(`/api/tickets/${ticket.value.id}`, {
-      status: newStatus
-    })
-    
-    ticket.value.status = newStatus
-    
-    // Reload messages to show status change activity
-    await loadMessages()
-    
-  } catch (error) {
-    console.error('Failed to change status:', error)
-  }
-}
+    if (!ticket.value?.id || ticket.value.status === newStatus) return;
+
+    try {
+        const response = await axios.put(`/api/tickets/${ticket.value.id}`, {
+            status: newStatus,
+        });
+
+        ticket.value.status = newStatus;
+
+        // Reload messages to show status change activity
+        await loadMessages();
+    } catch (error) {
+        console.error("Failed to change status:", error);
+    }
+};
 
 // Inline editing methods
 const startEditingDescription = () => {
-  editingDescription.value = true
-  editedDescription.value = ticket.value.description || ''
-}
+    editingDescription.value = true;
+    editedDescription.value = ticket.value.description || "";
+};
 
 const cancelEditingDescription = () => {
-  editingDescription.value = false
-  editedDescription.value = ''
-}
+    editingDescription.value = false;
+    editedDescription.value = "";
+};
 
 const saveDescription = async () => {
-  if (!ticket.value?.id) return
-  
-  savingDescription.value = true
-  
-  try {
-    await axios.put(`/api/tickets/${ticket.value.id}`, {
-      description: editedDescription.value.trim()
-    })
-    
-    ticket.value.description = editedDescription.value.trim()
-    editingDescription.value = false
-    editedDescription.value = ''
-    
-    // Reload messages to show description change activity
-    await loadMessages()
-    
-  } catch (error) {
-    console.error('Failed to save description:', error)
-  } finally {
-    savingDescription.value = false
-  }
-}
+    if (!ticket.value?.id) return;
+
+    savingDescription.value = true;
+
+    try {
+        await axios.put(`/api/tickets/${ticket.value.id}`, {
+            description: editedDescription.value.trim(),
+        });
+
+        ticket.value.description = editedDescription.value.trim();
+        editingDescription.value = false;
+        editedDescription.value = "";
+
+        // Reload messages to show description change activity
+        await loadMessages();
+    } catch (error) {
+        console.error("Failed to save description:", error);
+    } finally {
+        savingDescription.value = false;
+    }
+};
 
 const startEditingTitle = () => {
-  editingTitle.value = true
-}
+    editingTitle.value = true;
+};
 
-// Modal handlers  
+// Modal handlers
 const handleTitleSaved = (newTitle) => {
-  editingTitle.value = false
-  // Refetch ticket data and messages to get updated info and activity log
-  refetchTicket()
-  refetchMessages()
-}
+    editingTitle.value = false;
+    // Refetch ticket data and messages to get updated info and activity log
+    refetchTicket();
+    refetchMessages();
+};
 
 const handleStatusChanged = (newStatus) => {
-  showStatusModal.value = false
-  // Refetch data to get updated status and activity log
-  refetchTicket()
-  refetchMessages()
-}
+    showStatusModal.value = false;
+    // Refetch data to get updated status and activity log
+    refetchTicket();
+    refetchMessages();
+};
 
 const handleAssignmentChanged = (newAgent) => {
-  showAssignModal.value = false
-  // Refetch data to get updated assignment and activity log
-  refetchTicket()
-  refetchMessages()
-}
+    showAssignModal.value = false;
+    // Refetch data to get updated assignment and activity log
+    refetchTicket();
+    refetchMessages();
+};
 
-const ticketAttachments = ref([])
+const ticketAttachments = ref([]);
 
 // Load all attachments for the ticket
 const loadTicketAttachments = async () => {
-  if (!ticket.value?.id) return
-  
-  try {
-    const response = await axios.get(`/api/tickets/${ticket.value.id}/comments`)
-    
-    // Extract all attachments from messages
-    const allAttachments = []
-    response.data.data.forEach(message => {
-      if (message.attachments && message.attachments.length > 0) {
-        message.attachments.forEach(attachment => {
-          allAttachments.push({
-            ...attachment,
-            message_id: message.id,
-            message_date: message.created_at,
-            uploaded_by: message.user
-          })
-        })
-      }
-    })
-    
-    ticketAttachments.value = allAttachments.reverse() // Newest first
-  } catch (error) {
-    console.error('Failed to load ticket attachments:', error)
-  }
-}
+    if (!ticket.value?.id) return;
+
+    try {
+        const response = await axios.get(
+            `/api/tickets/${ticket.value.id}/comments`
+        );
+
+        // Extract all attachments from messages
+        const allAttachments = [];
+        response.data.data.forEach((message) => {
+            if (message.attachments && message.attachments.length > 0) {
+                message.attachments.forEach((attachment) => {
+                    allAttachments.push({
+                        ...attachment,
+                        message_id: message.id,
+                        message_date: message.created_at,
+                        uploaded_by: message.user,
+                    });
+                });
+            }
+        });
+
+        ticketAttachments.value = allAttachments.reverse(); // Newest first
+    } catch (error) {
+        console.error("Failed to load ticket attachments:", error);
+    }
+};
 
 // File upload handler
 const handleFileUpload = async (event) => {
-  const files = Array.from(event.target.files)
-  if (files.length === 0) return
-  
-  selectedFiles.value = files
-  
-  // Clear the input to allow re-selecting the same files if needed
-  event.target.value = ''
-}
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    selectedFiles.value = files;
+
+    // Clear the input to allow re-selecting the same files if needed
+    event.target.value = "";
+};
 
 // Action menu methods
 const duplicateTicket = () => {
-  // TODO: Implement ticket duplication
-  console.log('Duplicate ticket')
-  showActionsMenu.value = false
-}
+    // TODO: Implement ticket duplication
+    console.log("Duplicate ticket");
+    showActionsMenu.value = false;
+};
 
 const exportTicket = () => {
-  // TODO: Implement ticket export
-  console.log('Export ticket')
-  showActionsMenu.value = false
-}
+    // TODO: Implement ticket export
+    console.log("Export ticket");
+    showActionsMenu.value = false;
+};
 
 const deleteTicket = () => {
-  // TODO: Implement ticket deletion with confirmation
-  console.log('Delete ticket')
-  showActionsMenu.value = false
-}
+    // TODO: Implement ticket deletion with confirmation
+    console.log("Delete ticket");
+    showActionsMenu.value = false;
+};
 
 // Close dropdown when clicking outside
 const handleClickOutside = (event) => {
-  if (showActionsMenu.value && !event.target.closest('[ref="actionsDropdown"]')) {
-    showActionsMenu.value = false
-  }
-}
+    if (
+        showActionsMenu.value &&
+        !event.target.closest('[ref="actionsDropdown"]')
+    ) {
+        showActionsMenu.value = false;
+    }
+};
 
 // Lifecycle
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
+    document.addEventListener("click", handleClickOutside);
+});
 </script>

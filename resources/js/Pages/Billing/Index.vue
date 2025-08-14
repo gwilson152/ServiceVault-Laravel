@@ -1,5 +1,5 @@
 <template>
-  <AppLayout title="Billing Management">
+  <div>
     <div class="py-12">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         
@@ -190,13 +190,19 @@
       :invoice="selectedInvoice"
       @close="showViewInvoiceModal = false"
     />
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
+
 import InvoicesTable from '@/Components/Billing/InvoicesTable.vue'
 import PaymentsTable from '@/Components/Billing/PaymentsTable.vue'
 import BillingReports from '@/Components/Billing/BillingReports.vue'

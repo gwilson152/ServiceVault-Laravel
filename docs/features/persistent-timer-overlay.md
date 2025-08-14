@@ -179,6 +179,74 @@ defineOptions({
 2. **Page headers inline** - Each page manages its own header content
 3. **Direct page props** - No layout props, everything comes from page data
 4. **Template structure** - Must have single root `<div>` wrapper
+5. **Navigation patterns** - CRITICAL: Always use Inertia.js navigation to maintain persistence
+
+## Critical Navigation Requirements
+
+### ✅ CORRECT Navigation Patterns
+
+**Use Inertia.js `<Link>` components for declarative navigation:**
+```vue
+<Link :href="route('tickets.show', ticket.id)" class="text-blue-600 hover:text-blue-700">
+  View Ticket
+</Link>
+```
+
+**Use Inertia.js `router.visit()` for programmatic navigation:**
+```javascript
+import { router } from '@inertiajs/vue3'
+
+const navigateToTicket = (ticketId) => {
+  router.visit(`/tickets/${ticketId}`)
+}
+```
+
+### ❌ INCORRECT Navigation Patterns (Will Break Persistence)
+
+**Never use `window.location.href` - causes full page reloads:**
+```javascript
+// ❌ WRONG - This bypasses Inertia and breaks timer overlay persistence
+const navigateToTicket = (ticketId) => {
+  window.location.href = `/tickets/${ticketId}`
+}
+```
+
+**Never use regular HTML `<a>` tags - causes full page reloads:**
+```vue
+<!-- ❌ WRONG - This bypasses Inertia and breaks timer overlay persistence -->
+<a :href="`/tickets/${ticket.id}`">View Ticket</a>
+```
+
+### Navigation Troubleshooting
+
+If the timer overlay reloads or the layout re-renders during navigation, check for:
+
+1. **`window.location.href` usage** - Replace with `router.visit()`
+2. **HTML `<a>` tags** - Replace with Inertia `<Link>` components
+3. **External links without `target="_blank"`** - Add target attribute for external URLs
+4. **Form submissions without Inertia** - Use Inertia form helpers
+
+### Real-World Fix Example
+
+**Problem found in MyTicketsWidget.vue:**
+```javascript
+// ❌ This was causing full page reloads
+const navigateToTicket = (ticketId) => {
+  window.location.href = `/tickets/${ticketId}`
+}
+```
+
+**Solution applied:**
+```javascript
+// ✅ This maintains SPA navigation and persistent overlay
+import { router } from '@inertiajs/vue3'
+
+const navigateToTicket = (ticketId) => {
+  router.visit(`/tickets/${ticketId}`)
+}
+```
+
+**Result:** Timer overlay now persists perfectly across all navigation.
 
 ## Related Documentation
 
@@ -189,4 +257,4 @@ defineOptions({
 
 ---
 
-*Last Updated: August 12, 2025 - Persistent Layout Implementation Complete*
+*Last Updated: August 14, 2025 - Added Critical Navigation Requirements and Troubleshooting Guide*

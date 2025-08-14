@@ -110,14 +110,14 @@ export function useNavigationQuery() {
     // Get main navigation items (most commonly used)
     const mainNavigation = computed(() => {
         return navigation.value?.filter(item => 
-            ['dashboard', 'tickets', 'timers', 'time-entries'].includes(item.key)
+            ['dashboard', 'tickets', 'time-entries'].includes(item.key)
         ).sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999)) || []
     })
 
     // Get secondary navigation items  
     const secondaryNavigation = computed(() => {
         return navigation.value?.filter(item => 
-            !['dashboard', 'tickets', 'timers', 'time-entries'].includes(item.key)
+            !['dashboard', 'tickets', 'time-entries'].includes(item.key)
         ).sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999)) || []
     })
 

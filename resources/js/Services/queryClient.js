@@ -83,6 +83,8 @@ export const queryKeys = {
     list: (filters) => ['timeEntries', 'list', filters],
     byId: (id) => ['timeEntries', 'byId', id],
     stats: () => ['timeEntries', 'stats'],
+    approvalStats: () => ['timeEntries', 'approvalStats'],
+    byTicket: (ticketId) => ['timeEntries', 'byTicket', ticketId],
   },
   
   // Accounts

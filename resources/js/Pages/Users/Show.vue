@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="User Details">
+    <div>
         <!-- Loading state -->
         <div v-if="loading" class="flex items-center justify-center py-12">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1555,13 +1555,19 @@
             </div>
         </div>
         </div>
-    </AppLayout>
+    </div>
 </template>
 
 <script setup>
 import { ref, computed } from "vue";
 import { router, Link } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
+
+// Define persistent layout
+defineOptions({
+  layout: AppLayout
+})
+
 import UserFormModal from "@/Components/UserFormModal.vue";
 import { useUserQuery, useUpdateUserMutation, useDeleteUserMutation, useUserActivityQuery, useUserTicketsQuery, useUserTimeEntriesQuery } from '@/Composables/queries/useUsersQuery'
 import { useAccountSelectorQuery } from '@/Composables/queries/useAccountsQuery'

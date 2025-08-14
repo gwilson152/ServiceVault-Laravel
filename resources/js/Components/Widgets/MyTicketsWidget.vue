@@ -1,6 +1,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { router } from '@inertiajs/vue3'
 import { 
   TicketIcon,
   ClockIcon,
@@ -115,7 +116,7 @@ const fetchMyTickets = async () => {
 }
 
 const navigateToTicket = (ticketId) => {
-  window.location.href = `/tickets/${ticketId}`
+  router.visit(`/tickets/${ticketId}`)
 }
 
 const formatDate = (dateString) => {

@@ -255,6 +255,7 @@ Before committing code, ensure:
 -   [ ] All relationships properly defined in models
 -   [ ] Factory provides realistic test data
 -   [ ] Seeder creates necessary initial data
+-   [ ] **Navigation uses Inertia.js patterns** (critical for timer overlay persistence)
 
 ## Examples
 
@@ -280,3 +281,96 @@ php artisan make:resource AccountCollection
 ```
 
 This creates a complete, consistent, and maintainable entity structure following Laravel best practices.
+
+## Frontend Navigation Standards ⚠️ CRITICAL
+
+### Navigation Requirements for Timer Overlay Persistence
+
+**RULE**: All navigation must use Inertia.js patterns to maintain persistent timer overlay across page transitions.
+
+### ✅ CORRECT Navigation Patterns
+
+**Declarative Navigation (Links):**
+```vue
+<!-- Use Inertia Link component -->
+<Link :href="route('tickets.show', ticket.id)" class="text-blue-600">
+  View Ticket
+</Link>
+
+<!-- Or with dynamic URLs -->
+<Link :href="`/tickets/${ticket.id}`" class="text-blue-600">
+  View Ticket  
+</Link>
+```
+
+**Programmatic Navigation (JavaScript):**
+```javascript
+import { router } from '@inertiajs/vue3'
+
+// Use router.visit() for navigation
+const navigateToTicket = (ticketId) => {
+  router.visit(`/tickets/${ticketId}`)
+}
+
+// Use router.visit() with options
+const navigateWithOptions = (url) => {
+  router.visit(url, {
+    preserveScroll: true,
+    preserveState: true
+  })
+}
+```
+
+### ❌ FORBIDDEN Navigation Patterns
+
+These patterns cause full page reloads and break timer overlay persistence:
+
+**Never use window.location:**
+```javascript
+// ❌ FORBIDDEN - Breaks timer overlay persistence
+const navigateToTicket = (ticketId) => {
+  window.location.href = `/tickets/${ticketId}`
+  window.location.assign(`/tickets/${ticketId}`)
+  window.location.replace(`/tickets/${ticketId}`)
+}
+```
+
+**Never use HTML anchor tags for internal navigation:**
+```vue
+<!-- ❌ FORBIDDEN - Breaks timer overlay persistence -->
+<a :href="`/tickets/${ticket.id}`">View Ticket</a>
+<a href="/dashboard">Dashboard</a>
+```
+
+### Navigation Code Review Checklist
+
+Before merging any code with navigation:
+
+- [ ] All internal links use `<Link>` component
+- [ ] All programmatic navigation uses `router.visit()`
+- [ ] No `window.location.href` for internal navigation
+- [ ] No HTML `<a>` tags for internal navigation
+- [ ] External links properly use `target="_blank"`
+
+### Common Navigation Fixes Applied
+
+**Components Updated:**
+- `MyTicketsWidget.vue`: `window.location.href` → `router.visit()`
+- `TicketsTable.vue`: `<a :href="">` → `<Link :href="">`
+
+**Impact:** These fixes resolved timer overlay reloading issues and ensured seamless SPA navigation.
+
+### Troubleshooting Navigation Issues
+
+If timer overlay reloads or layout re-renders during navigation:
+
+1. **Search codebase for forbidden patterns:**
+   ```bash
+   grep -r "window.location.href" resources/js/
+   grep -r "window.location.assign" resources/js/
+   grep -r "<a.*href" resources/js/
+   ```
+
+2. **Check browser network tab** - Look for full page requests instead of XHR/fetch
+3. **Verify Inertia imports** - Ensure `router` and `Link` are properly imported
+4. **Test navigation patterns** - Use browser dev tools to monitor request types

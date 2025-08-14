@@ -281,19 +281,21 @@
     </div>
     
     <!-- Modals -->
-    <AddTimeEntryModal 
-      v-if="showAddTimeEntryModal"
-      :ticket="ticket"
+    <UnifiedTimeEntryDialog 
+      :show="showAddTimeEntryModal"
+      mode="create"
+      :context-ticket="ticket"
+      @close="showAddTimeEntryModal = false"
       @saved="handleTimeEntrySaved"
-      @cancelled="showAddTimeEntryModal = false"
     />
     
-    <EditTimeEntryModal 
-      v-if="showEditTimeEntryModal"
-      :ticket="ticket"
+    <UnifiedTimeEntryDialog 
+      :show="showEditTimeEntryModal"
+      mode="edit"
+      :context-ticket="ticket"
       :time-entry="selectedTimeEntry"
+      @close="showEditTimeEntryModal = false"
       @saved="handleTimeEntrySaved"
-      @cancelled="showEditTimeEntryModal = false"
     />
     
     <ConfirmationModal
@@ -311,8 +313,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 
 // Import child components
-import AddTimeEntryModal from './AddTimeEntryModal.vue'
-import EditTimeEntryModal from './EditTimeEntryModal.vue'
+import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
 import ConfirmationModal from '../ConfirmationModal.vue'
 
 // Props
