@@ -100,48 +100,7 @@
             <!-- User menu -->
             <div class="flex items-center space-x-4">
               <!-- User dropdown -->
-              <Menu as="div" class="relative ml-3">
-                <div>
-                  <MenuButton class="flex items-center max-w-xs text-sm bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    <span class="sr-only">Open user menu</span>
-                    <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
-                      <span class="text-sm font-medium text-white">
-                        {{ $page.props.auth.user.name.charAt(0) }}
-                      </span>
-                    </div>
-                  </MenuButton>
-                </div>
-                <transition
-                  enter-active-class="transition ease-out duration-100"
-                  enter-from-class="transform opacity-0 scale-95"
-                  enter-to-class="transform opacity-100 scale-100"
-                  leave-active-class="transition ease-in duration-75"
-                  leave-from-class="transform opacity-100 scale-100"
-                  leave-to-class="transform opacity-0 scale-95"
-                >
-                  <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                    <div class="py-1">
-                      <MenuItem v-slot="{ active }">
-                        <Link
-                          :href="route('profile')"
-                          :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
-                        >
-                          Your Profile
-                        </Link>
-                      </MenuItem>
-                      <MenuItem v-slot="{ active }">
-                        <Link
-                          :href="route('logout')"
-                          method="post"
-                          :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
-                        >
-                          Sign out
-                        </Link>
-                      </MenuItem>
-                    </div>
-                  </MenuItems>
-                </transition>
-              </Menu>
+              <UserBadgeDropdown />
             </div>
           </div>
         </header>
@@ -284,10 +243,6 @@ import { Link, usePage } from '@inertiajs/vue3'
 import {
   Dialog,
   DialogPanel,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
   TransitionChild,
   TransitionRoot,
 } from '@headlessui/vue'
@@ -313,6 +268,7 @@ import {
 
 // Components
 import TimerBroadcastOverlay from '@/Components/Timer/TimerBroadcastOverlay.vue'
+import UserBadgeDropdown from '@/Components/UserBadgeDropdown.vue'
 
 // Composables
 import { useNavigationQuery } from '@/Composables/queries/useNavigationQuery.js'

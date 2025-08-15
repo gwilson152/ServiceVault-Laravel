@@ -1,4 +1,23 @@
 <template>
+  <!-- Debug Info -->
+  <div 
+    v-if="true"
+    class="fixed top-4 left-4 z-50 bg-red-500 text-white p-2 text-xs max-w-xs overflow-auto max-h-96"
+  >
+    <div>Debug Timer Overlay:</div>
+    <div>shouldShowOverlay: {{ shouldShowOverlay }}</div>
+    <div>user?.user_type: {{ user?.user_type }}</div>
+    <div>user?.permissions exists: {{ !!user?.permissions }}</div>
+    <div>user?.permissions is array: {{ Array.isArray(user?.permissions) }}</div>
+    <div>permissions length: {{ user?.permissions?.length || 0 }}</div>
+    <div>has timers.write: {{ user?.permissions?.includes?.('timers.write') }}</div>
+    <div>has timers.manage: {{ user?.permissions?.includes?.('timers.manage') }}</div>
+    <div>canCreateTimers: {{ canCreateTimers }}</div>
+    <div>timerSettings show_timer_overlay: {{ timerSettings?.show_timer_overlay }}</div>
+    <div>timers.length: {{ timers?.length || 0 }}</div>
+    <div v-if="user?.permissions && user.permissions.length < 20">All permissions: {{ user.permissions }}</div>
+  </div>
+
   <div 
     v-if="shouldShowOverlay" 
     class="fixed bottom-4 right-4 z-50"
@@ -355,31 +374,31 @@ const canViewMyTimers = computed(() => {
 const canViewAllTimers = computed(() => {
   // Admins and managers can view all timers
   return isAdmin.value || 
-         user.value?.permissions?.includes('timers.admin') ||
+         user.value?.permissions?.includes('timers.manage') ||
          user.value?.permissions?.includes('teams.manage')
 })
 
 const canManageTimers = computed(() => {
   // Admins can manage any timer, users can manage their own
-  return isAdmin.value || user.value?.permissions?.includes('timers.admin')
+  return isAdmin.value || user.value?.permissions?.includes('timers.manage')
 })
 
 const canControlTimers = computed(() => {
   // Users can control (pause/resume/stop) their own timers
   return user.value?.permissions?.includes('timers.write') ||
-         user.value?.permissions?.includes('timers.admin')
+         user.value?.permissions?.includes('timers.manage')
 })
 
 const canCommitTimers = computed(() => {
   // Users can commit their own timers to time entries
   return user.value?.permissions?.includes('timers.write') ||
-         user.value?.permissions?.includes('timers.admin')
+         user.value?.permissions?.includes('timers.manage')
 })
 
 const canCreateTimers = computed(() => {
   // Users can create timers if they have write permissions
   return user.value?.permissions?.includes('timers.write') ||
-         user.value?.permissions?.includes('timers.admin')
+         user.value?.permissions?.includes('timers.manage')
 })
 
 // Determine when to show the overlay - show if there are active timers OR if user can create timers

@@ -154,6 +154,18 @@
                                 />
                             </div>
 
+                            <!-- Advanced Tab -->
+                            <div
+                                v-show="activeTab === 'advanced'"
+                                class="space-y-8"
+                            >
+                                <AdvancedSettings
+                                    :settings="advancedSettings"
+                                    :loading="loading.advanced"
+                                    @update="updateAdvancedSettings"
+                                />
+                            </div>
+
                             <!-- Nuclear Reset Tab -->
                             <div
                                 v-show="activeTab === 'reset'"
@@ -200,6 +212,7 @@ import {
     CurrencyDollarIcon,
     ClockIcon,
     UsersIcon,
+    WrenchScrewdriverIcon,
     ExclamationTriangleIcon,
 } from "@heroicons/vue/24/outline";
 
@@ -211,6 +224,7 @@ const tabs = [
     { id: "billing", name: "Billing & Addons", icon: CurrencyDollarIcon },
     { id: "timer", name: "Timer Settings", icon: ClockIcon },
     { id: "users", name: "User Management", icon: UsersIcon },
+    { id: "advanced", name: "Advanced", icon: WrenchScrewdriverIcon },
     { id: "reset", name: "Nuclear Reset", icon: ExclamationTriangleIcon },
 ];
 
@@ -223,6 +237,7 @@ const loading = reactive({
     billing: false,
     timer: false,
     users: false,
+    advanced: false,
 });
 const testing = reactive({
     smtp: false,
