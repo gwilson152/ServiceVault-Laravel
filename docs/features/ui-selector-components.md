@@ -98,16 +98,19 @@ When a user is selected, the component shows a professional user card instead of
 
 ### HierarchicalAccountSelector
 
-**Purpose**: Select business accounts with hierarchical relationship display  
+**Purpose**: Select business accounts with hierarchical relationship display and built-in account creation  
 **File**: `/resources/js/Components/UI/HierarchicalAccountSelector.vue`  
 **Data Source**: `/api/accounts/selector/hierarchical`
 
 #### Features
 - **Hierarchical Display**: Shows account relationships with proper indentation and visual hierarchy
+- **Built-in Account Creation**: Integrated "Create New Account" option that opens AccountFormModal
 - **Rich Data Structure**: Displays account number, name, and hierarchy level with `display_name` formatting
 - **Smart Search**: Filters accounts by name, account number, and display hierarchy text
 - **Default Option**: "No account (general timer)" for non-client work scenarios
 - **Account Tree Navigation**: Flattened display of nested account relationships for easy selection
+- **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared for seamless UX
+- **CSRF Protection**: Enhanced CSRF token handling for secure account creation
 
 #### API Integration
 ```javascript
@@ -126,6 +129,34 @@ const { data: accounts, isLoading } = useAccountsQuery({
 // }
 ```
 
+#### Account Creation Integration
+```javascript
+// Automatically opens AccountFormModal for account creation
+const openCreateModal = async () => {
+  showDropdown.value = false
+  
+  // Ensure CSRF token is ready before opening modal
+  try {
+    await window.axios.get('/sanctum/csrf-cookie')
+  } catch (error) {
+    console.error('Failed to initialize CSRF token:', error)
+  }
+  
+  showCreateAccountModal.value = true
+}
+
+const handleAccountCreated = (newAccount) => {
+  // Reload accounts to include the new one
+  loadAccounts().then(() => {
+    // New account automatically selected after creation
+    selectAccount(newAccount)
+    
+    // Emit event to parent to refresh account lists if needed
+    emit('account-created', newAccount)
+  })
+}
+```
+
 #### Props
 - `modelValue`: Selected account ID (String/Object)
 - `label`: Label text (default: "Account")
@@ -133,6 +164,8 @@ const { data: accounts, isLoading } = useAccountsQuery({
 - `required`: Show required indicator (Boolean)
 - `error`: Error message to display
 - `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
+- `showCreateOption`: Enable "Create New Account" functionality (default: true)
+- `preselectedParentId`: Parent account ID for creating sub-accounts (String/Number)
 
 #### Usage Example
 ```vue
@@ -143,7 +176,30 @@ const { data: accounts, isLoading } = useAccountsQuery({
   required
   :error="errors.account_id"
   :reopen-on-clear="true"
+  :show-create-option="true"
+  :preselected-parent-id="parentAccountId"
   @account-selected="handleAccountSelection"
+  @account-created="handleNewAccountCreated"
+/>
+```
+
+#### Create New Account Display
+When `showCreateOption` is enabled, the component shows a green-styled create option at the top of the dropdown:
+```vue
+<!-- Create New Account Option -->
+<div class="px-4 py-3 hover:bg-green-50 cursor-pointer border-b border-gray-100 bg-green-25">
+  <div class="flex items-center">
+    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+      </svg>
+    </div>
+    <div class="flex-1">
+      <p class="text-sm font-medium text-green-700">Create New Account</p>
+      <p class="text-xs text-green-600">Add a new account to the system</p>
+    </div>
+  </div>
+</div>
 />
 ```
 
@@ -626,6 +682,65 @@ const filteredItems = computed(() => {
 - **Keyboard Tests**: Full keyboard navigation workflows
 - **Mobile Tests**: Touch interaction and responsive behavior
 
+## Modal Stacking Architecture
+
+### Native Dialog Implementation
+
+Both AccountFormModal and UserFormModal use native `<dialog>` elements with Vue Teleport for proper modal stacking when used within other modals:
+
+```vue
+<!-- Teleported to body for proper DOM positioning -->
+<Teleport to="body">
+  <AccountFormModal
+    v-if="showCreateOption"
+    :open="showCreateAccountModal"
+    @close="closeCreateModal"
+    @saved="handleAccountCreated"
+  />
+</Teleport>
+```
+
+### Automated Dialog Management
+
+The form modals automatically manage their native dialog lifecycle:
+
+```javascript
+// Watch for changes to populate form and manage dialog
+watch(() => props.open, async (isOpen) => {
+    if (isOpen) {
+        // Populate form data
+        resetForm()
+        errors.value = {}
+        
+        // Open dialog with delay to ensure proper stacking
+        await nextTick()
+        setTimeout(() => {
+            if (dialogRef.value) {
+                dialogRef.value.showModal()
+            }
+        }, 50)
+    } else {
+        // Close dialog
+        if (dialogRef.value) {
+            dialogRef.value.close()
+        }
+    }
+})
+```
+
+### Modal Hierarchy
+
+1. **Base Modal**: CreateTicketModal (Modal.vue) - native `<dialog>` opened first
+2. **Nested Modals**: AccountFormModal/UserFormModal - native `<dialog>` with 50ms delay
+3. **Browser Stacking**: Later-opened dialogs automatically appear above earlier ones
+
+### Benefits
+
+- **Proper Stacking**: Native dialog stacking context ensures correct z-order
+- **No Z-Index Conflicts**: Eliminates need for complex z-index management
+- **Consistent UX**: Reliable modal ordering across all browsers
+- **Teleport Integration**: Prevents DOM containment issues
+
 ## Future Enhancements
 
 ### Planned Improvements
@@ -645,4 +760,4 @@ const filteredItems = computed(() => {
 
 **UI Selector Components** provide the foundation for consistent, professional user interactions across Service Vault's complex data selection scenarios.
 
-_Last Updated: August 14, 2025 - Added UserSelector with create new user functionality, enhanced auto-reopen behavior, and timer integration optimizations_
+_Last Updated: August 15, 2025 - Added native dialog modal stacking architecture, removed auto-account selection in ticket creation, and resolved modal hierarchy issues with proper timing controls_

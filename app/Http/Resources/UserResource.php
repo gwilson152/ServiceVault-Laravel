@@ -19,6 +19,7 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'email_verified_at' => $this->email_verified_at,
+            'user_type' => $this->user_type,
             'is_active' => $this->is_active,
             'timezone' => $this->timezone,
             'locale' => $this->locale,
@@ -59,7 +60,7 @@ class UserResource extends JsonResource
             
             // Permission information
             'is_super_admin' => $this->isSuperAdmin(),
-            'permissions' => $this->when($request->user()->hasAnyPermission(['admin.read', 'super_admin']), function () {
+            'permissions' => $this->when($request->user()->isSuperAdmin() || $request->user()->hasAnyPermission(['admin.read', 'admin.manage']), function () {
                 return $this->getAllPermissions();
             }),
             

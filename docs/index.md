@@ -8,19 +8,23 @@ A comprehensive B2B **ticketing/service request platform** with time management 
 
 ### Platform Status
 
-**Current Phase**: Phase 15A+ Complete (100% Production Ready + Enhanced UI Components)  
+**Current Phase**: Phase 15A+ Complete (100% Production Ready + TanStack Query Migration + ABAC Permissions)  
 **Last Updated**: August 14, 2025  
-**Status**: Fully production-ready with professional UI selector components, enhanced timer creation workflow, comprehensive UX improvements, complete customer portal architecture, and robust error handling across all components
+**Status**: Fully production-ready with TanStack Query optimization, comprehensive ABAC timer permissions, unified time entry components, glass effect overlays, and complete time management system with real-time updates
 
 ### Core Features
 
 - **Enhanced Agent/Customer Architecture**: Clear separation between service providers (Agents) and customers (Account Users) with role-based time entry creation
+- **TanStack Query Optimization**: Complete migration to TanStack Query with reactive caching, optimistic updates, and background synchronization
+- **ABAC Permission System**: Comprehensive attribute-based access control for timer operations with UI-level permission enforcement
+- **Enhanced Selector Components**: Professional selectors with integrated creation workflows - HierarchicalAccountSelector and UserSelector both include "Create New" functionality with CSRF protection
 - **Advanced Timer Assignment System**: Flexible timer assignment to tickets OR accounts with commitment validation for billing accuracy
 - **Three-Dimensional Permission System**: Comprehensive Functional + Widget + Page access control
 - **Complete Billing & Financial Management**: Enterprise-grade invoicing, payment tracking, and billing rate management
 - **Enhanced Ticket Detail Page**: Comprehensive central hub with tabbed interface for ticket interactions - **FULLY FUNCTIONAL**
 - **Real-Time Messaging System**: Internal and external communication with live updates and proper API integration
-- **Refined Timer Broadcast Overlay**: Smart timer overlay that shows for Agents with quick-start functionality when no active timers
+- **Glass Effect Timer Overlay**: Modern gradient glass morphism timer overlay with Agent/Customer filtering and ABAC permission controls
+- **Unified Time Entry Components**: Consolidated timer commit workflows with multiline work descriptions and automatic data preloading
 - **Customer Portal Interface**: Complete portal pages for customer ticket management, project tracking, and billing access
 - **Enhanced Account Management**: Full account detail pages with comprehensive CRUD operations and relationship management
 - **Invitation-Based User Onboarding**: Complete invitation acceptance workflow with timezone detection and role assignment
@@ -70,6 +74,7 @@ For complete setup instructions, see [System Documentation](system/index.md).
 - **[Service Tickets](features/service-tickets.md)** - Complete workflow management system
 - **[Account Management](features/business-account-management.md)** - Hierarchical business relationships
 - **[Email Configuration](system/email-configuration.md)** - SMTP/IMAP setup with OAuth and app password support
+- **[Nuclear System Reset](system/nuclear-reset.md)** - Complete system reset for development and emergency recovery ⚠️
 
 ### 🔧 Technical References
 
@@ -110,8 +115,11 @@ Service Vault is **fully production-ready** with comprehensive feature set and a
 - **Invitation Acceptance Workflow**: Complete invitation acceptance component with timezone detection, form validation, and automatic role assignment
 - **Customer Portal Architecture**: Full portal interface components for customer ticket management, project tracking, and billing access
 - **Enhanced Error Handling**: Comprehensive error states, loading indicators, and user-friendly error messages across all components
+- **Enhanced Setup System**: Robust setup completion detection using `system.setup_complete` setting, automatic seeding of essential system data (ticket statuses, categories, priorities, billing rates, addon templates), and dual-middleware protection (CheckSetupStatus + ProtectSetup)
+- **Advanced Modal Architecture**: Native dialog-based modal stacking with Vue Teleport for proper hierarchy management, nested modal support, and resolved z-index conflicts
+- **Enhanced Selector Workflows**: HierarchicalAccountSelector and UserSelector with integrated creation functionality, CSRF protection, and seamless UX patterns
+- **Refined Ticket Creation UX**: Removed auto-account selection for explicit user control and improved account selection workflow
 - **Database-level Data Integrity**: PostgreSQL triggers for consistency validation and referential integrity
-- **Professional UI Selector Components**: HierarchicalAccountSelector, TicketSelector, and BillingRateSelector with unified UX patterns
 - **Auto-Reopen UX Enhancement**: Smart dropdown behavior with automatic focus and viewport positioning after clearing selections
 - **Built-in Label Support**: Integrated label, error, and validation handling eliminating duplicate UI elements
 
@@ -136,4 +144,4 @@ For detailed progress information, see [Development Progress Report](development
 
 **Service Vault** - Complete B2B Service Management Platform with Enhanced Ticket Management and Professional UI Components
 
-_Last Updated: August 14, 2025 - Phase 15A+ Complete - Enhanced UX with Auto-Reopen Behavior and Billing Rate Integration_
+_Last Updated: August 15, 2025 - Phase 15A+ Complete - Advanced Modal Architecture with Native Dialog Stacking and Enhanced Selector Workflows_

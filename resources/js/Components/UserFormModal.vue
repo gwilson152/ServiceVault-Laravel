@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { useCreateUserMutation, useUpdateUserMutation } from '@/Composables/queries/useUsersQuery'
 
 const props = defineProps({
@@ -26,6 +26,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'saved'])
+
+// Dialog ref for native dialog management
+const dialogRef = ref(null)
 
 const form = ref({
     name: '',
@@ -54,7 +57,7 @@ const saving = computed(() => createUserMutation.isPending.value || updateUserMu
 const isEditing = computed(() => !!props.user?.id)
 const modalTitle = computed(() => isEditing.value ? 'Edit User' : 'Create User')
 
-// Watch for changes to populate form
+// Watch for changes to populate form and manage dialog
 watch(() => props.open, async (isOpen) => {
     if (isOpen) {
         if (props.user) {
@@ -77,6 +80,19 @@ watch(() => props.open, async (isOpen) => {
             resetForm()
         }
         errors.value = {}
+        
+        // Open dialog with a small delay to ensure it appears on top
+        await nextTick()
+        setTimeout(() => {
+            if (dialogRef.value) {
+                dialogRef.value.showModal()
+            }
+        }, 50)
+    } else {
+        // Close dialog
+        if (dialogRef.value) {
+            dialogRef.value.close()
+        }
     }
 })
 
@@ -171,9 +187,13 @@ const locales = [
 </script>
 
 <template>
-    <!-- Modal backdrop -->
-    <div v-if="open" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <!-- Native dialog for proper stacking context -->
+    <dialog
+        ref="dialogRef"
+        class="backdrop:bg-gray-500 backdrop:bg-opacity-75 bg-transparent max-w-2xl w-full max-h-[90vh] rounded-lg"
+        @close="closeModal"
+    >
+        <div class="bg-white rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto">
             <!-- Modal header -->
             <div class="px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center justify-between">
@@ -452,5 +472,5 @@ const locales = [
                 </div>
             </form>
         </div>
-    </div>
+    </dialog>
 </template>

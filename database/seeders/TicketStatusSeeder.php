@@ -114,6 +114,8 @@ class TicketStatusSeeder extends Seeder
             );
         }
 
-        $this->command->info('Created ' . count($statuses) . ' ticket statuses');
+        if ($this->command) {
+            $this->command->info('Created ' . count($statuses) . ' ticket statuses');
+        }
     }
 }

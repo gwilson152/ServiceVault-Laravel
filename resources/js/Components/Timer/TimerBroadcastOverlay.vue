@@ -54,6 +54,7 @@
         
         <!-- New Timer Button -->
         <button
+          v-if="canCreateTimers"
           @click="showQuickStart = !showQuickStart"
           class="p-1 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
           title="New Timer"
@@ -130,6 +131,7 @@
       <div class="text-center">
         <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">No active timers</div>
         <button
+          v-if="canCreateTimers"
           @click="showQuickStart = true"
           class="w-full p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors flex items-center justify-center space-x-2"
           title="Start New Timer"
@@ -194,6 +196,7 @@
             </div>
             <div class="flex items-center space-x-1">
               <button
+                v-if="canControlOwnTimer(timer) || canManageAllTimers(timer)"
                 @click="openTimerSettings(timer)"
                 class="text-gray-400 hover:text-blue-600 transition-colors"
                 title="Timer Settings"
@@ -231,7 +234,7 @@
           <!-- Timer Controls -->
           <div class="flex space-x-2">
             <button
-              v-if="timer.status === 'running'"
+              v-if="timer.status === 'running' && (canControlOwnTimer(timer) || canManageAllTimers(timer))"
               @click="pauseTimer(timer.id)"
               class="flex-1 p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition-colors"
               title="Pause Timer"
@@ -241,7 +244,7 @@
               </svg>
             </button>
             <button
-              v-if="timer.status === 'paused'"
+              v-if="timer.status === 'paused' && (canControlOwnTimer(timer) || canManageAllTimers(timer))"
               @click="resumeTimer(timer.id)"
               class="flex-1 p-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
               title="Resume Timer"
@@ -251,9 +254,10 @@
               </svg>
             </button>
             <button
+              v-if="canCommitOwnTimer(timer)"
               @click="handleStopTimer(timer)"
               class="flex-1 p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"
-              title="Stop Timer"
+              title="Stop & Commit Timer"
             >
               <svg class="w-4 h-4 mx-auto" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 6h12v12H6z"/>
@@ -337,6 +341,47 @@ const allowManualTimeOverride = ref(true) // TODO: Load from system settings
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
+// ABAC Permission computeds
+const isAdmin = computed(() => {
+  return user.value?.permissions?.includes('admin.read') || user.value?.permissions?.includes('admin.manage')
+})
+
+const canViewMyTimers = computed(() => {
+  // Users can always view their own timers
+  return user.value?.permissions?.includes('timers.read') || 
+         user.value?.permissions?.includes('timers.write')
+})
+
+const canViewAllTimers = computed(() => {
+  // Admins and managers can view all timers
+  return isAdmin.value || 
+         user.value?.permissions?.includes('timers.admin') ||
+         user.value?.permissions?.includes('teams.manage')
+})
+
+const canManageTimers = computed(() => {
+  // Admins can manage any timer, users can manage their own
+  return isAdmin.value || user.value?.permissions?.includes('timers.admin')
+})
+
+const canControlTimers = computed(() => {
+  // Users can control (pause/resume/stop) their own timers
+  return user.value?.permissions?.includes('timers.write') ||
+         user.value?.permissions?.includes('timers.admin')
+})
+
+const canCommitTimers = computed(() => {
+  // Users can commit their own timers to time entries
+  return user.value?.permissions?.includes('timers.write') ||
+         user.value?.permissions?.includes('timers.admin')
+})
+
+const canCreateTimers = computed(() => {
+  // Users can create timers if they have write permissions
+  return user.value?.permissions?.includes('timers.write') ||
+         user.value?.permissions?.includes('timers.admin')
+})
+
 // Determine when to show the overlay - show if there are active timers OR if user can create timers
 const shouldShowOverlay = computed(() => {
   // Check timer settings first
@@ -344,14 +389,13 @@ const shouldShowOverlay = computed(() => {
     return false
   }
   
-  // Always show if there are active timers
+  // Always show if there are active timers that the user can see
   if (timers.value?.length > 0) {
     return true
   }
   
-  // Only show overlay for agents (who can create timers)
-  // Hide for account users (customers) who can't create/manage timers
-  return user.value?.user_type === 'agent'
+  // Show overlay if user can create timers (agents, not customers)
+  return canCreateTimers.value && user.value?.user_type === 'agent'
 })
 
 
@@ -565,8 +609,30 @@ const getBillingRateValue = (billingRateId) => {
   return rate ? parseFloat(rate.rate) : 0
 }
 
+// Permission helper functions
+const canControlOwnTimer = (timer) => {
+  // Users can control their own timers if they have write permissions
+  return timer.user_id === user.value?.id && canControlTimers.value
+}
+
+const canManageAllTimers = (timer) => {
+  // Admins can manage any timer
+  return canManageTimers.value
+}
+
+const canCommitOwnTimer = (timer) => {
+  // Users can commit their own timers
+  return timer.user_id === user.value?.id && canCommitTimers.value
+}
+
 // Timer commit workflow functions
 const handleStopTimer = async (timer) => {
+  // Check permissions
+  if (!canCommitOwnTimer(timer) && !canManageAllTimers(timer)) {
+    console.warn('User does not have permission to commit this timer')
+    return
+  }
+  
   try {
     // Only pause if the timer is currently running
     if (timer.status === 'running') {

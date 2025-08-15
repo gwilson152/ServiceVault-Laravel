@@ -16,6 +16,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class SettingController extends Controller
@@ -553,5 +557,107 @@ class SettingController extends Controller
         ]);
     }
 
+    /**
+     * Perform nuclear system reset - complete system wipe and reset
+     * Requires super admin privileges and password confirmation
+     */
+    public function nuclearReset(Request $request): JsonResponse
+    {
+        // First check: Must be authenticated
+        if (!Auth::check()) {
+            return response()->json([
+                'message' => 'Authentication required'
+            ], 401);
+        }
+
+        $user = Auth::user();
+
+        // Second check: Must be Super Admin
+        if (!$user->isSuperAdmin()) {
+            Log::warning('Non-super-admin attempted nuclear reset', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'ip' => $request->ip(),
+                'timestamp' => now()
+            ]);
+
+            return response()->json([
+                'message' => 'Access denied. Only Super Administrators can perform system reset.'
+            ], 403);
+        }
+
+        // Third check: Password confirmation is required
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Password confirmation is required',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Fourth check: Verify password
+        if (!Hash::check($request->password, $user->password)) {
+            Log::warning('Nuclear reset attempted with invalid password', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'ip' => $request->ip(),
+                'timestamp' => now()
+            ]);
+
+            return response()->json([
+                'message' => 'Invalid password. Nuclear reset cancelled.'
+            ], 422);
+        }
+
+        // Log the nuclear reset attempt
+        Log::critical('Nuclear system reset initiated by super admin', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'user_name' => $user->name,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'timestamp' => now()
+        ]);
+
+        try {
+            // Execute nuclear reset via artisan command for safety and logging
+            $exitCode = Artisan::call('system:nuclear-reset', [
+                '--user-id' => $user->id
+            ]);
+
+            if ($exitCode === 0) {
+                Log::info('Nuclear system reset completed successfully', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'timestamp' => now()
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Nuclear reset completed successfully. System has been reset to initial state. You will be redirected to setup.',
+                    'redirect_to' => '/setup'
+                ]);
+            } else {
+                throw new \Exception('Nuclear reset command failed with exit code: ' . $exitCode);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Nuclear system reset failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'ip' => $request->ip(),
+                'timestamp' => now()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Nuclear reset failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
 }

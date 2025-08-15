@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'dashboard.role' => \App\Http\Middleware\DashboardRoleMiddleware::class,
             'check_permission' => \App\Http\Middleware\CheckPermission::class,
+            'protect.setup' => \App\Http\Middleware\ProtectSetup::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

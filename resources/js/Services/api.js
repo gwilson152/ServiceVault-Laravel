@@ -13,13 +13,13 @@ const api = axios.create({
 
 // Add CSRF token to requests
 api.interceptors.request.use((config) => {
-  // Get CSRF token from meta tag
+  // Get CSRF token from meta tag (for traditional Laravel forms)
   const token = document.head.querySelector('meta[name="csrf-token"]')
   if (token) {
     config.headers['X-CSRF-TOKEN'] = token.content
   }
   
-  // Get XSRF token from cookies for Sanctum
+  // Get XSRF token from cookies (for Sanctum)
   const xsrfToken = document.cookie
     .split('; ')
     .find(row => row.startsWith('XSRF-TOKEN='))
@@ -28,6 +28,8 @@ api.interceptors.request.use((config) => {
   }
   
   return config
+}, (error) => {
+  return Promise.reject(error)
 })
 
 // Add response interceptor for error handling
@@ -36,6 +38,8 @@ api.interceptors.response.use(
   error => {
     if (error.response && error.response.status === 401) {
       window.location.href = '/login'
+    } else if (error.response && error.response.status === 419) {
+      console.error('CSRF token mismatch - token may have expired')
     }
     return Promise.reject(error)
   }
@@ -44,9 +48,12 @@ api.interceptors.response.use(
 // Initialize CSRF cookie before making any requests
 export const initializeCSRF = async () => {
   try {
-    await axios.get('/sanctum/csrf-cookie')
+    await axios.get('/sanctum/csrf-cookie', {
+      withCredentials: true
+    })
   } catch (error) {
     console.error('Failed to initialize CSRF cookie:', error)
+    throw error
   }
 }
 

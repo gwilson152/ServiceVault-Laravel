@@ -11,8 +11,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// Setup routes (no middleware applied)
-Route::prefix('setup')->group(function () {
+// Setup routes (protected after setup completion)
+Route::prefix('setup')->middleware(['protect.setup'])->group(function () {
     Route::get('/', [SetupController::class, 'index'])->name('setup.index');
     Route::post('/', [SetupController::class, 'store'])->name('setup.store');
 });
@@ -103,7 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Settings/Index', [
             'activeTab' => $tab
         ]);
-    })->name('settings.index')->where('tab', '(system|email|tickets|billing|timer|users)');
+    })->name('settings.index')->where('tab', '(system|email|tickets|billing|timer|users|reset)');
     
     // User Management
     Route::get('/users', function () {

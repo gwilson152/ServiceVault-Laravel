@@ -88,6 +88,8 @@ class TicketPrioritySeeder extends Seeder
             );
         }
 
-        $this->command->info('Created ' . count($priorities) . ' ticket priorities');
+        if ($this->command) {
+            $this->command->info('Created ' . count($priorities) . ' ticket priorities');
+        }
     }
 }

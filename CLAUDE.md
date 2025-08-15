@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring hierarchical customer account management, three-dimensional permission system (functional + widget + page access), account hierarchy permissions, and enterprise-level customization for multi-tenant service delivery.
 
-### Current Status: Phase 15A+ Complete (100% MVP Ready + Full Billing System + TanStack Query Migration)
+### Current Status: Phase 15A+ Complete (100% MVP Ready + Full Billing System + TanStack Query Migration + Nuclear Reset)
 **✅ Fully Implemented Features:**
+- **Nuclear System Reset**: Complete system reset functionality with multi-layer security (Super Admin + password confirmation), comprehensive audit logging, and safe execution via artisan command - accessible via Settings > Nuclear Reset tab
 - **Complete Billing & Financial Management System**: Enterprise-grade invoicing, payment tracking, simplified billing rate management (no currency complexity), dynamic addon templates with API-driven categories, and financial reporting with TanStack Tables and Query optimization
 - **Three-Dimensional Permission System**: Complete functional + widget + page permission architecture with role template management
 - **Dashboard Preview System**: Real-time role preview with mock data generation and context switching (service provider vs account user)
@@ -41,15 +42,21 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 
 **Phase 15A+ Recent Completions:**
 - **Enhanced Ticket Detail Pages**: Fully functional central hub with all tabs working (messages, time tracking, addons, activity, billing)
-- **Refined Timer Broadcast Overlay**: Smart overlay with Agent/Customer filtering and quick-start functionality  
+- **Refined Timer Broadcast Overlay**: Smart overlay with Agent/Customer filtering, quick-start functionality, and gradient glass effect design
 - **Complete Account Management**: Full account detail pages with comprehensive CRUD operations
 - **Invitation Acceptance Workflow**: Complete user onboarding with timezone detection and role assignment
 - **Customer Portal Foundation**: Portal dashboard and project interfaces for customer users
 - **Enhanced Error Handling**: Comprehensive error states and user-friendly messaging across all components
 - **TanStack Query Migration**: Complete migration from axios to TanStack Query for optimized caching, error handling, and data synchronization
 - **Simplified Billing System**: Removed currency complexity from billing rates, streamlined settings organization, resolved modal initialization issues
-- **Tabbed Time Management Interface**: Unified Time Entries and Active Timers interface with RBAC/ABAC permission-based visibility and URL-based tab navigation
+- **Comprehensive ABAC Timer Permissions**: Full attribute-based access control for timer viewing, control, and creation with UI-level permission enforcement
+- **Unified Time Entry Components**: Consolidated all timer commit workflows into UnifiedTimeEntryDialog with multiline work descriptions
+- **Enhanced Selector Components**: Added account creation to HierarchicalAccountSelector with CSRF protection and seamless UX integration
+- **Tabbed Time Management Interface**: Unified Time Entries and Active Timers interface with ABAC permission-based visibility and URL-based tab navigation
 - **TimeEntry API Fixes**: Resolved 500 errors in TimeEntryResource with proper closure scoping, duration field corrections, and missing field mappings
+- **Enhanced Setup System**: Robust setup completion detection with `system.setup_complete` setting, automatic system data seeding, and dual-middleware protection
+- **Advanced Modal Architecture**: Native dialog-based modal stacking with Vue Teleport for proper hierarchy management, nested modal support, and resolved z-index conflicts
+- **Refined Ticket Creation UX**: Removed auto-account selection in CreateTicketModal for explicit user control and improved account selection workflow
 
 ## Documentation
 
@@ -105,6 +112,11 @@ npm run dev              # Start Vite dev server (with HMR)
 php artisan migrate:fresh --seed  # Reset database with test data
 php artisan migrate      # Run pending migrations only
 php artisan db:seed      # Seed test data only
+
+# Nuclear System Reset (DESTRUCTIVE - Super Admin only)
+php artisan system:nuclear-reset --user-id=1  # Complete system reset with audit logging
+# WARNING: Destroys ALL data, clears caches, removes setup_complete flag
+# Also available via Settings > Nuclear Reset tab in UI with password confirmation
 
 # Frontend development
 npm run build           # Production build
@@ -166,6 +178,12 @@ npm run dev             # Development with hot reload
 # POST   /api/domain-mappings            # Create domain mapping
 # POST   /api/domain-mappings/preview    # Preview assignment for email
 # GET    /api/domain-mappings/validate/requirements # System validation
+
+# Nuclear System Reset (Super Admin only - DESTRUCTIVE)
+# POST   /api/settings/nuclear-reset     # Complete system reset with password confirmation
+#        Requires: Super Admin role + current password
+#        Returns: Success message + redirect to /setup
+#        WARNING: Destroys ALL data permanently
 
 # Standard Laravel CLI
 php artisan make:model ModelName -mfs          # Model + migration/factory/seeder

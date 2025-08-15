@@ -124,16 +124,18 @@
     <!-- Error Message -->
     <p v-if="error" class="mt-1 text-sm text-red-600">{{ error }}</p>
     
-    <!-- Create User Modal -->
-    <UserFormModal
-      v-if="showCreateOption"
-      :open="showCreateUserModal"
-      :accounts="accounts"
-      :role-templates="roleTemplates"
-      :preselected-account-id="preselectedAccountId"
-      @close="closeCreateModal"
-      @saved="handleUserCreated"
-    />
+    <!-- Create User Modal (Teleported to body to avoid clipping) -->
+    <Teleport to="body">
+      <UserFormModal
+        v-if="showCreateOption"
+        :open="showCreateUserModal"
+        :accounts="accounts"
+        :role-templates="roleTemplates"
+        :preselected-account-id="preselectedAccountId"
+        @close="closeCreateModal"
+        @saved="handleUserCreated"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -144,7 +146,7 @@
 // - AgentUserSelector: Extends UserSelector with service provider filtering and assignment features
 //
 
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch, Teleport } from 'vue'
 import UserFormModal from '@/Components/UserFormModal.vue'
 
 // Props

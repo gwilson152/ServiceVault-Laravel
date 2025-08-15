@@ -219,8 +219,6 @@ class RoleTemplateSeeder extends Seeder
                 'tickets.view.account',
                 'tickets.edit.account',
                 'tickets.assign.account',
-                'time.view.account',
-                'time.edit.account',
                 'billing.view.account',
             ],
             'widget_permissions' => [
@@ -249,7 +247,6 @@ class RoleTemplateSeeder extends Seeder
                 'tickets.create.request',
                 'tickets.view.own',
                 'tickets.comment',
-                'time.view.own',
                 'billing.view.own',
                 'portal.access',
             ],

@@ -235,17 +235,13 @@
     </div>
     </div>
 
-    <!-- CommitTimeEntryDialog -->
-    <CommitTimeEntryDialog
+    <!-- Unified Time Entry Dialog for Timer Commit -->
+    <UnifiedTimeEntryDialog
       :show="showCommitDialog"
-      :timerData="timerToCommit"
-      :ticketData="ticket"
-      :currentUser="currentUser"
-      :availableTickets="[ticket]"
-      :availableBillingRates="availableBillingRates"
-      :assignableUsers="assignableUsers"
+      mode="timer-commit"
+      :timer-data="timerToCommit"
       @close="closeCommitDialog"
-      @submitted="handleTimeEntryCommitted"
+      @timer-committed="handleTimeEntryCommitted"
     />
   </div>
 </template>
@@ -258,7 +254,7 @@ import {
   StopIcon, 
   CheckIcon 
 } from '@heroicons/vue/24/outline'
-import CommitTimeEntryDialog from '@/Components/CommitTimeEntryDialog.vue'
+import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
 import { useTimerBroadcasting } from '@/Composables/useTimerBroadcasting.js'
 
 const props = defineProps({
@@ -603,8 +599,9 @@ const closeCommitDialog = () => {
   timerToCommit.value = null
 }
 
-const handleTimeEntryCommitted = async (data) => {
-  emit('timeEntryCreated', data.timeEntry)
+const handleTimeEntryCommitted = async ({ timeEntry, timerData }) => {
+  emit('timeEntryCreated', timeEntry)
+  closeCommitDialog()
   await fetchTimersForTicket()
 }
 

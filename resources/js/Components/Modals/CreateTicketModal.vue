@@ -310,7 +310,7 @@ const resetForm = () => {
   form.title = ''
   form.description = ''
   form.priority = 'normal'
-  form.account_id = user.value?.account_id || ''
+  form.account_id = ''
   form.customer_id = ''
   form.category = ''
   form.due_date = ''
@@ -364,10 +364,6 @@ const submitForm = async () => {
       payload.due_date = new Date(payload.due_date).toISOString()
     }
 
-    // If no account selected but only one available, use it
-    if (!payload.account_id && props.availableAccounts.length === 1) {
-      payload.account_id = props.availableAccounts[0].id
-    }
     
     // Remove empty account_id to let backend handle auto-assignment
     if (!payload.account_id) {

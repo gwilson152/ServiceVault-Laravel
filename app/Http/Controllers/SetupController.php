@@ -4,15 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Account;
-use App\Models\Role;
 use App\Models\RoleTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,11 +20,8 @@ class SetupController extends Controller
      */
     public function index(): Response
     {
-        // Check if setup is already complete
-        if ($this->isSystemSetup()) {
-            return Inertia::render('Setup/AlreadyComplete');
-        }
-
+        // The ProtectSetup middleware handles access control
+        // If we reach here, either setup is incomplete or user is Super Admin
         return Inertia::render('Setup/Index');
     }
 
@@ -99,7 +93,31 @@ class SetupController extends Controller
         $this->storeLicensePlaceholder($request);
 
         // Ensure role templates are seeded
-        (new \Database\Seeders\RoleTemplateSeeder())->run();
+        try {
+            (new \Database\Seeders\RoleTemplateSeeder())->run();
+        } catch (\Exception $e) {
+            \Log::error('RoleTemplateSeeder failed during setup: ' . $e->getMessage());
+            return back()->withErrors(['general' => 'Failed to seed role templates: ' . $e->getMessage()]);
+        }
+        
+        // Seed essential ticket configuration data
+        try {
+            (new \Database\Seeders\TicketStatusSeeder())->run();
+            (new \Database\Seeders\TicketCategorySeeder())->run();
+            (new \Database\Seeders\TicketPrioritySeeder())->run();
+        } catch (\Exception $e) {
+            \Log::error('Ticket configuration seeders failed during setup: ' . $e->getMessage());
+            return back()->withErrors(['general' => 'Failed to seed ticket configuration: ' . $e->getMessage()]);
+        }
+        
+        // Seed billing configuration data
+        try {
+            (new \Database\Seeders\BillingRateSeeder())->run();
+            (new \Database\Seeders\AddonTemplateSeeder())->run();
+        } catch (\Exception $e) {
+            \Log::error('Billing seeders failed during setup: ' . $e->getMessage());
+            return back()->withErrors(['general' => 'Failed to seed billing configuration: ' . $e->getMessage()]);
+        }
 
         // Get the super admin role template
         $superAdminTemplate = RoleTemplate::where('name', 'Super Admin')->first();
@@ -119,13 +137,24 @@ class SetupController extends Controller
             'role_template_id' => $superAdminTemplate->id,
         ]);
 
+        // Mark setup as complete
+        \App\Models\Setting::create([
+            'key' => 'system.setup_complete',
+            'value' => true,
+            'type' => 'system',
+        ]);
+
         // Clear the setup status cache
         Cache::forget('system_setup_status');
 
-        // Log in the admin user
-        Auth::login($adminUser);
-
-        return redirect()->route('dashboard')->with('success', 'Service Vault has been successfully set up!');
+        // Redirect to login page after successful setup with cache-busting headers
+        return redirect()->route('login')
+            ->with('success', 'Service Vault has been successfully set up! Please log in with your administrator credentials.')
+            ->withHeaders([
+                'Cache-Control' => 'no-cache, no-store, must-revalidate, max-age=0',
+                'Pragma' => 'no-cache',
+                'Expires' => 'Thu, 01 Jan 1970 00:00:00 GMT'
+            ]);
     }
 
 

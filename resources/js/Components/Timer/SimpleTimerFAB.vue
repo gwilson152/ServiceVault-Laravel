@@ -101,16 +101,13 @@
       <PlayIcon class="w-6 h-6" />
     </button>
 
-    <!-- CommitTimeEntryDialog -->
-    <CommitTimeEntryDialog
+    <!-- Unified Time Entry Dialog for Timer Commit -->
+    <UnifiedTimeEntryDialog
       :show="showCommitDialog"
-      :timerData="timerToCommit"
-      :currentUser="currentUser"
-      :availableTickets="[]"
-      :availableBillingRates="[]"
-      :assignableUsers="[]"
+      mode="timer-commit"
+      :timer-data="timerToCommit"
       @close="closeCommitDialog"
-      @submitted="handleTimeEntryCommitted"
+      @timer-committed="handleTimeEntryCommitted"
     />
   </div>
 </template>
@@ -126,7 +123,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon
 } from '@heroicons/vue/24/outline'
-import CommitTimeEntryDialog from '@/Components/CommitTimeEntryDialog.vue'
+import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
 
 // State
 const page = usePage()
@@ -350,7 +347,8 @@ const closeCommitDialog = () => {
   timerToCommit.value = null
 }
 
-const handleTimeEntryCommitted = async () => {
+const handleTimeEntryCommitted = async ({ timeEntry, timerData }) => {
+  closeCommitDialog()
   activeTimer.value = null
   await fetchCurrentTimer()
 }

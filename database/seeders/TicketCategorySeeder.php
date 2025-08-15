@@ -20,6 +20,8 @@ class TicketCategorySeeder extends Seeder
                 'color' => '#3B82F6',
                 'bg_color' => '#EFF6FF',
                 'icon' => 'LifebuoyIcon',
+                'account_id' => null, // System category
+                'is_system' => true,
                 'is_active' => true,
                 'is_default' => true, // This will be the default category
                 'requires_approval' => false,
@@ -35,6 +37,8 @@ class TicketCategorySeeder extends Seeder
                 'color' => '#10B981',
                 'bg_color' => '#ECFDF5',
                 'icon' => 'WrenchScrewdriverIcon',
+                'account_id' => null, // System category
+                'is_system' => true,
                 'is_active' => true,
                 'is_default' => false,
                 'requires_approval' => true, // Maintenance typically requires approval
@@ -50,6 +54,8 @@ class TicketCategorySeeder extends Seeder
                 'color' => '#8B5CF6',
                 'bg_color' => '#F3F4FF',
                 'icon' => 'CodeBracketIcon',
+                'account_id' => null, // System category
+                'is_system' => true,
                 'is_active' => true,
                 'is_default' => false,
                 'requires_approval' => true,
@@ -65,6 +71,8 @@ class TicketCategorySeeder extends Seeder
                 'color' => '#F59E0B',
                 'bg_color' => '#FFFBEB',
                 'icon' => 'UserGroupIcon',
+                'account_id' => null, // System category
+                'is_system' => true,
                 'is_active' => true,
                 'is_default' => false,
                 'requires_approval' => true,
@@ -80,6 +88,8 @@ class TicketCategorySeeder extends Seeder
                 'color' => '#EF4444',
                 'bg_color' => '#FEF2F2',
                 'icon' => 'ExclamationTriangleIcon',
+                'account_id' => null, // System category
+                'is_system' => true,
                 'is_active' => true,
                 'is_default' => false,
                 'requires_approval' => false, // Emergency tickets don't wait for approval
@@ -95,6 +105,8 @@ class TicketCategorySeeder extends Seeder
                 'color' => '#06B6D4',
                 'bg_color' => '#ECFEFF',
                 'icon' => 'AcademicCapIcon',
+                'account_id' => null, // System category
+                'is_system' => true,
                 'is_active' => true,
                 'is_default' => false,
                 'requires_approval' => true,
@@ -110,6 +122,8 @@ class TicketCategorySeeder extends Seeder
                 'color' => '#64748B',
                 'bg_color' => '#F8FAFC',
                 'icon' => 'DocumentTextIcon',
+                'account_id' => null, // System category
+                'is_system' => true,
                 'is_active' => true,
                 'is_default' => false,
                 'requires_approval' => false,
@@ -121,7 +135,10 @@ class TicketCategorySeeder extends Seeder
         ];
 
         foreach ($categories as $categoryData) {
-            TicketCategory::create($categoryData);
+            TicketCategory::updateOrCreate(
+                ['key' => $categoryData['key']], 
+                $categoryData
+            );
         }
     }
 }

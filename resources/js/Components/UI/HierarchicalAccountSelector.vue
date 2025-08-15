@@ -58,18 +58,42 @@
         <span class="ml-2">Loading accounts...</span>
       </div>
       
-      <div v-else-if="filteredAccounts.length === 0" class="p-4 text-center text-gray-500">
+      <div v-else-if="filteredAccounts.length === 0 && !showCreateOption" class="p-4 text-center text-gray-500">
         {{ searchTerm ? 'No accounts found' : 'No accounts available' }}
+      </div>
+      <div v-else-if="filteredAccounts.length === 0 && showCreateOption" class="px-4 py-2 text-xs text-gray-500 text-center border-t border-gray-100">
+        {{ searchTerm ? 'No existing accounts match your search' : 'No existing accounts' }}
       </div>
       
       <div v-else>
+        <!-- Create New Account Option (always show if enabled) -->
         <div
-          v-for="account in filteredAccounts"
-          :key="account.id"
-          @mousedown.prevent="selectAccount(account)"
-          class="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-          :class="{ 'bg-blue-50': selectedAccount?.id === account.id }"
+          v-if="showCreateOption"
+          @mousedown.prevent="openCreateModal"
+          class="px-4 py-3 hover:bg-green-50 cursor-pointer border-b border-gray-100 bg-green-25"
         >
+          <div class="flex items-center">
+            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-green-700">Create New Account</p>
+              <p class="text-xs text-green-600">Add a new account to the system</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Existing Accounts -->
+        <div v-if="filteredAccounts.length > 0">
+          <div
+            v-for="account in filteredAccounts"
+            :key="account.id"
+            @mousedown.prevent="selectAccount(account)"
+            class="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+            :class="{ 'bg-blue-50': selectedAccount?.id === account.id }"
+          >
           <div class="flex items-center">
             <!-- Indentation for hierarchy -->
             <div :style="{ marginLeft: `${account.level * 16}px` }" class="flex items-center flex-1">
@@ -89,17 +113,30 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
     </div>
     
     <!-- Error Message -->
     <p v-if="error" class="mt-1 text-sm text-red-600">{{ error }}</p>
+    
+    <!-- Create Account Modal (Teleported to body to avoid clipping) -->
+    <Teleport to="body">
+      <AccountFormModal
+        v-if="showCreateOption"
+        :open="showCreateAccountModal"
+        :account="null"
+        @close="closeCreateModal"
+        @saved="handleAccountCreated"
+      />
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, Teleport } from 'vue'
 import axios from 'axios'
+import AccountFormModal from '@/Components/AccountFormModal.vue'
 
 // Props
 const props = defineProps({
@@ -126,11 +163,19 @@ const props = defineProps({
   reopenOnClear: {
     type: Boolean,
     default: true
+  },
+  showCreateOption: {
+    type: Boolean,
+    default: true
+  },
+  preselectedParentId: {
+    type: [String, Number],
+    default: null
   }
 })
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'account-selected'])
+const emit = defineEmits(['update:modelValue', 'account-selected', 'account-created'])
 
 // State
 const inputId = `account-selector-${Math.random().toString(36).substr(2, 9)}`
@@ -141,6 +186,7 @@ const accounts = ref([])
 const selectedAccount = ref(null)
 const dropdown = ref(null)
 const dropupMode = ref(false)
+const showCreateAccountModal = ref(false)
 
 // Computed
 const filteredAccounts = computed(() => {
@@ -215,6 +261,37 @@ const clearSelection = () => {
       }
     }, 10)
   }
+}
+
+const openCreateModal = async () => {
+  showDropdown.value = false
+  
+  // Ensure CSRF token is ready before opening modal
+  try {
+    await window.axios.get('/sanctum/csrf-cookie')
+  } catch (error) {
+    console.error('Failed to initialize CSRF token:', error)
+  }
+  
+  showCreateAccountModal.value = true
+}
+
+const closeCreateModal = () => {
+  showCreateAccountModal.value = false
+}
+
+const handleAccountCreated = (newAccount) => {
+  // Close modal
+  showCreateAccountModal.value = false
+  
+  // Reload accounts to include the new one
+  loadAccounts().then(() => {
+    // Select the newly created account
+    selectAccount(newAccount)
+    
+    // Emit event to parent to refresh account lists if needed
+    emit('account-created', newAccount)
+  })
 }
 
 const handleFocus = () => {

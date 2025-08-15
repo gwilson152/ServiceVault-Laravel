@@ -153,6 +153,14 @@
                                     @update="updateUserManagementSettings"
                                 />
                             </div>
+
+                            <!-- Nuclear Reset Tab -->
+                            <div
+                                v-show="activeTab === 'reset'"
+                                class="space-y-8"
+                            >
+                                <NuclearResetSection />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -184,6 +192,7 @@ import TicketConfiguration from "@/Pages/Settings/Components/TicketConfiguration
 import BillingConfiguration from "@/Pages/Settings/Components/BillingConfigurationNew.vue";
 import TimerSettings from "@/Pages/Settings/Components/TimerSettings.vue";
 import UserManagement from "@/Pages/Settings/Components/UserManagement.vue";
+import NuclearResetSection from "@/Components/Settings/NuclearResetSection.vue";
 import {
     CogIcon,
     EnvelopeIcon,
@@ -191,6 +200,7 @@ import {
     CurrencyDollarIcon,
     ClockIcon,
     UsersIcon,
+    ExclamationTriangleIcon,
 } from "@heroicons/vue/24/outline";
 
 // Tab configuration
@@ -201,6 +211,7 @@ const tabs = [
     { id: "billing", name: "Billing & Addons", icon: CurrencyDollarIcon },
     { id: "timer", name: "Timer Settings", icon: ClockIcon },
     { id: "users", name: "User Management", icon: UsersIcon },
+    { id: "reset", name: "Nuclear Reset", icon: ExclamationTriangleIcon },
 ];
 
 // Reactive state - initialize from props

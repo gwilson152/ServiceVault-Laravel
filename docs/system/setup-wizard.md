@@ -12,13 +12,17 @@ The Setup Wizard guides administrators through complete initial system configura
 
 ## Setup Requirements
 
-Setup wizard only runs when system is empty:
-- No users exist
-- No accounts exist  
-- No system role templates exist
-- No license status configured
+Setup wizard only runs when the `system.setup_complete` setting does not exist or is not set to a truthy value. The system uses a simplified setup detection mechanism for reliability.
 
-If setup is complete, redirects to `Setup/AlreadyComplete.vue`.
+**Setup Detection Logic:**
+- Checks for `system.setup_complete` setting in the database
+- Accepts multiple truthy formats: `true`, `'true'`, `1`, `'1'`
+- Uses cached detection with 5-minute TTL for performance
+
+**Route Protection:**
+- **Before Setup**: All routes except `/setup`, `/api/*`, and `/_*` redirect to setup
+- **After Setup**: Setup routes only accessible to Super Admin users
+- **Middleware**: `CheckSetupStatus` (global) and `ProtectSetup` (setup routes)
 
 ## Configuration Sections
 
@@ -97,18 +101,25 @@ $systemSettings = [
 ];
 ```
 
-### 3. Default Role Templates
-Creates six system role templates:
+### 3. System Data Seeding
+Setup automatically seeds essential system data:
 
-**System Roles:**
+**Role Templates:**
 - **Super Administrator**: Complete system access + role management
 - **System Administrator**: System admin without role template management
-
-**Account Roles:**
 - **Account Manager**: Account-specific management capabilities
 - **Team Lead**: Team oversight and approval workflows  
 - **Employee** (default): Standard time tracking access
 - **Customer**: Portal access with limited visibility
+
+**Ticket Configuration:**
+- **Statuses**: Open, In Progress, Waiting for Customer, On Hold, Resolved, Closed, Cancelled
+- **Categories**: Technical Support, Maintenance, Development, Consulting, Emergency, Training, Documentation
+- **Priorities**: Low, Normal, Medium, High, Urgent (with escalation multipliers)
+
+**Billing Configuration:**
+- **Rates**: Standard ($90), Critical ($130), Development ($65), Travel ($40)
+- **Addon Templates**: Hardware, software licenses, and service offerings
 
 ### 4. Administrator User Creation
 ```php
@@ -118,8 +129,22 @@ $adminUser = User::create([
     'password' => Hash::make($request->admin_password),
     'email_verified_at' => now(),
     'account_id' => $account->id,
+    'user_type' => 'agent', // Admin should be an agent for timer functionality
     'role_template_id' => $superAdminTemplate->id,
 ]);
+```
+
+### 5. Setup Completion
+```php
+// Mark setup as complete
+\App\Models\Setting::create([
+    'key' => 'system.setup_complete',
+    'value' => true,
+    'type' => 'system',
+]);
+
+// Clear setup status cache
+Cache::forget('system_setup_status');
 ```
 
 ## Validation Rules
@@ -193,18 +218,21 @@ const form = useForm({
 
 ## Security Features
 
-1. **One-Time Setup**: Only runs on empty system
-2. **Password Security**: 8+ characters with confirmation
-3. **Email Uniqueness**: Admin email validation
-4. **Input Validation**: Laravel form request validation
-5. **Auto-Login**: Administrator authenticated after setup
+1. **Setup Detection**: Uses `system.setup_complete` setting for reliable detection
+2. **Route Protection**: Middleware prevents access before/after setup based on role
+3. **Password Security**: 8+ characters with confirmation
+4. **Email Uniqueness**: Admin email validation
+5. **Input Validation**: Laravel form request validation
+6. **Seeder Safety**: All seeders use `updateOrCreate()` or `firstOrCreate()` to prevent duplicate key errors
+7. **Stale Session Handling**: Detects and clears authentication sessions from before database reset
 
 ## Post-Setup Actions
 
-1. **Cache Clearing**: Clears setup status cache
-2. **User Authentication**: Logs in new administrator
-3. **Dashboard Redirect**: Redirects to main dashboard
-4. **Success Notification**: Displays setup completion message
+1. **Setup Completion Flag**: Creates `system.setup_complete = true` setting
+2. **Cache Clearing**: Clears setup status cache to force fresh detection
+3. **Browser Cache Clearing**: Sends cache-busting headers to clear browser cache
+4. **Login Redirect**: Redirects to login page instead of auto-authentication
+5. **Success Notification**: Displays setup completion message
 
 ## Testing
 
@@ -241,9 +269,37 @@ public function test_setup_wizard_creates_complete_system()
 ## Error Handling
 
 - **Form Validation**: Inline error display for invalid inputs
-- **Database Errors**: Transaction rollback on setup failure
-- **Duplicate Setup**: Graceful handling of completed setup attempts
+- **Database Errors**: Transaction rollback on setup failure  
+- **Duplicate Key Prevention**: Seeders use safe upsert methods to prevent constraint violations
+- **Stale Authentication**: Middleware detects and clears invalid user sessions
+- **JSON Cast Compatibility**: Setup detection handles different value storage formats
 - **Network Issues**: Retry mechanisms for setup submission
+
+## Middleware Architecture
+
+### CheckSetupStatus Middleware
+- **Purpose**: Redirects users to setup when system is incomplete
+- **Applied**: Globally to all web routes  
+- **Exclusions**: `/setup*`, `/api/*`, `/_*` routes
+- **Cache**: Uses 5-minute cached detection for performance
+
+### ProtectSetup Middleware  
+- **Purpose**: Restricts setup access after completion to Super Admins only
+- **Applied**: Only to setup routes (`/setup*`)
+- **Logic**: 
+  - If setup incomplete → Allow access
+  - If setup complete + not authenticated → Redirect to login
+  - If setup complete + not Super Admin → Redirect to dashboard
+  - If setup complete + Super Admin → Allow access
+
+### Middleware Flow
+```
+Request → CheckSetupStatus → ProtectSetup → SetupController
+    ↓              ↓              ↓              ↓
+Setup incomplete? Setup routes? Super Admin?  Process
+    ↓              ↓              ↓              ↓
+Redirect /setup   Allow access   Allow/Deny    Create/Update
+```
 
 ## Future Enhancements
 

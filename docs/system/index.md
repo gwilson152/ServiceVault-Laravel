@@ -8,6 +8,7 @@ System configuration, setup processes, and operational procedures for Service Va
 - **[Setup Wizard](setup-wizard.md)** - Complete initial system configuration ✅ CURRENT
 - **[Authentication System](authentication-system.md)** - User authentication and authorization ✅ CURRENT
 - **[Email Configuration](email-configuration.md)** - SMTP/IMAP setup with OAuth support ✅ CURRENT
+- **[Nuclear Reset](nuclear-reset.md)** - Complete system reset for development and emergency recovery ⚠️ DESTRUCTIVE
 
 ### System Requirements
 - **PHP 8.2+**: Laravel 12 compatibility
@@ -204,6 +205,18 @@ php artisan view:clear          # Compiled views
 # Permission cache refresh
 redis-cli FLUSHDB              # Clear Redis cache
 ```
+
+### Nuclear System Reset
+For complete system reset (development/emergency recovery):
+```bash
+# Complete system reset (DESTRUCTIVE)
+php artisan system:nuclear-reset --user-id=1
+
+# Manual reset steps
+php artisan migrate:fresh --seed
+php artisan cache:clear
+```
+⚠️ **WARNING**: Nuclear reset completely destroys all data. See [Nuclear Reset Documentation](nuclear-reset.md) for details.
 
 ### Log Management
 ```bash

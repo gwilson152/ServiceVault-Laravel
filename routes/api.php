@@ -374,6 +374,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('settings.user-management');
         Route::put('user-management', [SettingController::class, 'updateUserManagementSettings'])
             ->name('settings.user-management.update');
+        
+        // Nuclear Reset (Super Admin only)
+        Route::post('nuclear-reset', [SettingController::class, 'nuclearReset'])
+            ->name('settings.nuclear-reset');
     });
 
     // Billing Rate Management routes

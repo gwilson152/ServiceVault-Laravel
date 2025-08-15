@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { useCreateAccountMutation, useUpdateAccountMutation, useAccountSelectorQuery } from '@/Composables/queries/useAccountsQuery'
 
 const props = defineProps({
@@ -14,6 +14,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'saved'])
+
+// Dialog ref for native dialog management
+const dialogRef = ref(null)
 
 const form = ref({
     name: '',
@@ -51,8 +54,8 @@ const isEditing = computed(() => !!props.account?.id)
 const modalTitle = computed(() => isEditing.value ? 'Edit Account' : 'Create Account')
 const saving = computed(() => createMutation.isPending.value || updateMutation.isPending.value)
 
-// Watch for changes to populate form
-watch(() => props.open, (isOpen) => {
+// Watch for changes to populate form and manage dialog
+watch(() => props.open, async (isOpen) => {
     if (isOpen) {
         if (props.account) {
             // Editing existing account
@@ -85,6 +88,19 @@ watch(() => props.open, (isOpen) => {
             resetForm()
         }
         errors.value = {}
+        
+        // Open dialog with a small delay to ensure it appears on top
+        await nextTick()
+        setTimeout(() => {
+            if (dialogRef.value) {
+                dialogRef.value.showModal()
+            }
+        }, 50)
+    } else {
+        // Close dialog
+        if (dialogRef.value) {
+            dialogRef.value.close()
+        }
     }
 })
 
@@ -119,6 +135,9 @@ const saveAccount = async () => {
     try {
         errors.value = {}
         
+        // Ensure CSRF token is fresh before making the request
+        await window.axios.get('/sanctum/csrf-cookie')
+        
         if (isEditing.value) {
             const result = await updateMutation.mutateAsync({
                 id: props.account.id,
@@ -132,8 +151,11 @@ const saveAccount = async () => {
         
         emit('close')
     } catch (error) {
+        console.error('Account save error:', error)
         if (error.response?.data?.errors) {
             errors.value = error.response.data.errors
+        } else if (error.response?.status === 419) {
+            errors.value = { general: ['CSRF token mismatch. Please refresh the page and try again.'] }
         } else {
             errors.value = { general: ['An error occurred while saving the account.'] }
         }
@@ -173,9 +195,13 @@ const flatParents = computed(() => flattenAccountTree(availableParents.value?.da
 </script>
 
 <template>
-    <!-- Modal backdrop -->
-    <div v-if="open" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <!-- Native dialog for proper stacking context -->
+    <dialog
+        ref="dialogRef"
+        class="backdrop:bg-gray-500 backdrop:bg-opacity-75 bg-transparent max-w-2xl w-full max-h-[90vh] rounded-lg"
+        @close="closeModal"
+    >
+        <div class="bg-white rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto">
             <!-- Modal header -->
             <div class="px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center justify-between">
@@ -590,5 +616,5 @@ const flatParents = computed(() => flattenAccountTree(availableParents.value?.da
                 </div>
             </form>
         </div>
-    </div>
+    </dialog>
 </template>

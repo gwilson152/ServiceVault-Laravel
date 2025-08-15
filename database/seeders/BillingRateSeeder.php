@@ -51,6 +51,8 @@ class BillingRateSeeder extends Seeder
             );
         }
 
-        $this->command->info('Billing rates seeded successfully.');
+        if ($this->command) {
+            $this->command->info('Billing rates seeded successfully.');
+        }
     }
 }

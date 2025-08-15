@@ -4,10 +4,11 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
-class CheckSetupStatus
+class ProtectSetup
 {
     /**
      * Handle an incoming request.
@@ -16,19 +17,32 @@ class CheckSetupStatus
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip setup check for setup routes, API routes, and system routes
-        if ($request->is('setup*') || $request->is('api/*') || $request->is('_*')) {
-            return $next($request);
-        }
-
         // Check if system is already set up (cache for 5 minutes)
         $isSetup = Cache::remember('system_setup_status', 300, function () {
             return $this->isSystemSetup();
         });
 
-        // If system is not set up, redirect to setup page
+        // If system is not set up, allow access to setup routes
         if (!$isSetup) {
-            return redirect()->route('setup.index');
+            return $next($request);
+        }
+
+        // System is set up - require authentication and Super Admin role
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'You must be logged in to access system setup.');
+        }
+
+        $user = Auth::user();
+
+        // Handle case where user was authenticated before database reset
+        if (!$user || !$user->exists) {
+            Auth::logout();
+            return redirect()->route('login')->with('error', 'Your session has expired. Please log in again.');
+        }
+
+        // Only Super Admin can access setup after system is configured
+        if (!$user->isSuperAdmin()) {
+            return redirect()->route('dashboard')->with('error', 'Access denied. Only Super Administrators can access system setup.');
         }
 
         return $next($request);
