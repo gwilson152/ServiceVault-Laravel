@@ -2,17 +2,31 @@
   <div class="relative" :id="selectorId">
     <!-- Selected Rate Display -->
     <div 
-      v-if="selectedRate"
+      v-if="selectedRate || isNoBilling"
       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-between cursor-pointer hover:border-blue-500 transition-colors"
       @click="clearSelection"
     >
       <div class="flex items-center space-x-2">
         <div class="flex items-center space-x-1">
-          <span class="font-medium">{{ selectedRate.name }}</span>
-          <span class="text-gray-500 dark:text-gray-400">- ${{ selectedRate.rate }}/hr</span>
-          <span v-if="selectedRate.is_default" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-            Default
-          </span>
+          <template v-if="isNoBilling">
+            <span class="font-medium text-gray-600 dark:text-gray-400">No Billing</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+              Non-billable
+            </span>
+          </template>
+          <template v-else>
+            <span class="font-medium">{{ selectedRate.name }}</span>
+            <span class="text-gray-500 dark:text-gray-400">- ${{ selectedRate.rate }}/hr</span>
+            <span v-if="selectedRate.is_default" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+              Default
+            </span>
+            <span v-if="selectedRate.inheritance_source === 'parent'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+              Inherited
+            </span>
+            <span v-if="selectedRate.inheritance_source === 'global'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
+              Global
+            </span>
+          </template>
         </div>
       </div>
       <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,7 +35,7 @@
     </div>
 
     <!-- Search Input (only show when no selection) -->
-    <div v-if="!selectedRate" class="relative">
+    <div v-if="!selectedRate && !isNoBilling" class="relative">
       <input
         :id="inputId"
         v-model="searchTerm"
@@ -47,12 +61,34 @@
 
     <!-- Dropdown List -->
     <div 
-      v-if="isOpen && !selectedRate"
+      v-if="isOpen && !selectedRate && !isNoBilling"
       :class="[
-        'absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-600 rounded-md max-h-60 overflow-auto',
+        'absolute z-[9999] w-full mt-1 bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-600 rounded-md max-h-60 overflow-auto',
         dropupMode ? 'bottom-full mb-1' : 'top-full mt-1'
       ]"
     >
+      <!-- No Billing Option -->
+      <div
+        :class="[
+          'px-3 py-2 cursor-pointer text-sm transition-colors border-b border-gray-200 dark:border-gray-600',
+          highlightedIndex === -1 
+            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100' 
+            : 'text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
+        ]"
+        @click="selectNoBilling"
+        @mouseenter="highlightedIndex = -1"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="font-medium text-gray-600 dark:text-gray-400">No Billing</span>
+            <span class="text-gray-500 dark:text-gray-400">- Non-billable work</span>
+          </div>
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+            Non-billable
+          </span>
+        </div>
+      </div>
+      
       <div v-if="filteredRates.length === 0" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
         {{ isLoading ? 'Loading billing rates...' : 'No billing rates found' }}
       </div>
@@ -78,10 +114,19 @@
             <span v-if="rate.is_default" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
               Default
             </span>
+            <span v-if="rate.inheritance_source === 'parent'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+              Inherited
+            </span>
+            <span v-if="rate.inheritance_source === 'global'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
+              Global
+            </span>
           </div>
         </div>
-        <div v-if="rate.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          {{ rate.description }}
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <div v-if="rate.description">{{ rate.description }}</div>
+          <div v-if="rate.inherited_from_account" class="italic">
+            Inherited from {{ rate.inherited_from_account }}
+          </div>
         </div>
       </div>
     </div>
@@ -128,8 +173,13 @@ const dropupMode = ref(false)
 
 // Find selected rate
 const selectedRate = computed(() => {
-  if (!props.modelValue || !props.rates) return null
+  if (!props.modelValue || !props.rates || props.modelValue === 'no-billing') return null
   return props.rates.find(rate => rate.id == props.modelValue) || null
+})
+
+// Check if "No Billing" is selected
+const isNoBilling = computed(() => {
+  return props.modelValue === 'no-billing'
 })
 
 // Filter rates based on search
@@ -184,6 +234,12 @@ const selectHighlighted = () => {
 const selectRate = (rate) => {
   emit('update:modelValue', rate.id)
   emit('rate-selected', rate)
+  closeDropdown()
+}
+
+const selectNoBilling = () => {
+  emit('update:modelValue', 'no-billing')
+  emit('rate-selected', null)
   closeDropdown()
 }
 

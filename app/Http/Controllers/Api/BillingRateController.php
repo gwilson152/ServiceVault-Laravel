@@ -3,13 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Account;
 use App\Models\BillingRate;
+use App\Services\BillingRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 
 class BillingRateController extends Controller
 {
+    protected BillingRateService $billingRateService;
+    
+    public function __construct(BillingRateService $billingRateService)
+    {
+        $this->billingRateService = $billingRateService;
+    }
+    
     /**
      * Display a listing of billing rates
      */
@@ -17,6 +26,14 @@ class BillingRateController extends Controller
     {
         $user = $request->user();
         
+        // If account_id is provided, return hierarchical rates for that account
+        if ($request->has('account_id') && $request->account_id) {
+            $account = Account::findOrFail($request->account_id);
+            $rates = $this->billingRateService->getAvailableRatesForAccount($account);
+            return response()->json(['data' => $rates]);
+        }
+        
+        // Otherwise return all rates (for settings page)
         $query = BillingRate::query();
         
         // Apply filters
@@ -24,13 +41,16 @@ class BillingRateController extends Controller
             $query->where('is_template', $request->boolean('is_template'));
         }
         
-        
         // Only show rates user can access
         if (!$user->hasAnyPermission(['admin.read', 'billing.manage'])) {
             $query->where('is_active', true);
         }
         
-        $rates = $query->orderBy('name')->get();
+        $rates = $query->with(['account', 'user'])
+            ->orderBy('account_id', 'asc')
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get();
         
         return response()->json(['data' => $rates]);
     }
@@ -50,29 +70,50 @@ class BillingRateController extends Controller
             'name' => 'required|string|max:255',
             'rate' => 'required|numeric|min:0|max:9999.99',
             'description' => 'nullable|string|max:1000',
+            'account_id' => 'nullable|exists:accounts,id',
             'is_template' => 'boolean',
             'is_default' => 'boolean',
             'is_active' => 'boolean'
         ]);
         
-        // Only one default rate
+        // Handle default rate logic
         if ($validated['is_default'] ?? false) {
-            BillingRate::where('is_default', true)
-                ->update(['is_default' => false]);
+            if ($validated['account_id']) {
+                // Only one default rate per account
+                BillingRate::where('account_id', $validated['account_id'])
+                    ->where('is_default', true)
+                    ->update(['is_default' => false]);
+            } else {
+                // Only one global default rate
+                BillingRate::whereNull('account_id')
+                    ->where('is_default', true)
+                    ->update(['is_default' => false]);
+            }
         }
         
         $billingRate = BillingRate::create([
             'name' => $validated['name'],
             'rate' => $validated['rate'],
             'description' => $validated['description'] ?? null,
+            'account_id' => $validated['account_id'] ?? null,
             'is_template' => $validated['is_template'] ?? false,
             'is_default' => $validated['is_default'] ?? false,
             'is_active' => $validated['is_active'] ?? true,
             'created_by' => $user->id
         ]);
         
+        // Clear relevant caches
+        if ($validated['account_id']) {
+            $account = Account::find($validated['account_id']);
+            if ($account) {
+                $this->billingRateService->clearCacheForAccount($account);
+            }
+        } else {
+            $this->billingRateService->clearAllCaches();
+        }
+        
         return response()->json([
-            'data' => $billingRate,
+            'data' => $billingRate->load(['account', 'user']),
             'message' => 'Billing rate created successfully.'
         ], 201);
     }
@@ -106,22 +147,55 @@ class BillingRateController extends Controller
             'name' => 'required|string|max:255',
             'rate' => 'required|numeric|min:0|max:9999.99',
             'description' => 'nullable|string|max:1000',
+            'account_id' => 'nullable|exists:accounts,id',
             'is_template' => 'boolean',
             'is_default' => 'boolean',
             'is_active' => 'boolean'
         ]);
         
-        // Only one default rate
+        // Handle default rate logic
         if ($validated['is_default'] ?? false) {
-            BillingRate::where('is_default', true)
-                ->where('id', '!=', $billingRate->id)
-                ->update(['is_default' => false]);
+            if ($validated['account_id']) {
+                // Only one default rate per account
+                BillingRate::where('account_id', $validated['account_id'])
+                    ->where('is_default', true)
+                    ->where('id', '!=', $billingRate->id)
+                    ->update(['is_default' => false]);
+            } else {
+                // Only one global default rate
+                BillingRate::whereNull('account_id')
+                    ->where('is_default', true)
+                    ->where('id', '!=', $billingRate->id)
+                    ->update(['is_default' => false]);
+            }
         }
+        
+        // Store old account_id for cache clearing
+        $oldAccountId = $billingRate->account_id;
         
         $billingRate->update($validated);
         
+        // Clear relevant caches for both old and new accounts
+        if ($oldAccountId) {
+            $oldAccount = Account::find($oldAccountId);
+            if ($oldAccount) {
+                $this->billingRateService->clearCacheForAccount($oldAccount);
+            }
+        }
+        
+        if ($billingRate->account_id && $billingRate->account_id !== $oldAccountId) {
+            $newAccount = Account::find($billingRate->account_id);
+            if ($newAccount) {
+                $this->billingRateService->clearCacheForAccount($newAccount);
+            }
+        }
+        
+        if (!$oldAccountId && !$billingRate->account_id) {
+            $this->billingRateService->clearAllCaches();
+        }
+        
         return response()->json([
-            'data' => $billingRate,
+            'data' => $billingRate->load(['account', 'user']),
             'message' => 'Billing rate updated successfully.'
         ]);
     }

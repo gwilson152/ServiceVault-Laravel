@@ -85,7 +85,7 @@
     class="fixed bottom-4 right-4 z-50"
   >
     <!-- Connection Status and Controls -->
-    <div class="flex items-center justify-between mb-2" :class="{ 'min-w-80': timers.length === 0 }">
+    <div class="flex items-center mb-2" :class="{ 'min-w-80': timers.length === 0, 'justify-between': timers.length > 1, 'justify-end': timers.length <= 1 }">
       <!-- Totals (if multiple timers) -->
       <div 
         v-if="timers.length > 1"
@@ -275,7 +275,7 @@
               <button
                 @click="toggleTimerExpansion(timer.id)"
                 class="text-gray-400 hover:text-gray-600 transition-colors"
-                :title="isTimerExpanded(timer.id) ? 'Minimize timer' : 'Expand timer'"
+                :title="expandedTimers[timer.id] ? 'Minimize timer' : 'Expand timer'"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>

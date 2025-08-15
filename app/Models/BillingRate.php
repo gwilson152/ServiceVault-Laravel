@@ -21,6 +21,7 @@ class BillingRate extends Model
         'rate',
         'description',
         'is_active',
+        'is_default',
         'user_id',
         'account_id',
     ];
@@ -33,6 +34,7 @@ class BillingRate extends Model
     protected $casts = [
         'rate' => 'decimal:2',
         'is_active' => 'boolean',
+        'is_default' => 'boolean',
     ];
 
     /**

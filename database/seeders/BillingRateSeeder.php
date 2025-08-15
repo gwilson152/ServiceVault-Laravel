@@ -45,10 +45,21 @@ class BillingRateSeeder extends Seeder
         ];
 
         foreach ($billingRates as $rateData) {
-            BillingRate::firstOrCreate(
+            BillingRate::updateOrCreate(
                 ['name' => $rateData['name']],
                 $rateData
             );
+        }
+        
+        // Ensure only one default billing rate exists
+        $defaultCount = BillingRate::where('is_default', true)->count();
+        if ($defaultCount === 0) {
+            // If no default exists, make "Standard Hourly" the default
+            BillingRate::where('name', 'Standard Hourly')->update(['is_default' => true]);
+        } elseif ($defaultCount > 1) {
+            // If multiple defaults exist, keep only "Standard Hourly" as default
+            BillingRate::where('is_default', true)->update(['is_default' => false]);
+            BillingRate::where('name', 'Standard Hourly')->update(['is_default' => true]);
         }
 
         if ($this->command) {

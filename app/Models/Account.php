@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BillingRateService;
 use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -83,6 +84,32 @@ class Account extends Model
     public function roles()
     {
         return $this->hasMany(Role::class);
+    }
+    
+    // Billing relationships
+    public function billingRates()
+    {
+        return $this->hasMany(BillingRate::class);
+    }
+    
+    /**
+     * Get inherited billing rates using the BillingRateService.
+     * 
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getInheritedBillingRates()
+    {
+        return app(BillingRateService::class)->getAvailableRatesForAccount($this);
+    }
+    
+    /**
+     * Get the effective default billing rate for this account.
+     * 
+     * @return BillingRate|null
+     */
+    public function getEffectiveDefaultRate(): ?BillingRate
+    {
+        return app(BillingRateService::class)->getEffectiveRateForAccount($this);
     }
     
     // Business information accessors

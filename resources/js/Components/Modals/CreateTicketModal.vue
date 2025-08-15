@@ -252,6 +252,10 @@ const props = defineProps({
   canAssignTickets: {
     type: Boolean,
     default: false
+  },
+  prefilledAccountId: {
+    type: [String, Number],
+    default: null
   }
 })
 
@@ -310,7 +314,7 @@ const resetForm = () => {
   form.title = ''
   form.description = ''
   form.priority = 'normal'
-  form.account_id = ''
+  form.account_id = props.prefilledAccountId || ''
   form.customer_id = ''
   form.category = ''
   form.due_date = ''

@@ -46,7 +46,10 @@
         :placeholder="ticketPlaceholder"
         :disabled="!form.accountId"
         :error="errors.ticketId"
+        :show-create-option="true"
+        :prefilled-account-id="form.accountId"
         @ticket-selected="handleTicketSelected"
+        @ticket-created="handleTicketCreated"
       />
     </div>
     
@@ -380,7 +383,7 @@ const loadTicketsForAccount = async (accountId) => {
     const response = await axios.get('/api/tickets', {
       params: {
         account_id: accountId,
-        status: 'open,in_progress,assigned', // Only show tickets that can have time logged
+        // Remove restrictive status filter - let users log time to any ticket
         per_page: 100
       }
     })
@@ -399,6 +402,21 @@ const loadBillingRatesForAccount = async (accountId) => {
     const params = accountId ? { account_id: accountId } : {}
     const response = await axios.get('/api/billing-rates', { params })
     availableBillingRates.value = response.data.data || []
+    
+    // Auto-select default billing rate using hierarchical system
+    if (!form.value.billingRateId && availableBillingRates.value.length > 0) {
+      // Find the first rate with the highest inheritance priority
+      // Priority: account default > parent default > global default > first active
+      const defaultRate = availableBillingRates.value.find(rate => {
+        return (rate.inheritance_source === 'account' && rate.is_default) ||
+               (rate.inheritance_source === 'parent' && rate.is_default) ||
+               (rate.inheritance_source === 'global' && rate.is_default)
+      }) || availableBillingRates.value[0] // Fallback to first rate
+      
+      if (defaultRate) {
+        form.value.billingRateId = defaultRate.id
+      }
+    }
   } catch (error) {
     console.error('Failed to load billing rates:', error)
     availableBillingRates.value = []
@@ -430,7 +448,7 @@ const loadUsersForAccount = async (accountId) => {
   }
 }
 
-const handleAccountSelected = (account) => {
+const handleAccountSelected = async (account) => {
   // Clear dependent selections
   form.value.ticketId = null
   form.value.billingRateId = null
@@ -438,13 +456,13 @@ const handleAccountSelected = (account) => {
   // Load dependent data
   if (account) {
     loadTicketsForAccount(account.id)
-    loadBillingRatesForAccount(account.id)
+    await loadBillingRatesForAccount(account.id) // Wait for billing rates to load
     if (props.showUserSelection) {
       loadUsersForAccount(account.id)
     }
   } else {
     availableTickets.value = []
-    loadBillingRatesForAccount(null) // Load global billing rates
+    await loadBillingRatesForAccount(null) // Load global billing rates and wait
     availableUsers.value = []
   }
   
@@ -458,6 +476,14 @@ const handleTicketSelected = (ticket) => {
   }
   
   emit('ticket-changed', ticket)
+}
+
+const handleTicketCreated = (newTicket) => {
+  // Add the newly created ticket to the available tickets list
+  availableTickets.value.push(newTicket)
+  // Auto-select the new ticket
+  form.value.ticketId = newTicket.id
+  handleTicketSelected(newTicket)
 }
 
 const handleRateSelected = (rate) => {
@@ -547,7 +573,7 @@ onMounted(async () => {
   initializeForm()
   
   // Load initial billing rates
-  loadBillingRatesForAccount(form.value.accountId)
+  await loadBillingRatesForAccount(form.value.accountId)
 })
 
 // Watchers
