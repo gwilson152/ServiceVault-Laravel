@@ -20,11 +20,14 @@
             <span v-if="selectedRate.is_default" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
               Default
             </span>
-            <span v-if="selectedRate.inheritance_source === 'parent'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+            <span v-if="selectedRate.inheritance_source === 'account'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+              Account Rate
+            </span>
+            <span v-if="selectedRate.inheritance_source === 'parent'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
               Inherited
             </span>
-            <span v-if="selectedRate.inheritance_source === 'global'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
-              Global
+            <span v-if="selectedRate.inheritance_source === 'global'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+              Global Rate
             </span>
           </template>
         </div>
@@ -93,18 +96,27 @@
         {{ isLoading ? 'Loading billing rates...' : 'No billing rates found' }}
       </div>
       
-      <div
-        v-for="(rate, index) in filteredRates"
-        :key="rate.id"
-        :class="[
-          'px-3 py-2 cursor-pointer text-sm transition-colors',
-          highlightedIndex === index 
-            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100' 
-            : 'text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
-        ]"
-        @click="selectRate(rate)"
-        @mouseenter="highlightedIndex = index"
-      >
+      <template v-else>
+        <template v-for="(rate, index) in filteredRates" :key="rate.id">
+          <!-- Group Header -->
+          <div 
+            v-if="shouldShowGroupHeader(rate, index)"
+            class="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600"
+          >
+            {{ getGroupHeaderLabel(rate.inheritance_source) }}
+          </div>
+          
+          <!-- Rate Item -->
+          <div
+            :class="[
+              'px-3 py-2 cursor-pointer text-sm transition-colors',
+              highlightedIndex === index 
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100' 
+                : 'text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
+            ]"
+            @click="selectRate(rate)"
+            @mouseenter="highlightedIndex = index"
+          >
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
             <span class="font-medium">{{ rate.name }}</span>
@@ -114,21 +126,34 @@
             <span v-if="rate.is_default" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
               Default
             </span>
-            <span v-if="rate.inheritance_source === 'parent'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+            <span v-if="rate.inheritance_source === 'account'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+              Account Rate
+            </span>
+            <span v-if="rate.inheritance_source === 'parent'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
               Inherited
             </span>
-            <span v-if="rate.inheritance_source === 'global'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
-              Global
+            <span v-if="rate.inheritance_source === 'global'" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+              Global Rate
             </span>
           </div>
         </div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          <div v-if="rate.description">{{ rate.description }}</div>
-          <div v-if="rate.inherited_from_account" class="italic">
-            Inherited from {{ rate.inherited_from_account }}
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <div v-if="rate.description">{{ rate.description }}</div>
+              <div v-if="rate.inherited_from_account" class="italic">
+                Inherited from {{ rate.inherited_from_account }}
+              </div>
+            </div>
+          </div>
+        </template>
+        
+        <!-- Hierarchy Info (optional) -->
+        <div v-if="showHierarchyInfo && filteredRates.length > 0" class="px-3 py-2 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="font-medium mb-1">Rate Priority:</p>
+            <p>Account-specific rates override inherited rates, which override global rates.</p>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -152,6 +177,10 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: 'Select billing rate...'
+  },
+  showHierarchyInfo: {
+    type: Boolean,
+    default: false
   },
   reopenOnClear: {
     type: Boolean,
@@ -182,20 +211,47 @@ const isNoBilling = computed(() => {
   return props.modelValue === 'no-billing'
 })
 
-// Filter rates based on search
+// Filter and organize rates based on search and inheritance
 const filteredRates = computed(() => {
   if (!props.rates) return []
   
-  if (!searchTerm.value.trim()) {
-    return props.rates
+  let rates = props.rates
+  
+  // Apply search filter if provided
+  if (searchTerm.value.trim()) {
+    const search = searchTerm.value.toLowerCase()
+    rates = rates.filter(rate => 
+      rate.name.toLowerCase().includes(search) ||
+      rate.rate.toString().includes(search) ||
+      (rate.description && rate.description.toLowerCase().includes(search))
+    )
   }
   
-  const search = searchTerm.value.toLowerCase()
-  return props.rates.filter(rate => 
-    rate.name.toLowerCase().includes(search) ||
-    rate.rate.toString().includes(search) ||
-    (rate.description && rate.description.toLowerCase().includes(search))
-  )
+  // Sort by priority: account-specific rates first, then inherited, then global
+  // Within each group, sort defaults first, then by name
+  return rates.sort((a, b) => {
+    // Priority order: account > parent > global
+    const priorityOrder = { account: 0, parent: 1, global: 2 }
+    const aPriority = priorityOrder[a.inheritance_source] ?? 3
+    const bPriority = priorityOrder[b.inheritance_source] ?? 3
+    
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority
+    }
+    
+    // Within same priority group, defaults first
+    if (a.is_default !== b.is_default) {
+      return b.is_default - a.is_default
+    }
+    
+    // Then sort by rate amount (higher rates first) for easier selection
+    if (a.rate !== b.rate) {
+      return b.rate - a.rate
+    }
+    
+    // Finally sort by name
+    return a.name.localeCompare(b.name)
+  })
 })
 
 // Dropdown positioning
@@ -209,6 +265,26 @@ const checkDropdownPosition = () => {
   const spaceAbove = inputRect.top
   
   dropupMode.value = spaceBelow < 250 && spaceAbove > spaceBelow
+}
+
+// Group header functions
+const shouldShowGroupHeader = (rate, index) => {
+  if (index === 0) return true
+  const previousRate = filteredRates.value[index - 1]
+  return previousRate && previousRate.inheritance_source !== rate.inheritance_source
+}
+
+const getGroupHeaderLabel = (inheritanceSource) => {
+  switch (inheritanceSource) {
+    case 'account':
+      return '📋 Account-Specific Rates'
+    case 'parent':
+      return '🔗 Inherited from Parent Account'
+    case 'global':
+      return '🌐 Global Default Rates'
+    default:
+      return 'Other Rates'
+  }
 }
 
 // Keyboard navigation

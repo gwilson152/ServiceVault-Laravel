@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Service Vault timer overlay uses **Inertia.js persistent layouts** to maintain timer state and WebSocket connections across all page navigation. This ensures a seamless user experience without timer interruptions during page transitions. The overlay features a **dockable interface** with user preference persistence for positioning flexibility.
+The Service Vault timer overlay uses **Inertia.js persistent layouts** to maintain timer state and WebSocket connections across all page navigation. This ensures a seamless user experience without timer interruptions during page transitions. The overlay features a **dual-mode interface** with dockable corner positioning and a fully moveable panel with user preference persistence for maximum positioning flexibility.
 
 ## Architecture
 
@@ -34,8 +34,10 @@ defineOptions({
 - ✅ **No "connecting" messages** between pages
 - ✅ **Timer state persists** across all page transitions
 - ✅ **Improved performance** - layout doesn't re-render
-- ✅ **Dockable positioning** with user preference persistence
-- ✅ **Wider dialog forms** for improved usability (960px)
+- ✅ **Dual-mode positioning** with docked corner and moveable panel modes
+- ✅ **User preference persistence** for position and dock status
+- ✅ **Drag-to-move functionality** for flexible positioning
+- ✅ **Compact panel design** optimized for screen space
 
 ## Technical Implementation
 
@@ -82,59 +84,109 @@ Pages are structured without layout wrappers:
 </template>
 ```
 
-## Dockable Interface System
+## Dual-Mode Interface System
 
 ### User Preference Persistence
 
-The timer overlay features a dockable interface with database-backed user preferences:
+The timer overlay features a dual-mode interface with database-backed user preferences:
 
 ```javascript
-// User preference structure
+// User preference structure for dock status
 {
   key: 'timer_overlay_docked',
-  value: boolean // true = docked to left, false = floating on right
+  value: boolean // true = docked corner mode, false = moveable panel mode
+}
+
+// User preference structure for panel position
+{
+  key: 'timer_overlay_position',
+  value: {
+    x: number, // X coordinate in pixels
+    y: number  // Y coordinate in pixels
+  }
 }
 ```
 
-### Position Management
+### Interface Modes
 
-**Default Position (Undocked):**
+**Docked Mode (Default):**
 - Location: `fixed bottom-4 right-4 z-50`
-- Behavior: Traditional floating overlay
-- Best for: Primary timer users who want overlay out of the way
+- Behavior: Traditional corner overlay with horizontal timer cards
+- Layout: Forms on left, timer badges on right
+- Best for: Users who prefer the familiar corner interface
 
-**Docked Position:**
-- Location: `fixed bottom-4 left-4 z-50` 
-- Behavior: Anchored to app menu side
-- Best for: Heavy timer users who want quick access
+**Undocked Mode (Moveable Panel):**
+- Location: User-defined position via drag and drop
+- Behavior: Compact moveable panel with unified timer list
+- Layout: Vertical list format with compact timer rows
+- Features: 
+  - Drag-to-move functionality
+  - Compact design (min-w-72 max-w-80)
+  - Persistent position storage
+  - Integrated forms within panel
+- Best for: Users who want flexible positioning and compact timer management
 
-### Dock Toggle Interface
+### Mode Toggle Interface
 
-Users can toggle between positions via the dock button:
+Users can toggle between docked and undocked modes via the dock/undock button:
 
+**In Docked Mode:**
 ```vue
-<!-- Dock Toggle Button -->
+<!-- Undock Button (in docked mode) -->
 <button
   @click="toggleDockPosition"
-  class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
-  :title="isDocked ? 'Undock (move to bottom-right)' : 'Dock (move to bottom-left)'"
+  :title="'Undock to moveable panel'"
 >
   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path v-if="isDocked" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-    <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
   </svg>
-  <span>{{ isDocked ? 'Undock' : 'Dock' }}</span>
+  <span>Undock</span>
 </button>
 ```
 
-### Enhanced Form Dimensions
+**In Undocked Mode:**
+```vue
+<!-- Dock Button (in undocked panel header) -->
+<button
+  @click="toggleDockPosition"
+  title="Dock to corner"
+>
+  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+  </svg>
+</button>
+```
 
-Timer creation and edit forms now use wider dimensions for better usability:
+### Drag-to-Move Functionality
 
-- **Previous Width**: 320px (`w-80`)
-- **Current Width**: 960px (`w-240`)
-- **Improvement**: 200% wider for comfortable field interaction
-- **Responsive**: Maintains horizontal layout with forms on left, timers on right
+The undocked panel features full drag-and-drop positioning:
+
+**Drag Behavior:**
+- Drag by clicking anywhere on the panel header or non-interactive areas
+- Automatic boundary constraints to keep panel within viewport
+- Real-time position updates with smooth movement
+- Position automatically saved to user preferences
+
+**Interactive Elements Protection:**
+- Buttons, inputs, selects, textareas, and contenteditable elements don't trigger drag
+- Forms remain fully functional within the moveable panel
+- Click-through behavior preserved for all controls
+
+**Implementation:**
+```javascript
+// Enhanced drag prevention for form elements
+const startPanelDrag = (e) => {
+  if (isDocked.value || 
+      e.target.closest('button') || 
+      e.target.closest('input') || 
+      e.target.closest('select') || 
+      e.target.closest('textarea') || 
+      e.target.closest('[contenteditable]')) {
+    return // Don't drag when clicking interactive elements
+  }
+  // ... drag logic
+}
+```
 
 ## TanStack Query Integration
 
@@ -311,6 +363,126 @@ const navigateToTicket = (ticketId) => {
 - [Real-Time Broadcasting](../architecture/real-time-broadcasting.md)
 - [TanStack Query Integration](../development/tanstack-query.md)
 
+## User Preference API
+
+The dual-mode interface integrates with the user preferences system:
+
+### API Endpoints
+
+```bash
+# Get user's dock status preference
+GET /api/user-preferences/timer_overlay_docked
+
+# Get user's panel position preference
+GET /api/user-preferences/timer_overlay_position
+
+# Set dock status preference  
+POST /api/user-preferences
+{
+  "key": "timer_overlay_docked",
+  "value": true|false
+}
+
+# Set panel position preference
+POST /api/user-preferences
+{
+  "key": "timer_overlay_position",
+  "value": {
+    "x": 100,
+    "y": 100
+  }
+}
+
+# Update existing preferences
+PUT /api/user-preferences/timer_overlay_docked
+{
+  "value": true|false
+}
+
+PUT /api/user-preferences/timer_overlay_position
+{
+  "value": {
+    "x": 250,
+    "y": 150
+  }
+}
+```
+
+### Database Structure
+
+```sql
+-- User preferences table
+CREATE TABLE user_preferences (
+    id BIGINT PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    key VARCHAR(100) NOT NULL,
+    value JSON NOT NULL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    UNIQUE(user_id, key)
+);
+```
+
+### Implementation Example
+
+```javascript
+// Reactive state for both preferences
+const isDocked = ref(true) // Default to docked mode
+const panelPosition = reactive({ x: 100, y: 100 }) // Default panel position
+
+// Load user preferences on component mount
+const loadUserPreferences = async () => {
+  if (!user.value?.id) return
+  
+  try {
+    // Load dock status preference
+    const dockResponse = await window.axios.get('/api/user-preferences/timer_overlay_docked')
+    isDocked.value = dockResponse.data?.data?.value !== false // Default to docked (true)
+    
+    // Load panel position preference
+    try {
+      const positionResponse = await window.axios.get('/api/user-preferences/timer_overlay_position')
+      if (positionResponse.data?.data?.value) {
+        Object.assign(panelPosition, positionResponse.data.data.value)
+      }
+    } catch (posError) {
+      // Keep default position if preference doesn't exist
+    }
+  } catch (error) {
+    // Default to docked if preference doesn't exist
+    isDocked.value = true
+  }
+}
+
+// Save dock status when user toggles mode
+const toggleDockPosition = async () => {
+  const newPosition = !isDocked.value
+  isDocked.value = newPosition
+  
+  await window.axios.post('/api/user-preferences', {
+    key: 'timer_overlay_docked',
+    value: newPosition
+  })
+}
+
+// Save panel position when drag ends
+const savePanelPosition = async () => {
+  if (!user.value?.id) return
+  
+  try {
+    await window.axios.post('/api/user-preferences', {
+      key: 'timer_overlay_position',
+      value: {
+        x: panelPosition.x,
+        y: panelPosition.y
+      }
+    })
+  } catch (error) {
+    console.error('Failed to save panel position preference:', error)
+  }
+}
+```
+
 ---
 
-*Last Updated: August 14, 2025 - Added Critical Navigation Requirements and Troubleshooting Guide*
+*Last Updated: August 15, 2025 - Enhanced with Dual-Mode Interface: Dockable Corner and Moveable Panel with Drag-to-Move Functionality*

@@ -1,5 +1,5 @@
 <template>
-  <Modal :show="show" @close="closeDialog" max-width="lg">
+  <Modal :show="show" @close="closeDialog" max-width="3xl">
     <div class="p-6">
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
@@ -32,200 +32,239 @@
           </div>
         </div>
 
-        <!-- Timer Context Section (shared with TimerConfigurationForm) -->
-        <div class="space-y-4">
-          <h4 class="text-md font-medium text-gray-900">Context & Assignment</h4>
-          
-          <!-- Account Selection (if not pre-selected) -->
-          <div v-if="!contextAccount">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Account <span class="text-red-500">*</span>
-            </label>
-            <HierarchicalAccountSelector
-              v-model="form.accountId"
-              :required="true"
-              :error="errors.accountId"
-              @account-selected="handleAccountSelected"
-            />
-          </div>
-          
-          <!-- Ticket Selection (if not pre-selected) -->
-          <div v-if="!contextTicket">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Ticket <span class="text-red-500">*</span>
-            </label>
-            <TicketSelector
-              v-model="form.ticketId"
-              :tickets="availableTickets"
-              :is-loading="ticketsLoading"
-              :required="true"
-              :disabled="!form.accountId"
-              :error="errors.ticketId"
-              @ticket-selected="handleTicketSelected"
-            />
-          </div>
-          
-          <!-- Assigned User (for managers/admins) -->
-          <div v-if="canAssignToOthers">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Assigned User
-            </label>
-            <UserSelector
-              v-model="form.userId"
-              :users="availableUsers"
-              :is-loading="usersLoading"
-              :show-create-option="false"
-              :error="errors.userId"
-              @user-selected="handleUserSelected"
-            />
-          </div>
-        </div>
-
-        <!-- Time Entry Details -->
-        <div class="space-y-4">
-          <h4 class="text-md font-medium text-gray-900">Time Details</h4>
-          
-          <!-- Description -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Description <span class="text-red-500">*</span>
-            </label>
-            <textarea
-              v-model="form.description"
-              rows="3"
-              :required="validation.description.required"
-              placeholder="Describe the work performed..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-            ></textarea>
-            <div v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</div>
-          </div>
-
-          <!-- Date and Time -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Date <span class="text-red-500">*</span>
-              </label>
-              <input
-                v-model="form.date"
-                type="date"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-              <div v-if="errors.date" class="mt-1 text-sm text-red-600">{{ errors.date }}</div>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Start Time <span class="text-red-500">*</span>
-              </label>
-              <input
-                v-model="form.startTime"
-                type="time"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-              <div v-if="errors.startTime" class="mt-1 text-sm text-red-600">{{ errors.startTime }}</div>
-            </div>
-          </div>
-
-          <!-- Duration -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Duration <span class="text-red-500">*</span>
-            </label>
-            <div class="flex items-center space-x-3">
-              <div class="flex items-center space-x-2">
-                <input
-                  v-model.number="form.durationHours"
-                  type="number"
-                  min="0"
-                  max="23"
-                  placeholder="0"
-                  class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+        <!-- Two-column layout for larger screens -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Left Column -->
+          <div class="space-y-6">
+            <!-- Timer Context Section -->
+            <div class="space-y-4">
+              <h4 class="text-md font-medium text-gray-900">Context & Assignment</h4>
+              
+              <!-- Account Selection (if not pre-selected) -->
+              <div v-if="!contextAccount">
+                <HierarchicalAccountSelector
+                  v-model="form.accountId"
+                  label="Account"
+                  :required="true"
+                  :error="errors.accountId"
+                  @account-selected="handleAccountSelected"
                 />
-                <span class="text-sm text-gray-600">hours</span>
               </div>
-              <div class="flex items-center space-x-2">
-                <input
-                  v-model.number="form.durationMinutes"
-                  type="number"
-                  min="0"
-                  max="59"
-                  placeholder="0"
-                  class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+              
+              <!-- Ticket Selection (if not pre-selected) -->
+              <div v-if="!contextTicket">
+                <TicketSelector
+                  v-model="form.ticketId"
+                  label="Ticket"
+                  :tickets="availableTickets"
+                  :is-loading="ticketsLoading"
+                  :required="true"
+                  :disabled="!form.accountId"
+                  :error="errors.ticketId"
+                  @ticket-selected="handleTicketSelected"
                 />
-                <span class="text-sm text-gray-600">minutes</span>
               </div>
-              <div class="text-sm text-gray-500">
-                Total: {{ formatDuration(totalDurationSeconds) }}
+              
+              <!-- Agent Assignment (for managers/admins) -->
+              <div v-if="canAssignToOthers">
+                <UserSelector
+                  v-model="form.userId"
+                  label="Agent/Employee"
+                  :users="availableUsers"
+                  :is-loading="usersLoading"
+                  :show-create-option="false"
+                  :error="errors.userId"
+                  @user-selected="handleUserSelected"
+                />
+                <p class="mt-1 text-xs text-gray-500">The agent who performed this work</p>
               </div>
             </div>
-            <div v-if="errors.duration" class="mt-1 text-sm text-red-600">{{ errors.duration }}</div>
-            <div v-if="durationValidationErrors.length > 0" class="mt-1">
-              <div v-for="error in durationValidationErrors" :key="error" class="text-sm text-red-600">{{ error }}</div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Billing Information -->
-        <div class="space-y-4">
-          <h4 class="text-md font-medium text-gray-900">Billing & Rates</h4>
-          
-          <!-- Billing Rate -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Billing Rate
-            </label>
-            <BillingRateSelector
-              v-model="form.billingRateId"
-              :rates="availableBillingRates"
-              :is-loading="billingRatesLoading"
-              placeholder="No billing rate"
-              :error="errors.billingRateId"
-              @rate-selected="handleRateSelected"
-            />
-          </div>
+            <!-- Time Entry Details -->
+            <div class="space-y-4">
+              <h4 class="text-md font-medium text-gray-900">Time Details</h4>
+              
+              <!-- Description -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Description <span class="text-red-500">*</span>
+                </label>
+                <textarea
+                  v-model="form.description"
+                  rows="3"
+                  :required="validation.description.required"
+                  placeholder="Describe the work performed..."
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                ></textarea>
+                <div v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</div>
+              </div>
 
-          <!-- Billable Status -->
-          <div class="flex items-center">
-            <input
-              id="billable"
-              v-model="form.billable"
-              type="checkbox"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-            />
-            <label for="billable" class="ml-2 text-sm text-gray-700">
-              This time is billable to the client
-            </label>
-          </div>
-
-          <!-- Billing Amount (if billable and rate selected) -->
-          <div v-if="form.billable && selectedBillingRate">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Billing Amount
-            </label>
-            <div class="flex items-center space-x-4">
-              <div class="flex-1">
-                <div class="relative">
-                  <span class="absolute left-3 top-2 text-gray-500">$</span>
+              <!-- Date and Time -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Date <span class="text-red-500">*</span>
+                  </label>
                   <input
-                    v-model.number="form.billingAmount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    readonly
-                    class="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-600"
+                    v-model="form.date"
+                    type="date"
+                    required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                  <div v-if="errors.date" class="mt-1 text-sm text-red-600">{{ errors.date }}</div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Start Time <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    v-model="form.startTime"
+                    type="time"
+                    required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <div v-if="errors.startTime" class="mt-1 text-sm text-red-600">{{ errors.startTime }}</div>
                 </div>
               </div>
-              <div class="text-sm text-gray-600">
-                Rate: ${{ selectedBillingRate.rate }}/hour
+
+              <!-- Duration -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Duration <span class="text-red-500">*</span>
+                </label>
+                <div class="flex items-center space-x-3">
+                  <div class="flex items-center space-x-2">
+                    <input
+                      v-model.number="form.durationHours"
+                      type="number"
+                      min="0"
+                      max="23"
+                      placeholder="0"
+                      class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <span class="text-sm text-gray-600">hours</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <input
+                      v-model.number="form.durationMinutes"
+                      type="number"
+                      min="0"
+                      max="59"
+                      placeholder="0"
+                      class="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <span class="text-sm text-gray-600">minutes</span>
+                  </div>
+                  <div class="text-sm text-gray-500">
+                    Total: {{ formatDuration(totalDurationSeconds) }}
+                  </div>
+                </div>
+                <div v-if="errors.duration" class="mt-1 text-sm text-red-600">{{ errors.duration }}</div>
+                <div v-if="durationValidationErrors.length > 0" class="mt-1">
+                  <div v-for="error in durationValidationErrors" :key="error" class="text-sm text-red-600">{{ error }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-6">
+            <!-- Billing Information -->
+            <div class="space-y-4">
+              <h4 class="text-md font-medium text-gray-900">Billing & Rates</h4>
+              
+              <!-- Billing Rate -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Billing Rate
+                </label>
+                <BillingRateSelector
+                  v-model="form.billingRateId"
+                  :rates="availableBillingRates"
+                  :is-loading="billingRatesLoading"
+                  :show-hierarchy-info="true"
+                  placeholder="No billing rate"
+                  :error="errors.billingRateId"
+                  @rate-selected="handleRateSelected"
+                />
+              </div>
+
+              <!-- Billable Status -->
+              <div class="flex items-center">
+                <input
+                  id="billable"
+                  v-model="form.billable"
+                  type="checkbox"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label for="billable" class="ml-2 text-sm text-gray-700">
+                  This time is billable to the client
+                </label>
+              </div>
+
+              <!-- Billing Amount (if billable and rate selected) -->
+              <div v-if="form.billable && selectedBillingRate">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Billing Amount
+                </label>
+                <div class="flex items-center space-x-4">
+                  <div class="flex-1">
+                    <div class="relative">
+                      <span class="absolute left-3 top-2 text-gray-500">$</span>
+                      <input
+                        v-model.number="form.billingAmount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        readonly
+                        class="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-600"
+                      />
+                    </div>
+                  </div>
+                  <div class="text-sm text-gray-600">
+                    Rate: ${{ selectedBillingRate.rate }}/hour
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Internal Notes (Optional)
+              </label>
+              <textarea
+                v-model="form.notes"
+                rows="3"
+                placeholder="Add any internal notes about this time entry..."
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+              ></textarea>
+            </div>
+
+            <!-- Manual Time Override (Timer Commit Mode) -->
+            <div v-if="mode === 'timer-commit' && allowManualTimeOverride">
+              <div class="border-t border-gray-200 pt-4">
+                <div class="flex items-center">
+                  <input
+                    id="manual-override"
+                    v-model="form.useManualOverride"
+                    type="checkbox"
+                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label for="manual-override" class="ml-2 text-sm text-gray-700">
+                    Override timer duration with manual entry above
+                  </label>
+                </div>
+                <div v-if="form.useManualOverride" class="mt-2 text-sm text-yellow-600">
+                  The timer will be marked as committed, but the duration from your manual entry above will be used instead.
+                </div>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Full-width sections -->
         <!-- Approval Workflow -->
         <div v-if="requiresApproval" class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
           <div class="flex items-start">
@@ -237,39 +276,6 @@
               <p class="text-sm text-yellow-700 mt-1">
                 This time entry will require approval from a manager before being finalized.
               </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Notes -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Internal Notes (Optional)
-          </label>
-          <textarea
-            v-model="form.notes"
-            rows="2"
-            placeholder="Add any internal notes about this time entry..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-          ></textarea>
-        </div>
-
-        <!-- Manual Time Override (Timer Commit Mode) -->
-        <div v-if="mode === 'timer-commit' && allowManualTimeOverride">
-          <div class="border-t border-gray-200 pt-4">
-            <div class="flex items-center">
-              <input
-                id="manual-override"
-                v-model="form.useManualOverride"
-                type="checkbox"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label for="manual-override" class="ml-2 text-sm text-gray-700">
-                Override timer duration with manual entry above
-              </label>
-            </div>
-            <div v-if="form.useManualOverride" class="mt-2 text-sm text-yellow-600">
-              The timer will be marked as committed, but the duration from your manual entry above will be used instead.
             </div>
           </div>
         </div>
@@ -661,7 +667,7 @@ const resetForm = () => {
     description: '',
     accountId: null,
     ticketId: null,
-    userId: user.value?.id,
+    userId: user.value?.id, // Default to current user
     billingRateId: null,
     billable: settings.value.default_billable !== false,
     date: new Date().toISOString().split('T')[0],
@@ -676,15 +682,17 @@ const resetForm = () => {
   errors.value = {}
 }
 
-const initializeForm = () => {
+const initializeForm = async () => {
   // Reset form first
   resetForm()
   
   // Apply context data
   if (props.contextAccount) {
     form.value.accountId = props.contextAccount.id
-    loadTicketsForAccount(props.contextAccount.id)
-    loadBillingRatesForAccount(props.contextAccount.id)
+    await Promise.all([
+      loadTicketsForAccount(props.contextAccount.id),
+      loadBillingRatesForAccount(props.contextAccount.id)
+    ])
   }
   
   if (props.contextTicket) {
@@ -697,22 +705,61 @@ const initializeForm = () => {
   
   // Timer commit mode initialization
   if (props.mode === 'timer-commit' && props.timerData) {
+    console.log('Initializing timer commit with data:', props.timerData)
     form.value.description = props.timerData.description || ''
+    
+    // Set account and load related data
     if (props.timerData.account_id) {
       form.value.accountId = props.timerData.account_id
-      loadTicketsForAccount(props.timerData.account_id)
+      
+      // Load all related data in parallel and wait for completion
+      const loadPromises = [
+        loadTicketsForAccount(props.timerData.account_id),
+        loadBillingRatesForAccount(props.timerData.account_id)
+      ]
+      
+      // If user can assign to others, load users too
+      if (canAssignToOthers.value) {
+        loadPromises.push(loadUsersForAccount(props.timerData.account_id))
+      }
+      
+      await Promise.all(loadPromises)
     }
+    
+    // Set ticket ID (now that tickets are loaded)
     if (props.timerData.ticket_id) {
       form.value.ticketId = props.timerData.ticket_id
     }
+    
+    // Set billing rate ID (now that billing rates are loaded)
     if (props.timerData.billing_rate_id) {
       form.value.billingRateId = props.timerData.billing_rate_id
+    }
+    
+    // Set assigned user to timer's user (the person who ran the timer)
+    if (props.timerData.user_id) {
+      form.value.userId = props.timerData.user_id
     }
     
     // Calculate timer duration and estimated value
     const timerDuration = calculateTimerDuration()
     form.value.durationHours = Math.floor(timerDuration / 3600)
     form.value.durationMinutes = Math.floor((timerDuration % 3600) / 60)
+    
+    // Set the start time to timer's start time
+    if (props.timerData.started_at) {
+      const startDate = new Date(props.timerData.started_at)
+      form.value.date = startDate.toISOString().split('T')[0]
+      form.value.startTime = startDate.toTimeString().slice(0, 5)
+    }
+    
+    console.log('Form initialized with:', {
+      accountId: form.value.accountId,
+      ticketId: form.value.ticketId,
+      billingRateId: form.value.billingRateId,
+      userId: form.value.userId,
+      description: form.value.description
+    })
   }
   
   // Edit mode initialization
@@ -747,9 +794,9 @@ const initializeForm = () => {
 }
 
 // Watchers
-watch(() => props.show, (newValue) => {
+watch(() => props.show, async (newValue) => {
   if (newValue) {
-    initializeForm()
+    await initializeForm()
   }
 })
 
@@ -762,9 +809,9 @@ watch(() => form.value.billable, () => {
 })
 
 // Initialize on mount if dialog is already open
-onMounted(() => {
+onMounted(async () => {
   if (props.show) {
-    initializeForm()
+    await initializeForm()
   }
 })
 </script>

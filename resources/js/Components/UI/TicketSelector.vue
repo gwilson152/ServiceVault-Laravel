@@ -426,14 +426,22 @@ const getStatusClasses = (statusName) => {
 // Initialize selected ticket from modelValue
 const initializeSelectedTicket = () => {
     if (props.modelValue && props.tickets.length > 0) {
-        const ticket = props.tickets.find((t) => t.id === props.modelValue);
+        const ticket = props.tickets.find((t) => t.id == props.modelValue);
         if (ticket) {
             selectedTicket.value = ticket;
         }
+    } else if (!props.modelValue) {
+        selectedTicket.value = null;
     }
 };
 
 // Watchers
-watch(() => props.modelValue, initializeSelectedTicket);
-watch(() => props.tickets, initializeSelectedTicket);
+watch(() => props.modelValue, (newValue) => {
+    console.log('TicketSelector modelValue changed to:', newValue);
+    initializeSelectedTicket();
+});
+watch(() => props.tickets, (newTickets) => {
+    console.log('TicketSelector tickets updated:', newTickets.length, 'tickets');
+    initializeSelectedTicket();
+});
 </script>

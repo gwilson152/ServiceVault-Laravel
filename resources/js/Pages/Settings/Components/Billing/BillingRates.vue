@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between">
       <div>
         <h3 class="text-lg font-medium text-gray-900">Billing Rates</h3>
-        <p class="text-gray-600 mt-1">Manage hourly rates for different users and accounts</p>
+        <p class="text-gray-600 mt-1">Manage global and account-specific hourly rates with inheritance hierarchy</p>
       </div>
       <button
         @click="showCreateModal = true"
@@ -16,6 +16,28 @@
         </svg>
         Add New Rate
       </button>
+    </div>
+
+    <!-- Rate Hierarchy Info -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h4 class="text-sm font-medium text-blue-800">Rate Override Hierarchy</h4>
+          <div class="mt-2 text-sm text-blue-700">
+            <p class="mb-2">Billing rates follow a simple hierarchy (highest to lowest priority):</p>
+            <ol class="list-decimal list-inside space-y-1 ml-2">
+              <li><strong>Account-specific rates</strong> - Rates set for individual accounts (created here or on account detail pages)</li>
+              <li><strong>Global rates</strong> - Default rates used when no account-specific overrides exist</li>
+            </ol>
+            <p class="mt-2 text-xs">Account rates automatically inherit to child accounts unless specifically overridden.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -35,12 +57,35 @@
           class="flex items-center justify-between p-6 hover:bg-gray-50"
         >
           <div class="flex-1">
-            <h4 class="text-sm font-medium text-gray-900">{{ rate.name }}</h4>
-            <p class="text-xs text-gray-500 mt-1">{{ rate.description }}</p>
-            <div class="text-xs text-gray-500 mt-1">
-              <span v-if="rate.account">Account: {{ rate.account.name }}</span>
-              <span v-else-if="rate.user">User: {{ rate.user.name }}</span>
-              <span v-else>Global Rate</span>
+            <div class="flex items-center space-x-3">
+              <h4 class="text-sm font-medium text-gray-900">{{ rate.name }}</h4>
+              <span v-if="rate.is_default" :class="[
+                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                rate.account ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+              ]">
+                {{ rate.account ? 'Account Default' : 'Global Default' }}
+              </span>
+              <span :class="[
+                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                rate.account ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-green-50 text-green-700 border border-green-200'
+              ]">
+                {{ rate.account ? 'Account Rate' : 'Global Rate' }}
+              </span>
+            </div>
+            <p v-if="rate.description" class="text-xs text-gray-500 mt-1">{{ rate.description }}</p>
+            <div class="text-xs text-gray-500 mt-1 space-y-0.5">
+              <div v-if="rate.account" class="flex items-center">
+                <svg class="w-3 h-3 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" clip-rule="evenodd" />
+                </svg>
+                Account: {{ rate.account.name }}
+              </div>
+              <div v-else class="flex items-center">
+                <svg class="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                </svg>
+                Available globally to all users and accounts
+              </div>
             </div>
           </div>
           <div class="flex items-center space-x-4">
@@ -107,6 +152,7 @@
     <BillingRateModal
       :show="showCreateModal || showEditModal"
       :rate="selectedRate"
+      mode="global"
       @close="closeModal"
       @saved="handleRateSaved"
     />
@@ -116,7 +162,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useBillingRatesQuery, useDeleteBillingRateMutation } from '@/Composables/queries/useBillingQuery'
-import BillingRateModal from './BillingRateModal.vue'
+import BillingRateModal from '@/Components/Billing/BillingRateModal.vue'
 
 // TanStack Query hooks
 const { data: billingRates, isLoading } = useBillingRatesQuery()

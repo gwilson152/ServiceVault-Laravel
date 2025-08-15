@@ -158,6 +158,7 @@
       :show="showCreateModal"
       :rate="selectedRate"
       :account-id="accountId"
+      mode="account"
       @close="closeModal"
       @saved="handleRateSaved"
     />
@@ -166,7 +167,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import BillingRateModal from '@/Components/Settings/BillingRateModal.vue'
+import BillingRateModal from '@/Components/Billing/BillingRateModal.vue'
 import axios from 'axios'
 
 // Props

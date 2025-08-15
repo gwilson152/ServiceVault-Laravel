@@ -24,7 +24,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Optimistic Drag-Drop UX**: Instant visual feedback with background persistence and error recovery for all configuration ordering
 - **Widget-Based Dashboard System**: 14+ permission-filtered widgets with auto-discovery and responsive grid layout
 - **Comprehensive Tickets Page**: Full-featured ticket management with advanced filtering, dual view modes, and addon integration
-- **Enhanced Real-Time Multi-Timer System**: Live duration updates, cross-component sync, manual time override, optimized bulk queries, professional commit workflows, and persistent timer overlay with Inertia.js layouts
+- **Enhanced Real-Time Multi-Timer System**: Live duration updates, cross-component sync, manual time override, optimized bulk queries, professional commit workflows, and dual-mode persistent timer overlay (dockable corner + moveable panel) with Inertia.js layouts
 - **Advanced Email Configuration System**: Wizard-style SMTP/IMAP setup with OAuth2 and app password support, provider templates, manual port configuration, real-time testing, and horizontal scrolling navigation
 - **Service Ticket Integration**: Complete workflow system with timer integration, inline controls, and addon cost tracking
 - **TimeEntry Management**: Comprehensive approval workflows with bulk operations, statistical tracking, and tabbed interface with integrated timer management
@@ -43,7 +43,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 
 **Phase 15A+ Recent Completions:**
 - **Enhanced Ticket Detail Pages**: Fully functional central hub with all tabs working (messages, time tracking, addons, activity, billing)
-- **Refined Timer Broadcast Overlay**: Smart overlay with Agent/Customer filtering, quick-start functionality, and gradient glass effect design
+- **Dual-Mode Timer Overlay System**: Smart overlay with dockable corner mode and moveable panel mode, featuring drag-to-move functionality, user preference persistence, compact design, and Agent/Customer filtering with quick-start functionality
 - **Complete Account Management**: Full account detail pages with comprehensive CRUD operations
 - **Invitation Acceptance Workflow**: Complete user onboarding with timezone detection and role assignment
 - **Customer Portal Foundation**: Portal dashboard and project interfaces for customer users
