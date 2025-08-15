@@ -305,6 +305,59 @@ $user->hasPermission('pages.tickets.manage');      // Page Access
 
 **Permission Storage:** Role templates store three separate arrays (`permissions`, `widget_permissions`, `page_permissions`) with unified checking via `hasPermission()` method.
 
+**⚠️ CRITICAL Permission Requirements:**
+- **Timer Assignment UI**: Requires `timers.admin`, `time.admin`, OR `admin.write` permissions
+- **Agent API Access**: Requires `admin.write` permission (not just `admin.manage`)
+- **Three-Dimensional Checking**: Use `RoleTemplate.getAllPermissions()` which merges all dimensions
+
+## Feature-Specific Agent Permission System
+
+Service Vault implements a comprehensive feature-specific agent permission system that provides granular control over which users can act as agents for different system features. See [Feature-Specific Agent Permissions](docs/features/feature-specific-agent-permissions.md) for complete details.
+
+**Core Agent Permissions:**
+- `timers.act_as_agent` - Timer creation and assignment
+- `tickets.act_as_agent` - Ticket assignment and management  
+- `time.act_as_agent` - Time entry creation and assignment
+- `billing.act_as_agent` - Billing responsibility assignment
+
+**Multi-Layer Agent Determination:**
+1. **Primary**: Users with `user_type = 'agent'`
+2. **Secondary**: Users with feature-specific `*.act_as_agent` permissions
+3. **Tertiary**: Internal account users with relevant fallback permissions
+
+**API Integration:**
+```bash
+# Feature-specific agent endpoints
+GET /api/users/agents?agent_type=timer          # Timer agents
+GET /api/users/agents?agent_type=time           # Time entry agents  
+GET /api/users/assignable                       # Ticket agents (uses tickets.act_as_agent)
+GET /api/users/billing-agents                   # Billing agents
+```
+
+**Component Integration:**
+```vue
+<!-- StartTimerModal uses timer agent type -->
+<AgentSelector agent-type="timer" :agents="availableAgents" />
+
+<!-- UnifiedTimeEntryDialog uses time agent type -->
+<AgentSelector agent-type="time" :agents="availableAgents" />
+```
+
+**Permission Helper Methods:**
+```php
+// In UserController
+private function getRequiredAgentPermission(string $agentType): string
+{
+    return match($agentType) {
+        'timer' => 'timers.act_as_agent',
+        'ticket' => 'tickets.act_as_agent',
+        'time' => 'time.act_as_agent', 
+        'billing' => 'billing.act_as_agent',
+        default => 'timers.act_as_agent'
+    };
+}
+```
+
 ## 📚 Detailed Technical Documentation
 
 For comprehensive technical details, refer to the organized documentation in `/docs/`:
@@ -312,6 +365,7 @@ For comprehensive technical details, refer to the organized documentation in `/d
 ### **Core System Architecture**
 - **[Authentication System](docs/system/authentication-system.md)** - Laravel Sanctum, token management, domain-based assignment
 - **[Three-Dimensional Permissions](docs/architecture/three-dimensional-permissions.md)** - Functional + Widget + Page permission system
+- **[Feature-Specific Agent Permissions](docs/features/feature-specific-agent-permissions.md)** - Granular agent assignment control with multi-layer determination
 - **[Timer System Architecture](docs/architecture/timer-system.md)** - Multi-timer design, Redis state, real-time sync
 - **[Time Management](docs/features/time-management.md)** - Tabbed interface, API endpoints, permission matrix
 
@@ -325,4 +379,4 @@ This CLAUDE.md file focuses on essential information for AI development assistan
 
 ---
 
-*Last Updated: August 15, 2025 - Two-Tier Billing Rate System: Simplified hierarchy (Account-specific → Global), unified components, enhanced UI with visual indicators and shared modal architecture*
+*Last Updated: August 15, 2025 - Feature-Specific Agent Permission System: Granular agent assignment control with four specialized permissions (timers, tickets, time, billing), multi-layer determination logic, and comprehensive API integration*

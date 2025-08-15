@@ -380,62 +380,7 @@
       </div>
     </div>
 
-    <!-- Quick Start Form -->
-    <div
-      v-if="showQuickStart"
-      class="p-3 border-b border-gray-200 dark:border-gray-700"
-    >
-      <TimerConfigurationForm
-        ref="quickStartFormRef"
-        mode="create"
-        :compact-mode="true"
-        :show-labels="false"
-        :show-user-selection="false"
-        description-placeholder="Timer description..."
-        account-placeholder="No account (general timer)"
-        ticket-placeholder="No specific ticket"
-        billing-rate-placeholder="No billing rate"
-        @submit="startQuickTimer"
-        @cancel="closeQuickStart"
-        />
-    </div>
 
-    <!-- Timer Settings Form -->
-    <div
-      v-if="showTimerSettings"
-      class="p-3 border-b border-gray-200 dark:border-gray-700"
-    >
-      <!-- Settings Header -->
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Timer Settings
-        </h3>
-        <button
-          @click.stop="closeTimerSettings"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Timer Configuration Form -->
-      <TimerConfigurationForm
-        ref="timerSettingsFormRef"
-        mode="edit"
-        :timer-data="currentTimerSettings"
-        :show-labels="true"
-        :show-account-selection="true"
-        :show-ticket-selection="true"
-        :show-user-selection="false"
-        :show-cancel-button="true"
-        :compact-mode="true"
-        description-placeholder="Enter timer description..."
-        @submit="saveTimerSettings"
-        @cancel="closeTimerSettings"
-        />
-    </div>
 
     <!-- Timer List -->
     <div class="p-3">
@@ -607,7 +552,6 @@ import { usePage } from '@inertiajs/vue3'
 import { useBillingRatesQuery } from '@/Composables/queries/useBillingQuery'
 import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'
 import { useLocalStorageReactive } from '@/Composables/useLocalStorageReactive.js'
-import TimerConfigurationForm from '@/Components/Timer/TimerConfigurationForm.vue'
 import StartTimerModal from '@/Components/Timer/StartTimerModal.vue'
 import Modal from '@/Components/Modal.vue'
 import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'

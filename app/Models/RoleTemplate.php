@@ -82,7 +82,12 @@ class RoleTemplate extends Model
             return $this->getAllPossiblePermissions();
         }
         
-        return $this->permissions ?? [];
+        // Merge all three permission dimensions for comprehensive permission checking
+        return array_unique(array_merge(
+            $this->permissions ?? [],
+            $this->widget_permissions ?? [],
+            $this->page_permissions ?? []
+        ));
     }
     
     /**
@@ -205,6 +210,12 @@ class RoleTemplate extends Model
             'timers.read',
             'timers.write',
             'timers.delete',
+            
+            // Feature-Specific Agent Designations
+            'timers.act_as_agent',
+            'tickets.act_as_agent',
+            'time.act_as_agent',
+            'billing.act_as_agent',
             
             // Customer Portal
             'portal.access',

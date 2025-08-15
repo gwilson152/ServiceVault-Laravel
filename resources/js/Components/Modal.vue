@@ -14,6 +14,10 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    nested: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const emit = defineEmits(['close']);
@@ -72,15 +76,20 @@ const maxWidthClass = computed(() => {
         '2xl': 'sm:max-w-2xl',
     }[props.maxWidth];
 });
+
+const zIndexClass = computed(() => {
+    // Use higher z-index for nested modals
+    return props.nested ? 'z-60' : 'z-50';
+});
 </script>
 
 <template>
     <dialog
-        class="z-50 m-0 min-h-full min-w-full overflow-y-auto bg-transparent backdrop:bg-transparent"
+        :class="[zIndexClass, 'm-0 min-h-full min-w-full overflow-y-auto bg-transparent backdrop:bg-transparent']"
         ref="dialog"
     >
         <div
-            class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0"
+            :class="['fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0', zIndexClass]"
             scroll-region
         >
             <Transition

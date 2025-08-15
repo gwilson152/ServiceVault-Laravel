@@ -479,6 +479,157 @@ Get accounts assigned to the user with role context information.
 }
 ```
 
+## Agent Assignment Endpoints
+
+Service Vault includes specialized endpoints for agent assignment with feature-specific permission filtering.
+
+### Get Available Agents
+
+```http
+GET /api/users/agents
+```
+
+Retrieve users who can act as agents for specific features, with multi-layer permission filtering.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `agent_type` | string | Feature type: `timer`, `ticket`, `time`, `billing` (default: `timer`) |
+| `account_id` | integer | Filter by account assignment (optional) |
+| `search` | string | Search in name and email fields |
+| `per_page` | integer | Results per page (default: 100) |
+
+**Agent Types & Permissions:**
+
+| Agent Type | Required Permission | Fallback Permissions |
+|------------|-------------------|---------------------|
+| `timer` | `timers.act_as_agent` | `timers.write`, `timers.manage` |
+| `ticket` | `tickets.act_as_agent` | `tickets.assign`, `tickets.manage` |
+| `time` | `time.act_as_agent` | `time.track`, `time.manage` |
+| `billing` | `billing.act_as_agent` | `billing.manage`, `billing.admin` |
+
+**Agent Determination Logic:**
+
+1. **Primary**: Users with `user_type = 'agent'`
+2. **Secondary**: Users with feature-specific `*.act_as_agent` permission
+3. **Tertiary**: Internal account users with relevant fallback permissions
+
+**Example Request:**
+
+```bash
+curl -X GET "/api/users/agents?agent_type=timer&account_id=1&search=john" \
+  -H "Authorization: Bearer {token}"
+```
+
+**Example Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": 5,
+      "name": "John Smith", 
+      "email": "john@serviceprovider.com",
+      "user_type": "agent",
+      "is_active": true,
+      "account": {
+        "id": 1,
+        "name": "Service Provider Inc",
+        "account_type": "internal"
+      },
+      "role_template": {
+        "id": 3,
+        "name": "Service Agent",
+        "permissions": ["timers.act_as_agent", "timers.write"]
+      },
+      "agent_priority": 1
+    }
+  ],
+  "message": "Available agents retrieved successfully"
+}
+```
+
+**Required Permissions:** `timers.admin`, `time.admin`, `admin.write`
+
+### Get Ticket Assignable Users
+
+```http
+GET /api/users/assignable
+```
+
+Retrieve users who can be assigned to tickets, using `tickets.act_as_agent` permission.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `account_id` | integer | Filter by account assignment (optional) |
+| `search` | string | Search in name and email fields |
+
+**Example Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": 7,
+      "name": "Sarah Johnson",
+      "email": "sarah@serviceprovider.com", 
+      "user_type": "agent",
+      "account": {
+        "account_type": "internal"
+      },
+      "role_template": {
+        "permissions": ["tickets.act_as_agent", "tickets.manage"]
+      }
+    }
+  ],
+  "message": "Assignable users retrieved successfully"
+}
+```
+
+**Required Permissions:** `tickets.assign`, `admin.write`
+
+### Get Billing Agents
+
+```http
+GET /api/users/billing-agents
+```
+
+Retrieve users who can be responsible for billing operations, using `billing.act_as_agent` permission.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `account_id` | integer | Filter by account assignment (optional) |
+| `search` | string | Search in name and email fields |
+
+**Example Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": 9,
+      "name": "Mike Wilson",
+      "email": "mike@serviceprovider.com",
+      "user_type": "agent", 
+      "account": {
+        "account_type": "internal"
+      },
+      "role_template": {
+        "permissions": ["billing.act_as_agent", "billing.manage"]
+      }
+    }
+  ],
+  "message": "Available billing agents retrieved successfully"
+}
+```
+
+**Required Permissions:** `billing.admin`, `billing.manage`, `admin.write`
+
 ## Error Responses
 
 The API returns standard HTTP status codes and error messages:
@@ -579,6 +730,20 @@ curl -X POST "/api/users" \
 
 ```bash
 curl -X GET "/api/users?search=manager&status=active&role_template_id=2" \
+  -H "Authorization: Bearer {token}"
+```
+
+### Get Timer Agents for Account
+
+```bash
+curl -X GET "/api/users/agents?agent_type=timer&account_id=5" \
+  -H "Authorization: Bearer {token}"
+```
+
+### Get Available Billing Agents
+
+```bash
+curl -X GET "/api/users/billing-agents?search=manager" \
   -H "Authorization: Bearer {token}"
 ```
 

@@ -15,6 +15,7 @@ A comprehensive B2B **ticketing/service request platform** with time management 
 ### Core Features
 
 - **Enhanced Agent/Customer Architecture**: Clear separation between service providers (Agents) and customers (Account Users) with role-based time entry creation
+- **Feature-Specific Agent Permissions**: Granular agent assignment control with four specialized permissions (timers, tickets, time, billing) and multi-layer determination logic
 - **TanStack Query Optimization**: Complete migration to TanStack Query with reactive caching, optimistic updates, and background synchronization
 - **ABAC Permission System**: Comprehensive attribute-based access control for timer operations with UI-level permission enforcement
 - **Enhanced Selector Components**: Professional selectors with integrated creation workflows - HierarchicalAccountSelector and UserSelector both include "Create New" functionality with CSRF protection
@@ -65,6 +66,7 @@ For complete setup instructions, see [System Documentation](system/index.md).
 ### 🎯 Key Features
 
 - **[Agent/Customer Architecture](features/agent-customer-architecture.md)** - Enhanced user type system with role-based access control
+- **[Feature-Specific Agent Permissions](features/feature-specific-agent-permissions.md)** - Granular agent assignment control with feature-based permissions
 - **[Enhanced Timer Assignment](features/enhanced-timer-assignment.md)** - Flexible timer assignment with billing context validation
 - **[Three-Dimensional Permissions](features/roles-permissions.md)** - Comprehensive permission system guide
 - **[User Management](features/user-management.md)** - Invitation-based user onboarding with visibility controls

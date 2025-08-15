@@ -67,16 +67,17 @@
               
               <!-- Agent Assignment (for managers/admins) -->
               <div v-if="canAssignToOthers">
-                <UserSelector
+                <AgentSelector
                   v-model="form.userId"
-                  label="Agent/Employee"
-                  :users="availableUsers"
-                  :is-loading="usersLoading"
-                  :show-create-option="false"
+                  label="Service Agent"
+                  :agents="availableAgents"
+                  :is-loading="agentsLoading"
                   :error="errors.userId"
-                  @user-selected="handleUserSelected"
+                  :agent-type="'time'"
+                  placeholder="Select the agent who performed this work..."
+                  @agent-selected="handleAgentSelected"
                 />
-                <p class="mt-1 text-xs text-gray-500">The agent who performed this work</p>
+                <p class="mt-1 text-xs text-gray-500">The service agent who performed this work</p>
               </div>
             </div>
 
@@ -317,7 +318,7 @@ import Modal from '@/Components/Modal.vue'
 import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
 import TicketSelector from '@/Components/UI/TicketSelector.vue'
 import BillingRateSelector from '@/Components/UI/BillingRateSelector.vue'
-import UserSelector from '@/Components/UI/UserSelector.vue'
+import AgentSelector from '@/Components/UI/AgentSelector.vue'
 import { useTimerSettings } from '@/Composables/useTimerSettings.js'
 import axios from 'axios'
 
@@ -384,10 +385,10 @@ const isSubmitting = ref(false)
 // Data loading states
 const availableTickets = ref([])
 const availableBillingRates = ref([])
-const availableUsers = ref([])
+const availableAgents = ref([])
 const ticketsLoading = ref(false)
 const billingRatesLoading = ref(false)
-const usersLoading = ref(false)
+const agentsLoading = ref(false)
 
 // Settings flags
 const allowManualTimeOverride = computed(() => settings.value.allow_manual_time_override !== false)
@@ -510,6 +511,16 @@ const loadBillingRatesForAccount = async (accountId) => {
     const params = accountId ? { account_id: accountId } : {}
     const response = await axios.get('/api/billing-rates', { params })
     availableBillingRates.value = response.data.data || []
+    
+    // Auto-select default billing rate if no rate is currently selected
+    if (!form.value.billingRateId && availableBillingRates.value.length > 0) {
+      const defaultRate = availableBillingRates.value.find(rate => rate.is_default)
+      if (defaultRate) {
+        form.value.billingRateId = defaultRate.id
+        // Recalculate billing amount with the default rate
+        calculateBillingAmount()
+      }
+    }
   } catch (error) {
     console.error('Failed to load billing rates:', error)
     availableBillingRates.value = []
@@ -518,27 +529,26 @@ const loadBillingRatesForAccount = async (accountId) => {
   }
 }
 
-const loadUsersForAccount = async (accountId) => {
-  if (!accountId) {
-    availableUsers.value = []
-    return
-  }
-  
-  usersLoading.value = true
+const loadAgentsForAccount = async (accountId) => {
+  agentsLoading.value = true
   try {
-    const response = await axios.get('/api/users', {
-      params: {
-        account_id: accountId,
-        user_type: 'agent', // Only load agent users for time entry assignment
-        per_page: 100
-      }
-    })
-    availableUsers.value = response.data.data || []
+    const params = {
+      per_page: 100,
+      agent_type: 'time' // Specify time entry agent type
+    }
+    
+    // Only filter by account if one is specified
+    if (accountId) {
+      params.account_id = accountId
+    }
+    
+    const response = await axios.get('/api/users/agents', { params })
+    availableAgents.value = response.data.data || []
   } catch (error) {
-    console.error('Failed to load users:', error)
-    availableUsers.value = []
+    console.error('Failed to load time entry agents:', error)
+    availableAgents.value = []
   } finally {
-    usersLoading.value = false
+    agentsLoading.value = false
   }
 }
 
@@ -552,12 +562,12 @@ const handleAccountSelected = (account) => {
     loadTicketsForAccount(account.id)
     loadBillingRatesForAccount(account.id)
     if (canAssignToOthers.value) {
-      loadUsersForAccount(account.id)
+      loadAgentsForAccount(account.id)
     }
   } else {
     availableTickets.value = []
     loadBillingRatesForAccount(null)
-    availableUsers.value = []
+    availableAgents.value = []
   }
 }
 
@@ -568,7 +578,7 @@ const handleTicketSelected = (ticket) => {
     // Load dependent data for the new account
     loadBillingRatesForAccount(ticket.account_id)
     if (canAssignToOthers.value) {
-      loadUsersForAccount(ticket.account_id)
+      loadAgentsForAccount(ticket.account_id)
     }
   }
   
@@ -584,7 +594,7 @@ const handleRateSelected = (rate) => {
   calculateBillingAmount()
 }
 
-const handleUserSelected = (user) => {
+const handleAgentSelected = (agent) => {
   // Additional logic if needed
 }
 
@@ -727,7 +737,7 @@ const initializeForm = async () => {
       
       // If user can assign to others, load users too
       if (canAssignToOthers.value) {
-        loadPromises.push(loadUsersForAccount(props.timerData.account_id))
+        loadPromises.push(loadAgentsForAccount(props.timerData.account_id))
       }
       
       await Promise.all(loadPromises)

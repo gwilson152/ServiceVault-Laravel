@@ -16,6 +16,87 @@ use Illuminate\Validation\Rule;
 class UserController extends Controller
 {
     /**
+     * Get agents that can be assigned to timers and time entries
+     */
+    public function agents(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        // Check if user has permission to assign work to agents
+        if (!$user->hasAnyPermission(['timers.admin', 'time.admin', 'admin.write'])) {
+            return response()->json([
+                'message' => 'Insufficient permissions to view available agents'
+            ], 403);
+        }
+        
+        // Build query for agents with feature-specific permission filtering
+        $agentType = $request->get('agent_type', 'timer'); // Default to timer for backward compatibility
+        $requiredPermission = $this->getRequiredAgentPermission($agentType);
+        $fallbackPermissions = $this->getFallbackPermissions($agentType);
+        
+        $query = User::with(['account', 'roleTemplate'])
+            ->where('is_active', true)
+            ->where(function ($q) use ($requiredPermission, $fallbackPermissions) {
+                // Primary: Users explicitly designated as agents
+                $q->where('user_type', 'agent')
+                  // Secondary: Users with feature-specific agent permission
+                  ->orWhereHas('roleTemplate', function ($roleQuery) use ($requiredPermission) {
+                      $roleQuery->where('permissions', 'like', "%{$requiredPermission}%");
+                  })
+                  // Tertiary: Internal account users with relevant permissions (fallback)
+                  ->orWhere(function ($subQuery) use ($fallbackPermissions) {
+                      $subQuery->whereHas('account', function ($accountQuery) {
+                          $accountQuery->where('account_type', 'internal');
+                      })
+                      ->whereHas('roleTemplate', function ($roleQuery) use ($fallbackPermissions) {
+                          $orConditions = $roleQuery;
+                          foreach ($fallbackPermissions as $permission) {
+                              $orConditions = $orConditions->orWhere('permissions', 'like', "%{$permission}%");
+                          }
+                          return $orConditions;
+                      });
+                  });
+            });
+        
+        // Apply filters
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%");
+            });
+        }
+        
+        // Filter by account if specified
+        if ($request->filled('account_id')) {
+            $query->where('account_id', $request->account_id);
+        }
+        
+        // Order by agent type priority and then name
+        $query->orderByRaw("
+            CASE 
+                WHEN user_type = 'agent' AND EXISTS(
+                    SELECT 1 FROM accounts WHERE accounts.id = users.account_id AND accounts.account_type = 'internal'
+                ) THEN 1
+                WHEN user_type = 'agent' THEN 2
+                WHEN EXISTS(
+                    SELECT 1 FROM role_templates 
+                    WHERE role_templates.id = users.role_template_id 
+                    AND role_templates.permissions::text LIKE '%timers.act_as_agent%'
+                ) THEN 3
+                ELSE 4
+            END
+        ")->orderBy('name');
+        
+        $agents = $query->get();
+        
+        return response()->json([
+            'data' => UserResource::collection($agents),
+            'message' => 'Available agents retrieved successfully'
+        ]);
+    }
+
+    /**
      * Get users that can be assigned to tickets
      */
     public function assignableUsers(Request $request): JsonResponse
@@ -29,14 +110,52 @@ class UserController extends Controller
             ], 403);
         }
         
-        // Get all active users for now (simplified to avoid role template complexity)
-        $assignableUsers = User::select('id', 'name', 'email')
+        // Use the feature-specific agent filtering for ticket assignments
+        $requiredPermission = 'tickets.act_as_agent';
+        $fallbackPermissions = ['tickets.assign', 'tickets.manage'];
+        
+        $query = User::with(['account', 'roleTemplate'])
             ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+            ->where(function ($q) use ($requiredPermission, $fallbackPermissions) {
+                // Primary: Users explicitly designated as agents
+                $q->where('user_type', 'agent')
+                  // Secondary: Users with ticket agent permission
+                  ->orWhereHas('roleTemplate', function ($roleQuery) use ($requiredPermission) {
+                      $roleQuery->where('permissions', 'like', "%{$requiredPermission}%");
+                  })
+                  // Tertiary: Internal account users with ticket permissions (fallback)
+                  ->orWhere(function ($subQuery) use ($fallbackPermissions) {
+                      $subQuery->whereHas('account', function ($accountQuery) {
+                          $accountQuery->where('account_type', 'internal');
+                      })
+                      ->whereHas('roleTemplate', function ($roleQuery) use ($fallbackPermissions) {
+                          $orConditions = $roleQuery;
+                          foreach ($fallbackPermissions as $permission) {
+                              $orConditions = $orConditions->orWhere('permissions', 'like', "%{$permission}%");
+                          }
+                          return $orConditions;
+                      });
+                  });
+            });
+        
+        // Apply filters
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%");
+            });
+        }
+        
+        // Filter by account if specified
+        if ($request->filled('account_id')) {
+            $query->where('account_id', $request->account_id);
+        }
+        
+        $assignableUsers = $query->orderBy('name')->get();
         
         return response()->json([
-            'data' => $assignableUsers,
+            'data' => UserResource::collection($assignableUsers),
             'message' => 'Assignable users retrieved successfully'
         ]);
     }
@@ -428,5 +547,113 @@ class UserController extends Controller
         }
             
         return response()->json(['data' => $accounts]);
+    }
+    
+    /**
+     * Get users that can be responsible for billing operations (billing rates, invoices, etc.)
+     */
+    public function billingAgents(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        // Check if user has permission to assign billing responsibilities
+        if (!$user->hasAnyPermission(['billing.admin', 'billing.manage', 'admin.write'])) {
+            return response()->json([
+                'message' => 'Insufficient permissions to view billing agents'
+            ], 403);
+        }
+        
+        // Use the feature-specific agent filtering for billing responsibilities
+        $requiredPermission = 'billing.act_as_agent';
+        $fallbackPermissions = ['billing.manage', 'billing.admin'];
+        
+        $query = User::with(['account', 'roleTemplate'])
+            ->where('is_active', true)
+            ->where(function ($q) use ($requiredPermission, $fallbackPermissions) {
+                // Primary: Users explicitly designated as agents
+                $q->where('user_type', 'agent')
+                  // Secondary: Users with billing agent permission
+                  ->orWhereHas('roleTemplate', function ($roleQuery) use ($requiredPermission) {
+                      $roleQuery->where('permissions', 'like', "%{$requiredPermission}%");
+                  })
+                  // Tertiary: Internal account users with billing permissions (fallback)
+                  ->orWhere(function ($subQuery) use ($fallbackPermissions) {
+                      $subQuery->whereHas('account', function ($accountQuery) {
+                          $accountQuery->where('account_type', 'internal');
+                      })
+                      ->whereHas('roleTemplate', function ($roleQuery) use ($fallbackPermissions) {
+                          $orConditions = $roleQuery;
+                          foreach ($fallbackPermissions as $permission) {
+                              $orConditions = $orConditions->orWhere('permissions', 'like', "%{$permission}%");
+                          }
+                          return $orConditions;
+                      });
+                  });
+            });
+        
+        // Apply filters
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%");
+            });
+        }
+        
+        // Filter by account if specified
+        if ($request->filled('account_id')) {
+            $query->where('account_id', $request->account_id);
+        }
+        
+        // Order by billing agent priority and then name
+        $query->orderByRaw("
+            CASE 
+                WHEN user_type = 'agent' AND EXISTS(
+                    SELECT 1 FROM accounts WHERE accounts.id = users.account_id AND accounts.account_type = 'internal'
+                ) THEN 1
+                WHEN user_type = 'agent' THEN 2
+                WHEN EXISTS(
+                    SELECT 1 FROM role_templates 
+                    WHERE role_templates.id = users.role_template_id 
+                    AND role_templates.permissions::text LIKE '%billing.act_as_agent%'
+                ) THEN 3
+                ELSE 4
+            END
+        ")->orderBy('name');
+        
+        $billingAgents = $query->get();
+        
+        return response()->json([
+            'data' => UserResource::collection($billingAgents),
+            'message' => 'Available billing agents retrieved successfully'
+        ]);
+    }
+
+    /**
+     * Get required agent permission based on agent type
+     */
+    private function getRequiredAgentPermission(string $agentType): string
+    {
+        return match($agentType) {
+            'timer' => 'timers.act_as_agent',
+            'ticket' => 'tickets.act_as_agent',
+            'time' => 'time.act_as_agent',
+            'billing' => 'billing.act_as_agent',
+            default => 'timers.act_as_agent' // Default for backward compatibility
+        };
+    }
+    
+    /**
+     * Get fallback permissions for agent type
+     */
+    private function getFallbackPermissions(string $agentType): array
+    {
+        return match($agentType) {
+            'timer' => ['timers.write', 'timers.manage'],
+            'ticket' => ['tickets.assign', 'tickets.manage'],
+            'time' => ['time.track', 'time.manage'],
+            'billing' => ['billing.manage', 'billing.admin'],
+            default => ['timers.write', 'timers.manage'] // Default for backward compatibility
+        };
     }
 }

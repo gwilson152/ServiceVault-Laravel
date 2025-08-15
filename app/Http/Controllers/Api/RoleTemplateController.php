@@ -519,6 +519,10 @@ class RoleTemplateController extends Controller
             'time.approve' => 'Approve time entries submitted by team members',
             'billing.view.account' => 'View billing information for accessible accounts',
             'portal.access' => 'Access customer portal interface',
+            'timers.act_as_agent' => 'Can be assigned timers for time tracking purposes',
+            'tickets.act_as_agent' => 'Can be assigned service tickets and manage customer requests',
+            'time.act_as_agent' => 'Can create and manage time entries for service delivery',
+            'billing.act_as_agent' => 'Can be assigned billing responsibilities and manage invoices',
         ];
         
         return $descriptions[$permission] ?? ucwords(str_replace(['.', '_'], [' ', ' '], $permission));

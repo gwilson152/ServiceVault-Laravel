@@ -7,6 +7,7 @@ System configuration, setup processes, and operational procedures for Service Va
 ### Initial Setup
 - **[Setup Wizard](setup-wizard.md)** - Complete initial system configuration ✅ CURRENT
 - **[Authentication System](authentication-system.md)** - User authentication and authorization ✅ CURRENT
+- **[Permission System Fixes 2025-08](permission-system-fixes-2025-08.md)** - Critical permission reconciliation and three-dimensional fixes ✅ CURRENT
 - **[Email Configuration](email-configuration.md)** - SMTP/IMAP setup with OAuth support ✅ CURRENT
 - **[Nuclear Reset](nuclear-reset.md)** - Complete system reset for development and emergency recovery ⚠️ DESTRUCTIVE
 

@@ -1,5 +1,5 @@
 <template>
-  <Modal :show="show" @close="$emit('close')" max-width="2xl">
+  <Modal :show="show" @close="$emit('close')" max-width="2xl" :nested="nested">
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
         <h3 class="text-lg font-semibold text-gray-900">Create New Ticket</h3>
@@ -256,6 +256,10 @@ const props = defineProps({
   prefilledAccountId: {
     type: [String, Number],
     default: null
+  },
+  nested: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -440,29 +444,27 @@ const loadAgentsForAccount = async (accountId) => {
   
   isLoadingAgents.value = true
   try {
-    const response = await axios.get(`/api/accounts/${accountId}/agents`, {
-      params: {
-        per_page: 100
-      }
-    })
-    
-    availableAgents.value = response.data.data || []
-  } catch (error) {
-    console.error('Failed to load agents:', error)
-    // If specific endpoint doesn't exist, try loading all users with agent role
-    try {
-      const response = await axios.get('/api/users', {
-        params: {
-          role_context: 'agent',
-          account_id: accountId,
-          per_page: 100
-        }
-      })
-      availableAgents.value = response.data.data || []
-    } catch (fallbackError) {
-      console.error('Failed to load agents (fallback):', fallbackError)
-      availableAgents.value = []
+    // Use the same endpoint as StartTimerModal for consistency
+    const params = {
+      per_page: 100,
+      agent_type: 'ticket' // Specify ticket agent type
     }
+    
+    // Only filter by account if one is specified
+    if (accountId) {
+      params.account_id = accountId
+    }
+    
+    const response = await axios.get('/api/users/agents', { params })
+    availableAgents.value = response.data.data || []
+    
+    console.log('Loaded ticket agents for assignment:', {
+      count: availableAgents.value.length,
+      accountId
+    })
+  } catch (error) {
+    console.error('Failed to load ticket agents:', error)
+    availableAgents.value = []
   } finally {
     isLoadingAgents.value = false
   }

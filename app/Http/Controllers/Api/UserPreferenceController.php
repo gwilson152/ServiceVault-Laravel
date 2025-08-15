@@ -54,10 +54,16 @@ class UserPreferenceController extends Controller
     {
         $value = $request->user()->getPreference($key);
 
+        // Define default values for known UI preferences
+        $defaults = [
+            'timer_overlay_docked' => true,
+            'timer_overlay_position' => ['x' => 100, 'y' => 100],
+            'show_timer_overlay' => true,
+        ];
+
+        // If value doesn't exist, use default if available, otherwise return null
         if ($value === null) {
-            return response()->json([
-                'message' => 'Preference not found'
-            ], 404);
+            $value = $defaults[$key] ?? null;
         }
 
         return response()->json([

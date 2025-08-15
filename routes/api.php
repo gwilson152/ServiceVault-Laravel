@@ -40,8 +40,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     
     // User management routes
+    Route::get('users/agents', [App\Http\Controllers\Api\UserController::class, 'agents'])
+        ->name('users.agents');
     Route::get('users/assignable', [App\Http\Controllers\Api\UserController::class, 'assignableUsers'])
         ->name('users.assignable');
+    Route::get('users/billing-agents', [App\Http\Controllers\Api\UserController::class, 'billingAgents'])
+        ->name('users.billing-agents');
     
     // Full user management API
     Route::apiResource('users', App\Http\Controllers\Api\UserController::class);

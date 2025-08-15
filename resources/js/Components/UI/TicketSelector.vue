@@ -221,6 +221,9 @@
                     v-if="showCreateOption"
                     :show="showCreateTicketModal"
                     :prefilled-account-id="prefilledAccountId"
+                    :available-accounts="availableAccounts"
+                    :can-assign-tickets="canAssignTickets"
+                    :nested="true"
                     @close="closeCreateModal"
                     @created="handleTicketCreated"
                 />
@@ -278,6 +281,14 @@ const props = defineProps({
     prefilledAccountId: {
         type: [String, Number],
         default: null,
+    },
+    availableAccounts: {
+        type: Array,
+        default: () => [],
+    },
+    canAssignTickets: {
+        type: Boolean,
+        default: false,
     },
 });
 
