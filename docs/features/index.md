@@ -44,6 +44,7 @@ Functional specifications and user guides for Service Vault features.
 - **[Widget Assignment Interface](widget-assignment.md)** - Drag & drop widget management with layout designer ✅ COMPLETED
 - **[Role Templates](role-templates.md)** - Pre-configured permission sets with widget/page access ✅ UPDATED
 - **[Permission Matrix](permission-matrix.md)** - Visual three-dimensional permission editor ✅ NEW
+- **[Debug Overlay System](debug-overlay-system.md)** - Super Admin debug tools with reactive settings and permission analysis ✅ NEW
 - **[Account Settings](account-settings.md)** - Account-level configuration
 - **[System Settings](system-settings.md)** - Global system settings
 - **[User Preferences](user-preferences.md)** - Personal customization

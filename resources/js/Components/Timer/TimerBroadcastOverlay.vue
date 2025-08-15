@@ -1,21 +1,83 @@
 <template>
-  <!-- Debug Info -->
+  <!-- Debug Overlay - Super Admin Only -->
   <div 
-    v-if="true"
-    class="fixed top-4 left-4 z-50 bg-red-500 text-white p-2 text-xs max-w-xs overflow-auto max-h-96"
+    v-if="showDebugOverlay && user?.is_super_admin"
+    ref="debugOverlay"
+    :style="{ 
+      left: debugPosition.x + 'px', 
+      top: debugPosition.y + 'px',
+      width: debugMinimized ? '200px' : '320px'
+    }"
+    class="fixed z-50 bg-gray-900 text-white rounded-lg shadow-2xl border border-gray-700 select-none"
+    @mousedown="startDrag"
   >
-    <div>Debug Timer Overlay:</div>
-    <div>shouldShowOverlay: {{ shouldShowOverlay }}</div>
-    <div>user?.user_type: {{ user?.user_type }}</div>
-    <div>user?.permissions exists: {{ !!user?.permissions }}</div>
-    <div>user?.permissions is array: {{ Array.isArray(user?.permissions) }}</div>
-    <div>permissions length: {{ user?.permissions?.length || 0 }}</div>
-    <div>has timers.write: {{ user?.permissions?.includes?.('timers.write') }}</div>
-    <div>has timers.manage: {{ user?.permissions?.includes?.('timers.manage') }}</div>
-    <div>canCreateTimers: {{ canCreateTimers }}</div>
-    <div>timerSettings show_timer_overlay: {{ timerSettings?.show_timer_overlay }}</div>
-    <div>timers.length: {{ timers?.length || 0 }}</div>
-    <div v-if="user?.permissions && user.permissions.length < 20">All permissions: {{ user.permissions }}</div>
+    <!-- Debug Header -->
+    <div class="bg-gray-800 px-3 py-2 rounded-t-lg flex items-center justify-between cursor-move">
+      <div class="flex items-center space-x-2">
+        <svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-sm font-medium">Timer Debug</span>
+      </div>
+      <div class="flex items-center space-x-1">
+        <button 
+          @click.stop="debugMinimized = !debugMinimized"
+          class="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+          :title="debugMinimized ? 'Expand' : 'Minimize'"
+        >
+          <svg v-if="debugMinimized" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+          </svg>
+        </button>
+        <button 
+          @click.stop="setShowDebugOverlay(false)"
+          class="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+          title="Close (can re-enable in Settings > Advanced)"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Debug Content -->
+    <div v-if="!debugMinimized" class="p-3 text-xs space-y-1 max-h-80 overflow-auto">
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <div class="text-green-400 font-mono">shouldShowOverlay:</div>
+        <div class="font-mono">{{ shouldShowOverlay }}</div>
+        
+        <div class="text-blue-400 font-mono">user_type:</div>
+        <div class="font-mono">{{ user?.user_type || 'null' }}</div>
+        
+        <div class="text-purple-400 font-mono">canCreateTimers:</div>
+        <div class="font-mono">{{ canCreateTimers }}</div>
+        
+        <div class="text-yellow-400 font-mono">overlay setting:</div>
+        <div class="font-mono">{{ timerSettings?.show_timer_overlay }}</div>
+        
+        <div class="text-cyan-400 font-mono">active timers:</div>
+        <div class="font-mono">{{ timers?.length || 0 }}</div>
+      </div>
+      
+      <div class="border-t border-gray-700 pt-2">
+        <div class="text-orange-400 font-mono mb-1">Permissions:</div>
+        <div class="text-xs">
+          <div>exists: <span class="font-mono">{{ !!user?.permissions }}</span></div>
+          <div>is array: <span class="font-mono">{{ Array.isArray(user?.permissions) }}</span></div>
+          <div>length: <span class="font-mono">{{ user?.permissions?.length || 0 }}</span></div>
+          <div>timers.write: <span class="font-mono">{{ user?.permissions?.includes?.('timers.write') }}</span></div>
+          <div>timers.manage: <span class="font-mono">{{ user?.permissions?.includes?.('timers.manage') }}</span></div>
+        </div>
+      </div>
+      
+      <div class="border-t border-gray-700 pt-2 text-gray-400">
+        <div class="text-xs">💡 Drag to move • Click [-] to minimize • Settings > Advanced to disable</div>
+      </div>
+    </div>
   </div>
 
   <div 
@@ -23,11 +85,12 @@
     class="fixed bottom-4 right-4 z-50"
   >
     <!-- Connection Status and Controls -->
-    <div class="flex items-center justify-between mb-2">
+    <div class="flex items-center justify-between mb-2" :class="{ 'min-w-80': timers.length === 0 }">
       <!-- Totals (if multiple timers) -->
       <div 
         v-if="timers.length > 1"
         class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-xs border border-blue-200 dark:border-blue-800"
+        title="Combined total of all active timers"
       >
         <div class="flex items-center space-x-2">
           <span class="font-medium text-blue-900 dark:text-blue-100">
@@ -48,6 +111,7 @@
         <div 
           :class="connectionStatusClasses"
           class="px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1"
+          :title="`Timer sync status: ${connectionStatusText.toLowerCase()}`"
         >
           <div 
             :class="connectionDotClasses"
@@ -142,29 +206,8 @@
       />
     </div>
 
-    <!-- No Active Timers - Quick Start Button -->
-    <div 
-      v-if="timers.length === 0"
-      class="bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-4 min-w-48"
-    >
-      <div class="text-center">
-        <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">No active timers</div>
-        <button
-          v-if="canCreateTimers"
-          @click="showQuickStart = true"
-          class="w-full p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors flex items-center justify-center space-x-2"
-          title="Start New Timer"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <span>Start Timer</span>
-        </button>
-      </div>
-    </div>
-
     <!-- Timer Cards Container - Horizontal Right-to-Left -->
-    <div v-else class="flex flex-row-reverse space-x-reverse space-x-2">
+    <div v-if="timers.length > 0" class="flex flex-row-reverse space-x-reverse space-x-2">
       <!-- Individual Timer -->
       <div 
         v-for="timer in reactiveTimerData" 
@@ -208,8 +251,12 @@
               <div 
                 :class="timerStatusClasses(timer.status)"
                 class="w-3 h-3 rounded-full"
+                :title="`Timer status: ${timer.status}`"
               ></div>
-              <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <span 
+                class="text-sm font-medium text-gray-900 dark:text-gray-100"
+                :title="timer.description || 'No description set'"
+              >
                 {{ timer.description || 'Timer' }}
               </span>
             </div>
@@ -228,7 +275,7 @@
               <button
                 @click="toggleTimerExpansion(timer.id)"
                 class="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Minimize"
+                :title="isTimerExpanded(timer.id) ? 'Minimize timer' : 'Expand timer'"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
@@ -239,12 +286,16 @@
 
           <!-- Timer Display -->
           <div class="text-center mb-3">
-            <div class="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100">
+            <div 
+              class="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100"
+              :title="`Current duration: ${formatDuration(timer.currentDuration, false, true)}`"
+            >
               {{ formatDuration(timer.currentDuration, false, true) }}
             </div>
             <div 
               v-if="timer.billing_rate"
               class="text-sm text-gray-600 dark:text-gray-400"
+              :title="`Billing: $${timer.billing_rate.rate}/hour`"
             >
               ${{ (timer.currentAmount || 0).toFixed(2) }} @ ${{ timer.billing_rate.rate }}/hr
             </div>
@@ -288,6 +339,7 @@
           <div 
             v-if="timer.ticket"
             class="mt-2 text-xs text-gray-500 dark:text-gray-400"
+            :title="`Associated ticket: ${timer.ticket.ticket_number}`"
           >
             <span>{{ timer.ticket.ticket_number }} - {{ timer.ticket.title }}</span>
           </div>
@@ -314,6 +366,7 @@ import { useTimerBroadcasting } from '@/Composables/useTimerBroadcasting.js'
 import { usePage } from '@inertiajs/vue3'
 import { useBillingRatesQuery } from '@/Composables/queries/useBillingQuery'
 import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'
+import { useLocalStorageReactive } from '@/Composables/useLocalStorageReactive.js'
 import TimerConfigurationForm from '@/Components/Timer/TimerConfigurationForm.vue'
 import Modal from '@/Components/Modal.vue'
 import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
@@ -343,6 +396,17 @@ const showQuickStart = ref(false)
 // Real-time update state
 const currentTime = ref(new Date())
 let updateInterval = null
+
+// Debug overlay state - use reactive localStorage
+const [showDebugOverlay, setShowDebugOverlay] = useLocalStorageReactive('debug_overlay_enabled', false)
+const debugMinimized = ref(false)
+const debugPosition = reactive({
+  x: parseInt(localStorage.getItem('debug_overlay_x')) || 16,
+  y: parseInt(localStorage.getItem('debug_overlay_y')) || 16
+})
+const debugOverlay = ref(null)
+let isDragging = false
+let dragOffset = { x: 0, y: 0 }
 
 // Timer settings state
 const showTimerSettings = ref(false)
@@ -520,6 +584,44 @@ const connectionStatusText = computed(() => {
     default: return 'Unknown'
   }
 })
+
+// Debug overlay drag functionality
+const startDrag = (e) => {
+  if (e.target.closest('button')) return // Don't drag when clicking buttons
+  
+  isDragging = true
+  const rect = debugOverlay.value.getBoundingClientRect()
+  dragOffset.x = e.clientX - rect.left
+  dragOffset.y = e.clientY - rect.top
+  
+  document.addEventListener('mousemove', drag)
+  document.addEventListener('mouseup', stopDrag)
+  e.preventDefault()
+}
+
+const drag = (e) => {
+  if (!isDragging) return
+  
+  const newX = e.clientX - dragOffset.x
+  const newY = e.clientY - dragOffset.y
+  
+  // Keep overlay within viewport bounds
+  const maxX = window.innerWidth - (debugMinimized.value ? 200 : 320)
+  const maxY = window.innerHeight - 100
+  
+  debugPosition.x = Math.max(0, Math.min(newX, maxX))
+  debugPosition.y = Math.max(0, Math.min(newY, maxY))
+  
+  // Save position to localStorage
+  localStorage.setItem('debug_overlay_x', debugPosition.x)
+  localStorage.setItem('debug_overlay_y', debugPosition.y)
+}
+
+const stopDrag = () => {
+  isDragging = false
+  document.removeEventListener('mousemove', drag)
+  document.removeEventListener('mouseup', stopDrag)
+}
 
 // Timer status classes
 const timerStatusClasses = (status) => ({
@@ -717,6 +819,8 @@ const formatDuration = (seconds, compact = false, expanded = false) => {
   }
 }
 
+// localStorage changes are now handled by useLocalStorageReactive
+
 // Lifecycle hooks
 onMounted(() => {
   // Start real-time timer updates every second
@@ -731,6 +835,10 @@ onUnmounted(() => {
     clearInterval(updateInterval)
     updateInterval = null
   }
+  
+  // Clean up drag event listeners
+  document.removeEventListener('mousemove', drag)
+  document.removeEventListener('mouseup', stopDrag)
 })
 </script>
 
@@ -743,5 +851,50 @@ onUnmounted(() => {
 /* Ensure proper z-index stacking */
 .relative {
   position: relative;
+}
+
+/* Zero-delay tooltips for instant feedback */
+[title] {
+  position: relative;
+}
+
+[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+  animation: tooltipFadeIn 0s forwards;
+}
+
+[title]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% - 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  pointer-events: none;
+  animation: tooltipFadeIn 0s forwards;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

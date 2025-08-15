@@ -234,6 +234,9 @@
     
     <!-- Timer Broadcast Overlay -->
     <TimerBroadcastOverlay key="timer-overlay-persistent" />
+    
+    <!-- Permissions Debug Overlay -->
+    <PermissionsDebugOverlay key="permissions-debug-overlay-persistent" />
   </div>
 </template>
 
@@ -268,6 +271,7 @@ import {
 
 // Components
 import TimerBroadcastOverlay from '@/Components/Timer/TimerBroadcastOverlay.vue'
+import PermissionsDebugOverlay from '@/Components/Debug/PermissionsDebugOverlay.vue'
 import UserBadgeDropdown from '@/Components/UserBadgeDropdown.vue'
 
 // Composables

@@ -103,7 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Settings/Index', [
             'activeTab' => $tab
         ]);
-    })->name('settings.index')->where('tab', '(system|email|tickets|billing|timer|users|reset)');
+    })->name('settings.index')->where('tab', '(system|email|tickets|billing|timer|users|advanced|reset)');
     
     // User Management
     Route::get('/users', function () {

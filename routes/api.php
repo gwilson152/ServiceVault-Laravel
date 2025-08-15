@@ -375,6 +375,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('user-management', [SettingController::class, 'updateUserManagementSettings'])
             ->name('settings.user-management.update');
         
+        // Advanced Settings
+        Route::get('advanced', [SettingController::class, 'getAdvancedSettings'])
+            ->name('settings.advanced');
+        Route::put('advanced', [SettingController::class, 'updateAdvancedSettings'])
+            ->name('settings.advanced.update');
+        
         // Nuclear Reset (Super Admin only)
         Route::post('nuclear-reset', [SettingController::class, 'nuclearReset'])
             ->name('settings.nuclear-reset');

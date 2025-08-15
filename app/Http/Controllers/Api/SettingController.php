@@ -538,6 +538,61 @@ class SettingController extends Controller
     }
 
     /**
+     * Get advanced settings
+     */
+    public function getAdvancedSettings(): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        // Get advanced settings with advanced.* prefix
+        $advancedSettings = Setting::where('key', 'like', 'advanced.%')->pluck('value', 'key');
+        $advancedData = [];
+        foreach ($advancedSettings as $key => $value) {
+            // Remove 'advanced.' prefix from key
+            $shortKey = str_replace('advanced.', '', $key);
+            $advancedData[$shortKey] = $value;
+        }
+
+        // Set defaults if not present
+        $advancedData['show_debug_overlay'] = $advancedData['show_debug_overlay'] ?? false;
+        $advancedData['show_permissions_debug_overlay'] = $advancedData['show_permissions_debug_overlay'] ?? false;
+
+        return response()->json([
+            'message' => 'Advanced settings retrieved successfully',
+            'data' => $advancedData
+        ]);
+    }
+
+    /**
+     * Update advanced settings
+     */
+    public function updateAdvancedSettings(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        $validator = Validator::make($request->all(), [
+            'show_debug_overlay' => 'sometimes|boolean',
+            'show_permissions_debug_overlay' => 'sometimes|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Update settings with advanced.* prefix
+        foreach ($validator->validated() as $key => $value) {
+            Setting::setValue("advanced.{$key}", $value, 'advanced');
+        }
+
+        return response()->json([
+            'message' => 'Advanced settings updated successfully',
+        ]);
+    }
+
+    /**
      * Update workflow transitions
      */
     public function updateWorkflowTransitions(Request $request): JsonResponse

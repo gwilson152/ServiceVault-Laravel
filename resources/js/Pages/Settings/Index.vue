@@ -182,7 +182,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 
@@ -204,6 +204,7 @@ import TicketConfiguration from "@/Pages/Settings/Components/TicketConfiguration
 import BillingConfiguration from "@/Pages/Settings/Components/BillingConfigurationNew.vue";
 import TimerSettings from "@/Pages/Settings/Components/TimerSettings.vue";
 import UserManagement from "@/Pages/Settings/Components/UserManagement.vue";
+import AdvancedSettings from "@/Pages/Settings/Components/AdvancedSettings.vue";
 import NuclearResetSection from "@/Components/Settings/NuclearResetSection.vue";
 import {
     CogIcon,
@@ -216,17 +217,29 @@ import {
     ExclamationTriangleIcon,
 } from "@heroicons/vue/24/outline";
 
-// Tab configuration
-const tabs = [
-    { id: "system", name: "System Config", icon: CogIcon },
-    { id: "email", name: "Email Settings", icon: EnvelopeIcon },
-    { id: "tickets", name: "Tickets", icon: TicketIcon },
-    { id: "billing", name: "Billing & Addons", icon: CurrencyDollarIcon },
-    { id: "timer", name: "Timer Settings", icon: ClockIcon },
-    { id: "users", name: "User Management", icon: UsersIcon },
-    { id: "advanced", name: "Advanced", icon: WrenchScrewdriverIcon },
-    { id: "reset", name: "Nuclear Reset", icon: ExclamationTriangleIcon },
-];
+// Get current user from page props
+const page = usePage()
+const user = computed(() => page.props.auth?.user)
+
+// Tab configuration - filter advanced tab for super admin only
+const tabs = computed(() => {
+    const baseTabs = [
+        { id: "system", name: "System Config", icon: CogIcon },
+        { id: "email", name: "Email Settings", icon: EnvelopeIcon },
+        { id: "tickets", name: "Tickets", icon: TicketIcon },
+        { id: "billing", name: "Billing & Addons", icon: CurrencyDollarIcon },
+        { id: "timer", name: "Timer Settings", icon: ClockIcon },
+        { id: "users", name: "User Management", icon: UsersIcon },
+    ]
+    
+    // Only show Advanced tab to super admin users
+    if (user.value?.is_super_admin) {
+        baseTabs.push({ id: "advanced", name: "Advanced", icon: WrenchScrewdriverIcon })
+    }
+    
+    baseTabs.push({ id: "reset", name: "Nuclear Reset", icon: ExclamationTriangleIcon })
+    return baseTabs
+})
 
 // Reactive state - initialize from props
 const activeTab = ref(props.activeTab || "system");
@@ -251,6 +264,7 @@ const ticketConfig = ref({});
 const billingConfig = ref({});
 const timerSettings = ref({});
 const userManagementSettings = ref({});
+const advancedSettings = ref({});
 
 // Tab scrolling functionality
 const tabsContainer = ref(null);
@@ -297,6 +311,12 @@ const navigateToTab = (tabId) => {
 // Watch for prop changes when navigating
 watch(() => props.activeTab, (newTab) => {
     if (newTab && newTab !== activeTab.value) {
+        // Check if user is trying to access advanced tab without super admin privileges
+        if (newTab === 'advanced' && !user.value?.is_super_admin) {
+            // Redirect to system tab instead
+            navigateToTab('system')
+            return
+        }
         activeTab.value = newTab;
     }
 }, { immediate: true });
@@ -333,6 +353,7 @@ const loadAllSettings = async () => {
             loadBillingConfig(),
             loadTimerSettings(),
             loadUserManagementSettings(),
+            loadAdvancedSettings(),
         ]);
     } catch (error) {
         console.error("Failed to load settings:", error);
@@ -390,6 +411,24 @@ const loadUserManagementSettings = async () => {
         console.error("Failed to load user management settings:", error);
     } finally {
         loading.users = false;
+    }
+};
+
+// Load advanced settings
+const loadAdvancedSettings = async () => {
+    loading.advanced = true;
+    try {
+        const response = await window.axios.get("/api/settings/advanced");
+        advancedSettings.value = response.data.data;
+    } catch (error) {
+        console.error("Failed to load advanced settings:", error);
+        // Fall back to localStorage if API fails
+        advancedSettings.value = {
+            show_debug_overlay: localStorage.getItem('debug_overlay_enabled') === 'true',
+            show_permissions_debug_overlay: localStorage.getItem('permissions_debug_overlay_enabled') === 'true'
+        };
+    } finally {
+        loading.advanced = false;
     }
 };
 
@@ -508,6 +547,40 @@ const updateUserManagementSettings = async (settings) => {
         console.error("Failed to update user management settings:", error);
     } finally {
         loading.users = false;
+    }
+};
+
+const updateAdvancedSettings = async (settings) => {
+    loading.advanced = true;
+    try {
+        // Save to backend
+        await window.axios.put("/api/settings/advanced", settings);
+        
+        // Also store in localStorage for immediate access and dispatch events
+        localStorage.setItem('debug_overlay_enabled', settings.show_debug_overlay);
+        localStorage.setItem('permissions_debug_overlay_enabled', settings.show_permissions_debug_overlay);
+        
+        // Dispatch events to notify components
+        window.dispatchEvent(new CustomEvent('localStorage-changed', {
+            detail: { key: 'debug_overlay_enabled', value: settings.show_debug_overlay }
+        }));
+        window.dispatchEvent(new CustomEvent('localStorage-changed', {
+            detail: { key: 'permissions_debug_overlay_enabled', value: settings.show_permissions_debug_overlay }
+        }));
+        
+        // Update local state
+        advancedSettings.value = { ...advancedSettings.value, ...settings };
+        
+        // Show success feedback
+        console.log('Advanced settings saved successfully');
+        
+    } catch (error) {
+        console.error("Failed to update advanced settings:", error);
+        // Still try to save to localStorage if API fails
+        localStorage.setItem('debug_overlay_enabled', settings.show_debug_overlay);
+        localStorage.setItem('permissions_debug_overlay_enabled', settings.show_permissions_debug_overlay);
+    } finally {
+        loading.advanced = false;
     }
 };
 </script>

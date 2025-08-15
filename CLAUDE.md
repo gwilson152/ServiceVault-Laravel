@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring hierarchical customer account management, three-dimensional permission system (functional + widget + page access), account hierarchy permissions, and enterprise-level customization for multi-tenant service delivery.
 
-### Current Status: Phase 15A+ Complete (100% MVP Ready + Full Billing System + TanStack Query Migration + Nuclear Reset)
+### Current Status: Phase 15A+ Complete (100% MVP Ready + Full Billing System + TanStack Query Migration + Nuclear Reset + Debug Overlay System)
 **✅ Fully Implemented Features:**
+- **Super Admin Debug Overlay System**: Comprehensive debug overlays for timer diagnostics and permission analysis with reactive settings, expandable categories, and strict Super Admin-only access - accessible via Settings > Advanced tab
 - **Nuclear System Reset**: Complete system reset functionality with multi-layer security (Super Admin + password confirmation), comprehensive audit logging, and safe execution via artisan command - accessible via Settings > Nuclear Reset tab
 - **Complete Billing & Financial Management System**: Enterprise-grade invoicing, payment tracking, simplified billing rate management (no currency complexity), dynamic addon templates with API-driven categories, and financial reporting with TanStack Tables and Query optimization
 - **Three-Dimensional Permission System**: Complete functional + widget + page permission architecture with role template management
@@ -178,6 +179,13 @@ npm run dev             # Development with hot reload
 # POST   /api/domain-mappings            # Create domain mapping
 # POST   /api/domain-mappings/preview    # Preview assignment for email
 # GET    /api/domain-mappings/validate/requirements # System validation
+
+# Advanced Settings (Super Admin only - Debug System)
+# GET    /api/settings/advanced          # Get advanced settings (debug overlays)
+# PUT    /api/settings/advanced          # Update advanced settings 
+#        Body: { show_debug_overlay: boolean, show_permissions_debug_overlay: boolean }
+#        Requires: Super Admin role + system.configure permission
+#        Storage: Database with advanced.* prefix + localStorage sync
 
 # Nuclear System Reset (Super Admin only - DESTRUCTIVE)
 # POST   /api/settings/nuclear-reset     # Complete system reset with password confirmation

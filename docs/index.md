@@ -74,6 +74,7 @@ For complete setup instructions, see [System Documentation](system/index.md).
 - **[Service Tickets](features/service-tickets.md)** - Complete workflow management system
 - **[Account Management](features/business-account-management.md)** - Hierarchical business relationships
 - **[Email Configuration](system/email-configuration.md)** - SMTP/IMAP setup with OAuth and app password support
+- **[Debug Overlay System](features/debug-overlay-system.md)** - Super Admin debug tools for development and troubleshooting
 - **[Nuclear System Reset](system/nuclear-reset.md)** - Complete system reset for development and emergency recovery ⚠️
 
 ### 🔧 Technical References
