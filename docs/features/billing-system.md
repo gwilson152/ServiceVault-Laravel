@@ -58,24 +58,31 @@ Draft → Pending → Sent → Paid/Overdue → Closed
 ### 3. Billing Rate Management
 
 #### Rate Types
-- **Global Rates**: Default rates for all services (system-wide)
-- **Account-Specific Rates**: Custom rates for specific customers
-- **User-Specific Rates**: Individual consultant or employee rates
-- **Service-Type Rates**: Different rates for different types of work
+Service Vault uses a simplified **two-tier billing rate hierarchy** for clarity and ease of management:
+
+- **Global Rates**: Default rates for all services (system-wide fallback)
+- **Account-Specific Rates**: Custom rates for specific customers that override global rates
+
+**Rate Priority:** Account-specific rates automatically override global rates when both exist. This simplified system eliminates complexity while maintaining flexibility for customer-specific pricing.
 
 #### Rate Configuration
 ```php
-// Example rate structure (simplified, no currency field)
+// Simplified two-tier rate structure
 $billingRate = [
     'name' => 'Standard Hourly',
     'description' => 'Standard hourly rate for general technical work',
     'rate' => 90.00,
-    'account_id' => $account->id,  // Optional: account-specific
-    'user_id' => $user->id,        // Optional: user-specific
+    'account_id' => $account->id,  // Optional: null for global rates, set for account-specific
     'is_active' => true,
-    'is_default' => false          // Only one default rate allowed system-wide
+    'is_default' => false          // Default rates are automatically selected for time entries
 ];
 ```
+
+#### Rate Inheritance and Overrides
+- **Global Default Rates**: Used when no account-specific rate exists
+- **Account-Specific Rates**: Override global rates for that account and inherit to child accounts
+- **Parent Account Inheritance**: Child accounts inherit rates from parent accounts unless overridden
+- **Visual Hierarchy**: The billing rate selector clearly shows the inheritance chain and priority
 
 #### Predefined Billing Rates
 The system includes four default billing rates:
@@ -111,15 +118,22 @@ The system includes four default billing rates:
 ### 2. Settings Integration (`/settings/billing`)
 
 #### Configuration Sections (Tabbed Interface)
-- **Billing Rates Tab**: Complete CRUD operations for hourly billing rate management with predefined system rates
+- **Billing Rates Tab**: Complete CRUD operations for hourly billing rate management with simplified two-tier hierarchy
 - **Addon Templates Tab**: Dynamic addon template management with API-driven categories and CRUD operations
 
 *Note: Company information is managed in the main Settings/General section, not under billing settings.*
 
+#### Enhanced Billing Rates Management
+- **Rate Hierarchy Visualization**: Clear explanation of two-tier system (Account-specific → Global)
+- **Priority-Based Display**: Rates sorted by priority with visual indicators for inheritance
+- **Shared Modal Component**: Unified rate creation/editing modal that works in both global settings and account detail contexts
+- **Color-Coded System**: Blue badges for account rates, green badges for global rates
+- **Default Rate Management**: Clear indicators for which rates are set as defaults
+
 #### Key Features
 - **TanStack Query Integration**: Optimistic updates, caching, and error handling
-- **Modal-based Editing**: Professional modal interfaces for all CRUD operations
-- **Dynamic Categories**: Addon categories loaded from API instead of hardcoded values
+- **Unified Modal Architecture**: Shared BillingRateModal component with context-aware behavior
+- **Visual Rate Hierarchy**: Informational panels explaining rate override priorities
 - **Responsive Design**: Modern card-based layouts with Headless UI components
 
 ### 3. Reports & Analytics (`/reports`)
@@ -256,10 +270,70 @@ POST   /api/billing/payments/{id}/refund # Process refund
 
 #### Billing Rates
 ```
-GET    /api/billing-rates              # List billing rates (no currency filtering)
-POST   /api/billing-rates              # Create rate (name, description, rate, is_active, is_default)
+GET    /api/billing-rates              # List billing rates with hierarchy information
+       ?account_id={id}                # Filter rates for specific account (includes inheritance)
+POST   /api/billing-rates              # Create rate
 PUT    /api/billing-rates/{id}         # Update rate
 DELETE /api/billing-rates/{id}         # Delete rate
+```
+
+**Rate API Features:**
+- **Inheritance Resolution**: When `account_id` parameter is provided, returns account-specific rates, inherited rates from parent accounts, and global fallback rates
+- **Priority Sorting**: API returns rates pre-sorted by hierarchy priority (account → parent → global)
+- **Metadata Fields**: Each rate includes `inheritance_source` and `inherited_from_account` for UI display
+- **Simplified Structure**: No currency fields - all rates use system base currency
+
+**Request/Response Examples:**
+```json
+// POST /api/billing-rates - Create global rate
+{
+  "name": "Senior Developer",
+  "description": "Senior technical work",
+  "rate": 130.00,
+  "is_active": true,
+  "is_default": false
+}
+
+// POST /api/billing-rates - Create account-specific rate
+{
+  "name": "Premium Support",
+  "description": "Premium support for VIP client",
+  "rate": 150.00,
+  "account_id": 123,
+  "is_active": true,
+  "is_default": true
+}
+
+// GET /api/billing-rates?account_id=123 - Response with hierarchy
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Premium Support",
+      "rate": 150.00,
+      "inheritance_source": "account",
+      "is_default": true,
+      "account_id": 123
+    },
+    {
+      "id": 2,
+      "name": "Standard Rate",
+      "rate": 90.00,
+      "inheritance_source": "parent",
+      "inherited_from_account": "Parent Company",
+      "is_default": false,
+      "account_id": 100
+    },
+    {
+      "id": 3,
+      "name": "Development",
+      "rate": 80.00,
+      "inheritance_source": "global",
+      "is_default": false,
+      "account_id": null
+    }
+  ]
+}
 ```
 
 #### Addon Templates & Categories

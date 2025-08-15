@@ -88,65 +88,32 @@
     <!-- Main Horizontal Container -->
     <div class="flex flex-row items-end space-x-3">
 
-      <!-- Forms Container (Left Side) -->
-      <div class="flex flex-col space-y-2" :class="{ 'hidden': !showQuickStart && !showTimerSettings }">
-
-        <!-- Quick Start Form -->
-        <div
-          v-if="showQuickStart"
-          class="bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-3 w-240"
-        >
-      <TimerConfigurationForm
-        ref="quickStartFormRef"
-        mode="create"
-        :compact-mode="true"
-        :show-labels="false"
-        :show-user-selection="false"
-        description-placeholder="Timer description..."
-        account-placeholder="No account (general timer)"
-        ticket-placeholder="No specific ticket"
-        billing-rate-placeholder="No billing rate"
-        @submit="startQuickTimer"
-        @cancel="closeQuickStart"
-        />
-        </div>
-
-        <!-- Timer Settings Form -->
-        <div
-          v-if="showTimerSettings"
-          class="bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-3 w-240"
-        >
-      <!-- Settings Header -->
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Timer Settings
-        </h3>
+      <!-- Quick Action Buttons (Left Side) -->
+      <div v-if="showQuickStart || showTimerSettings" class="flex flex-col space-y-2">
+        <!-- Quick Start Button -->
         <button
-          @click="closeTimerSettings"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
+          v-if="showQuickStart"
+          @click="showStartTimerModal = true"
+          class="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg px-4 py-2 text-sm font-medium shadow-lg border border-green-400/30 transition-all duration-200 flex items-center space-x-2"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
           </svg>
+          <span>New Timer</span>
         </button>
-      </div>
 
-      <!-- Timer Configuration Form -->
-      <TimerConfigurationForm
-        ref="timerSettingsFormRef"
-        mode="edit"
-        :timer-data="currentTimerSettings"
-        :show-labels="true"
-        :show-account-selection="true"
-        :show-ticket-selection="true"
-        :show-user-selection="false"
-        :show-cancel-button="true"
-        :compact-mode="true"
-        description-placeholder="Enter timer description..."
-        @submit="saveTimerSettings"
-          @cancel="closeTimerSettings"
-          />
-        </div>
+        <!-- Timer Settings Button -->
+        <button
+          v-if="showTimerSettings"
+          @click="showTimerSettingsModal = true"
+          class="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium shadow-lg border border-blue-400/30 transition-all duration-200 flex items-center space-x-2"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
       </div>
 
       <!-- Timers and Controls Container (Right Side) -->
@@ -206,17 +173,14 @@
             <!-- New Timer Button -->
             <button
               v-if="canCreateTimers"
-              @click="toggleQuickStart"
+              @click="showStartTimerModal = true"
               class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1 shadow-sm"
-              :title="showQuickStart ? 'Cancel new timer' : 'Start new timer'"
+              title="Start new timer"
             >
-              <svg v-if="!showQuickStart" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
               </svg>
-              <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-              <span>{{ showQuickStart ? 'Cancel' : 'New Timer' }}</span>
+              <span>New Timer</span>
             </button>
           </div>
         </div>
@@ -394,15 +358,12 @@
         <!-- New Timer Button -->
         <button
           v-if="canCreateTimers"
-          @click.stop="toggleQuickStart"
+          @click.stop="showStartTimerModal = true"
           class="bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded text-xs font-medium transition-colors flex items-center space-x-1"
-          :title="showQuickStart ? 'Cancel new timer' : 'Start new timer'"
+          title="Start new timer"
         >
-          <svg v-if="!showQuickStart" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-          </svg>
-          <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
         <!-- Dock Button -->
@@ -621,6 +582,22 @@
       @timer-committed="handleTimerCommitted"
     />
 
+    <!-- Start Timer Modal -->
+    <StartTimerModal
+      :show="showStartTimerModal"
+      @close="showStartTimerModal = false"
+      @started="handleTimerStarted"
+    />
+
+    <!-- Timer Settings Modal -->
+    <StartTimerModal
+      :show="showTimerSettingsModal"
+      mode="edit"
+      :timer="currentTimerSettings"
+      @close="showTimerSettingsModal = false"
+      @updated="handleTimerUpdated"
+    />
+
 </template>
 
 <script setup>
@@ -631,6 +608,7 @@ import { useBillingRatesQuery } from '@/Composables/queries/useBillingQuery'
 import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'
 import { useLocalStorageReactive } from '@/Composables/useLocalStorageReactive.js'
 import TimerConfigurationForm from '@/Components/Timer/TimerConfigurationForm.vue'
+import StartTimerModal from '@/Components/Timer/StartTimerModal.vue'
 import Modal from '@/Components/Modal.vue'
 import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
 import { useTimerSettings } from '@/Composables/useTimerSettings.js'
@@ -679,6 +657,10 @@ const timerSettingsFormRef = ref(null)
 // Commit dialog state
 const showCommitDialog = ref(false)
 const timerToCommit = ref(null)
+
+// Modal states
+const showStartTimerModal = ref(false)
+const showTimerSettingsModal = ref(false)
 
 // Manual time override setting (should be configurable via system settings)
 const allowManualTimeOverride = ref(true) // TODO: Load from system settings
@@ -1104,16 +1086,12 @@ const startQuickTimer = async (formData) => {
 // Timer settings functions
 const openTimerSettings = (timer) => {
   currentTimerSettings.value = timer
-  showTimerSettings.value = true
+  showTimerSettingsModal.value = true
 }
 
 const closeTimerSettings = () => {
-  showTimerSettings.value = false
+  showTimerSettingsModal.value = false
   currentTimerSettings.value = null
-  // Reset form is handled by TimerConfigurationForm component
-  if (timerSettingsFormRef.value) {
-    timerSettingsFormRef.value.resetSubmitState()
-  }
 }
 
 const saveTimerSettings = async (formData) => {
@@ -1198,6 +1176,28 @@ const handleTimerCommitted = ({ timeEntry, timerData }) => {
   closeCommitDialog()
 
   console.log('Timer committed successfully:', timeEntry)
+}
+
+// Handle new timer started from StartTimerModal
+const handleTimerStarted = (newTimer) => {
+  // Close the modal
+  showStartTimerModal.value = false
+
+  // Add the new timer to the overlay
+  addOrUpdateTimer(newTimer)
+
+  console.log('New timer started:', newTimer)
+}
+
+// Handle timer updated from StartTimerModal
+const handleTimerUpdated = (updatedTimer) => {
+  // Close the modal
+  showTimerSettingsModal.value = false
+
+  // Update the timer in the overlay
+  addOrUpdateTimer(updatedTimer)
+
+  console.log('Timer updated:', updatedTimer)
 }
 
 // Format duration function with compact mode and expanded HH:MM:SS support

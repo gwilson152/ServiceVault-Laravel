@@ -310,7 +310,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { usePage } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
@@ -474,7 +474,7 @@ const calculateTimerDuration = () => {
   return Math.max(0, elapsed - pauseDuration)
 }
 
-const loadTicketsForAccount = async (accountId) => {
+const loadTicketsForAccount = async (accountId, includeTicketId = null) => {
   if (!accountId) {
     availableTickets.value = []
     return
@@ -482,14 +482,20 @@ const loadTicketsForAccount = async (accountId) => {
   
   ticketsLoading.value = true
   try {
-    const response = await axios.get('/api/tickets', {
-      params: {
-        account_id: accountId,
-        status: 'open,in_progress,assigned',
-        per_page: 100
-      }
-    })
+    const params = {
+      account_id: accountId,
+      status: ['open', 'in_progress', 'assigned', 'pending', 'new'], // Expanded status list
+      per_page: 100
+    }
+    
+    // Include specific ticket ID even if it doesn't match status filter
+    if (includeTicketId) {
+      params.include_ticket_id = includeTicketId
+    }
+    
+    const response = await axios.get('/api/tickets', { params })
     availableTickets.value = response.data.data || []
+    console.log('Loaded tickets for account', accountId, ':', availableTickets.value.length, 'tickets', includeTicketId ? `(including ticket ${includeTicketId})` : '')
   } catch (error) {
     console.error('Failed to load tickets:', error)
     availableTickets.value = []
@@ -523,6 +529,7 @@ const loadUsersForAccount = async (accountId) => {
     const response = await axios.get('/api/users', {
       params: {
         account_id: accountId,
+        user_type: 'agent', // Only load agent users for time entry assignment
         per_page: 100
       }
     })
@@ -714,7 +721,7 @@ const initializeForm = async () => {
       
       // Load all related data in parallel and wait for completion
       const loadPromises = [
-        loadTicketsForAccount(props.timerData.account_id),
+        loadTicketsForAccount(props.timerData.account_id, props.timerData.ticket_id),
         loadBillingRatesForAccount(props.timerData.account_id)
       ]
       
@@ -728,7 +735,13 @@ const initializeForm = async () => {
     
     // Set ticket ID (now that tickets are loaded)
     if (props.timerData.ticket_id) {
+      // Wait for the next tick to ensure tickets are reactive
+      await nextTick()
       form.value.ticketId = props.timerData.ticket_id
+      console.log('Set form ticketId to:', props.timerData.ticket_id, 'Available tickets:', availableTickets.value.length)
+      
+      // Force another tick to let TicketSelector react
+      await nextTick()
     }
     
     // Set billing rate ID (now that billing rates are loaded)

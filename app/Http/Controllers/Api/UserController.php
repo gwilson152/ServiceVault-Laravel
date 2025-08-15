@@ -81,6 +81,11 @@ class UserController extends Controller
             $query->where('account_id', $request->account_id);
         }
         
+        // Filter by user type (agent vs account_user)
+        if ($request->filled('user_type')) {
+            $query->where('user_type', $request->user_type);
+        }
+        
         // Sorting
         $sortField = $request->get('sort', 'name');
         $sortDirection = $request->get('direction', 'asc');

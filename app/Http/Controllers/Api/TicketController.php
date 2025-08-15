@@ -50,11 +50,27 @@ class TicketController extends Controller
         }
 
         // Apply filters
-        $query->when($request->status, function ($q, $status) {
+        $query->when($request->status, function ($q, $status) use ($request) {
             if (is_array($status)) {
-                $q->whereIn('status', $status);
+                if ($request->include_ticket_id) {
+                    // Include specific ticket even if it doesn't match status filter
+                    $q->where(function ($subQuery) use ($status, $request) {
+                        $subQuery->whereIn('status', $status)
+                                 ->orWhere('id', $request->include_ticket_id);
+                    });
+                } else {
+                    $q->whereIn('status', $status);
+                }
             } else {
-                $q->where('status', $status);
+                if ($request->include_ticket_id) {
+                    // Include specific ticket even if it doesn't match status filter
+                    $q->where(function ($subQuery) use ($status, $request) {
+                        $subQuery->where('status', $status)
+                                 ->orWhere('id', $request->include_ticket_id);
+                    });
+                } else {
+                    $q->where('status', $status);
+                }
             }
         })->when($request->priority, function ($q, $priority) {
             $q->where('priority', $priority);

@@ -425,13 +425,26 @@ const getStatusClasses = (statusName) => {
 
 // Initialize selected ticket from modelValue
 const initializeSelectedTicket = () => {
+    console.log('TicketSelector initializeSelectedTicket called:', {
+        modelValue: props.modelValue,
+        ticketsLength: props.tickets.length,
+        tickets: props.tickets.map(t => ({ id: t.id, title: t.title, status: t.status }))
+    });
+    
     if (props.modelValue && props.tickets.length > 0) {
         const ticket = props.tickets.find((t) => t.id == props.modelValue);
+        console.log('Found ticket:', ticket);
         if (ticket) {
             selectedTicket.value = ticket;
+            console.log('Set selectedTicket to:', ticket);
+        } else {
+            console.warn('Ticket not found for modelValue:', props.modelValue, 'Available ticket IDs:', props.tickets.map(t => t.id));
         }
     } else if (!props.modelValue) {
         selectedTicket.value = null;
+        console.log('Cleared selectedTicket (no modelValue)');
+    } else if (props.modelValue && props.tickets.length === 0) {
+        console.warn('TicketSelector has modelValue but no tickets loaded yet');
     }
 };
 

@@ -10,7 +10,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 **✅ Fully Implemented Features:**
 - **Super Admin Debug Overlay System**: Comprehensive debug overlays for timer diagnostics and permission analysis with reactive settings, expandable categories, and strict Super Admin-only access - accessible via Settings > Advanced tab
 - **Nuclear System Reset**: Complete system reset functionality with multi-layer security (Super Admin + password confirmation), comprehensive audit logging, and safe execution via artisan command - accessible via Settings > Nuclear Reset tab
-- **Complete Billing & Financial Management System**: Enterprise-grade invoicing, payment tracking, simplified billing rate management (no currency complexity), dynamic addon templates with API-driven categories, and financial reporting with TanStack Tables and Query optimization
+- **Complete Billing & Financial Management System**: Enterprise-grade invoicing, payment tracking, two-tier billing rate hierarchy (Account-specific → Global), unified rate management components, dynamic addon templates with API-driven categories, and financial reporting with TanStack Tables and Query optimization
 - **Three-Dimensional Permission System**: Complete functional + widget + page permission architecture with role template management
 - **Dashboard Preview System**: Real-time role preview with mock data generation and context switching (service provider vs account user)
 - **Widget Assignment Interface**: Drag & drop widget management with 12-column grid layout designer and permission validation
@@ -49,7 +49,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Customer Portal Foundation**: Portal dashboard and project interfaces for customer users
 - **Enhanced Error Handling**: Comprehensive error states and user-friendly messaging across all components
 - **TanStack Query Migration**: Complete migration from axios to TanStack Query for optimized caching, error handling, and data synchronization
-- **Simplified Billing System**: Removed currency complexity from billing rates, streamlined settings organization, resolved modal initialization issues
+- **Simplified Two-Tier Billing System**: Streamlined billing rate hierarchy (Account-specific → Global), unified rate management components, shared BillingRateModal across contexts, enhanced visual hierarchy with color-coded badges and group headers
 - **Comprehensive ABAC Timer Permissions**: Full attribute-based access control for timer viewing, control, and creation with UI-level permission enforcement
 - **Unified Time Entry Components**: Consolidated all timer commit workflows into UnifiedTimeEntryDialog with multiline work descriptions
 - **Enhanced Selector Components**: Added account creation to HierarchicalAccountSelector with CSRF protection and seamless UX integration
@@ -250,6 +250,21 @@ Always use Inertia.js navigation (`router.visit()` or `<Link>`) to maintain time
 **Domain-Based Assignment:**
 Automatic user-to-account mapping via domain patterns. See [Authentication System](docs/system/authentication-system.md#domain-based-user-assignment).
 
+## Billing Rate System
+
+Service Vault features a **simplified two-tier billing rate hierarchy** for clear and manageable pricing:
+
+**Rate Priority (Highest to Lowest):**
+1. **Account-Specific Rates** - Custom rates for individual accounts
+2. **Global Default Rates** - System-wide fallback rates
+
+**Key Implementation Notes:**
+- **Unified Components**: Shared `BillingRateModal` component works across settings and account contexts
+- **Visual Hierarchy**: Color-coded badges (Blue for account rates, Green for global rates)
+- **Inheritance System**: Child accounts inherit parent account rates unless overridden
+- **Smart Selector**: `BillingRateSelector` with group headers, rate priority sorting, and hierarchy explanation
+- **API Integration**: `/api/billing-rates?account_id={id}` returns account + inherited + global rates
+
 ## Development Standards
 
 ### Laravel CLI-First Approach
@@ -307,3 +322,7 @@ For comprehensive technical details, refer to the organized documentation in `/d
 - **[Features Documentation](docs/features/index.md)** - User guides and feature specifications
 
 This CLAUDE.md file focuses on essential information for AI development assistance. For detailed implementation guides, architecture deep-dives, and comprehensive feature documentation, always refer to the structured documentation in the `/docs` folder.
+
+---
+
+*Last Updated: August 15, 2025 - Two-Tier Billing Rate System: Simplified hierarchy (Account-specific → Global), unified components, enhanced UI with visual indicators and shared modal architecture*

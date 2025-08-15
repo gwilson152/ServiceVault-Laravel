@@ -1,16 +1,6 @@
 <template>
-  <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <!-- Background overlay -->
-      <div 
-        class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
-        aria-hidden="true"
-        @click="$emit('close')"
-      />
-
-      <!-- Modal panel -->
-      <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-        <div>
+  <Modal :show="show" @close="$emit('close')" max-width="2xl">
+    <div class="p-6 relative overflow-visible">
           <!-- Header -->
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center">
@@ -19,10 +9,10 @@
               </div>
               <div class="ml-4">
                 <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                  Start New Timer
+                  {{ mode === 'edit' ? 'Edit Timer' : 'Start New Timer' }}
                 </h3>
                 <p class="text-sm text-gray-500">
-                  Create a new timer for tracking your work time
+                  {{ mode === 'edit' ? 'Update timer configuration' : 'Create a new timer for tracking your work time' }}
                 </p>
               </div>
             </div>
@@ -35,148 +25,81 @@
           </div>
 
           <!-- Form -->
-          <form @submit.prevent="startTimer" class="space-y-4">
-            <!-- Timer Assignment Type -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Timer Assignment</label>
-              <div class="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  @click="timerType = 'general'"
-                  :class="[
-                    'p-3 rounded-lg border-2 transition-colors text-left',
-                    timerType === 'general' 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  ]"
-                >
-                  <div class="font-medium text-sm">General</div>
-                  <div class="text-xs text-gray-500">No assignment</div>
-                </button>
-                <button
-                  type="button"
-                  @click="timerType = 'ticket'"
-                  :class="[
-                    'p-3 rounded-lg border-2 transition-colors text-left',
-                    timerType === 'ticket' 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  ]"
-                >
-                  <div class="font-medium text-sm">Ticket</div>
-                  <div class="text-xs text-gray-500">Specific ticket work</div>
-                </button>
-                <button
-                  type="button"
-                  @click="timerType = 'account'"
-                  :class="[
-                    'p-3 rounded-lg border-2 transition-colors text-left',
-                    timerType === 'account' 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  ]"
-                >
-                  <div class="font-medium text-sm">Account</div>
-                  <div class="text-xs text-gray-500">Account-level work</div>
-                </button>
-              </div>
-              <p class="mt-2 text-xs text-gray-500">
-                <strong>Note:</strong> Assignment to a ticket or account is required to commit time entries for billing.
-              </p>
-            </div>
-
-            <!-- Ticket Selection (if ticket type) -->
-            <div v-if="timerType === 'ticket'">
-              <label for="ticket_id" class="block text-sm font-medium text-gray-700 mb-1">
-                Ticket
-              </label>
-              <select
-                id="ticket_id"
-                v-model="form.ticket_id"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                :class="{ 'border-red-500': errors.ticket_id }"
-              >
-                <option value="">Select a ticket...</option>
-                <option
-                  v-for="ticket in availableTickets"
-                  :key="ticket.id"
-                  :value="ticket.id"
-                >
-                  #{{ ticket.ticket_number }} - {{ ticket.title }}
-                </option>
-              </select>
-              <p v-if="errors.ticket_id" class="mt-1 text-sm text-red-600">
-                {{ errors.ticket_id }}
-              </p>
-            </div>
-
-            <!-- Account Selection (if account type) -->
-            <div v-if="timerType === 'account'">
-              <label for="account_id" class="block text-sm font-medium text-gray-700 mb-1">
-                Customer Account
-              </label>
-              <select
-                id="account_id"
-                v-model="form.account_id"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                :class="{ 'border-red-500': errors.account_id }"
-              >
-                <option value="">Select a customer account...</option>
-                <option
-                  v-for="account in availableAccounts"
-                  :key="account.id"
-                  :value="account.id"
-                >
-                  {{ account.name }}
-                </option>
-              </select>
-              <p v-if="errors.account_id" class="mt-1 text-sm text-red-600">
-                {{ errors.account_id }}
-              </p>
-            </div>
-
+          <form @submit.prevent="submitTimer" class="space-y-6">
             <!-- Description -->
             <div>
-              <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
-                Description
-                <span v-if="timerType === 'general'" class="text-red-500">*</span>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Description <span class="text-red-500">*</span>
               </label>
-              <input
-                id="description"
+              <textarea
                 v-model="form.description"
-                type="text"
-                :placeholder="timerType === 'ticket' ? 'Optional timer description...' : 'Enter timer description...'"
+                rows="2"
+                placeholder="Describe the work you're timing..."
                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 :class="{ 'border-red-500': errors.description }"
+                required
               />
               <p v-if="errors.description" class="mt-1 text-sm text-red-600">
                 {{ errors.description }}
               </p>
             </div>
 
+            <!-- Account Selection -->
+            <div>
+              <HierarchicalAccountSelector
+                v-model="form.accountId"
+                label="Account"
+                placeholder="Select account (optional for general timers)"
+                :error="errors.accountId"
+                @account-selected="handleAccountSelected"
+              />
+            </div>
+
+            <!-- Ticket Selection (if account selected) -->
+            <div v-if="form.accountId">
+              <TicketSelector
+                v-model="form.ticketId"
+                label="Ticket"
+                :tickets="availableTickets"
+                :is-loading="ticketsLoading"
+                placeholder="Select ticket (optional)"
+                :disabled="!form.accountId"
+                :error="errors.ticketId"
+                :show-create-option="true"
+                :prefilled-account-id="form.accountId"
+                @ticket-selected="handleTicketSelected"
+                @ticket-created="handleTicketCreated"
+              />
+            </div>
+
+            <!-- User Assignment (for managers/admins) -->
+            <div v-if="canAssignToOthers">
+              <UserSelector
+                v-model="form.userId"
+                label="Assign To"
+                :users="availableUsers"
+                :is-loading="usersLoading"
+                :show-create-option="false"
+                :error="errors.userId"
+                @user-selected="handleUserSelected"
+              />
+              <p class="mt-1 text-xs text-gray-500">The agent who will run this timer</p>
+            </div>
+
             <!-- Billing Rate Selection -->
-            <div v-if="availableBillingRates.length > 0">
-              <label for="billing_rate_id" class="block text-sm font-medium text-gray-700 mb-1">
-                Billing Rate
-              </label>
-              <select
-                id="billing_rate_id"
-                v-model="form.billing_rate_id"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">No billing rate</option>
-                <option
-                  v-for="rate in availableBillingRates"
-                  :key="rate.id"
-                  :value="rate.id"
-                >
-                  {{ rate.name }} - ${{ rate.rate }}/hour
-                </option>
-              </select>
+            <div>
+              <BillingRateSelector
+                v-model="form.billingRateId"
+                :rates="availableBillingRates"
+                :is-loading="billingRatesLoading"
+                placeholder="No billing rate (non-billable)"
+                :error="errors.billingRateId"
+                @rate-selected="handleRateSelected"
+              />
             </div>
 
             <!-- Advanced Options -->
-            <div class="border-t pt-4">
+            <div v-if="mode === 'create'" class="border-t pt-4">
               <button
                 type="button"
                 @click="showAdvancedOptions = !showAdvancedOptions"
@@ -196,7 +119,7 @@
                 <div class="flex items-center">
                   <input
                     id="stop_others"
-                    v-model="form.stop_others"
+                    v-model="form.stopOthers"
                     type="checkbox"
                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
@@ -209,163 +132,281 @@
                 <div class="flex items-center">
                   <input
                     id="auto_start"
-                    v-model="form.auto_start"
+                    v-model="form.autoStart"
                     type="checkbox"
                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                   <label for="auto_start" class="ml-2 block text-sm text-gray-700">
-                    Start timer immediately
+                    {{ mode === 'edit' ? 'Apply changes and continue running' : 'Start timer immediately' }}
                   </label>
                 </div>
               </div>
             </div>
           </form>
-        </div>
-
-        <!-- Actions -->
-        <div class="mt-6 flex items-center justify-end space-x-3">
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancel
-          </button>
-          <button
-            @click="startTimer"
-            :disabled="loading || !isFormValid"
-            class="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-          >
-            <PlayIcon v-if="!loading" class="h-4 w-4" />
-            <div v-else class="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            <span>{{ loading ? 'Starting...' : 'Start Timer' }}</span>
-          </button>
-        </div>
+      <!-- Actions -->
+      <div class="mt-6 flex items-center justify-end space-x-3">
+        <button
+          type="button"
+          @click="$emit('close')"
+          class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          Cancel
+        </button>
+        <button
+          @click="submitTimer"
+          :disabled="loading || !isFormValid"
+          class="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          <PlayIcon v-if="!loading" class="h-4 w-4" />
+          <div v-else class="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          <span>{{ loading ? (mode === 'edit' ? 'Updating...' : 'Starting...') : (mode === 'edit' ? 'Update Timer' : 'Start Timer') }}</span>
+        </button>
       </div>
     </div>
-  </div>
+  </Modal>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { 
   PlayIcon, 
   XMarkIcon, 
   ChevronDownIcon 
 } from '@heroicons/vue/24/outline'
+import { usePage } from '@inertiajs/vue3'
+import Modal from '@/Components/Modal.vue'
+import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
+import TicketSelector from '@/Components/UI/TicketSelector.vue'
+import UserSelector from '@/Components/UI/UserSelector.vue'
+import BillingRateSelector from '@/Components/UI/BillingRateSelector.vue'
+import axios from 'axios'
 
-const emit = defineEmits(['close', 'started'])
+const props = defineProps({
+  show: {
+    type: Boolean,
+    default: false
+  },
+  mode: {
+    type: String,
+    default: 'create', // 'create' | 'edit'
+    validator: value => ['create', 'edit'].includes(value)
+  },
+  timer: {
+    type: Object,
+    default: null
+  },
+  contextAccount: {
+    type: Object,
+    default: null
+  },
+  contextTicket: {
+    type: Object,
+    default: null
+  },
+  contextUser: {
+    type: Object,
+    default: null
+  },
+  contextBillingRate: {
+    type: Object,
+    default: null
+  }
+})
+
+const emit = defineEmits(['close', 'started', 'updated'])
+
+// Page data
+const page = usePage()
+const user = computed(() => page.props.auth?.user)
 
 // Reactive state
 const loading = ref(false)
-const timerType = ref('general')
 const showAdvancedOptions = ref(false)
-const availableTickets = ref([])
-const availableAccounts = ref([])
-const availableBillingRates = ref([])
 const errors = ref({})
 
+// Data loading states
+const availableTickets = ref([])
+const availableBillingRates = ref([])
+const availableUsers = ref([])
+const ticketsLoading = ref(false)
+const billingRatesLoading = ref(false)
+const usersLoading = ref(false)
+
 const form = ref({
-  ticket_id: '',
-  account_id: '',
   description: '',
-  billing_rate_id: '',
-  stop_others: false,
-  auto_start: true
+  accountId: null,
+  ticketId: null,
+  userId: null,
+  billingRateId: null,
+  stopOthers: false,
+  autoStart: true
 })
 
-// Form validation
+// Computed properties
 const isFormValid = computed(() => {
-  if (timerType.value === 'general') {
-    return form.value.description.trim() !== ''
-  } else if (timerType.value === 'ticket') {
-    return form.value.ticket_id !== ''
-  } else if (timerType.value === 'account') {
-    return form.value.account_id !== ''
-  }
-  return false
+  return form.value.description.trim() !== ''
 })
 
-// Load initial data
-const loadTickets = async () => {
+const canAssignToOthers = computed(() => {
+  return user.value?.permissions?.includes('timers.admin') || 
+         user.value?.permissions?.includes('admin.manage')
+})
+
+// Data loading functions
+const loadTicketsForAccount = async (accountId, includeTicketId = null) => {
+  if (!accountId) {
+    availableTickets.value = []
+    return
+  }
+  
+  ticketsLoading.value = true
   try {
-    const response = await axios.get('/api/tickets', {
-      params: {
-        status: ['open', 'in_progress', 'waiting_customer'],
-        limit: 50
-      }
-    })
+    const params = {
+      account_id: accountId,
+      status: ['open', 'in_progress', 'assigned', 'pending', 'new'], // Expanded status list for timers
+      per_page: 100
+    }
+    
+    if (includeTicketId) {
+      params.include_ticket_id = includeTicketId
+    }
+    
+    console.log('Loading tickets with params:', params)
+    const response = await axios.get('/api/tickets', { params })
+    console.log('Loaded tickets response:', response.data)
     availableTickets.value = response.data.data || []
   } catch (error) {
     console.error('Failed to load tickets:', error)
+    availableTickets.value = []
+  } finally {
+    ticketsLoading.value = false
   }
 }
 
-const loadAccounts = async () => {
+const loadBillingRatesForAccount = async (accountId) => {
+  billingRatesLoading.value = true
   try {
-    const response = await axios.get('/api/accounts', {
-      params: {
-        limit: 50,
-        user_accessible: true // Only accounts user can log time for
-      }
-    })
-    availableAccounts.value = response.data.data || []
-  } catch (error) {
-    console.error('Failed to load accounts:', error)
-    availableAccounts.value = []
-  }
-}
-
-const loadBillingRates = async () => {
-  try {
-    // This endpoint would need to be implemented
-    const response = await axios.get('/api/billing-rates')
+    const params = accountId ? { account_id: accountId } : {}
+    const response = await axios.get('/api/billing-rates', { params })
     availableBillingRates.value = response.data.data || []
   } catch (error) {
     console.error('Failed to load billing rates:', error)
-    // Fallback - no billing rates available
     availableBillingRates.value = []
+  } finally {
+    billingRatesLoading.value = false
   }
 }
 
-// Start timer
-const startTimer = async () => {
+const loadUsersForAccount = async (accountId) => {
+  if (!accountId) {
+    availableUsers.value = []
+    return
+  }
+  
+  usersLoading.value = true
+  try {
+    const response = await axios.get('/api/users', {
+      params: {
+        account_id: accountId,
+        user_type: 'agent', // Only load agent users for timer assignment
+        per_page: 100
+      }
+    })
+    availableUsers.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load users:', error)
+    availableUsers.value = []
+  } finally {
+    usersLoading.value = false
+  }
+}
+
+// Event handlers
+const handleAccountSelected = (account) => {
+  // Clear dependent selections
+  form.value.ticketId = null
+  form.value.billingRateId = null
+  
+  // Load dependent data
+  if (account) {
+    loadTicketsForAccount(account.id)
+    loadBillingRatesForAccount(account.id)
+    if (canAssignToOthers.value) {
+      loadUsersForAccount(account.id)
+    }
+  } else {
+    availableTickets.value = []
+    loadBillingRatesForAccount(null)
+    availableUsers.value = []
+  }
+}
+
+const handleTicketSelected = (ticket) => {
+  // Auto-set account from ticket if needed
+  if (ticket?.account_id && !form.value.accountId) {
+    form.value.accountId = ticket.account_id
+    loadBillingRatesForAccount(ticket.account_id)
+    if (canAssignToOthers.value) {
+      loadUsersForAccount(ticket.account_id)
+    }
+  }
+  
+  // Auto-set billing rate from ticket if available
+  if (ticket?.billing_rate_id && !form.value.billingRateId) {
+    form.value.billingRateId = ticket.billing_rate_id
+  }
+}
+
+const handleTicketCreated = (newTicket) => {
+  // The TicketSelector will handle the selection automatically
+}
+
+const handleUserSelected = (user) => {
+  // Additional logic if needed
+}
+
+const handleRateSelected = (rate) => {
+  // Additional logic if needed
+}
+
+// Submit timer (create or update)
+const submitTimer = async () => {
   if (loading.value || !isFormValid.value) return
 
-  // Clear previous errors
   errors.value = {}
   loading.value = true
 
   try {
     const payload = {
       description: form.value.description.trim(),
-      stop_others: form.value.stop_others,
-      auto_start: form.value.auto_start
+      account_id: form.value.accountId,
+      ticket_id: form.value.ticketId,
+      user_id: form.value.userId || user.value.id,
+      billing_rate_id: form.value.billingRateId,
+      stop_others: form.value.stopOthers,
+      auto_start: form.value.autoStart
     }
 
-    if (timerType.value === 'ticket' && form.value.ticket_id) {
-      payload.ticket_id = form.value.ticket_id
+    let response
+    if (props.mode === 'edit' && props.timer) {
+      // Update existing timer
+      response = await axios.put(`/api/timers/${props.timer.id}`, payload)
+      emit('updated', response.data.data)
+    } else {
+      // Create new timer
+      response = await axios.post('/api/timers', payload)
+      emit('started', response.data.data)
     }
-
-    if (timerType.value === 'account' && form.value.account_id) {
-      payload.account_id = form.value.account_id
-    }
-
-    if (form.value.billing_rate_id) {
-      payload.billing_rate_id = form.value.billing_rate_id
-    }
-
-    const response = await axios.post('/api/timers', payload)
     
-    emit('started', response.data.data)
+    emit('close')
   } catch (error) {
-    console.error('Failed to start timer:', error)
+    console.error('Failed to submit timer:', error)
     
     if (error.response?.data?.errors) {
       errors.value = error.response.data.errors
     } else {
       errors.value = {
-        general: 'Failed to start timer. Please try again.'
+        general: `Failed to ${props.mode === 'edit' ? 'update' : 'start'} timer. Please try again.`
       }
     }
   } finally {
@@ -373,10 +414,85 @@ const startTimer = async () => {
   }
 }
 
-// Lifecycle
-onMounted(() => {
-  loadTickets()
-  loadAccounts()
-  loadBillingRates()
+// Form initialization
+const initializeForm = async () => {
+  // Reset form
+  form.value = {
+    description: '',
+    accountId: null,
+    ticketId: null,
+    userId: user.value?.id,
+    billingRateId: null,
+    stopOthers: false,
+    autoStart: true
+  }
+  
+  // Apply context prefills
+  if (props.contextAccount) {
+    form.value.accountId = props.contextAccount.id
+    await loadTicketsForAccount(props.contextAccount.id)
+    await loadBillingRatesForAccount(props.contextAccount.id)
+    if (canAssignToOthers.value) {
+      await loadUsersForAccount(props.contextAccount.id)
+    }
+  }
+  
+  if (props.contextTicket) {
+    form.value.accountId = props.contextTicket.account_id
+    form.value.ticketId = props.contextTicket.id
+    if (props.contextTicket.billing_rate_id) {
+      form.value.billingRateId = props.contextTicket.billing_rate_id
+    }
+    await loadTicketsForAccount(props.contextTicket.account_id, props.contextTicket.id)
+    await loadBillingRatesForAccount(props.contextTicket.account_id)
+    if (canAssignToOthers.value) {
+      await loadUsersForAccount(props.contextTicket.account_id)
+    }
+  }
+  
+  if (props.contextUser) {
+    form.value.userId = props.contextUser.id
+  }
+  
+  if (props.contextBillingRate) {
+    form.value.billingRateId = props.contextBillingRate.id
+  }
+  
+  // Edit mode initialization
+  if (props.mode === 'edit' && props.timer) {
+    form.value.description = props.timer.description || ''
+    form.value.accountId = props.timer.account_id
+    form.value.ticketId = props.timer.ticket_id
+    form.value.userId = props.timer.user_id
+    form.value.billingRateId = props.timer.billing_rate_id
+    
+    // Load related data for editing
+    if (props.timer.account_id) {
+      await loadTicketsForAccount(props.timer.account_id, props.timer.ticket_id)
+      await loadBillingRatesForAccount(props.timer.account_id)
+      if (canAssignToOthers.value) {
+        await loadUsersForAccount(props.timer.account_id)
+      }
+    }
+  }
+  
+  // Load initial billing rates if no account context
+  if (!form.value.accountId) {
+    await loadBillingRatesForAccount(null)
+  }
+}
+
+// Watchers
+watch(() => props.show, async (newValue) => {
+  if (newValue) {
+    await initializeForm()
+  }
+})
+
+// Initialize on mount if dialog is already open
+onMounted(async () => {
+  if (props.show) {
+    await initializeForm()
+  }
 })
 </script>

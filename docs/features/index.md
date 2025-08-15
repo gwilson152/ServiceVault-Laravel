@@ -15,7 +15,8 @@ Functional specifications and user guides for Service Vault features.
 - **[UI Selector Components](ui-selector-components.md)** - Professional selector components with unified UX patterns ✅ NEW
 
 ## Advanced Features
-- **[Billing & Invoicing](billing-invoicing.md)** - Rate management, invoice generation
+- **[Billing & Financial Management](billing-system.md)** - Two-tier rate hierarchy, invoice generation, financial reporting ✅ UPDATED
+- **[Billing Rate Selector](billing-rate-selector.md)** - Smart rate selection with visual hierarchy and inheritance indicators ✅ NEW
 - **[Three-Dimensional Permission System](permission-system.md)** - Functional + Widget + Page ABAC model
 - **[Account Hierarchy](account-hierarchy.md)** - Business account hierarchies with subsidiary access
 - **[Custom Fields](custom-fields.md)** - Flexible data extension
