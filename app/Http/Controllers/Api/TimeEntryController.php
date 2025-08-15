@@ -4,13 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\TimeEntry;
-use App\Models\Account;
-use App\Models\Project;
+use App\Models\Ticket;
 use App\Http\Resources\TimeEntryResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class TimeEntryController extends Controller
@@ -23,7 +20,7 @@ class TimeEntryController extends Controller
         $user = $request->user();
         
         // Build base query with user's accessible accounts
-        $query = TimeEntry::with(['user:id,name', 'account:id,name', 'project:id,name']);
+        $query = TimeEntry::with(['user:id,name', 'account:id,name']);
         
         // Apply user scope - employees see their own, managers/admins see team members
         if ($user->hasPermission('admin.manage')) {
@@ -51,8 +48,6 @@ class TimeEntryController extends Controller
             }
         })->when($request->account_id, function ($q, $accountId) {
             $q->where('account_id', $accountId);
-        })->when($request->project_id, function ($q, $projectId) {
-            $q->where('project_id', $projectId);
         })->when($request->date_from, function ($q, $dateFrom) {
             $q->whereDate('started_at', '>=', $dateFrom);
         })->when($request->date_to, function ($q, $dateTo) {
@@ -169,7 +164,7 @@ class TimeEntryController extends Controller
             return response()->json(['error' => 'Unauthorized access.'], 403);
         }
         
-        $timeEntry->load(['user:id,name,email', 'account:id,name', 'project:id,name,description', 'billingRate']);
+        $timeEntry->load(['user:id,name,email', 'account:id,name', 'billingRate']);
         
         return response()->json([
             'data' => new TimeEntryResource($timeEntry)
@@ -213,7 +208,7 @@ class TimeEntryController extends Controller
         }
         
         $timeEntry->update($validated);
-        $timeEntry->load(['user:id,name', 'account:id,name', 'project:id,name']);
+        $timeEntry->load(['user:id,name', 'account:id,name']);
         
         return response()->json([
             'data' => new TimeEntryResource($timeEntry),
@@ -283,7 +278,7 @@ class TimeEntryController extends Controller
             'approval_notes' => $validated['notes'] ?? null
         ]);
         
-        $timeEntry->load(['user:id,name', 'account:id,name', 'project:id,name', 'approvedBy:id,name']);
+        $timeEntry->load(['user:id,name', 'account:id,name', 'approvedBy:id,name']);
         
         return response()->json([
             'data' => new TimeEntryResource($timeEntry),
@@ -314,7 +309,7 @@ class TimeEntryController extends Controller
             'approval_notes' => $validated['reason']
         ]);
         
-        $timeEntry->load(['user:id,name', 'account:id,name', 'project:id,name', 'approvedBy:id,name']);
+        $timeEntry->load(['user:id,name', 'account:id,name', 'approvedBy:id,name']);
         
         return response()->json([
             'data' => new TimeEntryResource($timeEntry),

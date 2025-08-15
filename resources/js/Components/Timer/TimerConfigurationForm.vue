@@ -402,21 +402,6 @@ const loadBillingRatesForAccount = async (accountId) => {
     const params = accountId ? { account_id: accountId } : {}
     const response = await axios.get('/api/billing-rates', { params })
     availableBillingRates.value = response.data.data || []
-    
-    // Auto-select default billing rate using hierarchical system
-    if (!form.value.billingRateId && availableBillingRates.value.length > 0) {
-      // Find the first rate with the highest inheritance priority
-      // Priority: account default > parent default > global default > first active
-      const defaultRate = availableBillingRates.value.find(rate => {
-        return (rate.inheritance_source === 'account' && rate.is_default) ||
-               (rate.inheritance_source === 'parent' && rate.is_default) ||
-               (rate.inheritance_source === 'global' && rate.is_default)
-      }) || availableBillingRates.value[0] // Fallback to first rate
-      
-      if (defaultRate) {
-        form.value.billingRateId = defaultRate.id
-      }
-    }
   } catch (error) {
     console.error('Failed to load billing rates:', error)
     availableBillingRates.value = []
@@ -451,18 +436,34 @@ const loadUsersForAccount = async (accountId) => {
 const handleAccountSelected = async (account) => {
   // Clear dependent selections
   form.value.ticketId = null
-  form.value.billingRateId = null
+  
+  // Only clear billing rate in create mode (preserve it in edit mode)
+  if (props.mode === 'create') {
+    form.value.billingRateId = null
+  }
   
   // Load dependent data
   if (account) {
     loadTicketsForAccount(account.id)
     await loadBillingRatesForAccount(account.id) // Wait for billing rates to load
+    
+    // Auto-select default billing rate for account (only in create mode)
+    if (props.mode === 'create') {
+      selectDefaultBillingRate()
+    }
+    
     if (props.showUserSelection) {
       loadUsersForAccount(account.id)
     }
   } else {
     availableTickets.value = []
     await loadBillingRatesForAccount(null) // Load global billing rates and wait
+    
+    // Auto-select default global billing rate (only in create mode)
+    if (props.mode === 'create') {
+      selectDefaultBillingRate()
+    }
+    
     availableUsers.value = []
   }
   
@@ -488,6 +489,22 @@ const handleTicketCreated = (newTicket) => {
 
 const handleRateSelected = (rate) => {
   emit('rate-changed', rate)
+}
+
+const selectDefaultBillingRate = () => {
+  // Find the default billing rate from available rates
+  // Priority: Account default > Parent default > Global default > First account rate
+  const defaultRate = availableBillingRates.value.find(rate => 
+    rate.is_default && (rate.inheritance_source === 'account' || rate.inheritance_source === 'parent')
+  ) || availableBillingRates.value.find(rate => 
+    rate.is_default && rate.inheritance_source === 'global'
+  ) || availableBillingRates.value.find(rate => 
+    rate.inheritance_source === 'account'
+  )
+  
+  if (defaultRate) {
+    form.value.billingRateId = defaultRate.id
+  }
 }
 
 const handleUserSelected = (user) => {
@@ -552,8 +569,12 @@ const initializeForm = () => {
   
   // Set defaults from timer settings
   if (props.mode === 'create') {
-    // Apply default billing rate if specified in settings
-    // This would come from timer settings API
+    // Load billing rates and select default if no account is set
+    if (!form.value.accountId) {
+      loadBillingRatesForAccount(null).then(() => {
+        selectDefaultBillingRate()
+      })
+    }
   }
 }
 

@@ -112,6 +112,30 @@ class User extends Authenticatable
     }
 
     /**
+     * User preferences.
+     */
+    public function preferences()
+    {
+        return $this->hasMany(UserPreference::class);
+    }
+
+    /**
+     * Get a specific preference value.
+     */
+    public function getPreference(string $key, $default = null)
+    {
+        return UserPreference::get($this->id, $key, $default);
+    }
+
+    /**
+     * Set a preference value.
+     */
+    public function setPreference(string $key, $value): void
+    {
+        UserPreference::set($this->id, $key, $value);
+    }
+
+    /**
      * Get accounts the user has access to (for now, just their primary account)
      * Returns an Eloquent relationship that can be chained
      */

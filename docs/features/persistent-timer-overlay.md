@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Service Vault timer overlay uses **Inertia.js persistent layouts** to maintain timer state and WebSocket connections across all page navigation. This ensures a seamless user experience without timer interruptions during page transitions.
+The Service Vault timer overlay uses **Inertia.js persistent layouts** to maintain timer state and WebSocket connections across all page navigation. This ensures a seamless user experience without timer interruptions during page transitions. The overlay features a **dockable interface** with user preference persistence for positioning flexibility.
 
 ## Architecture
 
@@ -34,6 +34,8 @@ defineOptions({
 - ✅ **No "connecting" messages** between pages
 - ✅ **Timer state persists** across all page transitions
 - ✅ **Improved performance** - layout doesn't re-render
+- ✅ **Dockable positioning** with user preference persistence
+- ✅ **Wider dialog forms** for improved usability (960px)
 
 ## Technical Implementation
 
@@ -79,6 +81,60 @@ Pages are structured without layout wrappers:
   </div>
 </template>
 ```
+
+## Dockable Interface System
+
+### User Preference Persistence
+
+The timer overlay features a dockable interface with database-backed user preferences:
+
+```javascript
+// User preference structure
+{
+  key: 'timer_overlay_docked',
+  value: boolean // true = docked to left, false = floating on right
+}
+```
+
+### Position Management
+
+**Default Position (Undocked):**
+- Location: `fixed bottom-4 right-4 z-50`
+- Behavior: Traditional floating overlay
+- Best for: Primary timer users who want overlay out of the way
+
+**Docked Position:**
+- Location: `fixed bottom-4 left-4 z-50` 
+- Behavior: Anchored to app menu side
+- Best for: Heavy timer users who want quick access
+
+### Dock Toggle Interface
+
+Users can toggle between positions via the dock button:
+
+```vue
+<!-- Dock Toggle Button -->
+<button
+  @click="toggleDockPosition"
+  class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
+  :title="isDocked ? 'Undock (move to bottom-right)' : 'Dock (move to bottom-left)'"
+>
+  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path v-if="isDocked" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+    <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+  </svg>
+  <span>{{ isDocked ? 'Undock' : 'Dock' }}</span>
+</button>
+```
+
+### Enhanced Form Dimensions
+
+Timer creation and edit forms now use wider dimensions for better usability:
+
+- **Previous Width**: 320px (`w-80`)
+- **Current Width**: 960px (`w-240`)
+- **Improvement**: 200% wider for comfortable field interaction
+- **Responsive**: Maintains horizontal layout with forms on left, timers on right
 
 ## TanStack Query Integration
 

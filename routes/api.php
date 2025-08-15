@@ -46,6 +46,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Full user management API
     Route::apiResource('users', App\Http\Controllers\Api\UserController::class);
     
+    // User preferences routes
+    Route::apiResource('user-preferences', App\Http\Controllers\Api\UserPreferenceController::class)
+        ->parameter('user-preferences', 'key');
+    Route::post('user-preferences/bulk', [App\Http\Controllers\Api\UserPreferenceController::class, 'bulkUpdate'])
+        ->name('user-preferences.bulk-update');
+    
     // Additional user detail endpoints
     Route::get('users/{user}/tickets', [App\Http\Controllers\Api\UserController::class, 'tickets'])
         ->name('users.tickets');

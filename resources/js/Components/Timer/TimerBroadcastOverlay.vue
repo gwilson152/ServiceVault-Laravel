@@ -82,78 +82,19 @@
 
   <div 
     v-if="shouldShowOverlay" 
-    class="fixed bottom-4 right-4 z-50"
+    :class="overlayPositionClasses"
   >
-    <!-- Connection Status and Controls -->
-    <div class="flex items-center mb-2" :class="{ 'min-w-80': timers.length === 0, 'justify-between': timers.length > 1, 'justify-end': timers.length <= 1 }">
-      <!-- Totals (if multiple timers) -->
-      <div 
-        v-if="timers.length > 1"
-        class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-xs border border-blue-200 dark:border-blue-800"
-        title="Combined total of all active timers"
-      >
-        <div class="flex items-center space-x-2">
-          <span class="font-medium text-blue-900 dark:text-blue-100">
-            Total ({{ timers.length }}):
-          </span>
-          <div class="font-mono font-bold text-blue-900 dark:text-blue-100">
-            {{ formatDuration(totalDuration) }}
-          </div>
-          <div class="text-blue-700 dark:text-blue-300">
-            ${{ totalAmount.toFixed(2) }}
-          </div>
-        </div>
-      </div>
+    <!-- Main Horizontal Container -->
+    <div class="flex flex-row items-end space-x-3">
+      
+      <!-- Forms Container (Left Side) -->
+      <div class="flex flex-col space-y-2" :class="{ 'hidden': !showQuickStart && !showTimerSettings }">
 
-      <!-- Right side controls -->
-      <div class="flex items-center space-x-2">
-        <!-- Connection Status Indicator -->
+        <!-- Quick Start Form -->
         <div 
-          :class="connectionStatusClasses"
-          class="px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1"
-          :title="`Timer sync status: ${connectionStatusText.toLowerCase()}`"
+          v-if="showQuickStart"
+          class="bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-3 w-240"
         >
-          <div 
-            :class="connectionDotClasses"
-            class="w-2 h-2 rounded-full"
-          ></div>
-          <span>{{ connectionStatusText }}</span>
-        </div>
-
-        <!-- Expand/Collapse All -->
-        <button
-          v-if="timers.length > 1"
-          @click="toggleAllTimers"
-          class="p-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors"
-          :title="allExpanded ? 'Minimize All' : 'Expand All'"
-        >
-          <svg v-if="allExpanded" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3 3-3"/>
-          </svg>
-          <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3-3 3"/>
-          </svg>
-        </button>
-        
-        <!-- New Timer Button -->
-        <button
-          v-if="canCreateTimers"
-          @click="showQuickStart = !showQuickStart"
-          class="p-1 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
-          title="New Timer"
-        >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Quick Start Form -->
-    <div 
-      v-if="showQuickStart"
-      class="mb-2 bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-3"
-    >
       <TimerConfigurationForm
         ref="quickStartFormRef"
         mode="create"
@@ -166,14 +107,14 @@
         billing-rate-placeholder="No billing rate"
         @submit="startQuickTimer"
         @cancel="closeQuickStart"
-      />
-    </div>
+        />
+        </div>
 
-    <!-- Timer Settings Form (stacked like quick start) -->
-    <div 
-      v-if="showTimerSettings"
-      class="mb-2 bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-3"
-    >
+        <!-- Timer Settings Form -->
+        <div 
+          v-if="showTimerSettings"
+          class="bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-3 w-240"
+        >
       <!-- Settings Header -->
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -202,11 +143,84 @@
         :compact-mode="true"
         description-placeholder="Enter timer description..."
         @submit="saveTimerSettings"
-        @cancel="closeTimerSettings"
-      />
-    </div>
+          @cancel="closeTimerSettings"
+          />
+        </div>
+      </div>
 
-    <!-- Timer Cards Container - Horizontal Right-to-Left -->
+      <!-- Timers and Controls Container (Right Side) -->
+      <div class="flex flex-col space-y-2">
+        <!-- Connection Status and Controls -->
+        <div class="flex items-center justify-between" :class="{ 'min-w-80': timers.length === 0 }">
+          <!-- Totals (if multiple timers) -->
+          <div 
+            v-if="timers.length > 1"
+            class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-xs border border-blue-200 dark:border-blue-800"
+            title="Combined total of all active timers"
+          >
+            <div class="flex items-center space-x-2">
+              <span class="font-medium text-blue-900 dark:text-blue-100">
+                Total ({{ timers.length }}):
+              </span>
+              <div class="font-mono font-bold text-blue-900 dark:text-blue-100">
+                {{ formatDuration(totalDuration) }}
+              </div>
+              <div 
+                v-if="totalAmount > 0"
+                class="text-xs text-blue-700 dark:text-blue-300 font-medium"
+              >
+                ${{ totalAmount.toFixed(2) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Dock Toggle, Connection Status and New Timer Button -->
+          <div class="flex items-center space-x-2" :class="{ 'ml-auto': timers.length <= 1 }">
+            <!-- Dock Toggle Button -->
+            <button
+              @click="toggleDockPosition"
+              class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
+              :title="isDocked ? 'Undock (move to bottom-right)' : 'Dock (move to bottom-left)'"
+              :disabled="isLoadingPreferences"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path v-if="isDocked" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+              <span>{{ isDocked ? 'Undock' : 'Dock' }}</span>
+            </button>
+            <!-- Connection Status -->
+            <div 
+              :class="connectionStatusClasses" 
+              class="text-xs px-2 py-1 rounded font-medium flex items-center space-x-1"
+              :title="`Timer sync status: ${connectionStatusText.toLowerCase()}`"
+            >
+              <div 
+                :class="connectionDotClasses"
+                class="w-1.5 h-1.5 rounded-full"
+              ></div>
+              <span>{{ connectionStatusText }}</span>
+            </div>
+
+            <!-- New Timer Button -->
+            <button
+              v-if="canCreateTimers"
+              @click="toggleQuickStart"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1 shadow-sm"
+              :title="showQuickStart ? 'Cancel new timer' : 'Start new timer'"
+            >
+              <svg v-if="!showQuickStart" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+              <span>{{ showQuickStart ? 'Cancel' : 'New Timer' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Timer Cards Container - Horizontal Right-to-Left -->
     <div v-if="timers.length > 0" class="flex flex-row-reverse space-x-reverse space-x-2">
       <!-- Individual Timer -->
       <div 
@@ -345,9 +359,9 @@
           </div>
         </div>
       </div>
+        </div>
+      </div>
     </div>
-
-
 
     <!-- Unified Time Entry Dialog for Timer Commit -->
     <UnifiedTimeEntryDialog
@@ -423,6 +437,60 @@ const allowManualTimeOverride = ref(true) // TODO: Load from system settings
 // Access user data from Inertia
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
+
+// Overlay position state with user preference persistence
+const isDocked = ref(false)
+const isLoadingPreferences = ref(true)
+
+// Load user preferences on mount
+const loadUserPreferences = async () => {
+  if (!user.value?.id) {
+    isLoadingPreferences.value = false
+    return
+  }
+  
+  try {
+    const response = await window.axios.get('/api/user-preferences/timer_overlay_docked')
+    isDocked.value = response.data?.data?.value || false
+  } catch (error) {
+    // If preference doesn't exist, default to undocked (bottom-right)
+    isDocked.value = false
+  } finally {
+    isLoadingPreferences.value = false
+  }
+}
+
+// Save overlay position preference
+const saveOverlayPosition = async (docked) => {
+  if (!user.value?.id) return
+  
+  try {
+    await window.axios.post('/api/user-preferences', {
+      key: 'timer_overlay_docked',
+      value: docked
+    })
+  } catch (error) {
+    console.error('Failed to save overlay position preference:', error)
+  }
+}
+
+// Toggle dock position
+const toggleDockPosition = async () => {
+  const newPosition = !isDocked.value
+  isDocked.value = newPosition
+  await saveOverlayPosition(newPosition)
+}
+
+// Computed position classes
+const overlayPositionClasses = computed(() => {
+  if (isLoadingPreferences.value) {
+    return 'fixed bottom-4 right-4 z-50' // Default position while loading
+  }
+  
+  return isDocked.value 
+    ? 'fixed bottom-4 left-4 z-50' // Docked to bottom-left
+    : 'fixed bottom-4 right-4 z-50' // Default bottom-right
+})
 
 // ABAC Permission computeds
 const isAdmin = computed(() => {
@@ -646,6 +714,15 @@ const handleRateSelected = (rate) => {
 }
 
 // Close quick start modal
+const toggleQuickStart = () => {
+  showQuickStart.value = !showQuickStart.value
+  
+  // If closing, reset the form
+  if (!showQuickStart.value && quickStartFormRef.value) {
+    quickStartFormRef.value.resetSubmitState()
+  }
+}
+
 const closeQuickStart = () => {
   showQuickStart.value = false
   // Reset form is handled by TimerConfigurationForm component
@@ -822,7 +899,10 @@ const formatDuration = (seconds, compact = false, expanded = false) => {
 // localStorage changes are now handled by useLocalStorageReactive
 
 // Lifecycle hooks
-onMounted(() => {
+onMounted(async () => {
+  // Load user preferences first
+  await loadUserPreferences()
+  
   // Start real-time timer updates every second
   updateInterval = setInterval(() => {
     currentTime.value = new Date()
