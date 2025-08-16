@@ -8,7 +8,7 @@
       top: debugPosition.y + 'px',
       width: debugMinimized ? '200px' : '320px'
     }"
-    class="fixed z-50 bg-gray-900 text-white rounded-lg shadow-2xl border border-gray-700 select-none"
+    class="fixed z-45 bg-gray-900 text-white rounded-lg shadow-2xl border border-gray-700 select-none"
     @mousedown="startDrag"
   >
     <!-- Debug Header -->
@@ -736,13 +736,13 @@ const stopPanelDrag = async () => {
 // Computed position classes and styles
 const overlayPositionClasses = computed(() => {
   if (isLoadingPreferences.value) {
-    return 'fixed bottom-4 right-4 z-50' // Default position while loading
+    return 'fixed bottom-4 right-4 z-40' // Default position while loading
   }
 
   if (isDocked.value) {
-    return 'fixed bottom-4 right-4 z-50' // Docked to bottom-right corner
+    return 'fixed bottom-4 right-4 z-40' // Docked to bottom-right corner
   } else {
-    return 'fixed z-50' // Undocked moveable panel
+    return 'fixed z-40' // Undocked moveable panel
   }
 })
 

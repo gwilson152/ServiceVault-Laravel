@@ -27,7 +27,7 @@
 
     <!-- Tab Content -->
     <template #default="{ activeTab }">
-      <!-- Basic Information Tab -->
+      <!-- Basic Information & Assignment Tab -->
       <div v-show="activeTab === 'basic'" class="space-y-6">
         <!-- Header Icon and Description -->
         <div class="flex items-center mb-4">
@@ -41,80 +41,87 @@
           </div>
         </div>
 
-        <!-- Description -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Description <span class="text-red-500">*</span>
-          </label>
-          <textarea
-            v-model="form.description"
-            rows="3"
-            placeholder="Describe the work you're timing..."
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            :class="{ 'border-red-500': errors.description }"
-            required
-          />
-          <p v-if="errors.description" class="mt-1 text-sm text-red-600">
-            {{ errors.description }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Assignment Tab -->
-      <div v-show="activeTab === 'assignment'" class="space-y-6">
-        <!-- Account Selection -->
-        <div>
-          <UnifiedSelector
-            v-model="form.accountId"
-            type="account"
-            :items="availableAccounts"
-            label="Account"
-            placeholder="Select account (optional for general timers)"
-            :error="errors.accountId"
-            :can-create="true"
-            :hierarchical="true"
-            :nested="true"
-            @item-selected="handleAccountSelected"
-          />
+        <!-- Basic Information Section -->
+        <div class="space-y-4">
+          <h4 class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">Basic Information</h4>
+          
+          <!-- Description -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Description <span class="text-red-500">*</span>
+            </label>
+            <textarea
+              v-model="form.description"
+              rows="3"
+              placeholder="Describe the work you're timing..."
+              class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :class="{ 'border-red-500': errors.description }"
+              required
+            />
+            <p v-if="errors.description" class="mt-1 text-sm text-red-600">
+              {{ errors.description }}
+            </p>
+          </div>
         </div>
 
-        <!-- Ticket Selection (if account selected) -->
-        <div v-if="form.accountId">
-          <UnifiedSelector
-            v-model="form.ticketId"
-            type="ticket"
-            :items="availableTickets"
-            :loading="ticketsLoading"
-            label="Ticket"
-            placeholder="Select ticket (optional)"
-            :disabled="!form.accountId"
-            :error="errors.ticketId"
-            :can-create="true"
-            :nested="true"
-            :create-modal-props="{
-              prefilledAccountId: form.accountId,
-              availableAccounts: availableAccounts,
-              canAssignTickets: canAssignToOthers
-            }"
-            @item-selected="handleTicketSelected"
-            @item-created="handleTicketCreated"
-          />
-        </div>
+        <!-- Assignment Section -->
+        <div class="space-y-4">
+          <h4 class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">Assignment</h4>
+          
+          <!-- Account Selection -->
+          <div>
+            <UnifiedSelector
+              v-model="form.accountId"
+              type="account"
+              :items="availableAccounts"
+              label="Account"
+              placeholder="Select account (optional for general timers)"
+              :error="errors.accountId"
+              :can-create="true"
+              :hierarchical="true"
+              :nested="true"
+              @item-selected="handleAccountSelected"
+            />
+          </div>
 
-        <!-- Agent Assignment (for managers/admins) -->
-        <div v-if="canAssignToOthers">
-          <UnifiedSelector
-            v-model="form.userId"
-            type="agent"
-            :items="availableAgents"
-            :loading="agentsLoading"
-            label="Assign Service Agent"
-            placeholder="Select an agent to assign this timer..."
-            :error="errors.userId"
-            :agent-type="'timer'"
-            @item-selected="handleAgentSelected"
-          />
-          <p class="mt-1 text-xs text-gray-500">The service agent who will perform this work</p>
+          <!-- Ticket Selection (if account selected) -->
+          <div v-if="form.accountId">
+            <UnifiedSelector
+              v-model="form.ticketId"
+              type="ticket"
+              :items="availableTickets"
+              :loading="ticketsLoading"
+              label="Ticket"
+              placeholder="Select ticket (optional)"
+              :disabled="!form.accountId"
+              :error="errors.ticketId"
+              :can-create="true"
+              :nested="true"
+              :create-modal-props="{
+                prefilledAccountId: form.accountId,
+                availableAccounts: availableAccounts,
+                canAssignTickets: canAssignToOthers
+              }"
+              @item-selected="handleTicketSelected"
+              @item-created="handleTicketCreated"
+            />
+          </div>
+
+          <!-- Agent Assignment (for managers/admins) -->
+          <div v-if="canAssignToOthers">
+            <UnifiedSelector
+              v-model="form.userId"
+              type="agent"
+              :items="availableAgents"
+              :loading="agentsLoading"
+              label="Assign Service Agent"
+              placeholder="Select an agent to assign this timer..."
+              :error="errors.userId"
+              :agent-type="'timer'"
+              @item-selected="handleAgentSelected"
+            />
+            <p class="mt-1 text-xs text-gray-500">The service agent who will perform this work</p>
+          </div>
         </div>
       </div>
 
@@ -247,8 +254,7 @@ const emit = defineEmits(['close', 'timer-started', 'timer-updated'])
 
 // Tab configuration
 const tabs = [
-  { id: 'basic', name: 'Basic Info', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-  { id: 'assignment', name: 'Assignment', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+  { id: 'basic', name: 'Basic Info & Assignment', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   { id: 'billing', name: 'Billing', icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
   { id: 'options', name: 'Options', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4' }
 ]
