@@ -145,9 +145,11 @@
                         Select Account <span class="text-red-500">*</span>
                       </label>
                       <div class="mt-2">
-                        <HierarchicalAccountSelector
+                        <UnifiedSelector
                           v-model="form.account_id"
-                          :show-add-account="false"
+                          type="account"
+                          :items="availableAccounts"
+                          :hierarchical="true"
                           placeholder="Choose an account..."
                           class="w-full"
                         />
@@ -218,7 +220,7 @@
 <script setup>
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { ref, reactive, computed, watch } from 'vue'
-import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -246,6 +248,7 @@ const form = reactive({
 })
 
 const saving = ref(false)
+const availableAccounts = ref([])
 
 // Computed
 const isEditing = computed(() => !!props.rate?.id)
@@ -295,6 +298,20 @@ const isFormValid = computed(() => {
 })
 
 // Reset form
+const loadAvailableAccounts = async () => {
+  try {
+    const response = await axios.get('/api/accounts', {
+      params: {
+        per_page: 100
+      }
+    })
+    availableAccounts.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load available accounts:', error)
+    availableAccounts.value = []
+  }
+}
+
 const resetForm = () => {
   Object.assign(form, {
     name: '',
@@ -321,9 +338,12 @@ watch(() => props.rate, (rate) => {
 }, { immediate: true })
 
 // Watch for modal show/hide to reset form when creating new rate
-watch(() => props.show, (show) => {
-  if (show && !props.rate) {
-    resetForm()
+watch(() => props.show, async (show) => {
+  if (show) {
+    await loadAvailableAccounts()
+    if (!props.rate) {
+      resetForm()
+    }
   }
 })
 

@@ -360,10 +360,10 @@
     </div>
     
     <!-- Create Ticket Modal -->
-    <CreateTicketModal
+    <CreateTicketModalTabbed
       :show="showCreateModal"
       @close="showCreateModal = false"
-      @created="onTicketCreated"
+      @ticket-created="onTicketCreated"
     />
   </div>
 </template>
@@ -373,7 +373,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
-import CreateTicketModal from '@/Components/Modals/CreateTicketModal.vue'
+import CreateTicketModalTabbed from '@/Components/Modals/CreateTicketModalTabbed.vue'
 import TicketsTable from '@/Components/Tables/TicketsTable.vue'
 import { useTicketsTable } from '@/Composables/useTicketsTable'
 import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'

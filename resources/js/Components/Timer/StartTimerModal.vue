@@ -46,58 +46,71 @@
 
             <!-- Account Selection -->
             <div>
-              <HierarchicalAccountSelector
+              <UnifiedSelector
                 v-model="form.accountId"
+                type="account"
+                :items="availableAccounts"
                 label="Account"
                 placeholder="Select account (optional for general timers)"
                 :error="errors.accountId"
-                @account-selected="handleAccountSelected"
+                :can-create="true"
+                :hierarchical="true"
+                :nested="true"
+                @item-selected="handleAccountSelected"
               />
             </div>
 
             <!-- Ticket Selection (if account selected) -->
             <div v-if="form.accountId">
-              <TicketSelector
+              <UnifiedSelector
                 v-model="form.ticketId"
+                type="ticket"
+                :items="availableTickets"
+                :loading="ticketsLoading"
                 label="Ticket"
-                :tickets="availableTickets"
-                :is-loading="ticketsLoading"
                 placeholder="Select ticket (optional)"
                 :disabled="!form.accountId"
                 :error="errors.ticketId"
-                :show-create-option="true"
-                :prefilled-account-id="form.accountId"
-                :available-accounts="availableAccounts"
-                :can-assign-tickets="canAssignToOthers"
-                @ticket-selected="handleTicketSelected"
-                @ticket-created="handleTicketCreated"
+                :can-create="true"
+                :nested="true"
+                :create-modal-props="{
+                  prefilledAccountId: form.accountId,
+                  availableAccounts: availableAccounts,
+                  canAssignTickets: canAssignToOthers
+                }"
+                @item-selected="handleTicketSelected"
+                @item-created="handleTicketCreated"
               />
             </div>
 
             <!-- Agent Assignment (for managers/admins) -->
             <div v-if="canAssignToOthers">
-              <AgentSelector
+              <UnifiedSelector
                 v-model="form.userId"
+                type="agent"
+                :items="availableAgents"
+                :loading="agentsLoading"
                 label="Assign Service Agent"
-                :agents="availableAgents"
-                :is-loading="agentsLoading"
+                placeholder="Select an agent to assign this timer..."
                 :error="errors.userId"
                 :agent-type="'timer'"
-                placeholder="Select an agent to assign this timer..."
-                @agent-selected="handleAgentSelected"
+                @item-selected="handleAgentSelected"
               />
               <p class="mt-1 text-xs text-gray-500">The service agent who will perform this work</p>
             </div>
 
             <!-- Billing Rate Selection -->
             <div>
-              <BillingRateSelector
+              <UnifiedSelector
                 v-model="form.billingRateId"
-                :rates="availableBillingRates"
-                :is-loading="billingRatesLoading"
+                type="billing-rate"
+                :items="availableBillingRates"
+                :loading="billingRatesLoading"
+                label="Billing Rate"
                 placeholder="No billing rate (non-billable)"
                 :error="errors.billingRateId"
-                @rate-selected="handleRateSelected"
+                :show-rate-hierarchy="true"
+                @item-selected="handleRateSelected"
               />
             </div>
 
@@ -178,10 +191,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { usePage } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
-import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
-import TicketSelector from '@/Components/UI/TicketSelector.vue'
-import AgentSelector from '@/Components/UI/AgentSelector.vue'
-import BillingRateSelector from '@/Components/UI/BillingRateSelector.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -360,7 +370,7 @@ const handleAccountSelected = (account) => {
   form.value.billingRateId = null
   
   // Load dependent data
-  if (account) {
+  if (account && account.id) {
     loadTicketsForAccount(account.id)
     loadBillingRatesForAccount(account.id)
     if (canAssignToOthers.value) {
@@ -390,7 +400,7 @@ const handleTicketSelected = (ticket) => {
 }
 
 const handleTicketCreated = (newTicket) => {
-  // The TicketSelector will handle the selection automatically
+  // The UnifiedSelector will handle the selection automatically
 }
 
 const handleAgentSelected = (agent) => {

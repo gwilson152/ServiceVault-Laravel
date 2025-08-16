@@ -1,13 +1,16 @@
 <template>
   <div class="space-y-4">
     <!-- Account Selection -->
-    <HierarchicalAccountSelector
+    <UnifiedSelector
       v-model="selectedAccountId"
+      type="account"
+      :items="availableAccounts"
       :label="accountLabel"
       :placeholder="accountPlaceholder"
       :required="accountRequired"
+      :hierarchical="true"
       :error="accountError"
-      @account-selected="handleAccountSelected"
+      @item-selected="handleAccountSelected"
     />
     
     <!-- User Selection (shows when account is selected) -->
@@ -68,8 +71,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import HierarchicalAccountSelector from './HierarchicalAccountSelector.vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import UnifiedSelector from './UnifiedSelector.vue'
 import axios from 'axios'
 
 // Props
@@ -132,6 +135,7 @@ const selectedAccountId = ref(props.accountValue)
 const selectedUserId = ref(props.userValue)
 const selectedAccount = ref(null)
 const selectedUser = ref(null)
+const availableAccounts = ref([])
 const availableUsers = ref([])
 const isLoadingUsers = ref(false)
 
@@ -169,6 +173,20 @@ const clearUserSelection = () => {
   selectedUser.value = null
   emit('update:userValue', null)
   emit('user-selected', null)
+}
+
+const loadAvailableAccounts = async () => {
+  try {
+    const response = await axios.get('/api/accounts', {
+      params: {
+        per_page: 100
+      }
+    })
+    availableAccounts.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load available accounts:', error)
+    availableAccounts.value = []
+  }
 }
 
 const loadUsersForAccount = async (accountId) => {
@@ -210,7 +228,7 @@ watch(() => props.accountValue, (newValue) => {
     selectedAccountId.value = newValue
     // If we have an account ID but no account object, we need to find it
     if (newValue && !selectedAccount.value) {
-      // This will be handled by the HierarchicalAccountSelector
+      // This will be handled by the UnifiedSelector
     }
   }
 })
@@ -223,5 +241,10 @@ watch(() => props.userValue, (newValue) => {
       selectedUser.value = user
     }
   }
+})
+
+// Initialize
+onMounted(async () => {
+  await loadAvailableAccounts()
 })
 </script>

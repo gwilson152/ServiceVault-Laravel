@@ -1,19 +1,34 @@
 <template>
-  <Modal :show="show" @close="$emit('close')" max-width="2xl" :nested="nested">
-    <div class="p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-lg font-semibold text-gray-900">Create New Ticket</h3>
-        <button
-          @click="$emit('close')"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+  <TabbedDialog
+    :show="show"
+    title="Create New Ticket"
+    :tabs="tabs"
+    default-tab="basic"
+    max-width="2xl"
+    :saving="isSubmitting"
+    save-label="Create Ticket"
+    @close="$emit('close')"
+    @save="submitForm"
+    @tab-change="activeTab = $event"
+  >
+    <!-- Error messages -->
+    <template #errors>
+      <div v-if="Object.keys(errors).length > 0" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+        <div class="flex">
+          <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-        </button>
+          <div class="ml-3 text-sm text-red-700">
+            Please check the highlighted fields and try again.
+          </div>
+        </div>
       </div>
+    </template>
 
-      <form @submit.prevent="submitForm" class="space-y-6">
+    <!-- Tab Content -->
+    <template #default="{ activeTab }">
+      <!-- Basic Information Tab -->
+      <div v-show="activeTab === 'basic'" class="space-y-6">
         <!-- Title -->
         <div>
           <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
@@ -25,6 +40,7 @@
             type="text"
             required
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.title }"
             placeholder="Brief description of the issue or request"
           >
           <p v-if="errors.title" class="mt-1 text-sm text-red-600">{{ errors.title }}</p>
@@ -41,11 +57,15 @@
             required
             rows="4"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.description }"
             placeholder="Detailed description of the issue, steps to reproduce, or requirements"
           ></textarea>
           <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
         </div>
+      </div>
 
+      <!-- Assignment Tab -->
+      <div v-show="activeTab === 'assignment'" class="space-y-6">
         <!-- Account Selection -->
         <div>
           <UnifiedSelector
@@ -91,6 +111,7 @@
               v-model="form.agent_id"
               :disabled="isLoadingAgents"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+              :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.agent_id }"
             >
               <option value="">{{ isLoadingAgents ? 'Loading agents...' : 'Select an agent...' }}</option>
               <option
@@ -109,7 +130,10 @@
           
           <p v-if="errors.agent_id" class="mt-1 text-sm text-red-600">{{ errors.agent_id }}</p>
         </div>
+      </div>
 
+      <!-- Classification Tab -->
+      <div v-show="activeTab === 'classification'" class="space-y-6">
         <!-- Form Row: Priority & Category -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Priority -->
@@ -122,6 +146,7 @@
               v-model="form.priority"
               required
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.priority }"
             >
               <option value="">Select Priority</option>
               <option value="low">Low</option>
@@ -142,6 +167,7 @@
               v-model="form.category"
               :disabled="isLoadingCategories"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+              :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.category }"
             >
               <option value="">{{ isLoadingCategories ? 'Loading categories...' : 'Select Category' }}</option>
               <option
@@ -166,6 +192,7 @@
             v-model="form.due_date"
             type="datetime-local"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.due_date }"
           >
           <p v-if="errors.due_date" class="mt-1 text-sm text-red-600">{{ errors.due_date }}</p>
         </div>
@@ -180,14 +207,18 @@
             v-model="form.tags"
             type="text"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.tags }"
             placeholder="Enter tags separated by commas (e.g., server, database, urgent)"
           >
           <p class="mt-1 text-sm text-gray-500">Separate multiple tags with commas</p>
           <p v-if="errors.tags" class="mt-1 text-sm text-red-600">{{ errors.tags }}</p>
         </div>
+      </div>
 
+      <!-- Options Tab -->
+      <div v-show="activeTab === 'options'" class="space-y-6">
         <!-- Additional Options -->
-        <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+        <div class="bg-gray-50 rounded-lg p-4 space-y-4">
           <h4 class="text-sm font-medium text-gray-900">Additional Options</h4>
           
           <!-- Start Timer -->
@@ -212,33 +243,25 @@
           </label>
         </div>
 
-        <!-- Form Actions -->
-        <div class="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            :disabled="isSubmitting"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <span v-if="isSubmitting">Creating...</span>
-            <span v-else>Create Ticket</span>
-          </button>
+        <!-- Summary -->
+        <div class="bg-blue-50 rounded-lg p-4">
+          <h4 class="text-sm font-medium text-blue-900 mb-2">Ticket Summary</h4>
+          <div class="text-sm text-blue-800 space-y-1">
+            <p><strong>Title:</strong> {{ form.title || 'Not specified' }}</p>
+            <p><strong>Priority:</strong> {{ form.priority || 'Not specified' }}</p>
+            <p><strong>Category:</strong> {{ getCategoryName(form.category) || 'Not specified' }}</p>
+            <p v-if="form.due_date"><strong>Due:</strong> {{ formatDate(form.due_date) }}</p>
+          </div>
         </div>
-      </form>
-    </div>
-  </Modal>
+      </div>
+    </template>
+  </TabbedDialog>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
-import Modal from '@/Components/Modal.vue'
+import TabbedDialog from '@/Components/TabbedDialog.vue'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import UserSelector from '@/Components/UI/UserSelector.vue'
 import axios from 'axios'
@@ -247,18 +270,9 @@ import { useRoleTemplatesQuery } from '@/Composables/queries/useUsersQuery'
 
 // Props
 const props = defineProps({
-  show: Boolean,
-  availableAccounts: {
-    type: Array,
-    default: () => []
-  },
-  canAssignTickets: {
+  show: {
     type: Boolean,
     default: false
-  },
-  prefilledAccountId: {
-    type: [String, Number],
-    default: null
   },
   nested: {
     type: Boolean,
@@ -267,228 +281,107 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['close', 'created'])
+const emit = defineEmits(['close', 'ticket-created'])
 
-// TanStack Query Mutation & Queries
-const createTicketMutation = useCreateTicketMutation()
-const { data: roleTemplatesData } = useRoleTemplatesQuery()
+// Tab configuration
+const tabs = [
+  { id: 'basic', name: 'Basic Info', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { id: 'assignment', name: 'Assignment', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+  { id: 'classification', name: 'Details', icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z' },
+  { id: 'options', name: 'Options', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4' }
+]
+
+const activeTab = ref('basic')
 
 // State
 const isSubmitting = ref(false)
-const errors = ref({})
-const isLoadingCategories = ref(false)
-const availableCategories = ref([])
-const isLoadingAgents = ref(false)
-const availableAgents = ref([])
-const isLoadingCustomers = ref(false)
+const availableAccounts = ref([])
 const availableCustomers = ref([])
+const availableAgents = ref([])
+const availableCategories = ref([])
+const isLoadingCustomers = ref(false)
+const isLoadingAgents = ref(false)
+const isLoadingCategories = ref(false)
+const flatAccounts = ref([])
 
 // Form data
 const form = reactive({
   title: '',
   description: '',
+  account_id: null,
+  customer_id: null,
+  agent_id: null,
   priority: 'normal',
-  account_id: '',
-  customer_id: '', // Added customer user selection
   category: '',
   due_date: '',
-  agent_id: '',
   tags: '',
   start_timer: false,
   send_notifications: true
 })
 
+// Errors
+const errors = ref({})
+
 // Page data
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
-// Computed properties for UserSelector
-const flatAccounts = computed(() => {
-  if (!props.availableAccounts) return []
-  return props.availableAccounts.map(account => ({
-    id: account.id,
-    name: account.name,
-    display_name: account.display_name || account.name,
-    company_name: account.company_name,
-    account_type: account.account_type
-  }))
+// TanStack Query
+const createTicketMutation = useCreateTicketMutation()
+const { data: roleTemplates } = useRoleTemplatesQuery()
+
+// Computed
+const canAssignTickets = computed(() => {
+  return user.value?.user_type === 'agent' || 
+         user.value?.permissions?.includes('tickets.assign') ||
+         user.value?.permissions?.includes('admin.write')
 })
 
-const roleTemplates = computed(() => roleTemplatesData.value?.data || [])
-
 // Methods
-const resetForm = () => {
-  form.title = ''
-  form.description = ''
-  form.priority = 'normal'
-  form.account_id = props.prefilledAccountId || ''
-  form.customer_id = ''
-  form.category = ''
-  form.due_date = ''
-  form.agent_id = ''
-  form.tags = ''
-  form.start_timer = false
-  form.send_notifications = true
-  errors.value = {}
-  availableAgents.value = []
-  availableCustomers.value = []
+const getCategoryName = (categoryKey) => {
+  const category = availableCategories.value.find(c => c.key === categoryKey)
+  return category?.name || categoryKey
 }
 
-const loadCategories = async () => {
-  isLoadingCategories.value = true
-  try {
-    const response = await axios.get('/api/ticket-categories/options')
-    availableCategories.value = response.data.options || []
-    
-    // Set default category if available
-    if (response.data.default_category && !form.category) {
-      form.category = response.data.default_category
-    }
-  } catch (error) {
-    console.error('Failed to load categories:', error)
-    availableCategories.value = []
-  } finally {
-    isLoadingCategories.value = false
-  }
-}
-
-
-const submitForm = async () => {
-  if (isSubmitting.value) return
-
-  isSubmitting.value = true
-  errors.value = {}
-
-  try {
-    // Prepare form data
-    const payload = { ...form }
-    
-    // Process tags
-    if (payload.tags) {
-      payload.tags = payload.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
-    } else {
-      payload.tags = []
-    }
-
-    // Convert due_date to proper format if provided
-    if (payload.due_date) {
-      payload.due_date = new Date(payload.due_date).toISOString()
-    }
-
-    
-    // Remove empty account_id to let backend handle auto-assignment
-    if (!payload.account_id) {
-      delete payload.account_id
-    }
-
-    // Use TanStack Query mutation
-    const newTicket = await createTicketMutation.mutateAsync(payload)
-    
-    // Start timer if requested
-    if (form.start_timer) {
-      await startTimerForTicket(newTicket.id)
-    }
-
-    emit('created', newTicket)
-    resetForm()
-  } catch (error) {
-    console.error('Error creating ticket:', error)
-    if (error.response?.data?.errors) {
-      errors.value = error.response.data.errors
-    } else {
-      errors.value = { general: 'Failed to create ticket. Please try again.' }
-    }
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-const startTimerForTicket = async (ticketId) => {
-  try {
-    // TODO: Add billing rate selection to timer creation
-    // Currently creating basic timer without billing rate
-    // Should integrate with UnifiedSelector component for proper rate selection
-    await axios.post('/api/timers', {
-      ticket_id: ticketId,
-      account_id: form.account_id,
-      description: `Working on ticket: ${form.title}`
-      // TODO: billing_rate_id: selectedBillingRateId
-    })
-  } catch (error) {
-    console.error('Failed to start timer:', error)
-    // Don't fail the entire ticket creation for this - timer can be started manually later
-  }
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleString()
 }
 
 const handleAccountSelected = (account) => {
-  // Load agents for the selected account if needed
-  if (props.canAssignTickets && account) {
-    loadAgentsForAccount(account.id)
-  }
+  form.customer_id = null
+  loadCustomers()
 }
 
 const handleCustomerSelected = (customer) => {
-  // Handle customer selection if needed
-  // Currently just updates the form value via v-model
-  console.log('Customer selected:', customer)
+  // Handle customer selection
 }
 
-const handleUserCreated = (newUser) => {
-  // Add the newly created user to the available customers list
-  availableCustomers.value.push(newUser)
-  console.log('New user created and added to customer list:', newUser)
+const handleUserCreated = (user) => {
+  form.customer_id = user.id
+  loadCustomers()
 }
 
-const loadAgentsForAccount = async (accountId) => {
-  if (!accountId) {
-    availableAgents.value = []
-    return
-  }
-  
-  isLoadingAgents.value = true
+const loadAccounts = async () => {
   try {
-    // Use the same endpoint as StartTimerModal for consistency
-    const params = {
-      per_page: 100,
-      agent_type: 'ticket' // Specify ticket agent type
-    }
-    
-    // Only filter by account if one is specified
-    if (accountId) {
-      params.account_id = accountId
-    }
-    
-    const response = await axios.get('/api/users/agents', { params })
-    availableAgents.value = response.data.data || []
-    
-    console.log('Loaded ticket agents for assignment:', {
-      count: availableAgents.value.length,
-      accountId
-    })
+    const response = await axios.get('/api/accounts')
+    availableAccounts.value = response.data.data
+    flatAccounts.value = flattenAccounts(response.data.data)
   } catch (error) {
-    console.error('Failed to load ticket agents:', error)
-    availableAgents.value = []
-  } finally {
-    isLoadingAgents.value = false
+    console.error('Failed to load accounts:', error)
   }
 }
 
-const loadCustomersForAccount = async (accountId) => {
-  if (!accountId) {
+const loadCustomers = async () => {
+  if (!form.account_id) {
     availableCustomers.value = []
     return
   }
-  
-  isLoadingCustomers.value = true
+
   try {
-    const response = await axios.get(`/api/accounts/${accountId}/users`, {
-      params: {
-        per_page: 100,
-        role_context: 'account_user' // Filter for customer users only
-      }
-    })
-    
-    availableCustomers.value = response.data.data || []
+    isLoadingCustomers.value = true
+    const response = await axios.get(`/api/accounts/${form.account_id}/users`)
+    availableCustomers.value = response.data.data.filter(user => user.user_type === 'customer')
   } catch (error) {
     console.error('Failed to load customers:', error)
     availableCustomers.value = []
@@ -497,46 +390,105 @@ const loadCustomersForAccount = async (accountId) => {
   }
 }
 
-// Watchers & Lifecycle
-onMounted(() => {
-  loadCategories()
-})
+const loadAgents = async () => {
+  try {
+    isLoadingAgents.value = true
+    const response = await axios.get('/api/users/agents')
+    availableAgents.value = response.data.data
+  } catch (error) {
+    console.error('Failed to load agents:', error)
+  } finally {
+    isLoadingAgents.value = false
+  }
+}
 
-// Watch for account changes to load agents and customers
-watch(() => form.account_id, (newAccountId) => {
-  if (newAccountId) {
-    // Load customers for any account
-    loadCustomersForAccount(newAccountId)
-    // Clear customer selection when account changes
-    form.customer_id = ''
-    
-    // Load agents only if user can assign tickets
-    if (props.canAssignTickets) {
-      loadAgentsForAccount(newAccountId)
-      // Clear agent selection when account changes
-      form.agent_id = ''
+const loadCategories = async () => {
+  try {
+    isLoadingCategories.value = true
+    const response = await axios.get('/api/ticket-categories')
+    availableCategories.value = response.data.data
+  } catch (error) {
+    console.error('Failed to load categories:', error)
+  } finally {
+    isLoadingCategories.value = false
+  }
+}
+
+const flattenAccounts = (accounts, depth = 0) => {
+  let result = []
+  for (const account of accounts) {
+    result.push({
+      ...account,
+      display_name: '  '.repeat(depth) + account.name,
+      depth
+    })
+    if (account.children && account.children.length > 0) {
+      result.push(...flattenAccounts(account.children, depth + 1))
     }
+  }
+  return result
+}
+
+const submitForm = async () => {
+  try {
+    isSubmitting.value = true
+    errors.value = {}
+
+    const result = await createTicketMutation.mutateAsync(form)
+    
+    emit('ticket-created', result.data.data)
+    emit('close')
+    
+    // Reset form
+    Object.assign(form, {
+      title: '',
+      description: '',
+      account_id: null,
+      customer_id: null,
+      agent_id: null,
+      priority: 'normal',
+      category: '',
+      due_date: '',
+      tags: '',
+      start_timer: false,
+      send_notifications: true
+    })
+    
+  } catch (error) {
+    console.error('Failed to create ticket:', error)
+    if (error.response?.data?.errors) {
+      errors.value = error.response.data.errors
+    } else {
+      errors.value = { general: ['Failed to create ticket. Please try again.'] }
+    }
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// Watchers
+watch(() => form.account_id, () => {
+  if (form.account_id) {
+    loadCustomers()
   } else {
     availableCustomers.value = []
-    availableAgents.value = []
-    form.customer_id = ''
-    form.agent_id = ''
+    form.customer_id = null
   }
 })
 
-// Watch for modal show/hide
-watch(() => props.show, (show) => {
-  if (show) {
-    resetForm()
-    loadCategories()
-    // Load data if account is already selected
-    if (form.account_id) {
-      loadCustomersForAccount(form.account_id)
-      if (props.canAssignTickets) {
-        loadAgentsForAccount(form.account_id)
-      }
-    }
+watch(() => props.show, (isOpen) => {
+  if (isOpen) {
+    activeTab.value = 'basic'
+    errors.value = {}
   }
-}, { immediate: true })
+})
 
+// Load data on mount
+onMounted(() => {
+  loadAccounts()
+  if (canAssignTickets.value) {
+    loadAgents()
+  }
+  loadCategories()
+})
 </script>

@@ -60,6 +60,7 @@ For complete setup instructions, see [System Documentation](system/index.md).
 - **[System Setup & Administration](system/index.md)** - Installation, configuration, and maintenance
 - **[API Reference](api/index.md)** - Complete REST API documentation
 - **[Architecture Overview](architecture/index.md)** - System design and technical specifications
+- **[Component Documentation](components/index.md)** - Vue.js components and UI systems
 - **[Development Guide](development/index.md)** - Development workflows and standards
 - **[Features Documentation](features/index.md)** - User guides and feature specifications
 
@@ -81,6 +82,7 @@ For complete setup instructions, see [System Documentation](system/index.md).
 
 ### 🔧 Technical References
 
+- **[Enhanced Dialog System](components/dialog-system.md)** - Auto-stacking dialogs with tabbed interfaces and smart dismissal
 - **[Timer System Architecture](architecture/timer-system.md)** - Multi-timer design and synchronization
 - **[Billing System Architecture](architecture/billing-system.md)** - Complete billing workflow and database design
 - **[Permission System](architecture/three-dimensional-permissions.md)** - Technical permission architecture

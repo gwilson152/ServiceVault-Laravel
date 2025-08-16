@@ -42,40 +42,47 @@
               
               <!-- Account Selection (if not pre-selected) -->
               <div v-if="!contextAccount">
-                <HierarchicalAccountSelector
+                <UnifiedSelector
                   v-model="form.accountId"
+                  type="account"
+                  :items="availableAccounts"
                   label="Account"
+                  placeholder="Select account..."
                   :required="true"
                   :error="errors.accountId"
-                  @account-selected="handleAccountSelected"
+                  :hierarchical="true"
+                  @item-selected="handleAccountSelected"
                 />
               </div>
               
               <!-- Ticket Selection (if not pre-selected) -->
               <div v-if="!contextTicket">
-                <TicketSelector
+                <UnifiedSelector
                   v-model="form.ticketId"
+                  type="ticket"
+                  :items="availableTickets"
+                  :loading="ticketsLoading"
                   label="Ticket"
-                  :tickets="availableTickets"
-                  :is-loading="ticketsLoading"
+                  placeholder="Select ticket..."
                   :required="true"
                   :disabled="!form.accountId"
                   :error="errors.ticketId"
-                  @ticket-selected="handleTicketSelected"
+                  @item-selected="handleTicketSelected"
                 />
               </div>
               
               <!-- Agent Assignment (for managers/admins) -->
               <div v-if="canAssignToOthers">
-                <AgentSelector
+                <UnifiedSelector
                   v-model="form.userId"
+                  type="agent"
+                  :items="availableAgents"
+                  :loading="agentsLoading"
                   label="Service Agent"
-                  :agents="availableAgents"
-                  :is-loading="agentsLoading"
+                  placeholder="Select the agent who performed this work..."
                   :error="errors.userId"
                   :agent-type="'time'"
-                  placeholder="Select the agent who performed this work..."
-                  @agent-selected="handleAgentSelected"
+                  @item-selected="handleAgentSelected"
                 />
                 <p class="mt-1 text-xs text-gray-500">The service agent who performed this work</p>
               </div>
@@ -180,14 +187,15 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Billing Rate
                 </label>
-                <BillingRateSelector
+                <UnifiedSelector
                   v-model="form.billingRateId"
-                  :rates="availableBillingRates"
-                  :is-loading="billingRatesLoading"
-                  :show-hierarchy-info="true"
+                  type="billing-rate"
+                  :items="availableBillingRates"
+                  :loading="billingRatesLoading"
+                  :show-rate-hierarchy="true"
                   placeholder="No billing rate"
                   :error="errors.billingRateId"
-                  @rate-selected="handleRateSelected"
+                  @item-selected="handleRateSelected"
                 />
               </div>
 
@@ -315,10 +323,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { usePage } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
-import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
-import TicketSelector from '@/Components/UI/TicketSelector.vue'
-import BillingRateSelector from '@/Components/UI/BillingRateSelector.vue'
-import AgentSelector from '@/Components/UI/AgentSelector.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import { useTimerSettings } from '@/Composables/useTimerSettings.js'
 import axios from 'axios'
 
@@ -383,6 +388,7 @@ const errors = ref({})
 const isSubmitting = ref(false)
 
 // Data loading states
+const availableAccounts = ref([])
 const availableTickets = ref([])
 const availableBillingRates = ref([])
 const availableAgents = ref([])
@@ -473,6 +479,20 @@ const calculateTimerDuration = () => {
   // Factor in pause periods if available
   const pauseDuration = props.timerData.pause_duration || 0
   return Math.max(0, elapsed - pauseDuration)
+}
+
+const loadAvailableAccounts = async () => {
+  try {
+    const response = await axios.get('/api/accounts', {
+      params: {
+        per_page: 100
+      }
+    })
+    availableAccounts.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load available accounts:', error)
+    availableAccounts.value = []
+  }
 }
 
 const loadTicketsForAccount = async (accountId, includeTicketId = null) => {
@@ -750,7 +770,7 @@ const initializeForm = async () => {
       form.value.ticketId = props.timerData.ticket_id
       console.log('Set form ticketId to:', props.timerData.ticket_id, 'Available tickets:', availableTickets.value.length)
       
-      // Force another tick to let TicketSelector react
+      // Force another tick to let UnifiedSelector react
       await nextTick()
     }
     
@@ -809,7 +829,8 @@ const initializeForm = async () => {
     }
   }
   
-  // Load initial billing rates and tickets if account is set
+  // Load initial data
+  await loadAvailableAccounts()
   loadBillingRatesForAccount(form.value.accountId)
   if (form.value.accountId) {
     loadTicketsForAccount(form.value.accountId)

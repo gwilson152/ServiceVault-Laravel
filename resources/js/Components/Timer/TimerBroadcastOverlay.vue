@@ -528,19 +528,19 @@
     />
 
     <!-- Start Timer Modal -->
-    <StartTimerModal
+    <StartTimerModalTabbed
       :show="showStartTimerModal"
       @close="showStartTimerModal = false"
-      @started="handleTimerStarted"
+      @timer-started="handleTimerStarted"
     />
 
     <!-- Timer Settings Modal -->
-    <StartTimerModal
+    <StartTimerModalTabbed
       :show="showTimerSettingsModal"
       mode="edit"
       :timer="currentTimerSettings"
       @close="showTimerSettingsModal = false"
-      @updated="handleTimerUpdated"
+      @timer-updated="handleTimerUpdated"
     />
 
 </template>
@@ -552,7 +552,7 @@ import { usePage } from '@inertiajs/vue3'
 import { useBillingRatesQuery } from '@/Composables/queries/useBillingQuery'
 import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'
 import { useLocalStorageReactive } from '@/Composables/useLocalStorageReactive.js'
-import StartTimerModal from '@/Components/Timer/StartTimerModal.vue'
+import StartTimerModalTabbed from '@/Components/Timer/StartTimerModalTabbed.vue'
 import Modal from '@/Components/Modal.vue'
 import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
 import { useTimerSettings } from '@/Composables/useTimerSettings.js'

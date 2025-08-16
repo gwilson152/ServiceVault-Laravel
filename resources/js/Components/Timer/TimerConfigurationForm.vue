@@ -26,30 +26,38 @@
     
     <!-- Account Selection -->
     <div v-if="showAccountSelection">
-      <HierarchicalAccountSelector
+      <UnifiedSelector
         v-model="form.accountId"
+        type="account"
+        :items="availableAccounts"
         :label="showLabels ? 'Account' : null"
         :placeholder="accountPlaceholder"
         :required="false"
+        :hierarchical="true"
         :error="errors.accountId"
-        @account-selected="handleAccountSelected"
+        @item-selected="handleAccountSelected"
       />
     </div>
     
     <!-- Ticket Selection (only if account selected) -->
     <div v-if="showTicketSelection && form.accountId">
-      <TicketSelector
+      <UnifiedSelector
         v-model="form.ticketId"
+        type="ticket"
+        :items="availableTickets"
+        :loading="ticketsLoading"
         :label="showLabels ? 'Ticket' : null"
-        :tickets="availableTickets"
-        :is-loading="ticketsLoading"
         :placeholder="ticketPlaceholder"
         :disabled="!form.accountId"
         :error="errors.ticketId"
-        :show-create-option="true"
-        :prefilled-account-id="form.accountId"
-        @ticket-selected="handleTicketSelected"
-        @ticket-created="handleTicketCreated"
+        :can-create="true"
+        :create-modal-props="{
+          prefilledAccountId: form.accountId,
+          availableAccounts: availableAccounts,
+          canAssignTickets: false
+        }"
+        @item-selected="handleTicketSelected"
+        @item-created="handleTicketCreated"
       />
     </div>
     
@@ -61,13 +69,15 @@
       >
         Billing Rate
       </label>
-      <BillingRateSelector
+      <UnifiedSelector
         v-model="form.billingRateId"
-        :rates="availableBillingRates"
-        :is-loading="billingRatesLoading"
+        type="billing-rate"
+        :items="availableBillingRates"
+        :loading="billingRatesLoading"
         :placeholder="billingRatePlaceholder"
+        :show-rate-hierarchy="true"
         :error="errors.billingRateId"
-        @rate-selected="handleRateSelected"
+        @item-selected="handleRateSelected"
       />
     </div>
 
@@ -79,14 +89,14 @@
       >
         Assigned User
       </label>
-      <UserSelector
+      <UnifiedSelector
         v-model="form.userId"
-        :users="availableUsers"
-        :is-loading="usersLoading"
+        type="user"
+        :items="availableUsers"
+        :loading="usersLoading"
         :placeholder="userPlaceholder"
-        :show-create-option="false"
         :error="errors.userId"
-        @user-selected="handleUserSelected"
+        @item-selected="handleUserSelected"
       />
     </div>
 
@@ -157,10 +167,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
-import HierarchicalAccountSelector from '@/Components/UI/HierarchicalAccountSelector.vue'
-import TicketSelector from '@/Components/UI/TicketSelector.vue'
-import BillingRateSelector from '@/Components/UI/BillingRateSelector.vue'
-import UserSelector from '@/Components/UI/UserSelector.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import axios from 'axios'
 
 // Props
@@ -259,6 +266,7 @@ const errors = ref({})
 const isSubmitting = ref(false)
 
 // Data loading states
+const availableAccounts = ref([])
 const availableTickets = ref([])
 const availableBillingRates = ref([])
 const availableUsers = ref([])
@@ -369,6 +377,20 @@ const loadTimerSettings = async () => {
     timerSettings.value = { ...timerSettings.value, ...response.data.data }
   } catch (error) {
     console.error('Failed to load timer settings:', error)
+  }
+}
+
+const loadAvailableAccounts = async () => {
+  try {
+    const response = await axios.get('/api/accounts', {
+      params: {
+        per_page: 100
+      }
+    })
+    availableAccounts.value = response.data.data || []
+  } catch (error) {
+    console.error('Failed to load available accounts:', error)
+    availableAccounts.value = []
   }
 }
 
@@ -591,6 +613,7 @@ defineExpose({
 // Lifecycle
 onMounted(async () => {
   await loadTimerSettings()
+  await loadAvailableAccounts()
   initializeForm()
   
   // Load initial billing rates
