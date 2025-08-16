@@ -1,8 +1,14 @@
 <script setup>
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useCreateUserMutation, useUpdateUserMutation } from '@/Composables/queries/useUsersQuery'
+import StackedDialog from '@/Components/StackedDialog.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 
 const props = defineProps({
+    show: {
+        type: Boolean,
+        default: false
+    },
     open: {
         type: Boolean,
         default: false
@@ -25,10 +31,7 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['close', 'saved'])
-
-// Dialog ref for native dialog management
-const dialogRef = ref(null)
+const emit = defineEmits(['close', 'saved', 'created'])
 
 const form = ref({
     name: '',
@@ -57,8 +60,11 @@ const saving = computed(() => createUserMutation.isPending.value || updateUserMu
 const isEditing = computed(() => !!props.user?.id)
 const modalTitle = computed(() => isEditing.value ? 'Edit User' : 'Create User')
 
-// Watch for changes to populate form and manage dialog
-watch(() => props.open, async (isOpen) => {
+// Support both show and open props for backward compatibility
+const isOpen = computed(() => props.show || props.open)
+
+// Watch for changes to populate form
+watch(isOpen, (isOpen) => {
     if (isOpen) {
         if (props.user) {
             // Editing existing user
@@ -80,19 +86,6 @@ watch(() => props.open, async (isOpen) => {
             resetForm()
         }
         errors.value = {}
-        
-        // Open dialog with a small delay to ensure it appears on top
-        await nextTick()
-        setTimeout(() => {
-            if (dialogRef.value) {
-                dialogRef.value.showModal()
-            }
-        }, 50)
-    } else {
-        // Close dialog
-        if (dialogRef.value) {
-            dialogRef.value.close()
-        }
     }
 })
 
@@ -144,6 +137,7 @@ const saveUser = async () => {
         }
         
         emit('saved', response.data.data)
+        emit('created', response.data.data)
         emit('close')
     } catch (error) {
         if (error.response?.data?.errors) {
@@ -156,6 +150,16 @@ const saveUser = async () => {
 
 const closeModal = () => {
     emit('close')
+}
+
+const handleAccountSelected = (account) => {
+    // Account selection is automatically handled by v-model
+    // Additional logic can be added here if needed
+}
+
+const handleAccountCreated = (newAccount) => {
+    // The UnifiedSelector will automatically select the newly created account
+    // Additional logic can be added here if needed
 }
 
 const getAccountDisplayName = () => {
@@ -187,30 +191,12 @@ const locales = [
 </script>
 
 <template>
-    <!-- Native dialog for proper stacking context -->
-    <dialog
-        ref="dialogRef"
-        class="backdrop:bg-gray-500 backdrop:bg-opacity-75 bg-transparent max-w-2xl w-full max-h-[90vh] rounded-lg"
+    <StackedDialog
+        :show="isOpen"
+        :title="modalTitle"
+        max-width="2xl"
         @close="closeModal"
     >
-        <div class="bg-white rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto">
-            <!-- Modal header -->
-            <div class="px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-medium text-gray-900">{{ modalTitle }}</h3>
-                    <button
-                        type="button"
-                        @click="closeModal"
-                        class="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600"
-                    >
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Modal body -->
             <form @submit.prevent="saveUser" class="px-6 py-4">
                 <!-- General error -->
                 <div v-if="errors.general" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
@@ -363,17 +349,18 @@ const locales = [
                     <div v-if="!preselectedAccountId" class="border-b border-gray-200 pb-4">
                         <h4 class="text-lg font-medium text-gray-900 mb-4">Account Assignment</h4>
                         <div>
-                            <label for="account_id" class="block text-sm font-medium text-gray-700">Primary Account</label>
-                            <select
-                                id="account_id"
+                            <UnifiedSelector
                                 v-model="form.account_id"
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            >
-                                <option :value="null">Select an account...</option>
-                                <option v-for="account in accounts" :key="account.id" :value="account.id">
-                                    {{ account.display_name }} ({{ account.account_type }})
-                                </option>
-                            </select>
+                                type="account"
+                                :items="accounts"
+                                label="Primary Account"
+                                placeholder="Select an account..."
+                                :hierarchical="true"
+                                :can-create="true"
+                                :nested="true"
+                                @item-selected="handleAccountSelected"
+                                @item-created="handleAccountCreated"
+                            />
                             <p class="mt-1 text-xs text-gray-500">Select the primary account this user belongs to.</p>
                         </div>
                     </div>
@@ -471,6 +458,5 @@ const locales = [
                     </button>
                 </div>
             </form>
-        </div>
-    </dialog>
+    </StackedDialog>
 </template>

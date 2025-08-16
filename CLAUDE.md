@@ -6,58 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring hierarchical customer account management, three-dimensional permission system (functional + widget + page access), account hierarchy permissions, and enterprise-level customization for multi-tenant service delivery.
 
-### Current Status: Phase 15A+ Complete (100% MVP Ready + Full Billing System + TanStack Query Migration + Nuclear Reset + Debug Overlay System)
-**✅ Fully Implemented Features:**
-- **Super Admin Debug Overlay System**: Comprehensive debug overlays for timer diagnostics and permission analysis with reactive settings, expandable categories, and strict Super Admin-only access - accessible via Settings > Advanced tab
-- **Nuclear System Reset**: Complete system reset functionality with multi-layer security (Super Admin + password confirmation), comprehensive audit logging, and safe execution via artisan command - accessible via Settings > Nuclear Reset tab
-- **Complete Billing & Financial Management System**: Enterprise-grade invoicing, payment tracking, two-tier billing rate hierarchy (Account-specific → Global), unified rate management components, dynamic addon templates with API-driven categories, and financial reporting with TanStack Tables and Query optimization
-- **Three-Dimensional Permission System**: Complete functional + widget + page permission architecture with role template management
-- **Dashboard Preview System**: Real-time role preview with mock data generation and context switching (service provider vs account user)
-- **Widget Assignment Interface**: Drag & drop widget management with 12-column grid layout designer and permission validation
-- **Role Template Management**: Complete CRUD operations with permission inheritance, cloning, and context-aware validation
-- **Context-Aware Security**: Service Provider vs Account User contexts with automatic permission filtering and inheritance
-- **Complete Ticket Addon System**: Dynamic addon templates with CRUD operations, API-driven categories, and billing integration
-- **Enhanced Ticket Widget System**: TicketTimerStats, TicketFilters, and RecentTimeEntries widgets with real-time functionality
-- **Permission-Based Navigation**: Dynamic menu system adapting to user roles and three-dimensional permissions
-- **Advanced Ticket Configuration System**: Complete drag-drop workflow management with optimistic UI updates, modal-based CRUD operations, and SLA integration
-- **Settings Page Path Parameters**: Tab-based navigation with URL routing and browser history support
-- **Optimistic Drag-Drop UX**: Instant visual feedback with background persistence and error recovery for all configuration ordering
-- **Widget-Based Dashboard System**: 14+ permission-filtered widgets with auto-discovery and responsive grid layout
-- **Comprehensive Tickets Page**: Full-featured ticket management with advanced filtering, dual view modes, and addon integration
-- **Enhanced Real-Time Multi-Timer System**: Live duration updates, cross-component sync, manual time override, optimized bulk queries, professional commit workflows, and dual-mode persistent timer overlay (dockable corner + moveable panel) with Inertia.js layouts
-- **Advanced Email Configuration System**: Wizard-style SMTP/IMAP setup with OAuth2 and app password support, provider templates, manual port configuration, real-time testing, and horizontal scrolling navigation
-- **Service Ticket Integration**: Complete workflow system with timer integration, inline controls, and addon cost tracking
-- **TimeEntry Management**: Comprehensive approval workflows with bulk operations, statistical tracking, and tabbed interface with integrated timer management
-- **Complete User Management System**: Invitation-based user onboarding with nullable passwords, visibility controls, automatic timezone detection, and conditional password requirements
-- **Laravel Sanctum Authentication**: Hybrid session/token auth with 23 granular abilities
-- **Domain-Based User Assignment**: Automatic account assignment via email domain patterns
-- **Real-Time Broadcasting Infrastructure**: Laravel Echo + Vue composables with cross-component timer synchronization
-- **Advanced Permission Caching**: Role-based permission caching with efficient resolution algorithms
-- **Comprehensive API**: 58+ endpoints with bulk operations, three-dimensional authentication, authorization, and preview capabilities
-- **Cross-Device Timer Sync**: Redis-based state management with conflict resolution
-- **Enterprise Authentication**: Token scoping (employee, manager, mobile-app, admin) with widget permissions
-- **Modern Frontend Stack**: Vue.js 3.5 + Inertia.js persistent layouts + TanStack Query + Tailwind CSS + Headless UI
-- **Optimized Dashboard Layout**: CSS Grid responsive design with progressive breakpoints and widget assignment controls
+### Current Status: Production-Ready Platform
+**✅ Core Platform Features:**
+- **Three-Dimensional Permission System**: Functional + Widget + Page access control with role template management
+- **Multi-Timer System**: Concurrent timers with Redis state management and real-time sync
+- **Unified Selector System**: Consistent selector components for tickets, accounts, users, agents, and billing rates
+- **StackedDialog Architecture**: Native dialog-based modal system with proper stacking and z-index management
+- **Complete Billing System**: Two-tier billing rate hierarchy (Account-specific → Global) with unified management
+- **Feature-Specific Agent Permissions**: Granular agent assignment control for timers, tickets, time entries, and billing
+- **Real-Time Broadcasting**: Laravel Echo + Vue composables with cross-component synchronization
+- **TanStack Query Integration**: Optimized data fetching, caching, and error handling
+- **Comprehensive API**: RESTful endpoints with bulk operations and three-dimensional authentication
+- **Enterprise Authentication**: Laravel Sanctum hybrid session/token auth with granular abilities
 
-**🎯 Platform Status:** Fully Production-Ready - All core workflows refined and comprehensive UX improvements completed
+**🎯 Platform Status:** Production-Ready
 
-**Phase 15A+ Recent Completions:**
-- **Enhanced Ticket Detail Pages**: Fully functional central hub with all tabs working (messages, time tracking, addons, activity, billing)
-- **Dual-Mode Timer Overlay System**: Smart overlay with dockable corner mode and moveable panel mode, featuring drag-to-move functionality, user preference persistence, compact design, and Agent/Customer filtering with quick-start functionality
-- **Complete Account Management**: Full account detail pages with comprehensive CRUD operations
-- **Invitation Acceptance Workflow**: Complete user onboarding with timezone detection and role assignment
-- **Customer Portal Foundation**: Portal dashboard and project interfaces for customer users
-- **Enhanced Error Handling**: Comprehensive error states and user-friendly messaging across all components
-- **TanStack Query Migration**: Complete migration from axios to TanStack Query for optimized caching, error handling, and data synchronization
-- **Simplified Two-Tier Billing System**: Streamlined billing rate hierarchy (Account-specific → Global), unified rate management components, shared BillingRateModal across contexts, enhanced visual hierarchy with color-coded badges and group headers
-- **Comprehensive ABAC Timer Permissions**: Full attribute-based access control for timer viewing, control, and creation with UI-level permission enforcement
-- **Unified Time Entry Components**: Consolidated all timer commit workflows into UnifiedTimeEntryDialog with multiline work descriptions
-- **Enhanced Selector Components**: Added account creation to HierarchicalAccountSelector with CSRF protection and seamless UX integration
-- **Tabbed Time Management Interface**: Unified Time Entries and Active Timers interface with ABAC permission-based visibility and URL-based tab navigation
-- **TimeEntry API Fixes**: Resolved 500 errors in TimeEntryResource with proper closure scoping, duration field corrections, and missing field mappings
-- **Enhanced Setup System**: Robust setup completion detection with `system.setup_complete` setting, automatic system data seeding, and dual-middleware protection
-- **Advanced Modal Architecture**: Native dialog-based modal stacking with Vue Teleport for proper hierarchy management, nested modal support, and resolved z-index conflicts
-- **Refined Ticket Creation UX**: Removed auto-account selection in CreateTicketModal for explicit user control and improved account selection workflow
+**Recent Key Improvements:**
+- **Unified Selector System**: Single component handles tickets, accounts, users, agents, and billing rates with consistent interface
+- **StackedDialog Architecture**: All modals converted to use native dialog with proper stacking and z-index management
+- **Streamlined Ticket Creation**: Merged basic info and assignment tabs for improved user experience
+- **Enhanced Modal System**: Vertical expansion to fit content, proper modal stacking, and consistent UI
 
 ## Documentation
 
@@ -250,6 +218,66 @@ Always use Inertia.js navigation (`router.visit()` or `<Link>`) to maintain time
 **Domain-Based Assignment:**
 Automatic user-to-account mapping via domain patterns. See [Authentication System](docs/system/authentication-system.md#domain-based-user-assignment).
 
+## Unified Selector System
+
+Service Vault uses a single `UnifiedSelector` component for consistent entity selection across the entire application:
+
+**Supported Types:**
+- `ticket` - Ticket selection with creation support
+- `account` - Hierarchical account selection with creation support  
+- `user` - User selection (customer users)
+- `agent` - Agent selection with feature-specific types (timer, ticket, time, billing)
+- `billing-rate` - Billing rate selection with hierarchy display
+
+**Key Features:**
+- **Consistent Interface**: Same props and events across all entity types
+- **Creation Support**: Built-in "Create New" options with proper modal stacking
+- **Type-Specific Configurations**: Icons, colors, badges, and behaviors per type
+- **Hierarchical Display**: Visual hierarchy for accounts and billing rates
+- **Modal Stacking**: `nested` prop for proper z-index management
+- **Search & Filter**: Built-in search and filtering capabilities
+
+**Usage Example:**
+```vue
+<UnifiedSelector
+  v-model="selectedId"
+  type="account"
+  :items="availableAccounts"
+  label="Account"
+  placeholder="Select account..."
+  :hierarchical="true"
+  :can-create="true"
+  :nested="true"
+  @item-selected="handleSelection"
+  @item-created="handleCreation"
+/>
+```
+
+## StackedDialog Architecture
+
+Service Vault uses a native `<dialog>`-based modal system for proper stacking and accessibility:
+
+**Key Features:**
+- **Native Dialog Elements**: Uses HTML5 `<dialog>` for proper modal behavior
+- **Automatic Stacking**: Manages z-index automatically for nested modals
+- **Consistent Header**: Unified header with title and close button
+- **Vertical Expansion**: Dialogs expand to fit content without artificial height limits
+- **Teleport Support**: Proper rendering outside component tree
+
+**Usage Example:**
+```vue
+<StackedDialog
+  :show="isOpen"
+  title="Dialog Title"
+  max-width="2xl"
+  @close="closeDialog"
+>
+  <!-- Dialog content -->
+</StackedDialog>
+```
+
+**Modal Conversion:** All core modals have been converted from the old `Modal` component to `StackedDialog` for consistency and proper stacking behavior.
+
 ## Billing Rate System
 
 Service Vault features a **simplified two-tier billing rate hierarchy** for clear and manageable pricing:
@@ -262,7 +290,7 @@ Service Vault features a **simplified two-tier billing rate hierarchy** for clea
 - **Unified Components**: Shared `BillingRateModal` component works across settings and account contexts
 - **Visual Hierarchy**: Color-coded badges (Blue for account rates, Green for global rates)
 - **Inheritance System**: Child accounts inherit parent account rates unless overridden
-- **Smart Selector**: `BillingRateSelector` with group headers, rate priority sorting, and hierarchy explanation
+- **Unified Selector**: `UnifiedSelector` type="billing-rate" with group headers and rate hierarchy
 - **API Integration**: `/api/billing-rates?account_id={id}` returns account + inherited + global rates
 
 ## Development Standards
@@ -282,14 +310,12 @@ php artisan make:resource AccountResource             # API responses
 ### Architecture Principles
 - **Hybrid Authentication**: Laravel Sanctum (session + token) with granular abilities
 - **Multi-Timer Architecture**: Concurrent timer support with Redis state management
-- **Account Hierarchy System**: Customer account trees with visual hierarchical display and subsidiary access permissions
 - **Three-Dimensional Permission System**: Functional + Widget + Page access control
-- **ABAC Permission System**: Role templates with hierarchical inheritance and UI control
-- **Widget-Based Dashboard**: Permission-driven widget system with auto-discovery
-- **Real-Time Infrastructure**: Laravel Echo + Vue composables (WebSocket ready)
+- **Unified Component System**: Single components handle multiple entity types consistently
+- **StackedDialog Architecture**: Native dialog-based modals with proper z-index management
+- **Real-Time Infrastructure**: Laravel Echo + Vue composables for live updates
 - **API-First Backend**: RESTful endpoints with consistent JSON responses
-- **Component-Based Frontend**: Vue.js 3.5 + Inertia.js + Headless UI + Tailwind CSS
-- **Enterprise Theming**: CSS custom properties for multi-tenant branding
+- **Modern Frontend Stack**: Vue.js 3.5 + Inertia.js + TanStack Query + Tailwind CSS
 
 ## Three-Dimensional Permission System
 
@@ -304,11 +330,6 @@ $user->hasPermission('pages.tickets.manage');      // Page Access
 ```
 
 **Permission Storage:** Role templates store three separate arrays (`permissions`, `widget_permissions`, `page_permissions`) with unified checking via `hasPermission()` method.
-
-**⚠️ CRITICAL Permission Requirements:**
-- **Timer Assignment UI**: Requires `timers.admin`, `time.admin`, OR `admin.write` permissions
-- **Agent API Access**: Requires `admin.write` permission (not just `admin.manage`)
-- **Three-Dimensional Checking**: Use `RoleTemplate.getAllPermissions()` which merges all dimensions
 
 ## Feature-Specific Agent Permission System
 
@@ -337,10 +358,10 @@ GET /api/users/billing-agents                   # Billing agents
 **Component Integration:**
 ```vue
 <!-- StartTimerModal uses timer agent type -->
-<AgentSelector agent-type="timer" :agents="availableAgents" />
+<UnifiedSelector type="agent" agent-type="timer" :items="availableAgents" />
 
 <!-- UnifiedTimeEntryDialog uses time agent type -->
-<AgentSelector agent-type="time" :agents="availableAgents" />
+<UnifiedSelector type="agent" agent-type="time" :items="availableAgents" />
 ```
 
 **Permission Helper Methods:**
@@ -379,4 +400,4 @@ This CLAUDE.md file focuses on essential information for AI development assistan
 
 ---
 
-*Last Updated: August 15, 2025 - Feature-Specific Agent Permission System: Granular agent assignment control with four specialized permissions (timers, tickets, time, billing), multi-layer determination logic, and comprehensive API integration*
+*Last Updated: Current - Unified Selector System and StackedDialog Architecture: Consistent component interface for all entity selectors with native dialog-based modal stacking, vertical content expansion, and streamlined user experience*

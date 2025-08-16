@@ -1,21 +1,11 @@
 <template>
-  <Modal :show="show" @close="closeDialog" max-width="3xl">
+  <StackedDialog :show="show" :title="dialogTitle" max-width="3xl" @close="closeDialog" :show-footer="false">
     <div class="p-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900">
-            {{ dialogTitle }}
-          </h3>
-          <p class="text-sm text-gray-600 mt-1">
-            {{ dialogSubtitle }}
-          </p>
-        </div>
-        <button @click="closeDialog" class="text-gray-400 hover:text-gray-600">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
+      <!-- Subtitle -->
+      <div class="mb-6">
+        <p class="text-sm text-gray-600">
+          {{ dialogSubtitle }}
+        </p>
       </div>
 
       <!-- Form -->
@@ -315,14 +305,14 @@
         </div>
       </form>
     </div>
-  </Modal>
+  </StackedDialog>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { usePage } from '@inertiajs/vue3'
-import Modal from '@/Components/Modal.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import { useTimerSettings } from '@/Composables/useTimerSettings.js'
 import axios from 'axios'

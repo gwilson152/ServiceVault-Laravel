@@ -1,17 +1,6 @@
 <template>
-  <Modal :show="show" @close="$emit('close')" max-width="2xl" :nested="nested">
+  <StackedDialog :show="show" title="Create New Ticket" max-width="2xl" @close="$emit('close')" :show-footer="false">
     <div class="p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-lg font-semibold text-gray-900">Create New Ticket</h3>
-        <button
-          @click="$emit('close')"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
 
       <form @submit.prevent="submitForm" class="space-y-6">
         <!-- Title -->
@@ -232,13 +221,13 @@
         </div>
       </form>
     </div>
-  </Modal>
+  </StackedDialog>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
-import Modal from '@/Components/Modal.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import UserSelector from '@/Components/UI/UserSelector.vue'
 import axios from 'axios'

@@ -1,117 +1,106 @@
 <template>
-  <Modal :show="show" @close="$emit('close')" max-width="2xl">
+  <StackedDialog :show="show" :title="mode === 'edit' ? 'Edit Timer' : 'Start New Timer'" max-width="2xl" @close="$emit('close')"
+    :show-footer="false">
     <div class="p-6 relative overflow-visible">
-          <!-- Header -->
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center">
-              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
-                <PlayIcon class="h-6 w-6 text-green-600" aria-hidden="true" />
-              </div>
-              <div class="ml-4">
-                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                  {{ mode === 'edit' ? 'Edit Timer' : 'Start New Timer' }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ mode === 'edit' ? 'Update timer configuration' : 'Create a new timer for tracking your work time' }}
-                </p>
-              </div>
-            </div>
-            <button
-              @click="$emit('close')"
-              class="text-gray-400 hover:text-gray-600"
-            >
-              <XMarkIcon class="h-6 w-6" />
-            </button>
-          </div>
 
           <!-- Form -->
           <form @submit.prevent="submitTimer" class="space-y-6">
-            <!-- Description -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Description <span class="text-red-500">*</span>
-              </label>
-              <textarea
-                v-model="form.description"
-                rows="2"
-                placeholder="Describe the work you're timing..."
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                :class="{ 'border-red-500': errors.description }"
-                required
-              />
-              <p v-if="errors.description" class="mt-1 text-sm text-red-600">
-                {{ errors.description }}
-              </p>
+            <!-- Basic Information Section -->
+            <div class="space-y-4">
+              <h4 class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">Basic Information</h4>
+              
+              <!-- Description -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Description <span class="text-red-500">*</span>
+                </label>
+                <textarea
+                  v-model="form.description"
+                  rows="2"
+                  placeholder="Describe the work you're timing..."
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  :class="{ 'border-red-500': errors.description }"
+                  required
+                />
+                <p v-if="errors.description" class="mt-1 text-sm text-red-600">
+                  {{ errors.description }}
+                </p>
+              </div>
             </div>
 
-            <!-- Account Selection -->
-            <div>
-              <UnifiedSelector
-                v-model="form.accountId"
-                type="account"
-                :items="availableAccounts"
-                label="Account"
-                placeholder="Select account (optional for general timers)"
-                :error="errors.accountId"
-                :can-create="true"
-                :hierarchical="true"
-                :nested="true"
-                @item-selected="handleAccountSelected"
-              />
-            </div>
+            <!-- Assignment Section -->
+            <div class="space-y-4">
+              <h4 class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">Assignment</h4>
+              
+              <!-- Account Selection -->
+              <div>
+                <UnifiedSelector
+                  v-model="form.accountId"
+                  type="account"
+                  :items="availableAccounts"
+                  label="Account"
+                  placeholder="Select account (optional for general timers)"
+                  :error="errors.accountId"
+                  :can-create="true"
+                  :hierarchical="true"
+                  :nested="true"
+                  @item-selected="handleAccountSelected"
+                />
+              </div>
 
-            <!-- Ticket Selection (if account selected) -->
-            <div v-if="form.accountId">
-              <UnifiedSelector
-                v-model="form.ticketId"
-                type="ticket"
-                :items="availableTickets"
-                :loading="ticketsLoading"
-                label="Ticket"
-                placeholder="Select ticket (optional)"
-                :disabled="!form.accountId"
-                :error="errors.ticketId"
-                :can-create="true"
-                :nested="true"
-                :create-modal-props="{
-                  prefilledAccountId: form.accountId,
-                  availableAccounts: availableAccounts,
-                  canAssignTickets: canAssignToOthers
-                }"
-                @item-selected="handleTicketSelected"
-                @item-created="handleTicketCreated"
-              />
-            </div>
+              <!-- Ticket Selection (if account selected) -->
+              <div v-if="form.accountId">
+                <UnifiedSelector
+                  v-model="form.ticketId"
+                  type="ticket"
+                  :items="availableTickets"
+                  :loading="ticketsLoading"
+                  label="Ticket"
+                  placeholder="Select ticket (optional)"
+                  :disabled="!form.accountId"
+                  :error="errors.ticketId"
+                  :can-create="true"
+                  :nested="true"
+                  :create-modal-props="{
+                    prefilledAccountId: form.accountId,
+                    availableAccounts: availableAccounts,
+                    canAssignTickets: canAssignToOthers
+                  }"
+                  @item-selected="handleTicketSelected"
+                  @item-created="handleTicketCreated"
+                />
+              </div>
 
-            <!-- Agent Assignment (for managers/admins) -->
-            <div v-if="canAssignToOthers">
-              <UnifiedSelector
-                v-model="form.userId"
-                type="agent"
-                :items="availableAgents"
-                :loading="agentsLoading"
-                label="Assign Service Agent"
-                placeholder="Select an agent to assign this timer..."
-                :error="errors.userId"
-                :agent-type="'timer'"
-                @item-selected="handleAgentSelected"
-              />
-              <p class="mt-1 text-xs text-gray-500">The service agent who will perform this work</p>
-            </div>
+              <!-- Agent Assignment (for managers/admins) -->
+              <div v-if="canAssignToOthers">
+                <UnifiedSelector
+                  v-model="form.userId"
+                  type="agent"
+                  :items="availableAgents"
+                  :loading="agentsLoading"
+                  label="Assign Service Agent"
+                  placeholder="Select an agent to assign this timer..."
+                  :error="errors.userId"
+                  :agent-type="'timer'"
+                  @item-selected="handleAgentSelected"
+                />
+                <p class="mt-1 text-xs text-gray-500">The service agent who will perform this work</p>
+              </div>
 
-            <!-- Billing Rate Selection -->
-            <div>
-              <UnifiedSelector
-                v-model="form.billingRateId"
-                type="billing-rate"
-                :items="availableBillingRates"
-                :loading="billingRatesLoading"
-                label="Billing Rate"
-                placeholder="No billing rate (non-billable)"
-                :error="errors.billingRateId"
-                :show-rate-hierarchy="true"
-                @item-selected="handleRateSelected"
-              />
+              <!-- Billing Rate Selection -->
+              <div>
+                <UnifiedSelector
+                  v-model="form.billingRateId"
+                  type="billing-rate"
+                  :items="availableBillingRates"
+                  :loading="billingRatesLoading"
+                  label="Billing Rate"
+                  placeholder="No billing rate (non-billable)"
+                  :error="errors.billingRateId"
+                  :show-rate-hierarchy="true"
+                  @item-selected="handleRateSelected"
+                />
+              </div>
             </div>
 
             <!-- Advanced Options -->
@@ -179,7 +168,7 @@
         </button>
       </div>
     </div>
-  </Modal>
+  </StackedDialog>
 </template>
 
 <script setup>
@@ -190,7 +179,7 @@ import {
   ChevronDownIcon 
 } from '@heroicons/vue/24/outline'
 import { usePage } from '@inertiajs/vue3'
-import Modal from '@/Components/Modal.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import axios from 'axios'
 
