@@ -27,108 +27,118 @@
 
     <!-- Tab Content -->
     <template #default="{ activeTab }">
-      <!-- Basic Information Tab -->
+      <!-- Basic Information & Assignment Tab -->
       <div v-show="activeTab === 'basic'" class="space-y-6">
-        <!-- Title -->
-        <div>
-          <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
-            Title <span class="text-red-500">*</span>
-          </label>
-          <input
-            id="title"
-            v-model="form.title"
-            type="text"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.title }"
-            placeholder="Brief description of the issue or request"
-          >
-          <p v-if="errors.title" class="mt-1 text-sm text-red-600">{{ errors.title }}</p>
-        </div>
-
-        <!-- Description -->
-        <div>
-          <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
-            Description <span class="text-red-500">*</span>
-          </label>
-          <textarea
-            id="description"
-            v-model="form.description"
-            required
-            rows="4"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.description }"
-            placeholder="Detailed description of the issue, steps to reproduce, or requirements"
-          ></textarea>
-          <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
-        </div>
-      </div>
-
-      <!-- Assignment Tab -->
-      <div v-show="activeTab === 'assignment'" class="space-y-6">
-        <!-- Account Selection -->
-        <div>
-          <UnifiedSelector
-            v-model="form.account_id"
-            type="account"
-            :items="availableAccounts"
-            label="Account"
-            placeholder="Select account for this ticket..."
-            required
-            :hierarchical="true"
-            :error="errors.account_id"
-            @item-selected="handleAccountSelected"
-          />
-        </div>
-        
-        <!-- Customer User Selection (optional) -->
-        <div v-if="form.account_id">
-          <UserSelector
-            v-model="form.customer_id"
-            :users="availableCustomers"
-            :is-loading="isLoadingCustomers"
-            :accounts="flatAccounts"
-            :role-templates="roleTemplates"
-            :preselected-account-id="form.account_id"
-            label="Customer User"
-            placeholder="No specific customer user"
-            :error="errors.customer_id"
-            no-users-message="No customer users available for this account"
-            @user-selected="handleCustomerSelected"
-            @user-created="handleUserCreated"
-          />
-          <p class="mt-1 text-xs text-gray-500">Select the customer user this ticket is for (if applicable)</p>
-        </div>
-        
-        <!-- Agent Assignment (optional) -->
-        <div v-if="canAssignTickets">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Assign Agent <span class="text-gray-500 text-xs">(optional)</span>
-          </label>
+        <!-- Basic Information Section -->
+        <div class="space-y-6">
+          <h4 class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">Basic Information</h4>
           
-          <div class="relative">
-            <select
-              v-model="form.agent_id"
-              :disabled="isLoadingAgents"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-              :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.agent_id }"
+          <!-- Title -->
+          <div>
+            <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
+              Title <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="title"
+              v-model="form.title"
+              type="text"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.title }"
+              placeholder="Brief description of the issue or request"
             >
-              <option value="">{{ isLoadingAgents ? 'Loading agents...' : 'Select an agent...' }}</option>
-              <option
-                v-for="agent in availableAgents"
-                :key="agent.id"
-                :value="agent.id"
-              >
-                {{ agent.name }} ({{ agent.email }})
-              </option>
-            </select>
-            
-            <div v-if="isLoadingAgents" class="absolute inset-y-0 right-0 flex items-center pr-3">
-              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            </div>
+            <p v-if="errors.title" class="mt-1 text-sm text-red-600">{{ errors.title }}</p>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
+              Description <span class="text-red-500">*</span>
+            </label>
+            <textarea
+              id="description"
+              v-model="form.description"
+              required
+              rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.description }"
+              placeholder="Detailed description of the issue, steps to reproduce, or requirements"
+            ></textarea>
+            <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
+          </div>
+        </div>
+
+        <!-- Assignment Section -->
+        <div class="space-y-6">
+          <h4 class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">Assignment</h4>
+          
+          <!-- Account Selection -->
+          <div>
+            <UnifiedSelector
+              v-model="form.account_id"
+              type="account"
+              :items="availableAccounts"
+              label="Account"
+              placeholder="Select account for this ticket..."
+              required
+              :hierarchical="true"
+              :can-create="true"
+              :nested="true"
+              :error="errors.account_id"
+              @item-selected="handleAccountSelected"
+              @item-created="handleAccountCreated"
+            />
           </div>
           
-          <p v-if="errors.agent_id" class="mt-1 text-sm text-red-600">{{ errors.agent_id }}</p>
+          <!-- Customer User Selection (optional) -->
+          <div v-if="form.account_id">
+            <UserSelector
+              v-model="form.customer_id"
+              :users="availableCustomers"
+              :is-loading="isLoadingCustomers"
+              :accounts="flatAccounts"
+              :role-templates="roleTemplates"
+              :preselected-account-id="form.account_id"
+              label="Customer User"
+              placeholder="No specific customer user"
+              :error="errors.customer_id"
+              no-users-message="No customer users available for this account"
+              @user-selected="handleCustomerSelected"
+              @user-created="handleUserCreated"
+            />
+            <p class="mt-1 text-xs text-gray-500">Select the customer user this ticket is for (if applicable)</p>
+          </div>
+          
+          <!-- Agent Assignment (optional) -->
+          <div v-if="canAssignTickets">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Assign Agent <span class="text-gray-500 text-xs">(optional)</span>
+            </label>
+            
+            <div class="relative">
+              <select
+                v-model="form.agent_id"
+                :disabled="isLoadingAgents"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.agent_id }"
+              >
+                <option value="">{{ isLoadingAgents ? 'Loading agents...' : 'Select an agent...' }}</option>
+                <option
+                  v-for="agent in availableAgents"
+                  :key="agent.id"
+                  :value="agent.id"
+                >
+                  {{ agent.name }} ({{ agent.email }})
+                </option>
+              </select>
+              
+              <div v-if="isLoadingAgents" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              </div>
+            </div>
+            
+            <p v-if="errors.agent_id" class="mt-1 text-sm text-red-600">{{ errors.agent_id }}</p>
+          </div>
         </div>
       </div>
 
@@ -285,8 +295,7 @@ const emit = defineEmits(['close', 'ticket-created'])
 
 // Tab configuration
 const tabs = [
-  { id: 'basic', name: 'Basic Info', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-  { id: 'assignment', name: 'Assignment', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+  { id: 'basic', name: 'Basic Info & Assignment', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   { id: 'classification', name: 'Details', icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z' },
   { id: 'options', name: 'Options', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4' }
 ]
@@ -350,6 +359,16 @@ const formatDate = (dateString) => {
 
 const handleAccountSelected = (account) => {
   form.customer_id = null
+  loadCustomers()
+}
+
+const handleAccountCreated = (newAccount) => {
+  // Refresh the accounts list to include the new account
+  loadAccounts()
+  // The UnifiedSelector will automatically select the newly created account
+  // Clear customer selection since we're switching accounts
+  form.customer_id = null
+  // Load customers for the new account
   loadCustomers()
 }
 

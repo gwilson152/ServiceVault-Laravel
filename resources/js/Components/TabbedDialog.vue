@@ -126,7 +126,7 @@ const setActiveTab = (tabId) => {
             <slot name="errors" />
             
             <!-- Tab content area -->
-            <div class="max-h-96 overflow-y-auto">
+            <div>
                 <slot :activeTab="activeTab" />
             </div>
         </div>
