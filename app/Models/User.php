@@ -71,11 +71,64 @@ class User extends Authenticatable
     public const USER_TYPE_ACCOUNT_USER = 'account_user';
 
     /**
-     * User Type Methods
+     * Permission-Based User Capability Methods (ABAC)
      */
 
     /**
-     * Check if user is an Agent (service provider who can log time entries).
+     * Check if user can be assigned to tickets (ticket agent capability).
+     */
+    public function canBeTicketAgent(): bool
+    {
+        return $this->hasAnyPermission(['tickets.assign', 'tickets.manage', 'admin.write']);
+    }
+
+    /**
+     * Check if user can be assigned timers (timer agent capability).
+     */
+    public function canBeTimerAgent(): bool
+    {
+        return $this->hasAnyPermission(['timers.assign', 'timers.manage', 'admin.write']);
+    }
+
+    /**
+     * Check if user can be assigned time entries (time agent capability).
+     */
+    public function canBeTimeAgent(): bool
+    {
+        return $this->hasAnyPermission(['time.assign', 'time.manage', 'admin.write']);
+    }
+
+    /**
+     * Check if user can handle billing responsibilities (billing agent capability).
+     */
+    public function canBeBillingAgent(): bool
+    {
+        return $this->hasAnyPermission(['billing.manage', 'billing.admin', 'admin.write']);
+    }
+
+    /**
+     * Check if user can assign tickets to others.
+     */
+    public function canAssignTickets(): bool
+    {
+        return $this->hasAnyPermission(['tickets.assign', 'admin.write']);
+    }
+
+    /**
+     * Check if user can create time entries.
+     * Based on time tracking permissions rather than user type.
+     */
+    public function canCreateTimeEntries(): bool
+    {
+        return $this->hasAnyPermission(['time.track', 'time.manage', 'admin.write']);
+    }
+
+    /**
+     * Legacy compatibility methods (deprecated - use permission-based methods above)
+     */
+    
+    /**
+     * @deprecated Use canBeTicketAgent() or canAssignTickets() instead
      */
     public function isAgent(): bool
     {
@@ -83,20 +136,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is an Account User (customer who submits tickets but cannot log time).
+     * @deprecated Use permission-based checks instead
      */
     public function isAccountUser(): bool
     {
         return $this->user_type === self::USER_TYPE_ACCOUNT_USER;
-    }
-
-    /**
-     * Check if user can create time entries.
-     * Only Agents are allowed to log time in the Service Vault architecture.
-     */
-    public function canCreateTimeEntries(): bool
-    {
-        return $this->isAgent();
     }
 
     /**

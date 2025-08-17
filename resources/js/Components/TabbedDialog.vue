@@ -95,6 +95,7 @@ const setActiveTab = (tabId) => {
         :max-width="maxWidth"
         :closeable="closeable"
         :show-footer="false"
+        :pad-content="false"
         @close="close"
     >
         <!-- Tab Navigation Below Header -->

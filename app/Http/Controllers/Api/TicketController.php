@@ -36,7 +36,15 @@ class TicketController extends Controller
         } elseif ($user->hasAnyPermission(['admin.read', 'admin.write', 'tickets.view.account'])) {
             // Account-scoped access - see tickets within their account
             if ($user->account) {
-                $query->where('account_id', $user->account->id);
+                // Check if user has hierarchical access (Account Manager)
+                if ($user->hasPermission('accounts.hierarchy.access')) {
+                    // Include tickets from own account + all child accounts
+                    $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+                    $query->whereIn('account_id', $accessibleAccountIds);
+                } else {
+                    // Regular account user - only their own account
+                    $query->where('account_id', $user->account->id);
+                }
             }
         } else {
             // Personal scope - Agents and Account Users see assigned/owned tickets only
@@ -243,7 +251,7 @@ class TicketController extends Controller
             'estimated_hours' => $validated['estimated_hours'] ?? null,
             'estimated_amount' => $validated['estimated_amount'] ?? null,
             'billing_rate_id' => $validated['billing_rate_id'] ?? null,
-            'status' => $validated['agent_id'] ? Ticket::STATUS_IN_PROGRESS : Ticket::STATUS_OPEN,
+            'status' => ($validated['agent_id'] ?? null) ? Ticket::STATUS_IN_PROGRESS : Ticket::STATUS_OPEN,
             'metadata' => $validated['metadata'] ?? null,
             'settings' => $validated['settings'] ?? null,
         ]);
@@ -296,20 +304,66 @@ class TicketController extends Controller
         // Check permissions
         $this->authorize('view', $ticket);
 
-        // Load ticket with all related data
-        $ticket->load([
+        // Load ticket with permission-based related data
+        $relations = [
             'account',
             'assignedTo',
             'createdBy',
-            'timers.user',
-            'timeEntries.user',
             'statusModel',
             'categoryModel',
-            'addons',
-        ]);
+        ];
+
+        // Only load timer data if user has timer permissions
+        if ($user->hasAnyPermission(['timers.read', 'timers.write', 'time.track'])) {
+            $relations[] = 'timers.user';
+        }
+
+        // Only load time entries if user has time viewing permissions
+        if ($user->hasAnyPermission(['time.view.own', 'time.view.account', 'time.view.all', 'time.track'])) {
+            $relations[] = 'timeEntries.user';
+        }
+
+        // Only load add-ons if user can view them
+        if ($ticket->canBeViewedBy($user)) {
+            $relations[] = 'addons';
+        }
+
+        $ticket->load($relations);
+
+        // Get user permissions for the frontend
+        $permissions = [
+            // Timer permissions (for Time Tracking tab)
+            'canViewTimers' => $user->hasAnyPermission(['timers.read', 'timers.write', 'time.track']),
+            'canCreateTimers' => $user->hasAnyPermission(['timers.create', 'timers.write']),
+            
+            // Time entry permissions (for Time Tracking tab)
+            'canViewTimeEntries' => $user->hasAnyPermission(['time.view.own', 'time.view.account', 'time.view.all', 'time.track']),
+            'canCreateTimeEntries' => $user->hasAnyPermission(['time.create', 'time.track']),
+            
+            // Comment permissions (for Messages tab)
+            'canViewComments' => $ticket->canBeViewedBy($user), // If can view ticket, can view comments
+            'canAddComments' => $user->hasAnyPermission(['tickets.comment', 'tickets.edit.account', 'tickets.view.account']),
+            
+            // Add-on permissions (for Add-ons tab)
+            'canViewAddons' => $ticket->canBeViewedBy($user), // If can view ticket, can view add-ons
+            'canManageAddons' => $user->hasAnyPermission(['admin.write', 'tickets.manage']) || ($user->user_type === 'agent' && $user->hasPermission('tickets.edit.account')),
+            
+            // Activity permissions (for Activity tab)
+            'canViewActivity' => $ticket->canBeViewedBy($user), // If can view ticket, can view activity
+            
+            // Billing permissions (for Billing tab)
+            'canViewBilling' => $user->hasAnyPermission(['billing.view.account', 'billing.view.all', 'admin.read']),
+            'canManageBilling' => $user->hasAnyPermission(['billing.manage', 'admin.write']),
+            
+            // General ticket permissions
+            'canEditTicket' => $ticket->canBeEditedBy($user),
+            'canAssignTicket' => $user->hasAnyPermission(['tickets.assign', 'tickets.assign.account', 'admin.write']),
+        ];
 
         return Inertia::render('Tickets/Show', [
+            'ticketId' => $ticket->id,
             'ticket' => new TicketResource($ticket),
+            'permissions' => $permissions,
         ]);
     }
 
@@ -553,8 +607,16 @@ class TicketController extends Controller
             // No filtering applied
         } elseif ($user->hasAnyPermission(['admin.read', 'admin.write', 'tickets.view.account'])) {
             // Account-scoped access
-            if ($user->account_id) {
-                $query->where('account_id', $user->account_id);
+            if ($user->account) {
+                // Check if user has hierarchical access (Account Manager)
+                if ($user->hasPermission('accounts.hierarchy.access')) {
+                    // Include tickets from own account + all child accounts
+                    $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+                    $query->whereIn('account_id', $accessibleAccountIds);
+                } else {
+                    // Regular account user - only their own account
+                    $query->where('account_id', $user->account->id);
+                }
             }
         } else {
             // Personal scope
@@ -697,8 +759,16 @@ class TicketController extends Controller
             // No filtering applied
         } elseif ($user->hasAnyPermission(['admin.read', 'admin.write', 'tickets.view.account'])) {
             // Account-scoped access
-            if ($user->account_id) {
-                $baseQuery->where('account_id', $user->account_id);
+            if ($user->account) {
+                // Check if user has hierarchical access (Account Manager)
+                if ($user->hasPermission('accounts.hierarchy.access')) {
+                    // Include tickets from own account + all child accounts
+                    $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+                    $baseQuery->whereIn('account_id', $accessibleAccountIds);
+                } else {
+                    // Regular account user - only their own account
+                    $baseQuery->where('account_id', $user->account->id);
+                }
             }
         } else {
             // Personal scope - see assigned/owned tickets only

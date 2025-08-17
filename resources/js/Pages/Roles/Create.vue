@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import QuickTooltip from '@/Components/UI/QuickTooltip.vue'
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 
@@ -213,6 +214,40 @@ onMounted(() => {
                         </p>
                     </div>
                 </div>
+                
+                <!-- Permission Notation Reference -->
+                <div v-if="!loading" class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-blue-900 mb-2">Permission Notation Reference</h4>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">
+                        <div>
+                            <h5 class="font-medium text-blue-800 mb-1">Functional Format</h5>
+                            <div class="space-y-1 text-blue-700">
+                                <div><code class="bg-blue-100 px-1 rounded text-blue-800">category.action</code> - Basic permission</div>
+                                <div><code class="bg-blue-100 px-1 rounded text-blue-800">category.action.scope</code> - Scoped permission</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="font-medium text-blue-800 mb-1">Widget Format</h5>
+                            <div class="space-y-1 text-blue-700">
+                                <div><code class="bg-blue-100 px-1 rounded text-blue-800">widgets.dashboard.{widget}</code> - Widget access</div>
+                                <div><code class="bg-blue-100 px-1 rounded text-blue-800">widgets.configure</code> - Global widget control</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="font-medium text-blue-800 mb-1">Page Format</h5>
+                            <div class="space-y-1 text-blue-700">
+                                <div><code class="bg-blue-100 px-1 rounded text-blue-800">pages.{section}.{page}</code> - Page access</div>
+                                <div><code class="bg-blue-100 px-1 rounded text-blue-800">pages.admin.*</code> - Section access</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-blue-200 text-xs text-blue-600">
+                        <strong>Scope levels:</strong> <code class="bg-blue-100 px-1 rounded text-blue-800">all</code> (system-wide), 
+                        <code class="bg-blue-100 px-1 rounded text-blue-800">account</code> (accessible accounts), 
+                        <code class="bg-blue-100 px-1 rounded text-blue-800">own</code> (user's own data), 
+                        <code class="bg-blue-100 px-1 rounded text-blue-800">assigned</code> (assigned items)
+                    </div>
+                </div>
                 <!-- Loading State -->
                 <div v-if="loading" class="bg-white shadow sm:rounded-lg p-6">
                     <div class="flex items-center justify-center">
@@ -321,9 +356,26 @@ onMounted(() => {
                                                     @change="toggleFunctionalPermission(permission.key)"
                                                     class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                                 />
-                                                <label :for="permission.key" class="ml-2 block text-xs text-gray-700">
-                                                    {{ permission.name }}
-                                                </label>
+                                                <div class="ml-2 flex-1">
+                                                    <div class="flex items-center space-x-1">
+                                                        <label :for="permission.key" class="block text-xs text-gray-700 cursor-pointer">
+                                                            {{ permission.name }}
+                                                        </label>
+                                                        <QuickTooltip 
+                                                            v-if="permission.description" 
+                                                            :content="permission.description"
+                                                            position="auto"
+                                                            max-width="max-w-sm"
+                                                        >
+                                                            <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                                            </svg>
+                                                        </QuickTooltip>
+                                                    </div>
+                                                    <div class="text-xs text-gray-500 font-mono mt-0.5">
+                                                        {{ permission.key }}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -354,9 +406,26 @@ onMounted(() => {
                                                     @change="toggleWidgetPermission(widget.key)"
                                                     class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                                 />
-                                                <label :for="widget.key" class="ml-2 block text-xs text-gray-700">
-                                                    {{ widget.name }}
-                                                </label>
+                                                <div class="ml-2 flex-1">
+                                                    <div class="flex items-center space-x-1">
+                                                        <label :for="widget.key" class="block text-xs text-gray-700 cursor-pointer">
+                                                            {{ widget.name }}
+                                                        </label>
+                                                        <QuickTooltip 
+                                                            v-if="widget.description" 
+                                                            :content="widget.description"
+                                                            position="auto"
+                                                            max-width="max-w-sm"
+                                                        >
+                                                            <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                                            </svg>
+                                                        </QuickTooltip>
+                                                    </div>
+                                                    <div class="text-xs text-gray-500 font-mono mt-0.5">
+                                                        {{ widget.key }}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -396,9 +465,26 @@ onMounted(() => {
                                                     @change="togglePagePermission(permission.key)"
                                                     class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                                 />
-                                                <label :for="permission.key" class="ml-2 block text-xs text-gray-700">
-                                                    {{ permission.name }}
-                                                </label>
+                                                <div class="ml-2 flex-1">
+                                                    <div class="flex items-center space-x-1">
+                                                        <label :for="permission.key" class="block text-xs text-gray-700 cursor-pointer">
+                                                            {{ permission.name }}
+                                                        </label>
+                                                        <QuickTooltip 
+                                                            v-if="permission.description" 
+                                                            :content="permission.description"
+                                                            position="auto"
+                                                            max-width="max-w-sm"
+                                                        >
+                                                            <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                                            </svg>
+                                                        </QuickTooltip>
+                                                    </div>
+                                                    <div class="text-xs text-gray-500 font-mono mt-0.5">
+                                                        {{ permission.key }}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

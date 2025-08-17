@@ -1,15 +1,9 @@
 <template>
-  <TabbedDialog
+  <StackedDialog
     :show="show"
     :title="mode === 'edit' ? 'Edit Timer' : 'Start New Timer'"
-    :tabs="tabs"
-    default-tab="basic"
     max-width="2xl"
-    :saving="loading"
-    :save-label="loading ? (mode === 'edit' ? 'Updating...' : 'Starting...') : (mode === 'edit' ? 'Update Timer' : 'Start Timer')"
     @close="$emit('close')"
-    @save="submitTimer"
-    @tab-change="activeTab = $event"
   >
     <!-- Error messages -->
     <template #errors>
@@ -25,27 +19,11 @@
       </div>
     </template>
 
-    <!-- Tab Content -->
-    <template #default="{ activeTab }">
-      <!-- Basic Information & Assignment Tab -->
-      <div v-show="activeTab === 'basic'" class="space-y-6">
-        <!-- Header Icon and Description -->
-        <div class="flex items-center mb-4">
-          <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-            <PlayIcon class="h-6 w-6 text-green-600" aria-hidden="true" />
-          </div>
-          <div class="ml-4">
-            <p class="text-sm text-gray-600">
-              {{ mode === 'edit' ? 'Update timer configuration' : 'Create a new timer for tracking your work time' }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Basic Information Section -->
-        <div class="space-y-4">
-          <h4 class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">Basic Information</h4>
-          
-          <!-- Description -->
+    <!-- Content -->
+    <template #default>
+      <!-- Timer Information -->
+      <div class="space-y-4">
+        <!-- Description -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Description <span class="text-red-500">*</span>
@@ -62,11 +40,9 @@
               {{ errors.description }}
             </p>
           </div>
-        </div>
 
         <!-- Assignment Section -->
         <div class="space-y-4">
-          <h4 class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">Assignment</h4>
           
           <!-- Account Selection -->
           <div>
@@ -107,122 +83,125 @@
             />
           </div>
 
-          <!-- Agent Assignment (for managers/admins) -->
+          <!-- Agent Assignment (all users, but managers can reassign) -->
           <div v-if="canAssignToOthers">
             <UnifiedSelector
               v-model="form.userId"
               type="agent"
               :items="availableAgents"
               :loading="agentsLoading"
-              label="Assign Service Agent"
+              label="Service Agent"
               placeholder="Select an agent to assign this timer..."
               :error="errors.userId"
               :agent-type="'timer'"
               @item-selected="handleAgentSelected"
             />
-            <p class="mt-1 text-xs text-gray-500">The service agent who will perform this work</p>
+            <p class="mt-1 text-xs text-gray-500">The service agent who will perform this work (defaults to you)</p>
           </div>
-        </div>
-      </div>
-
-      <!-- Billing Tab -->
-      <div v-show="activeTab === 'billing'" class="space-y-6">
-        <!-- Billing Rate Selection -->
-        <div>
-          <UnifiedSelector
-            v-model="form.billingRateId"
-            type="billing-rate"
-            :items="availableBillingRates"
-            :loading="billingRatesLoading"
-            label="Billing Rate"
-            placeholder="No billing rate (non-billable)"
-            :error="errors.billingRateId"
-            :show-rate-hierarchy="true"
-            @item-selected="handleRateSelected"
-          />
-        </div>
-
-        <!-- Billing Info Display -->
-        <div v-if="selectedBillingRate" class="bg-blue-50 rounded-lg p-4">
-          <h4 class="text-sm font-medium text-blue-900 mb-2">Selected Billing Rate</h4>
-          <div class="text-sm text-blue-800">
-            <p><strong>{{ selectedBillingRate.name }}</strong></p>
-            <p>${{ selectedBillingRate.hourly_rate }}/hour</p>
-            <p v-if="selectedBillingRate.description" class="text-xs mt-1">{{ selectedBillingRate.description }}</p>
-          </div>
-        </div>
-
-        <div v-else class="bg-gray-50 rounded-lg p-4">
-          <p class="text-sm text-gray-600">
-            <strong>Non-billable timer</strong><br>
-            This timer will not be associated with any billing rate.
-          </p>
-        </div>
-      </div>
-
-      <!-- Options Tab -->
-      <div v-show="activeTab === 'options'" class="space-y-6">
-        <div v-if="mode === 'create'" class="space-y-4">
-          <h4 class="text-sm font-medium text-gray-900">Timer Options</h4>
           
-          <!-- Stop Other Timers -->
-          <div class="flex items-center">
-            <input
-              id="stop_others"
-              v-model="form.stopOthers"
-              type="checkbox"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label for="stop_others" class="ml-2 block text-sm text-gray-700">
-              Stop other running timers
+          <!-- Current User Assignment (for regular users - read-only) -->
+          <div v-else-if="user">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Service Agent
             </label>
-          </div>
-
-          <!-- Auto-start -->
-          <div class="flex items-center">
-            <input
-              id="auto_start"
-              v-model="form.autoStart"
-              type="checkbox"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label for="auto_start" class="ml-2 block text-sm text-gray-700">
-              {{ mode === 'edit' ? 'Apply changes and continue running' : 'Start timer immediately' }}
-            </label>
+            <div class="bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900">
+              <div class="flex items-center space-x-2">
+                <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg class="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <span class="font-medium">{{ user.name }}</span>
+                <span class="text-xs text-gray-500">(You)</span>
+              </div>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">You will be assigned as the service agent for this timer</p>
           </div>
         </div>
 
-        <!-- Timer Summary -->
-        <div class="bg-green-50 rounded-lg p-4">
-          <h4 class="text-sm font-medium text-green-900 mb-2">Timer Summary</h4>
-          <div class="text-sm text-green-800 space-y-1">
-            <p><strong>Description:</strong> {{ form.description || 'Not specified' }}</p>
-            <p v-if="selectedAccount"><strong>Account:</strong> {{ selectedAccount.name }}</p>
-            <p v-if="selectedTicket"><strong>Ticket:</strong> {{ selectedTicket.title }}</p>
-            <p v-if="selectedAgent"><strong>Agent:</strong> {{ selectedAgent.name }}</p>
-            <p><strong>Billing:</strong> {{ selectedBillingRate ? `$${selectedBillingRate.hourly_rate}/hour` : 'Non-billable' }}</p>
+        <!-- Billing Section -->
+        <div class="space-y-4">
+          
+          <!-- Billing Rate Selection -->
+          <div>
+            <UnifiedSelector
+              v-model="form.billingRateId"
+              type="billing-rate"
+              :items="availableBillingRates"
+              :loading="billingRatesLoading"
+              label="Billing Rate"
+              placeholder="No billing rate (non-billable)"
+              :error="errors.billingRateId"
+              :show-rate-hierarchy="true"
+              @item-selected="handleRateSelected"
+            />
+          </div>
+
+          <!-- Billing Info Display -->
+          <div v-if="selectedBillingRate" class="bg-blue-50 rounded-lg p-3">
+            <div class="text-sm text-blue-800">
+              <p><strong>{{ selectedBillingRate.name }}</strong> - ${{ selectedBillingRate.rate }}/hour</p>
+              <p v-if="selectedBillingRate.description" class="text-xs mt-1 text-blue-600">{{ selectedBillingRate.description }}</p>
+            </div>
+          </div>
+
+          <div v-else class="bg-gray-50 rounded-lg p-3">
+            <p class="text-sm text-gray-600">
+              <strong>Non-billable timer</strong> - This timer will not be associated with any billing rate.
+            </p>
           </div>
         </div>
       </div>
+
+
     </template>
 
-    <!-- Custom footer for timer actions -->
-    <template #footer-start>
-      <div v-if="mode === 'edit'" class="flex items-center text-sm text-gray-500">
-        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        Editing active timer
+    <!-- Footer with action buttons -->
+    <template #footer>
+      <div class="flex items-center justify-between">
+        <div v-if="mode === 'edit'" class="flex items-center text-sm text-gray-500">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Editing active timer
+        </div>
+        
+        <div class="flex items-center space-x-3">
+          <button
+            type="button"
+            @click="$emit('close')"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            @click="submitTimer"
+            :disabled="loading || !isFormValid"
+            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="loading" class="flex items-center">
+              <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ mode === 'edit' ? 'Updating...' : 'Starting...' }}
+            </span>
+            <span v-else>
+              {{ mode === 'edit' ? 'Update Timer' : 'Start Timer' }}
+            </span>
+          </button>
+        </div>
       </div>
     </template>
-  </TabbedDialog>
+  </StackedDialog>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { PlayIcon } from '@heroicons/vue/24/outline'
 import { usePage } from '@inertiajs/vue3'
-import TabbedDialog from '@/Components/TabbedDialog.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import axios from 'axios'
 
@@ -252,14 +231,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'timer-started', 'timer-updated'])
 
-// Tab configuration
-const tabs = [
-  { id: 'basic', name: 'Basic Info & Assignment', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-  { id: 'billing', name: 'Billing', icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
-  { id: 'options', name: 'Options', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4' }
-]
-
-const activeTab = ref('basic')
 
 // State
 const loading = ref(false)
@@ -294,8 +265,8 @@ const user = computed(() => page.props.auth?.user)
 
 // Computed properties
 const canAssignToOthers = computed(() => {
-  return user.value?.permissions?.includes('timers.act_as_agent') ||
-         user.value?.permissions?.includes('timers.admin') ||
+  return user.value?.permissions?.includes('timers.manage') ||
+         user.value?.permissions?.includes('admin.manage') ||
          user.value?.permissions?.includes('admin.write')
 })
 
@@ -322,8 +293,9 @@ const selectedBillingRate = computed(() => {
 // Methods
 const handleAccountSelected = (account) => {
   form.value.ticketId = null
+  form.value.billingRateId = null // Reset billing rate when account changes
   loadTickets()
-  loadBillingRates()
+  loadBillingRates() // This will auto-select appropriate billing rate
 }
 
 const handleTicketSelected = (ticket) => {
@@ -389,6 +361,35 @@ const loadBillingRates = async () => {
     const params = form.value.accountId ? `?account_id=${form.value.accountId}` : ''
     const response = await axios.get(`/api/billing-rates${params}`)
     availableBillingRates.value = response.data.data
+    
+    // Auto-select default billing rate if none is currently selected
+    if (!form.value.billingRateId && availableBillingRates.value.length > 0) {
+      // First, try to find an account-specific default rate
+      let defaultRate = availableBillingRates.value.find(rate => 
+        rate.account_id === form.value.accountId && rate.is_default
+      )
+      
+      // If no account-specific default, try global default
+      if (!defaultRate) {
+        defaultRate = availableBillingRates.value.find(rate => 
+          !rate.account_id && rate.is_default
+        )
+      }
+      
+      // If still no default found, take the first account-specific rate, then first global rate
+      if (!defaultRate && form.value.accountId) {
+        defaultRate = availableBillingRates.value.find(rate => rate.account_id === form.value.accountId)
+      }
+      
+      if (!defaultRate) {
+        defaultRate = availableBillingRates.value.find(rate => !rate.account_id)
+      }
+      
+      // Set the auto-selected rate
+      if (defaultRate) {
+        form.value.billingRateId = defaultRate.id
+      }
+    }
   } catch (error) {
     console.error('Failed to load billing rates:', error)
   } finally {
@@ -440,7 +441,7 @@ const resetForm = () => {
     description: '',
     accountId: props.prefilledAccountId,
     ticketId: props.prefilledTicketId,
-    userId: null,
+    userId: user.value?.id, // Always default to current user
     billingRateId: null,
     stopOthers: true,
     autoStart: true
@@ -455,12 +456,13 @@ watch(() => form.value.accountId, () => {
   } else {
     availableTickets.value = []
     form.value.ticketId = null
+    form.value.billingRateId = null // Reset billing rate when account is cleared
+    loadBillingRates() // Load global rates and auto-select default global rate
   }
 })
 
 watch(() => props.show, (isOpen) => {
   if (isOpen) {
-    activeTab.value = 'basic'
     errors.value = {}
     
     if (props.mode === 'edit' && props.timer) {
@@ -476,9 +478,32 @@ watch(() => props.show, (isOpen) => {
       }
     } else {
       resetForm()
+      
+      // Debug logging
+      console.log('Timer modal opened:', {
+        canAssignToOthers: canAssignToOthers.value,
+        userId: user.value?.id,
+        userName: user.value?.name,
+        userPermissions: user.value?.permissions,
+        currentFormUserId: form.value.userId
+      })
+      
+      // Always auto-select current user (managers can change it later)
+      if (user.value?.id) {
+        console.log('Auto-selecting current user:', user.value.id)
+        form.value.userId = user.value.id
+      }
     }
   }
 })
+
+// Watch for user data availability and ensure proper auto-selection
+watch(() => user.value, (newUser) => {
+  if (newUser && props.show && !form.value.userId) {
+    console.log('User data became available, auto-selecting:', newUser.id)
+    form.value.userId = newUser.id
+  }
+}, { immediate: true })
 
 // Load data on mount
 onMounted(() => {

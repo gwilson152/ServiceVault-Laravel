@@ -696,6 +696,13 @@ class TimerController extends Controller
      */
     public function forTicket(Request $request, string $ticketId): AnonymousResourceCollection
     {
+        $user = $request->user();
+
+        // Check if user has timer permissions
+        if (!$user->hasAnyPermission(['timers.read', 'timers.write', 'time.track'])) {
+            abort(403, 'Insufficient permissions to view timers.');
+        }
+
         $request->validate([
             'include_all_statuses' => 'boolean',
         ]);
@@ -796,6 +803,13 @@ class TimerController extends Controller
      */
     public function activeForTicket(Request $request, string $ticketId): JsonResponse
     {
+        $user = $request->user();
+
+        // Check if user has timer permissions
+        if (!$user->hasAnyPermission(['timers.read', 'timers.write', 'time.track'])) {
+            return response()->json(['error' => 'Insufficient permissions to view timers.'], 403);
+        }
+
         $timers = Timer::with(['user', 'billingRate', 'ticket'])
             ->where('ticket_id', $ticketId)
             ->whereIn('status', ['running', 'paused'])

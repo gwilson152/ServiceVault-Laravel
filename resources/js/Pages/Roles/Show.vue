@@ -132,6 +132,13 @@ const getCategoryDisplayName = (category) => {
     return names[category] || category.charAt(0).toUpperCase() + category.slice(1)
 }
 
+// Get permission description from available permissions API data
+const getPermissionDescription = (permission) => {
+    // This will be populated from the API response when we load available permissions
+    // For now, return null as descriptions are shown only when editing
+    return null
+}
+
 const handleWidgetsSaved = () => {
     showWidgetModal.value = false
     // Reload widget preview to reflect changes
@@ -212,6 +219,40 @@ onMounted(() => {
                 </div>
                 </div>
                 
+                <!-- Permission Notation Reference (only show when loaded and has data) -->
+                <div v-if="!loading && roleTemplate" class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-green-900 mb-2">Permission Notation Guide</h4>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">
+                        <div>
+                            <h5 class="font-medium text-green-800 mb-1">Functional Syntax</h5>
+                            <div class="space-y-1 text-green-700">
+                                <div><code class="bg-green-100 px-1 rounded text-green-800">category.action</code> - Basic operation</div>
+                                <div><code class="bg-green-100 px-1 rounded text-green-800">category.action.scope</code> - Scoped access</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="font-medium text-green-800 mb-1">Widget Syntax</h5>
+                            <div class="space-y-1 text-green-700">
+                                <div><code class="bg-green-100 px-1 rounded text-green-800">widgets.dashboard.*</code> - Dashboard widgets</div>
+                                <div><code class="bg-green-100 px-1 rounded text-green-800">widgets.configure</code> - Widget configuration</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="font-medium text-green-800 mb-1">Page Syntax</h5>
+                            <div class="space-y-1 text-green-700">
+                                <div><code class="bg-green-100 px-1 rounded text-green-800">pages.{area}.{page}</code> - Specific page</div>
+                                <div><code class="bg-green-100 px-1 rounded text-green-800">pages.admin.*</code> - Area access</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-green-200 text-xs text-green-600">
+                        <strong>Access scopes:</strong> <code class="bg-green-100 px-1 rounded text-green-800">all</code>, 
+                        <code class="bg-green-100 px-1 rounded text-green-800">account</code>, 
+                        <code class="bg-green-100 px-1 rounded text-green-800">own</code>, 
+                        <code class="bg-green-100 px-1 rounded text-green-800">assigned</code> define the level of access control
+                    </div>
+                </div>
+                
                 <!-- Loading State -->
                 <div v-if="loading" class="bg-white shadow sm:rounded-lg p-6">
                     <div class="flex items-center justify-center">
@@ -288,9 +329,17 @@ onMounted(() => {
                                 <div class="space-y-4 max-h-96 overflow-y-auto">
                                     <div v-for="(permissions, category) in groupedPermissions" :key="category" class="border rounded-lg p-3">
                                         <h4 class="text-sm font-medium text-gray-900 mb-2">{{ getCategoryDisplayName(category) }}</h4>
-                                        <div class="space-y-1">
-                                            <div v-for="permission in permissions" :key="permission" class="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
-                                                {{ formatPermissionName(permission) }}
+                                        <div class="space-y-2">
+                                            <div v-for="permission in permissions" :key="permission" class="bg-gray-50 rounded p-3">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ formatPermissionName(permission) }}
+                                                </div>
+                                                <div class="text-xs text-gray-400 font-mono mt-1">
+                                                    {{ permission }}
+                                                </div>
+                                                <div class="text-xs text-gray-500 mt-1" v-if="getPermissionDescription(permission)">
+                                                    {{ getPermissionDescription(permission) }}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -306,7 +355,7 @@ onMounted(() => {
                             <div class="px-4 py-5 sm:p-6">
                                 <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
                                     Widget Permissions  
-                                    <span class="ml-2 text-sm text-gray-500">({{ availableWidgets.length }})</span>
+                                    <span class="ml-2 text-sm text-gray-500">({{ (availableWidgets || []).length }})</span>
                                 </h3>
                                 <div v-if="widgetsLoading" class="flex items-center justify-center py-8">
                                     <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
@@ -337,8 +386,16 @@ onMounted(() => {
                                     <span class="ml-2 text-sm text-gray-500">({{ (roleTemplate.page_permissions || []).length }})</span>
                                 </h3>
                                 <div class="space-y-2 max-h-96 overflow-y-auto">
-                                    <div v-for="permission in roleTemplate.page_permissions" :key="permission" class="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
-                                        {{ formatPermissionName(permission) }}
+                                    <div v-for="permission in roleTemplate.page_permissions" :key="permission" class="bg-gray-50 rounded p-3">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ formatPermissionName(permission) }}
+                                        </div>
+                                        <div class="text-xs text-gray-400 font-mono mt-1">
+                                            {{ permission }}
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1" v-if="getPermissionDescription(permission)">
+                                            {{ getPermissionDescription(permission) }}
+                                        </div>
                                     </div>
                                     <div v-if="(roleTemplate.page_permissions || []).length === 0" class="text-sm text-gray-500 italic">
                                         No page permissions assigned

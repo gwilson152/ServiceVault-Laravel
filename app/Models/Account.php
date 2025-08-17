@@ -75,6 +75,41 @@ class Account extends Model
         return $ancestors;
     }
     
+    /**
+     * Get all descendant account IDs (children, grandchildren, etc.)
+     * 
+     * @return \Illuminate\Support\Collection
+     */
+    public function getAllDescendantIds()
+    {
+        $descendantIds = collect();
+        
+        // Get direct children
+        $children = $this->children()->pluck('id');
+        $descendantIds = $descendantIds->merge($children);
+        
+        // Recursively get children of children
+        foreach ($children as $childId) {
+            $child = static::find($childId);
+            if ($child) {
+                $descendantIds = $descendantIds->merge($child->getAllDescendantIds());
+            }
+        }
+        
+        return $descendantIds->unique();
+    }
+    
+    /**
+     * Get all accessible account IDs for a user with hierarchy access
+     * (includes own account + all descendants)
+     * 
+     * @return \Illuminate\Support\Collection
+     */
+    public function getAccessibleAccountIds()
+    {
+        return collect([$this->id])->merge($this->getAllDescendantIds());
+    }
+    
     // User relationships
     public function users()
     {

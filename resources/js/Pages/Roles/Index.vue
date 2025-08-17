@@ -30,6 +30,38 @@
                             Manage role templates with three-dimensional
                             permissions: functional, widget, and page access
                         </p>
+                        
+                        <!-- Permission Notation Guide -->
+                        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-blue-900 mb-2">Permission Notation Guide</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                <div>
+                                    <h5 class="font-medium text-blue-800 mb-1">Functional Permissions</h5>
+                                    <div class="space-y-1 text-blue-700">
+                                        <div><code class="bg-blue-100 px-1 rounded">admin.manage</code> - System administration</div>
+                                        <div><code class="bg-blue-100 px-1 rounded">tickets.view.all</code> - View all tickets</div>
+                                        <div><code class="bg-blue-100 px-1 rounded">time.approve</code> - Approve time entries</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="font-medium text-blue-800 mb-1">Widget Permissions</h5>
+                                    <div class="space-y-1 text-blue-700">
+                                        <div><code class="bg-blue-100 px-1 rounded">widgets.dashboard.*</code> - Widget access</div>
+                                        <div><code class="bg-blue-100 px-1 rounded">widgets.configure</code> - Widget settings</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="font-medium text-blue-800 mb-1">Page Permissions</h5>
+                                    <div class="space-y-1 text-blue-700">
+                                        <div><code class="bg-blue-100 px-1 rounded">pages.admin.*</code> - Admin pages</div>
+                                        <div><code class="bg-blue-100 px-1 rounded">pages.tickets.index</code> - Ticket listing</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-xs text-blue-600">
+                                <strong>Syntax:</strong> <code class="bg-blue-100 px-1 rounded">category.action.scope</code> where scope defines the level of access (all, account, own, etc.)
+                            </div>
+                        </div>
                     </div>
                     <button
                         type="button"

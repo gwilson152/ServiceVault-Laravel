@@ -72,12 +72,6 @@ class RoleTemplateSeeder extends Seeder
                 'timers.read',
                 'timers.write',
                 
-                // Feature-Specific Agent Designations
-                'timers.act_as_agent',
-                'tickets.act_as_agent',
-                'time.act_as_agent',
-                'billing.act_as_agent',
-                
                 // Billing & Financial
                 'billing.manage',
                 'billing.configure',
@@ -155,11 +149,6 @@ class RoleTemplateSeeder extends Seeder
                 'timers.write',
                 'timers.manage',
                 'timers.sync',
-                // Feature-Specific Agent Designations
-                'timers.act_as_agent',
-                'tickets.act_as_agent',
-                'time.act_as_agent',
-                'billing.act_as_agent',
             ],
             'widget_permissions' => [
                 'widgets.dashboard.system-stats',
@@ -206,11 +195,6 @@ class RoleTemplateSeeder extends Seeder
                 'timers.read',
                 'timers.write',
                 'timers.sync',
-                // Feature-Specific Agent Designations
-                'timers.act_as_agent',
-                'tickets.act_as_agent',
-                'time.act_as_agent',
-                'billing.act_as_agent',
             ],
             'widget_permissions' => [
                 'widgets.dashboard.my-tickets',

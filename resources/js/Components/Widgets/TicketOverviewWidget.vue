@@ -89,12 +89,10 @@
     </div>
 
     <!-- Create Ticket Modal -->
-    <CreateTicketModal
+    <CreateTicketModalTabbed
       :show="showCreateModal"
-      :available-accounts="availableAccounts"
-      :can-assign-tickets="canAssignTickets"
       @close="showCreateModal = false"
-      @created="onTicketCreated"
+      @ticket-created="onTicketCreated"
     />
   </div>
 </template>
@@ -103,7 +101,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
-import CreateTicketModal from '@/Components/Modals/CreateTicketModal.vue'
+import CreateTicketModalTabbed from '@/Components/Modals/CreateTicketModalTabbed.vue'
 
 // Props
 const props = defineProps({

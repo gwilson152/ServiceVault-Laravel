@@ -705,6 +705,7 @@
                             >
                                 <TicketAddonManager
                                     :ticket="ticket"
+                                    :permissions="permissions"
                                     @updated="loadTicketDetails"
                                 />
                             </div>
@@ -905,7 +906,7 @@
                                 </p>
                             </div>
 
-                            <div v-if="activeTimers?.length > 0">
+                            <div v-if="permissions?.canViewTimers && activeTimers?.length > 0">
                                 <label class="text-sm font-medium text-gray-600"
                                     >Active Timers</label
                                 >
@@ -1215,6 +1216,7 @@ import {
     useUpdateTicketMutation,
     useAddCommentMutation,
 } from "@/Composables/queries/useTicketsQuery";
+import { useTicketCommentBroadcasting } from "@/Composables/useTicketCommentBroadcasting";
 
 // Import components
 import TimeTrackingManager from "@/Components/Tickets/TimeTrackingManager.vue";
@@ -1236,6 +1238,15 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    ticket: {
+        type: Object,
+        required: false,
+    },
+    permissions: {
+        type: Object,
+        required: false,
+        default: () => ({}),
+    },
 });
 
 // Access user data from Inertia page props
@@ -1252,23 +1263,49 @@ const {
     error: ticketError,
     refetch: refetchTicket,
 } = useTicketQuery(ticketId);
+// Only query comments if user has permission to view them
 const {
     data: messages,
     isLoading: messagesLoading,
     refetch: refetchMessages,
-} = useTicketCommentsQuery(ticketId);
-const { data: activeTimers, isLoading: timersLoading } =
-    useTicketTimersQuery(ticketId);
-const { data: timeEntries, isLoading: timeEntriesLoading } =
-    useTicketTimeEntriesQuery(ticketId);
-const { data: relatedTickets, isLoading: relatedLoading } =
-    useTicketRelatedQuery(ticketId);
+} = props.permissions?.canViewComments
+    ? useTicketCommentsQuery(ticketId)
+    : { data: ref([]), isLoading: ref(false), refetch: () => {} };
+
+// Real-time comment handling
+const handleNewComment = (comment) => {
+    console.log('New comment received via broadcasting:', comment);
+    
+    // Always refetch comments to ensure we get the latest data with proper formatting
+    // This is more reliable than manually manipulating the reactive data
+    console.log('Triggering comment refetch due to new comment');
+    refetchMessages();
+};
+
+// Set up real-time broadcasting for comments
+useTicketCommentBroadcasting(ticketId, handleNewComment);
+
+// Only query timers if user has timer permissions
+const { data: activeTimers, isLoading: timersLoading } = props.permissions?.canViewTimers
+    ? useTicketTimersQuery(ticketId)
+    : { data: ref([]), isLoading: ref(false) };
+
+// Only query time entries if user has permission
+const { data: timeEntries, isLoading: timeEntriesLoading } = props.permissions?.canViewTimeEntries
+    ? useTicketTimeEntriesQuery(ticketId)
+    : { data: ref([]), isLoading: ref(false) };
+
+// Related tickets for activity tab
+const { data: relatedTickets, isLoading: relatedLoading } = props.permissions?.canViewActivity
+    ? useTicketRelatedQuery(ticketId)
+    : { data: ref([]), isLoading: ref(false) };
 
 // Mutations
 const updateTicketMutation = useUpdateTicketMutation();
 const addCommentMutation = useAddCommentMutation();
 
 // UI State
+// Set default active tab to first available tab
 const activeTab = ref("messages");
 const newMessage = ref("");
 const messageIsInternal = ref(false);
@@ -1298,31 +1335,60 @@ const totalTimeLogged = computed(() => {
     );
 });
 
-const tabs = computed(() => [
-    {
-        id: "messages",
-        label: "Messages",
-        badge: messages.value?.length > 0 ? messages.value.length : null,
-    },
-    {
-        id: "time",
-        label: "Time Tracking",
-        badge:
-            activeTimers.value?.length > 0 ? activeTimers.value.length : null,
-    },
-    {
-        id: "addons",
-        label: "Add-ons",
-    },
-    {
-        id: "activity",
-        label: "Activity",
-    },
-    {
-        id: "billing",
-        label: "Billing",
-    },
-]);
+const tabs = computed(() => {
+    const availableTabs = [];
+
+    // Messages tab - always available if user can view comments
+    if (props.permissions?.canViewComments) {
+        availableTabs.push({
+            id: "messages",
+            label: "Messages",
+            badge: messages.value?.length > 0 ? messages.value.length : null,
+        });
+    }
+
+    // Time Tracking tab - only if user can view timers or time entries
+    if (props.permissions?.canViewTimers || props.permissions?.canViewTimeEntries) {
+        availableTabs.push({
+            id: "time",
+            label: "Time Tracking",
+            badge: activeTimers.value?.length > 0 ? activeTimers.value.length : null,
+        });
+    }
+
+    // Add-ons tab - only if user can view add-ons
+    if (props.permissions?.canViewAddons) {
+        availableTabs.push({
+            id: "addons",
+            label: "Add-ons",
+        });
+    }
+
+    // Activity tab - only if user can view activity
+    if (props.permissions?.canViewActivity) {
+        availableTabs.push({
+            id: "activity",
+            label: "Activity",
+        });
+    }
+
+    // Billing tab - only if user can view billing
+    if (props.permissions?.canViewBilling) {
+        availableTabs.push({
+            id: "billing",
+            label: "Billing",
+        });
+    }
+
+    return availableTabs;
+});
+
+// Watch for tabs changes and update active tab if current one is not available
+watch(tabs, (newTabs) => {
+    if (newTabs.length > 0 && !newTabs.find(tab => tab.id === activeTab.value)) {
+        activeTab.value = newTabs[0].id;
+    }
+}, { immediate: true });
 
 const statusClasses = computed(() => {
     if (!ticket.value) return "";
@@ -1382,9 +1448,8 @@ const canAssign = computed(() => {
 });
 
 const canManageTime = computed(() => {
-    // Only Agents can create timers and manage time entries
-    // Account Users (customers) can view time entries but cannot create/manage them
-    return user.value?.user_type === "agent";
+    // Check permissions passed from backend
+    return props.permissions?.canViewTimers || props.permissions?.canCreateTimers || false;
 });
 
 const currentUserId = computed(() => user.value?.id);

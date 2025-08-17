@@ -119,17 +119,19 @@ Route and navigation-level access control:
 
 **Features:**
 - ✅ **Complete CRUD Operations** - Create, read, update, delete role templates
-- ✅ **Permission Matrix Editor** - Visual three-dimensional permission assignment
+- ✅ **Permission Matrix Editor** - Visual three-dimensional permission assignment with comprehensive descriptions
+- ✅ **Enhanced User Experience** - No-delay tooltips with smart positioning and detailed permission explanations
 - ✅ **Context Configuration** - Service provider, account user, or both
 - ✅ **Template Cloning** - Duplicate existing templates for customization
 - ✅ **Usage Statistics** - See how many users are assigned to each role
 
 **Interface Components:**
 - Role template listing with permission counts
-- Three-dimensional permission editor with category grouping
-- Visual permission matrix with checkboxes and bulk selection
+- Three-dimensional permission editor with category grouping and comprehensive descriptions
+- Visual permission matrix with checkboxes, bulk selection, and smart tooltips
 - Context switcher for role applicability
 - User assignment statistics and management
+- No-delay tooltip system with auto-positioning to prevent clipping
 
 ### Dashboard Preview System
 

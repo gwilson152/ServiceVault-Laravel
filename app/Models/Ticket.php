@@ -363,8 +363,30 @@ class Ticket extends Model
      */
     public function canBeViewedBy(User $user): bool
     {
-        // Account access check - users can only see tickets from their account
-        if ($user->account_id !== $this->account_id && !$user->isSuperAdmin()) {
+        // Super Admin can view any ticket
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        // Account access check with hierarchical support
+        if ($user->account) {
+            // Check if user has hierarchical access (Account Manager)
+            if ($user->hasPermission('accounts.hierarchy.access')) {
+                // Check if ticket belongs to accessible accounts (own + children)
+                $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+                if ($accessibleAccountIds->contains($this->account_id)) {
+                    return true; // Account Manager can view all tickets in hierarchy
+                }
+            } else {
+                // Regular account user - only their own account  
+                if ($user->account_id === $this->account_id) {
+                    // Continue to check other permissions for account users
+                } else {
+                    return false;
+                }
+            }
+        } else {
+            // User without account can't view account-based tickets
             return false;
         }
         
@@ -398,6 +420,11 @@ class Ticket extends Model
         if ($user->roleTemplate && $user->roleTemplate->getAllPermissions() && 
             (in_array('admin.manage', $user->roleTemplate->getAllPermissions()) ||
              in_array('teams.manage', $user->roleTemplate->getAllPermissions()))) {
+            return true;
+        }
+        
+        // Account Managers can edit tickets in their hierarchy
+        if ($user->hasPermission('tickets.edit.account') && $user->hasPermission('accounts.hierarchy.access')) {
             return true;
         }
         

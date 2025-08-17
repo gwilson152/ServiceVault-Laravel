@@ -119,74 +119,70 @@
       <!-- Timers and Controls Container (Right Side) -->
       <div class="flex flex-col space-y-2">
         <!-- Connection Status and Controls -->
-        <div class="flex items-center justify-between" :class="{ 'min-w-80': timers.length === 0 }">
-          <!-- Totals (if multiple timers) -->
-          <div
-            v-if="timers.length > 1"
-            class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-xs border border-blue-200 dark:border-blue-800"
-            title="Combined total of all active timers"
+        <div class="flex items-center justify-start space-x-2" :class="{ 'min-w-80': timers.length === 0 }">
+          <!-- Dock Toggle Button -->
+          <button
+            @click="toggleDockPosition"
+            class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
+            :title="isDocked ? 'Undock to moveable panel' : 'Dock to corner'"
+            :disabled="isLoadingPreferences"
           >
-            <div class="flex items-center space-x-2">
-              <span class="font-medium text-blue-900 dark:text-blue-100">
-                Total ({{ timers.length }}):
-              </span>
-              <div class="font-mono font-bold text-blue-900 dark:text-blue-100">
-                {{ formatDuration(totalDuration) }}
-              </div>
-              <div
-                v-if="totalAmount > 0"
-                class="text-xs text-blue-700 dark:text-blue-300 font-medium"
-              >
-                ${{ totalAmount.toFixed(2) }}
-              </div>
-            </div>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path v-if="isDocked" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <span>{{ isDocked ? 'Undock' : 'Dock' }}</span>
+          </button>
+          <!-- Connection Status -->
+          <div
+            :class="connectionStatusClasses"
+            class="text-xs px-2 py-1 rounded font-medium flex items-center space-x-1"
+            :title="`Timer sync status: ${connectionStatusText.toLowerCase()}`"
+          >
+            <div
+              :class="connectionDotClasses"
+              class="w-1.5 h-1.5 rounded-full"
+            ></div>
+            <span>{{ connectionStatusText }}</span>
           </div>
 
-          <!-- Dock Toggle, Connection Status and New Timer Button -->
-          <div class="flex items-center space-x-2" :class="{ 'ml-auto': timers.length <= 1 }">
-            <!-- Dock Toggle Button -->
-            <button
-              @click="toggleDockPosition"
-              class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
-              :title="isDocked ? 'Undock to moveable panel' : 'Dock to corner'"
-              :disabled="isLoadingPreferences"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path v-if="isDocked" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              <span>{{ isDocked ? 'Undock' : 'Dock' }}</span>
-            </button>
-            <!-- Connection Status -->
-            <div
-              :class="connectionStatusClasses"
-              class="text-xs px-2 py-1 rounded font-medium flex items-center space-x-1"
-              :title="`Timer sync status: ${connectionStatusText.toLowerCase()}`"
-            >
-              <div
-                :class="connectionDotClasses"
-                class="w-1.5 h-1.5 rounded-full"
-              ></div>
-              <span>{{ connectionStatusText }}</span>
-            </div>
+          <!-- New Timer Button -->
+          <button
+            v-if="canCreateTimers"
+            @click="showStartTimerModal = true"
+            class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg text-sm font-medium transition-colors flex items-center shadow-sm"
+            title="Start new timer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </button>
+        </div>
 
-            <!-- New Timer Button -->
-            <button
-              v-if="canCreateTimers"
-              @click="showStartTimerModal = true"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1 shadow-sm"
-              title="Start new timer"
+        <!-- Totals (if multiple timers) -->
+        <div
+          v-if="timers.length > 1"
+          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-xs border border-blue-200 dark:border-blue-800"
+          title="Combined total of all active timers"
+        >
+          <div class="flex items-center space-x-2">
+            <span class="font-medium text-blue-900 dark:text-blue-100">
+              Total ({{ timers.length }}):
+            </span>
+            <div class="font-mono font-bold text-blue-900 dark:text-blue-100">
+              {{ formatDuration(totalDuration) }}
+            </div>
+            <div
+              v-if="totalAmount > 0"
+              class="text-xs text-blue-700 dark:text-blue-300 font-medium"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-              </svg>
-              <span>New Timer</span>
-            </button>
+              ${{ totalAmount.toFixed(2) }}
+            </div>
           </div>
         </div>
 
-        <!-- Timer Cards Container - Horizontal Right-to-Left -->
-    <div v-if="timers.length > 0" class="flex flex-row-reverse space-x-reverse space-x-2">
+        <!-- Timer Cards Container - Horizontal Left-to-Right -->
+    <div v-if="timers.length > 0" class="flex flex-row space-x-2">
       <!-- Individual Timer -->
       <div
         v-for="timer in reactiveTimerData"
@@ -736,11 +732,11 @@ const stopPanelDrag = async () => {
 // Computed position classes and styles
 const overlayPositionClasses = computed(() => {
   if (isLoadingPreferences.value) {
-    return 'fixed bottom-4 right-4 z-40' // Default position while loading
+    return 'fixed bottom-4 left-4 z-40' // Default position while loading
   }
 
   if (isDocked.value) {
-    return 'fixed bottom-4 right-4 z-40' // Docked to bottom-right corner
+    return 'fixed bottom-4 left-4 z-40' // Docked to bottom-left corner
   } else {
     return 'fixed z-40' // Undocked moveable panel
   }

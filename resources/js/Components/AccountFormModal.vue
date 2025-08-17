@@ -2,6 +2,7 @@
 import { ref, watch, computed, nextTick } from 'vue'
 import { useCreateAccountMutation, useUpdateAccountMutation, useAccountSelectorQuery } from '@/Composables/queries/useAccountsQuery'
 import StackedDialog from '@/Components/StackedDialog.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 
 const props = defineProps({
     open: {
@@ -54,6 +55,7 @@ const form = ref({
 
 const errors = ref({})
 const activeTab = ref('basic')
+const fetchedParentAccount = ref(null)
 
 const tabs = [
     { id: 'basic', name: 'Basic Info', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
@@ -77,12 +79,27 @@ watch(() => isModalOpen.value, async (isOpen) => {
     if (isOpen) {
         if (props.account) {
             // Editing existing account
+            const parentId = props.account.parent_id || props.account.parent_account_id || null
+            
+            console.log('AccountFormModal - Populating form for editing:', {
+                accountId: props.account.id,
+                accountName: props.account.name,
+                parentId: parentId,
+                hasParentAccount: !!props.account.parent_account,
+                parentAccountData: props.account.parent_account
+            })
+            
+            // If we have a parent ID but no parent account data, fetch it
+            if (parentId && !props.account.parent_account && fetchedParentAccount.value?.id !== parentId) {
+                await fetchParentAccountDirectly(parentId)
+            }
+            
             form.value = {
                 name: props.account.name || '',
                 company_name: props.account.company_name || '',
                 account_type: props.account.account_type || 'customer',
                 description: props.account.description || '',
-                parent_id: props.account.parent_id || null,
+                parent_id: parentId,
                 contact_person: props.account.contact_person || '',
                 email: props.account.email || '',
                 phone: props.account.phone || '',
@@ -180,6 +197,35 @@ const closeModal = () => {
     emit('close')
 }
 
+const handleParentAccountSelected = (account) => {
+    // Account selection is automatically handled by v-model
+    // Additional logic can be added here if needed
+}
+
+const handleParentAccountCreated = (newAccount) => {
+    // The UnifiedSelector will automatically select the newly created account
+    // Additional logic can be added here if needed
+}
+
+const fetchParentAccountDirectly = async (parentId) => {
+    try {
+        console.log('Fetching parent account data for ID:', parentId)
+        const response = await window.axios.get(`/api/accounts/${parentId}`)
+        const parentAccount = response.data.data
+        
+        fetchedParentAccount.value = parentAccount
+        console.log('Successfully fetched parent account:', parentAccount)
+    } catch (error) {
+        console.error('Failed to fetch parent account:', error)
+        // Set a placeholder entry if fetch fails
+        fetchedParentAccount.value = {
+            id: parentId,
+            name: `Account #${parentId}`,
+            account_type: 'customer'
+        }
+    }
+}
+
 const flattenAccountTree = (accounts, depth = 0) => {
     let flattened = []
     for (const account of accounts) {
@@ -197,7 +243,55 @@ const flattenAccountTree = (accounts, depth = 0) => {
     return flattened
 }
 
-const flatParents = computed(() => flattenAccountTree(availableParents.value?.data || []))
+const flatParents = computed(() => {
+    const accounts = flattenAccountTree(availableParents.value?.data || [])
+    
+    // When editing, ensure the current parent account is included in the options
+    if (isEditing.value && props.account) {
+        const currentParentId = props.account.parent_id || props.account.parent_account_id
+        
+        if (currentParentId) {
+            const parentExists = accounts.some(acc => acc.id == currentParentId)
+            
+            if (!parentExists) {
+                // Try to get parent account data from props.account first
+                const parentAccount = props.account.parent_account || fetchedParentAccount.value
+                
+                if (parentAccount && parentAccount.id == currentParentId) {
+                    // Add the current parent account to the options
+                    accounts.unshift({
+                        ...parentAccount,
+                        id: parentAccount.id,
+                        name: parentAccount.name,
+                        display_name: parentAccount.name + ' (Current Parent)',
+                        account_type: parentAccount.account_type || 'customer'
+                    })
+                } else {
+                    // Create a placeholder if we still don't have parent data
+                    accounts.unshift({
+                        id: currentParentId,
+                        name: `Account #${currentParentId}`,
+                        display_name: `Account #${currentParentId} (Current Parent)`,
+                        account_type: 'customer'
+                    })
+                }
+            }
+        }
+    }
+    
+    console.log('AccountFormModal - flatParents computed:', {
+        isEditing: isEditing.value,
+        accountParentId: props.account?.parent_id || props.account?.parent_account_id,
+        formParentId: form.value.parent_id,
+        hasParentAccount: !!props.account?.parent_account,
+        hasFetchedParent: !!fetchedParentAccount.value,
+        fetchedParentId: fetchedParentAccount.value?.id,
+        availableAccounts: accounts.length,
+        accounts: accounts.map(acc => ({ id: acc.id, name: acc.name, display_name: acc.display_name }))
+    })
+    
+    return accounts
+})
 </script>
 
 <template>
@@ -206,33 +300,31 @@ const flatParents = computed(() => flattenAccountTree(availableParents.value?.da
         :title="modalTitle"
         max-width="2xl" 
         @close="closeModal"
+        :show-footer="false"
     >
-
-        <!-- Tab Navigation -->
-        <div class="border-b border-gray-200 mb-6">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <button
-                    v-for="tab in tabs"
-                    :key="tab.id"
-                    type="button"
-                    @click="activeTab = tab.id"
-                    :class="[
-                        activeTab === tab.id
-                            ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                        'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center'
-                    ]"
-                >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="tab.icon"/>
-                    </svg>
-                    {{ tab.name }}
-                </button>
-            </nav>
-        </div>
-
-        <!-- Modal body with fixed height and scrollable content -->
-        <div class="max-h-96 overflow-y-auto">
+        <div class="p-6">
+            <!-- Tab Navigation -->
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.id"
+                        type="button"
+                        @click="activeTab = tab.id"
+                        :class="[
+                            activeTab === tab.id
+                                ? 'border-indigo-500 text-indigo-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                            'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center'
+                        ]"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="tab.icon"/>
+                        </svg>
+                        {{ tab.name }}
+                    </button>
+                </nav>
+            </div>
             <form @submit.prevent="saveAccount" class="space-y-6">
                 <!-- General error -->
                 <div v-if="errors.general" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
@@ -299,19 +391,20 @@ const flatParents = computed(() => flattenAccountTree(availableParents.value?.da
 
                             <!-- Parent Account -->
                             <div>
-                                <label for="parent_id" class="block text-sm font-medium text-gray-700">Parent Account</label>
-                                <select
-                                    id="parent_id"
+                                <UnifiedSelector
                                     v-model="form.parent_id"
-                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.parent_id }"
-                                >
-                                    <option :value="null">No parent (Root level)</option>
-                                    <option v-for="parent in flatParents" :key="parent.id" :value="parent.id">
-                                        {{ parent.display_name }}
-                                    </option>
-                                </select>
-                                <p v-if="errors.parent_id" class="mt-1 text-sm text-red-600">{{ errors.parent_id[0] }}</p>
+                                    type="account"
+                                    :items="flatParents"
+                                    label="Parent Account"
+                                    placeholder="No parent (Root level)"
+                                    :hierarchical="true"
+                                    :can-create="true"
+                                    :nested="true"
+                                    :error="errors.parent_id"
+                                    @item-selected="handleParentAccountSelected"
+                                    @item-created="handleParentAccountCreated"
+                                />
+                                <p class="mt-1 text-xs text-gray-500">Select a parent account to create a subsidiary relationship.</p>
                             </div>
                         </div>
 
@@ -599,30 +692,29 @@ const flatParents = computed(() => flattenAccountTree(availableParents.value?.da
                         </div>
                     </div>
                 </div>
+
+                <!-- Form Actions -->
+                <div class="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
+                    <button
+                        type="button"
+                        @click="closeModal"
+                        class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        :disabled="saving"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <svg v-if="saving" class="inline w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span v-if="saving">Saving...</span>
+                        <span v-else>{{ isEditing ? 'Update Account' : 'Create Account' }}</span>
+                    </button>
+                </div>
             </form>
         </div>
-
-        <template #footer>
-            <div class="flex items-center justify-end space-x-2">
-                <button
-                    type="button"
-                    @click="closeModal"
-                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="submit"
-                    @click="saveAccount"
-                    :disabled="saving"
-                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <svg v-if="saving" class="inline w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    {{ saving ? 'Saving...' : (isEditing ? 'Update Account' : 'Create Account') }}
-                </button>
-            </div>
-        </template>
     </StackedDialog>
 </template>

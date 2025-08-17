@@ -279,10 +279,10 @@
     </div>
 
     <!-- Create Ticket Modal -->
-    <CreateTicketModal 
-      v-if="showCreateTicketModal"
-      @created="handleTicketCreated"
-      @cancelled="showCreateTicketModal = false"
+    <CreateTicketModalTabbed 
+      :show="showCreateTicketModal"
+      @ticket-created="handleTicketCreated"
+      @close="showCreateTicketModal = false"
     />
   </div>
 </template>
@@ -291,7 +291,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import CreateTicketModal from '@/Components/Modals/CreateTicketModal.vue'
+import CreateTicketModalTabbed from '@/Components/Modals/CreateTicketModalTabbed.vue'
 import axios from 'axios'
 
 // Define persistent layout

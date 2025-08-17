@@ -508,23 +508,159 @@ class RoleTemplateController extends Controller
     private function generatePermissionDescription(string $permission): string
     {
         $descriptions = [
-            'admin.manage' => 'Full administrative access to system management',
-            'system.configure' => 'Configure system-wide settings and preferences',
-            'accounts.create' => 'Create new customer accounts',
-            'accounts.manage' => 'Manage existing customer accounts',
-            'tickets.view.all' => 'View all service tickets across all accounts',
+            // System Administration
+            'admin.manage' => 'Full administrative access to system management and configuration',
+            'admin.write' => 'Create, modify, and delete administrative data across the system',
+            'admin.read' => 'View administrative information and system statistics',
+            'system.configure' => 'Configure system-wide settings, preferences, and global options',
+            'system.manage' => 'Manage system operations, maintenance, and core functionality',
+            
+            // Account Management
+            'accounts.create' => 'Create new customer accounts and set up account hierarchies',
+            'accounts.manage' => 'Manage existing customer accounts, settings, and configurations',
+            'accounts.hierarchy.access' => 'Access and navigate account hierarchies and subsidiary relationships',
+            'accounts.view' => 'View account information and basic details',
+            'accounts.edit' => 'Edit account information and update account settings',
+            'accounts.delete' => 'Delete customer accounts (with proper safeguards)',
+            
+            // User Management
+            'users.manage' => 'Manage user accounts, roles, and permissions across the system',
+            'users.manage.account' => 'Manage users within accessible accounts only',
+            'users.invite' => 'Send invitations to new users and manage onboarding process',
+            'users.assign' => 'Assign users to accounts and manage user-account relationships',
+            'users.view' => 'View user information and account associations',
+            'users.create' => 'Create new user accounts with appropriate role assignments',
+            'users.edit' => 'Edit user information, preferences, and account assignments',
+            'users.delete' => 'Deactivate or remove user accounts from the system',
+            
+            // Role Management
+            'roles.manage' => 'Create, modify, and delete role templates and permission sets',
+            'role_templates.manage' => 'Manage role templates and permission configurations',
+            
+            // Service Tickets
+            'tickets.admin' => 'Full administrative control over all ticket operations',
+            'tickets.create' => 'Create new service tickets for customer requests',
+            'tickets.create.account' => 'Create tickets specifically for accessible accounts',
+            'tickets.view.all' => 'View all service tickets across all customer accounts',
             'tickets.view.account' => 'View tickets for accounts user has access to',
-            'tickets.create' => 'Create new service tickets',
-            'time.track' => 'Track time on service tickets',
+            'tickets.view.assigned' => 'View tickets assigned to the current user',
+            'tickets.view.own' => 'View tickets created by the current user',
+            'tickets.edit.all' => 'Edit any ticket in the system regardless of assignment',
+            'tickets.edit.account' => 'Edit tickets for accessible accounts only',
+            'tickets.edit.own' => 'Edit tickets created by the current user',
+            'tickets.edit.assigned' => 'Edit tickets assigned to the current user',
+            'tickets.assign' => 'Assign tickets to team members and manage assignments',
+            'tickets.assign.account' => 'Assign tickets within accessible accounts only',
+            'tickets.transition' => 'Change ticket status and manage workflow transitions',
+            'tickets.close' => 'Close resolved tickets and mark them as completed',
+            'tickets.delete' => 'Delete tickets from the system (with proper safeguards)',
+            'tickets.comment' => 'Add comments and updates to service tickets',
+            'tickets.manage' => 'General ticket management including assignment and status changes',
+            
+            // Time Management
+            'time.admin' => 'Full administrative control over time tracking and entries',
+            'time.track' => 'Track time spent on service tickets and projects',
+            'time.manage' => 'Manage time entries including approval workflows',
+            'time.view.all' => 'View all time entries across the entire system',
+            'time.view.account' => 'View time entries for accessible accounts only',
+            'time.view.own' => 'View time entries created by the current user',
+            'time.edit.all' => 'Edit any time entry in the system',
+            'time.edit.account' => 'Edit time entries for accessible accounts only',
+            'time.edit.own' => 'Edit time entries created by the current user',
             'time.approve' => 'Approve time entries submitted by team members',
-            'billing.view.account' => 'View billing information for accessible accounts',
-            'portal.access' => 'Access customer portal interface',
-            'timers.act_as_agent' => 'Can be assigned timers for time tracking purposes',
-            'tickets.act_as_agent' => 'Can be assigned service tickets and manage customer requests',
-            'time.act_as_agent' => 'Can create and manage time entries for service delivery',
-            'billing.act_as_agent' => 'Can be assigned billing responsibilities and manage invoices',
+            'time.reports' => 'Access time tracking reports and analytics',
+            'time.reports.account' => 'Access time reports for accessible accounts only',
+            'time.reports.own' => 'Access personal time tracking reports',
+            'time.assign' => 'Assign time entries to team members and manage time allocation',
+            
+            // Timer System
+            'timers.admin' => 'Full administrative control over timer operations',
+            'timers.read' => 'View timer information and status across the system',
+            'timers.write' => 'Create and modify timers for time tracking',
+            'timers.create' => 'Create new timers for tracking work time',
+            'timers.manage' => 'Manage timers including starting, stopping, and editing',
+            'timers.manage.team' => 'Manage timers for team members and view team timer status',
+            'timers.sync' => 'Synchronize timer data across devices and sessions',
+            'timers.assign' => 'Assign timers to team members and manage timer allocation',
+            
+            // Billing & Financial
+            'billing.manage' => 'Manage billing operations, rates, and invoicing processes',
+            'billing.configure' => 'Configure billing settings, rates, and financial parameters',
+            'billing.rates' => 'Manage billing rates and pricing structures',
+            'billing.invoices' => 'Create, manage, and process customer invoices',
+            'billing.reports' => 'Access billing reports and financial analytics',
+            'billing.view.account' => 'View billing information for accessible accounts only',
+            'billing.admin' => 'Full administrative control over billing and financial operations',
+            
+            // Customer Portal
+            'portal.access' => 'Access customer portal interface and customer-facing features',
+            'portal.dashboard' => 'View customer portal dashboard and account overview',
+            'portal.tickets' => 'Access ticket interface within customer portal',
+            'portal.billing' => 'View billing information and invoices in customer portal',
+            
+            // Settings Management
+            'settings.manage' => 'Manage system settings and configuration options',
+            
+            // Page Access Permissions
+            'pages.admin.dashboard' => 'Access administrative dashboard and system overview',
+            'pages.admin.users' => 'Access user management pages and interfaces',
+            'pages.admin.accounts' => 'Access account management pages and interfaces',
+            'pages.admin.settings' => 'Access system settings and configuration pages',
+            'pages.tickets.index' => 'Access ticket listing and overview pages',
+            'pages.tickets.create' => 'Access ticket creation forms and interfaces',
+            'pages.tickets.manage' => 'Access ticket management and administration pages',
+            'pages.time.entries' => 'Access time entry management pages',
+            'pages.reports.own' => 'Access personal reporting pages and analytics',
+            'pages.reports.account' => 'Access account-level reporting pages',
+            'pages.settings.roles' => 'Access role management and permission configuration pages',
+            'pages.portal.dashboard' => 'Access customer portal dashboard page',
+            'pages.portal.tickets' => 'Access customer portal ticket interface',
+            'pages.portal.billing' => 'Access customer portal billing interface',
         ];
         
-        return $descriptions[$permission] ?? ucwords(str_replace(['.', '_'], [' ', ' '], $permission));
+        return $descriptions[$permission] ?? $this->generateFallbackDescription($permission);
+    }
+    
+    /**
+     * Generate fallback description for unknown permissions
+     */
+    private function generateFallbackDescription(string $permission): string
+    {
+        $parts = explode('.', $permission);
+        $category = $parts[0] ?? 'system';
+        $action = $parts[1] ?? 'access';
+        $scope = $parts[2] ?? null;
+        
+        $categoryNames = [
+            'admin' => 'Administrative',
+            'system' => 'System',
+            'accounts' => 'Account',
+            'users' => 'User',
+            'tickets' => 'Ticket',
+            'time' => 'Time',
+            'timers' => 'Timer',
+            'billing' => 'Billing',
+            'portal' => 'Portal',
+            'pages' => 'Page',
+            'widgets' => 'Widget',
+            'settings' => 'Settings'
+        ];
+        
+        $actionNames = [
+            'manage' => 'management',
+            'admin' => 'administration',
+            'create' => 'creation',
+            'view' => 'viewing',
+            'edit' => 'editing',
+            'delete' => 'deletion',
+            'assign' => 'assignment',
+            'access' => 'access'
+        ];
+        
+        $categoryName = $categoryNames[$category] ?? ucfirst($category);
+        $actionName = $actionNames[$action] ?? $action;
+        $scopeText = $scope ? " for {$scope}" : '';
+        
+        return "{$categoryName} {$actionName}{$scopeText}";
     }
 }

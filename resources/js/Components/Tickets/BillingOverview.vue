@@ -76,15 +76,14 @@
           <p class="mt-1 text-sm text-gray-900">{{ billingRate.currency?.toUpperCase() || 'USD' }}</p>
         </div>
       </div>
-      <div v-else class="text-center py-4 text-gray-500">
-        <p>No billing rate assigned to this ticket.</p>
-        <button
-          v-if="canManageBilling"
-          @click="showAssignRateModal = true"
-          class="mt-2 text-blue-600 hover:text-blue-700 text-sm"
-        >
-          Assign Billing Rate
-        </button>
+      <div v-else class="py-4 text-gray-500">
+        <p class="text-sm">Billing rates are determined automatically based on:</p>
+        <ul class="mt-2 text-sm list-disc list-inside space-y-1 text-gray-600">
+          <li>Agent's billing rate (if assigned to an agent)</li>
+          <li>Account-specific rates for this customer</li>
+          <li>Global default rates as fallback</li>
+        </ul>
+        <p class="mt-2 text-xs text-gray-500">Time entries inherit rates when created.</p>
       </div>
     </div>
 
@@ -338,12 +337,6 @@
       @cancelled="showRateModal = false"
     />
     
-    <AssignRateModal 
-      v-if="showAssignRateModal"
-      :ticket="ticket"
-      @assigned="handleRateAssigned"
-      @cancelled="showAssignRateModal = false"
-    />
     
     <InvoiceGeneratorModal
       v-if="showInvoiceModal"
@@ -363,7 +356,6 @@ import axios from 'axios'
 
 // Import child components
 import BillingRateModal from './BillingRateModal.vue'
-import AssignRateModal from './AssignRateModal.vue'
 import InvoiceGeneratorModal from './InvoiceGeneratorModal.vue'
 
 // Props
@@ -390,7 +382,6 @@ const loadingTimeEntries = ref(false)
 
 // Modal states
 const showRateModal = ref(false)
-const showAssignRateModal = ref(false)
 const showInvoiceModal = ref(false)
 
 // Filters
@@ -633,12 +624,6 @@ const handleRateSaved = () => {
   loadBillingSummary()
 }
 
-const handleRateAssigned = () => {
-  showAssignRateModal.value = false
-  loadBillingRate()
-  loadTimeEntries()
-  loadBillingSummary()
-}
 
 const handleInvoiceGenerated = () => {
   showInvoiceModal.value = false

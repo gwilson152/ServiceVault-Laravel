@@ -35,9 +35,17 @@ class TicketPolicy
             return true;
         }
 
-        // User can view tickets from their account
-        if ($user->hasPermission('tickets.view.account') && $user->account_id === $ticket->account_id) {
-            return true;
+        // User can view tickets from their account (including hierarchical access)
+        if ($user->hasPermission('tickets.view.account') && $user->account) {
+            // Check if user has hierarchical access (Account Manager)
+            if ($user->hasPermission('accounts.hierarchy.access')) {
+                // Check if ticket belongs to accessible accounts (own + children)
+                $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+                return $accessibleAccountIds->contains($ticket->account_id);
+            } else {
+                // Regular account user - only their own account
+                return $user->account_id === $ticket->account_id;
+            }
         }
 
         // Ticket assigned to this user
@@ -85,9 +93,17 @@ class TicketPolicy
             return true;
         }
 
-        // User can edit tickets from their account
-        if ($user->hasPermission('tickets.edit.account') && $user->account_id === $ticket->account_id) {
-            return true;
+        // User can edit tickets from their account (including hierarchical access)
+        if ($user->hasPermission('tickets.edit.account') && $user->account) {
+            // Check if user has hierarchical access (Account Manager)
+            if ($user->hasPermission('accounts.hierarchy.access')) {
+                // Check if ticket belongs to accessible accounts (own + children)
+                $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+                return $accessibleAccountIds->contains($ticket->account_id);
+            } else {
+                // Regular account user - only their own account
+                return $user->account_id === $ticket->account_id;
+            }
         }
 
         // Ticket assigned to this user
@@ -126,9 +142,17 @@ class TicketPolicy
             return true;
         }
 
-        // User can assign tickets within their account
-        if ($user->hasPermission('tickets.assign.account') && $user->account_id === $ticket->account_id) {
-            return true;
+        // User can assign tickets within their account (including hierarchical access)
+        if ($user->hasPermission('tickets.assign.account') && $user->account) {
+            // Check if user has hierarchical access (Account Manager)
+            if ($user->hasPermission('accounts.hierarchy.access')) {
+                // Check if ticket belongs to accessible accounts (own + children)
+                $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+                return $accessibleAccountIds->contains($ticket->account_id);
+            } else {
+                // Regular account user - only their own account
+                return $user->account_id === $ticket->account_id;
+            }
         }
 
         return false;
@@ -158,9 +182,17 @@ class TicketPolicy
             return true;
         }
 
-        // User with time entry permissions for their account
-        if ($user->hasPermission('time.create.account') && $user->account_id === $ticket->account_id) {
-            return true;
+        // User with time entry permissions for their account (including hierarchical access)
+        if ($user->hasPermission('time.create.account') && $user->account) {
+            // Check if user has hierarchical access (Account Manager)
+            if ($user->hasPermission('accounts.hierarchy.access')) {
+                // Check if ticket belongs to accessible accounts (own + children)
+                $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+                return $accessibleAccountIds->contains($ticket->account_id);
+            } else {
+                // Regular account user - only their own account
+                return $user->account_id === $ticket->account_id;
+            }
         }
 
         return $user->hasAnyPermission(['admin.write', 'time.create']);

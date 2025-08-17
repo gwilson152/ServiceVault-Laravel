@@ -111,33 +111,20 @@
           
           <!-- Agent Assignment (optional) -->
           <div v-if="canAssignTickets">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Assign Agent <span class="text-gray-500 text-xs">(optional)</span>
-            </label>
-            
-            <div class="relative">
-              <select
-                v-model="form.agent_id"
-                :disabled="isLoadingAgents"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.agent_id }"
-              >
-                <option value="">{{ isLoadingAgents ? 'Loading agents...' : 'Select an agent...' }}</option>
-                <option
-                  v-for="agent in availableAgents"
-                  :key="agent.id"
-                  :value="agent.id"
-                >
-                  {{ agent.name }} ({{ agent.email }})
-                </option>
-              </select>
-              
-              <div v-if="isLoadingAgents" class="absolute inset-y-0 right-0 flex items-center pr-3">
-                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              </div>
-            </div>
-            
-            <p v-if="errors.agent_id" class="mt-1 text-sm text-red-600">{{ errors.agent_id }}</p>
+            <UnifiedSelector
+              v-model="form.agent_id"
+              type="agent"
+              :items="availableAgents"
+              :agent-type="'ticket'"
+              label="Assign Agent"
+              placeholder="Select an agent (optional)..."
+              :can-create="true"
+              :nested="true"
+              :error="errors.agent_id"
+              @item-selected="handleAgentSelected"
+              @item-created="handleAgentCreated"
+            />
+            <p class="mt-1 text-xs text-gray-500">Select the agent to assign this ticket to (optional)</p>
           </div>
         </div>
       </div>
@@ -337,19 +324,47 @@ const user = computed(() => page.props.auth?.user)
 
 // TanStack Query
 const createTicketMutation = useCreateTicketMutation()
-const { data: roleTemplates } = useRoleTemplatesQuery()
+const { data: roleTemplatesData } = useRoleTemplatesQuery()
 
 // Computed
 const canAssignTickets = computed(() => {
-  return user.value?.user_type === 'agent' || 
-         user.value?.permissions?.includes('tickets.assign') ||
+  // Simplified ABAC logic - check if user can assign tickets to others
+  return user.value?.permissions?.includes('tickets.assign') ||
          user.value?.permissions?.includes('admin.write')
 })
+
+const roleTemplates = computed(() => roleTemplatesData.value?.data || [])
 
 // Methods
 const getCategoryName = (categoryKey) => {
   const category = availableCategories.value.find(c => c.key === categoryKey)
   return category?.name || categoryKey
+}
+
+const resetForm = () => {
+  form.title = ''
+  form.description = ''
+  form.account_id = null
+  form.customer_id = null
+  form.agent_id = null
+  form.priority = 'normal'
+  form.category = ''
+  form.due_date = ''
+  form.tags = ''
+  form.start_timer = false
+  form.send_notifications = true
+  errors.value = {}
+}
+
+const handleAgentSelected = (agent) => {
+  // Agent selection is automatically handled by v-model
+  console.log('Agent selected:', agent)
+}
+
+const handleAgentCreated = (newAgent) => {
+  // Add the newly created agent to the available agents list
+  availableAgents.value.push(newAgent)
+  console.log('New agent created and added to list:', newAgent)
 }
 
 const formatDate = (dateString) => {
@@ -399,8 +414,13 @@ const loadCustomers = async () => {
 
   try {
     isLoadingCustomers.value = true
-    const response = await axios.get(`/api/accounts/${form.account_id}/users`)
-    availableCustomers.value = response.data.data.filter(user => user.user_type === 'customer')
+    const response = await axios.get(`/api/accounts/${form.account_id}/users`, {
+      params: {
+        per_page: 100,
+        role_context: 'account_user' // Filter for customer users only
+      }
+    })
+    availableCustomers.value = response.data.data || []
   } catch (error) {
     console.error('Failed to load customers:', error)
     availableCustomers.value = []
@@ -409,13 +429,28 @@ const loadCustomers = async () => {
   }
 }
 
-const loadAgents = async () => {
+const loadAgents = async (accountId = null) => {
   try {
     isLoadingAgents.value = true
-    const response = await axios.get('/api/users/agents')
-    availableAgents.value = response.data.data
+    const params = {
+      agent_type: 'ticket',
+      per_page: 100
+    }
+    
+    // Don't filter by account for now - let the backend handle permissions
+    // The API should return all agents with tickets.act_as_agent permission
+    // including super admins who can be assigned to any account
+    
+    const response = await axios.get('/api/users/agents', { params })
+    availableAgents.value = response.data.data || []
+    console.log('CreateTicketModalTabbed - Loaded ticket agents:', {
+      count: availableAgents.value.length,
+      accountId: accountId,
+      agents: availableAgents.value.map(a => ({ id: a.id, name: a.name, email: a.email, user_type: a.user_type, permissions: a.permissions?.includes?.('tickets.act_as_agent') }))
+    })
   } catch (error) {
     console.error('Failed to load agents:', error)
+    availableAgents.value = []
   } finally {
     isLoadingAgents.value = false
   }
@@ -424,10 +459,27 @@ const loadAgents = async () => {
 const loadCategories = async () => {
   try {
     isLoadingCategories.value = true
-    const response = await axios.get('/api/ticket-categories')
-    availableCategories.value = response.data.data
+    const response = await axios.get('/api/ticket-categories/options')
+    availableCategories.value = response.data.options || []
+    
+    console.log('CreateTicketModalTabbed - Categories loaded:', {
+      categoriesCount: availableCategories.value.length,
+      defaultCategory: response.data.default_category,
+      currentFormCategory: form.category
+    })
+    
+    // Set default category if available and form category is empty
+    if (response.data.default_category && (!form.category || form.category === '')) {
+      form.category = response.data.default_category
+      console.log('CreateTicketModalTabbed - Set default category:', response.data.default_category)
+    } else if (availableCategories.value.length > 0 && (!form.category || form.category === '')) {
+      // Fallback: if no explicit default but categories exist, use the first one
+      form.category = availableCategories.value[0].key
+      console.log('CreateTicketModalTabbed - Set first category as default:', availableCategories.value[0].key)
+    }
   } catch (error) {
     console.error('Failed to load categories:', error)
+    availableCategories.value = []
   } finally {
     isLoadingCategories.value = false
   }
@@ -453,7 +505,42 @@ const submitForm = async () => {
     isSubmitting.value = true
     errors.value = {}
 
-    const result = await createTicketMutation.mutateAsync(form)
+    // Prepare form data
+    const payload = { ...form }
+    
+    console.log('CreateTicketModalTabbed - Form data before processing:', payload)
+    
+    // Process tags
+    if (payload.tags) {
+      payload.tags = payload.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+    } else {
+      payload.tags = []
+    }
+
+    // Convert due_date to proper format if provided
+    if (payload.due_date) {
+      payload.due_date = new Date(payload.due_date).toISOString()
+    }
+
+    // Remove empty account_id to let backend handle auto-assignment
+    if (!payload.account_id) {
+      delete payload.account_id
+    }
+    
+    // Remove empty agent_id to allow tickets without agents
+    if (!payload.agent_id || payload.agent_id === '') {
+      delete payload.agent_id
+      console.log('Creating ticket without agent assignment')
+    }
+    
+    // Remove empty customer_id
+    if (!payload.customer_id) {
+      delete payload.customer_id
+    }
+    
+    console.log('CreateTicketModalTabbed - Processed payload:', payload)
+
+    const result = await createTicketMutation.mutateAsync(payload)
     
     emit('ticket-created', result.data.data)
     emit('close')
@@ -475,7 +562,11 @@ const submitForm = async () => {
     
   } catch (error) {
     console.error('Failed to create ticket:', error)
+    console.error('Response data:', error.response?.data)
+    console.error('Form data sent:', form)
+    
     if (error.response?.data?.errors) {
+      console.error('Validation errors:', error.response.data.errors)
       errors.value = error.response.data.errors
     } else {
       errors.value = { general: ['Failed to create ticket. Please try again.'] }
@@ -486,19 +577,23 @@ const submitForm = async () => {
 }
 
 // Watchers
-watch(() => form.account_id, () => {
-  if (form.account_id) {
+watch(() => form.account_id, (newAccountId) => {
+  if (newAccountId) {
     loadCustomers()
+    // Don't reload agents - keep all ticket agents available regardless of account
+    // Super admins and users with tickets.act_as_agent should be assignable to any account
   } else {
     availableCustomers.value = []
     form.customer_id = null
+    // Don't clear agents when account is deselected
   }
 })
 
-watch(() => props.show, (isOpen) => {
+watch(() => props.show, async (isOpen) => {
   if (isOpen) {
     activeTab.value = 'basic'
-    errors.value = {}
+    resetForm()
+    await loadCategories() // Reload categories and set default when modal opens
   }
 })
 

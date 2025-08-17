@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\TimeEntry;
-use App\Models\Project;
+use App\Models\Ticket;
 use App\Models\Account;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
@@ -59,9 +59,9 @@ class CustomerPortalController extends Controller
     }
     
     /**
-     * View projects and tickets
+     * View tickets
      */
-    public function projects(Request $request)
+    public function tickets(Request $request)
     {
         $user = $request->user();
         $customerAccount = $user->currentAccount ?? $user->account;
@@ -70,34 +70,34 @@ class CustomerPortalController extends Controller
             abort(404, 'No account access.');
         }
         
-        $projects = Project::where('account_id', $customerAccount->id)
+        $tickets = Ticket::where('account_id', $customerAccount->id)
             ->when($request->status, function ($query, $status) {
                 $query->where('status', $status);
             })
             ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
+                $query->where('title', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%");
             })
-            ->withCount(['timeEntries', 'tasks'])
+            ->withCount('timeEntries')
             ->withSum('timeEntries as total_hours', 'duration')
             ->latest()
             ->paginate(20);
             
-        // Get project statistics
-        $projectStats = [
-            'total_projects' => Project::where('account_id', $customerAccount->id)->count(),
-            'active_projects' => Project::where('account_id', $customerAccount->id)
-                ->where('status', 'active')->count(),
-            'completed_projects' => Project::where('account_id', $customerAccount->id)
-                ->where('status', 'completed')->count(),
+        // Get ticket statistics
+        $ticketStats = [
+            'total_tickets' => Ticket::where('account_id', $customerAccount->id)->count(),
+            'open_tickets' => Ticket::where('account_id', $customerAccount->id)
+                ->whereIn('status', ['open', 'in_progress'])->count(),
+            'closed_tickets' => Ticket::where('account_id', $customerAccount->id)
+                ->where('status', 'closed')->count(),
             'total_hours_tracked' => TimeEntry::where('account_id', $customerAccount->id)
                 ->sum('duration') / 3600
         ];
 
-        return Inertia::render('Portal/Projects', [
-            'title' => 'Projects & Tickets',
-            'projects' => $projects,
-            'projectStats' => $projectStats,
+        return Inertia::render('Portal/Tickets', [
+            'title' => 'Support Tickets',
+            'tickets' => $tickets,
+            'ticketStats' => $ticketStats,
             'customerAccount' => $customerAccount,
             'dashboardType' => 'portal'
         ]);
@@ -124,9 +124,9 @@ class CustomerPortalController extends Controller
         }
         
         $timeEntries = TimeEntry::where('account_id', $customerAccount->id)
-            ->with(['user:id,name', 'project:id,name'])
-            ->when($request->project_id, function ($query, $projectId) {
-                $query->where('project_id', $projectId);
+            ->with(['user:id,name', 'ticket:id,title'])
+            ->when($request->ticket_id, function ($query, $ticketId) {
+                $query->where('ticket_id', $ticketId);
             })
             ->when($request->date_from, function ($query, $dateFrom) {
                 $query->whereDate('date', '>=', $dateFrom);
@@ -158,8 +158,8 @@ class CustomerPortalController extends Controller
             'title' => 'Time Tracking',
             'timeEntries' => $timeEntries,
             'timeStats' => $timeStats,
-            'projects' => Project::where('account_id', $customerAccount->id)
-                ->get(['id', 'name']),
+            'tickets' => Ticket::where('account_id', $customerAccount->id)
+                ->get(['id', 'title']),
             'customerAccount' => $customerAccount,
             'dashboardType' => 'portal'
         ]);
@@ -267,16 +267,16 @@ class CustomerPortalController extends Controller
         $thisMonth = Carbon::now()->startOfMonth();
         
         return [
-            'active_projects' => Project::where('account_id', $account->id)
-                ->where('status', 'active')->count(),
-            'completed_projects' => Project::where('account_id', $account->id)
-                ->where('status', 'completed')->count(),
+            'open_tickets' => Ticket::where('account_id', $account->id)
+                ->whereIn('status', ['open', 'in_progress'])->count(),
+            'closed_tickets' => Ticket::where('account_id', $account->id)
+                ->where('status', 'closed')->count(),
             'hours_this_month' => TimeEntry::where('account_id', $account->id)
                 ->where('date', '>=', $thisMonth)
                 ->sum('duration') / 3600,
             'team_members' => $account->users()->count(),
             'pending_tasks' => 0, // Placeholder for task management
-            'completion_rate' => $this->calculateCompletionRate($account)
+            'resolution_rate' => $this->calculateResolutionRate($account)
         ];
     }
     
@@ -286,19 +286,19 @@ class CustomerPortalController extends Controller
     private function getRecentActivity($account): array
     {
         $recentTimeEntries = TimeEntry::where('account_id', $account->id)
-            ->with(['user:id,name', 'project:id,name'])
+            ->with(['user:id,name', 'ticket:id,title'])
             ->latest()
             ->limit(10)
             ->get();
             
-        $recentProjects = Project::where('account_id', $account->id)
+        $recentTickets = Ticket::where('account_id', $account->id)
             ->latest('updated_at')
             ->limit(5)
-            ->get(['id', 'name', 'status', 'updated_at']);
+            ->get(['id', 'title', 'status', 'updated_at']);
             
         return [
             'recent_time_entries' => $recentTimeEntries,
-            'recent_project_updates' => $recentProjects
+            'recent_ticket_updates' => $recentTickets
         ];
     }
     
@@ -345,15 +345,15 @@ class CustomerPortalController extends Controller
     }
     
     /**
-     * Calculate completion rate for account projects
+     * Calculate resolution rate for account tickets
      */
-    private function calculateCompletionRate($account): float
+    private function calculateResolutionRate($account): float
     {
-        $totalProjects = Project::where('account_id', $account->id)->count();
-        $completedProjects = Project::where('account_id', $account->id)
-            ->where('status', 'completed')->count();
+        $totalTickets = Ticket::where('account_id', $account->id)->count();
+        $closedTickets = Ticket::where('account_id', $account->id)
+            ->where('status', 'closed')->count();
             
-        return $totalProjects > 0 ? ($completedProjects / $totalProjects * 100) : 0;
+        return $totalTickets > 0 ? ($closedTickets / $totalTickets * 100) : 0;
     }
     
     /**

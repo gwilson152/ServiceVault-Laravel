@@ -26,6 +26,8 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **StackedDialog Architecture**: All modals converted to use native dialog with proper stacking and z-index management
 - **Streamlined Ticket Creation**: Merged basic info and assignment tabs for improved user experience
 - **Enhanced Modal System**: Vertical expansion to fit content, proper modal stacking, and consistent UI
+- **Enhanced Role Management**: Comprehensive permission descriptions, tooltips, notation guides, and improved layout with summary panel
+- **Left-Aligned Timer Interface**: Timer overlay and individual timers now align left with improved visual hierarchy
 
 ## Documentation
 
@@ -210,7 +212,7 @@ Service Vault supports concurrent timers with Redis state management and real-ti
 - **Concurrent Timers**: Multiple active timers per user with cross-device sync
 - **Redis State**: `user:{user_id}:timer:{timer_id}:state` pattern
 - **Real-Time Broadcasting**: Laravel Echo + Vue composables  
-- **Timer Overlay**: `TimerBroadcastOverlay.vue` with persistent state
+- **Timer Overlay**: `TimerBroadcastOverlay.vue` with persistent state and left-aligned UI layout
 
 **⚠️ CRITICAL Navigation Rule:**
 Always use Inertia.js navigation (`router.visit()` or `<Link>`) to maintain timer overlay persistence. Regular `<a>` tags or `window.location.href` cause full page reloads and break timer state.

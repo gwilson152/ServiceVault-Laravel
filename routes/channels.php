@@ -48,3 +48,9 @@ Broadcast::channel('admin.accounts', function (User $user) {
         'view_all_accounts'
     ]);
 });
+
+// Ticket-specific channels for real-time messaging
+Broadcast::channel('ticket.{ticketId}', function (User $user, string $ticketId) {
+    $ticket = \App\Models\Ticket::find($ticketId);
+    return $ticket && $ticket->canBeViewedBy($user);
+});

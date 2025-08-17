@@ -6,7 +6,8 @@ Functional specifications and user guides for Service Vault features.
 - **[Agent/Customer Architecture](agent-customer-architecture.md)** - Enhanced user type system with role-based time entry creation ✅ COMPLETED
 - **[Business Account Management](business-account-management.md)** - Comprehensive B2B customer relationship management with full detail pages ✅ REFINED
 - **[User Management](user-management.md)** - Invitation-based user onboarding with complete acceptance workflow ✅ REFINED  
-- **[Roles & Permissions](roles-permissions.md)** - Three-dimensional permission system with dashboard preview ✅ COMPLETED
+- **[Roles & Permissions](roles-permissions.md)** - Three-dimensional permission system with comprehensive descriptions and enhanced UX ✅ ENHANCED
+- **[Permission Descriptions](permission-descriptions.md)** - Comprehensive permission explanation system with smart tooltips ✅ NEW
 - **[Time Tracking](time-tracking.md)** - Enhanced timer assignment system with refined overlay functionality ✅ REFINED
 - **[Service Tickets](service-tickets.md)** - Comprehensive ticket workflow system with fully functional detail pages ✅ REFINED
 - **[Ticket Configuration](ticket-configuration.md)** - Drag-drop workflow management with optimistic UI updates ✅ COMPLETED

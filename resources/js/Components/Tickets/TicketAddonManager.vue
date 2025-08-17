@@ -277,6 +277,11 @@ const props = defineProps({
   ticket: {
     type: Object,
     required: true
+  },
+  permissions: {
+    type: Object,
+    required: false,
+    default: () => ({})
   }
 })
 
@@ -311,8 +316,7 @@ const summary = ref({
 
 // Computed properties
 const canAddAddon = computed(() => {
-  // TODO: Implement proper permission checking
-  return true
+  return props.permissions?.canManageAddons || false
 })
 
 // Methods
@@ -381,8 +385,7 @@ const getPriorityClasses = (priority) => {
 
 // Permission checking methods
 const canManageAddon = (addon) => {
-  // TODO: Implement proper permission checking
-  return true
+  return props.permissions?.canManageAddons || false
 }
 
 const canEditAddon = (addon) => {

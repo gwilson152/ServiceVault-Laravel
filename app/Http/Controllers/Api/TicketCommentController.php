@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\Setting;
+use App\Events\TicketCommentCreated;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -128,6 +129,9 @@ class TicketCommentController extends Controller
         ]);
         
         $comment->load('user:id,name,email');
+        
+        // Broadcast the new comment to real-time listeners
+        broadcast(new TicketCommentCreated($comment));
         
         return response()->json([
             'data' => [

@@ -190,6 +190,7 @@ export function useTimeEntriesQuery() {
 - **Unified Time Entry Dialog**: Consolidated all time entry workflows into single component
 - **Fixed Missing Imports**: Resolved CommitTimeEntryDialog references to use UnifiedTimeEntryDialog
 - **Multiline Work Descriptions**: Enhanced timer description input with textarea
-- **Glass Effect Design**: Modern timer overlay with gradient glass morphism
+- **Left-Aligned Timer Interface**: Timer overlay and individual timers now align left for improved visual hierarchy
+- **Enhanced Timer Dialog**: Auto-selection of current agent and default billing rates with merged single-tab interface
 
 For detailed timer architecture, see [Timer System Architecture](../architecture/timer-system.md).

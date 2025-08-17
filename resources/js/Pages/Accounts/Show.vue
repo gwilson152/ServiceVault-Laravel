@@ -693,6 +693,14 @@
                 </div>
             </div>
         </div>
+
+        <!-- Account Edit Modal -->
+        <AccountFormModal
+            :show="showEditModal"
+            :account="account"
+            @close="handleModalClose"
+            @saved="handleAccountSaved"
+        />
     </div>
 </template>
 
@@ -701,6 +709,7 @@ import { ref, computed, onMounted } from "vue";
 import { Link } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import BillingRateOverrides from "@/Components/Accounts/BillingRateOverrides.vue";
+import AccountFormModal from "@/Components/AccountFormModal.vue";
 import axios from "axios";
 
 // Tab icons
@@ -774,7 +783,11 @@ const loadAccount = async () => {
     error.value = null;
 
     try {
-        const response = await axios.get(`/api/accounts/${props.accountId}`);
+        const response = await axios.get(`/api/accounts/${props.accountId}`, {
+            params: {
+                include: 'parent_account'
+            }
+        });
         account.value = response.data.data;
 
         // Load related data
@@ -873,6 +886,16 @@ const deactivateAccount = async () => {
 };
 
 // Lifecycle
+const handleAccountSaved = (savedAccount) => {
+    // Update the account data with the saved version
+    account.value = savedAccount;
+    showEditModal.value = false;
+};
+
+const handleModalClose = () => {
+    showEditModal.value = false;
+};
+
 onMounted(() => {
     loadAccount();
 });

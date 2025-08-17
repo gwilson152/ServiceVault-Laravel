@@ -26,6 +26,10 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    padContent: {
+        type: Boolean,
+        default: true,
+    },
 })
 
 const emit = defineEmits(['close'])
@@ -129,7 +133,30 @@ watch(
             
             showSlot.value = true
             await nextTick()
-            dialog.value?.showModal()
+            
+            // Ensure dialog is closed before opening as modal
+            if (dialog.value) {
+                try {
+                    if (!dialog.value.open) {
+                        dialog.value.showModal()
+                    } else {
+                        // Dialog is already open, close it first then reopen as modal
+                        dialog.value.close()
+                        await nextTick()
+                        dialog.value.showModal()
+                    }
+                } catch (error) {
+                    console.warn('Dialog modal state error:', error)
+                    // Fallback: ensure dialog is properly closed and try again
+                    try {
+                        dialog.value.close()
+                        await nextTick()
+                        dialog.value.showModal()
+                    } catch (fallbackError) {
+                        console.error('Failed to open dialog after fallback:', fallbackError)
+                    }
+                }
+            }
         } else {
             removeFromStack()
             
@@ -139,7 +166,15 @@ watch(
             }
             
             setTimeout(() => {
-                dialog.value?.close()
+                if (dialog.value) {
+                    try {
+                        if (dialog.value.open) {
+                            dialog.value.close()
+                        }
+                    } catch (error) {
+                        console.warn('Error closing dialog:', error)
+                    }
+                }
                 showSlot.value = false
             }, 200)
         }
@@ -239,7 +274,7 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Content -->
-                    <div class="flex-1 overflow-auto">
+                    <div class="flex-1 overflow-auto" :class="{ 'p-6': padContent }">
                         <slot v-if="showSlot" />
                     </div>
 

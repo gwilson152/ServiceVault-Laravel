@@ -18,8 +18,8 @@ class TimerPolicy
             return $user->tokenCan('timers:read');
         }
 
-        // Default: allow all authenticated users to view their own timers
-        return true;
+        // Check if user has timer viewing permissions
+        return $user->hasAnyPermission(['timers.read', 'timers.write', 'time.track']);
     }
 
     /**
@@ -46,8 +46,8 @@ class TimerPolicy
             return $user->tokenCan('timers:write');
         }
 
-        // Default: allow all authenticated users to create timers
-        return true;
+        // Check if user has timer creation permissions
+        return $user->hasAnyPermission(['timers.create', 'timers.write', 'time.track']);
     }
 
     /**
@@ -60,8 +60,8 @@ class TimerPolicy
             return $user->tokenCan('timers:write') && $timer->user_id === $user->id;
         }
 
-        // User can only update their own timers
-        return $timer->user_id === $user->id;
+        // Check if user has timer permissions and owns the timer
+        return $user->hasAnyPermission(['timers.write', 'time.track']) && $timer->user_id === $user->id;
     }
 
     /**
@@ -74,8 +74,8 @@ class TimerPolicy
             return $user->tokenCan('timers:delete') && $timer->user_id === $user->id;
         }
 
-        // User can only delete their own timers
-        return $timer->user_id === $user->id;
+        // Check if user has timer permissions and owns the timer
+        return $user->hasAnyPermission(['timers.write', 'time.track']) && $timer->user_id === $user->id;
     }
 
     /**
@@ -88,8 +88,8 @@ class TimerPolicy
             return $user->tokenCan('timers:sync');
         }
 
-        // Default: allow all authenticated users to sync timers
-        return true;
+        // Check if user has timer permissions
+        return $user->hasAnyPermission(['timers.write', 'time.track']);
     }
 
     /**
