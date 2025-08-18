@@ -224,8 +224,8 @@ const props = defineProps({
     default: () => []
   },
   workflowTransitions: {
-    type: Array,
-    default: () => []
+    type: Object,
+    default: () => ({})
   },
   
   // State

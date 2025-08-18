@@ -460,12 +460,21 @@
 
                         <!-- Users Tab -->
                         <div v-show="activeTab === 'users'">
-                            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div
+                                class="bg-white rounded-lg shadow-sm border border-gray-200"
+                            >
                                 <!-- Header -->
-                                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                                    <h3 class="text-lg font-semibold text-gray-900">
+                                <div
+                                    class="px-6 py-4 border-b border-gray-200 flex items-center justify-between"
+                                >
+                                    <h3
+                                        class="text-lg font-semibold text-gray-900"
+                                    >
                                         Account Users
-                                        <span v-if="!usersLoading" class="text-sm font-normal text-gray-500 ml-2">
+                                        <span
+                                            v-if="!usersLoading"
+                                            class="text-sm font-normal text-gray-500 ml-2"
+                                        >
                                             ({{ accountUsers.length }})
                                         </span>
                                     </h3>
@@ -476,86 +485,188 @@
                                         Add User
                                     </button>
                                 </div>
-                                
+
                                 <!-- Loading State -->
-                                <div v-if="usersLoading" class="p-6 text-center">
-                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                                    <p class="mt-2 text-gray-500">Loading users...</p>
+                                <div
+                                    v-if="usersLoading"
+                                    class="p-6 text-center"
+                                >
+                                    <div
+                                        class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
+                                    ></div>
+                                    <p class="mt-2 text-gray-500">
+                                        Loading users...
+                                    </p>
                                 </div>
-                                
+
                                 <!-- Empty State -->
-                                <div v-else-if="accountUsers.length === 0" class="p-6 text-center text-gray-500">
-                                    <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                <div
+                                    v-else-if="accountUsers.length === 0"
+                                    class="p-6 text-center text-gray-500"
+                                >
+                                    <svg
+                                        class="w-12 h-12 mx-auto text-gray-300 mb-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                        />
                                     </svg>
-                                    <p class="text-lg font-medium text-gray-900 mb-1">No users found</p>
-                                    <p class="text-sm text-gray-500">Get started by adding the first user to this account.</p>
+                                    <p
+                                        class="text-lg font-medium text-gray-900 mb-1"
+                                    >
+                                        No users found
+                                    </p>
+                                    <p class="text-sm text-gray-500">
+                                        Get started by adding the first user to
+                                        this account.
+                                    </p>
                                 </div>
-                                
+
                                 <!-- Users List -->
                                 <div v-else class="overflow-x-auto">
-                                    <table class="min-w-full divide-y divide-gray-200">
+                                    <table
+                                        class="min-w-full divide-y divide-gray-200"
+                                    >
                                         <thead class="bg-gray-50">
                                             <tr>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th
+                                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                                >
                                                     User
                                                 </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th
+                                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                                >
                                                     Role
                                                 </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th
+                                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                                >
                                                     Status
                                                 </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th
+                                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                                >
                                                     Last Active
                                                 </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th
+                                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                                >
                                                     Actions
                                                 </th>
                                             </tr>
                                         </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
-                                            <tr v-for="user in accountUsers" :key="user.id" class="hover:bg-gray-50">
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <div class="flex items-center">
-                                                        <div class="flex-shrink-0 h-10 w-10">
-                                                            <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                                                <span class="text-sm font-medium text-gray-700">
-                                                                    {{ (user.name || '').charAt(0).toUpperCase() }}
+                                        <tbody
+                                            class="bg-white divide-y divide-gray-200"
+                                        >
+                                            <tr
+                                                v-for="user in accountUsers"
+                                                :key="user.id"
+                                                class="hover:bg-gray-50"
+                                            >
+                                                <td
+                                                    class="px-6 py-4 whitespace-nowrap"
+                                                >
+                                                    <div
+                                                        class="flex items-center"
+                                                    >
+                                                        <div
+                                                            class="flex-shrink-0 h-10 w-10"
+                                                        >
+                                                            <div
+                                                                class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center"
+                                                            >
+                                                                <span
+                                                                    class="text-sm font-medium text-gray-700"
+                                                                >
+                                                                    {{
+                                                                        (
+                                                                            user.name ||
+                                                                            ""
+                                                                        )
+                                                                            .charAt(
+                                                                                0
+                                                                            )
+                                                                            .toUpperCase()
+                                                                    }}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                         <div class="ml-4">
-                                                            <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
-                                                            <div class="text-sm text-gray-500">{{ user.email }}</div>
+                                                            <div
+                                                                class="text-sm font-medium text-gray-900"
+                                                            >
+                                                                {{ user.name }}
+                                                            </div>
+                                                            <div
+                                                                class="text-sm text-gray-500"
+                                                            >
+                                                                {{ user.email }}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {{ user.role_template?.name || 'No Role' }}
+                                                <td
+                                                    class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                                                >
+                                                    {{
+                                                        user.role_template
+                                                            ?.name || "No Role"
+                                                    }}
                                                 </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <span 
+                                                <td
+                                                    class="px-6 py-4 whitespace-nowrap"
+                                                >
+                                                    <span
                                                         class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                                        :class="user.is_active 
-                                                            ? 'bg-green-100 text-green-800' 
-                                                            : 'bg-red-100 text-red-800'"
+                                                        :class="
+                                                            user.is_active
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : 'bg-red-100 text-red-800'
+                                                        "
                                                     >
-                                                        {{ user.is_active ? 'Active' : 'Inactive' }}
+                                                        {{
+                                                            user.is_active
+                                                                ? "Active"
+                                                                : "Inactive"
+                                                        }}
                                                     </span>
                                                 </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {{ user.last_login_at ? formatDate(user.last_login_at) : 'Never' }}
+                                                <td
+                                                    class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                                >
+                                                    {{
+                                                        user.last_login_at
+                                                            ? formatDate(
+                                                                  user.last_login_at
+                                                              )
+                                                            : "Never"
+                                                    }}
                                                 </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    <button 
-                                                        @click="handleEditUser(user)"
+                                                <td
+                                                    class="px-6 py-4 whitespace-nowrap text-sm font-medium"
+                                                >
+                                                    <button
+                                                        @click="
+                                                            handleEditUser(user)
+                                                        "
                                                         class="text-blue-600 hover:text-blue-900 mr-3"
                                                     >
                                                         Edit
                                                     </button>
-                                                    <Link 
-                                                        :href="route('users.show', user.id)"
+                                                    <Link
+                                                        :href="
+                                                            route(
+                                                                'users.show',
+                                                                user.id
+                                                            )
+                                                        "
                                                         class="text-gray-600 hover:text-gray-900"
                                                     >
                                                         View
@@ -570,12 +681,21 @@
 
                         <!-- Tickets Tab -->
                         <div v-show="activeTab === 'tickets'">
-                            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div
+                                class="bg-white rounded-lg shadow-sm border border-gray-200"
+                            >
                                 <!-- Header -->
-                                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                                    <h3 class="text-lg font-semibold text-gray-900">
+                                <div
+                                    class="px-6 py-4 border-b border-gray-200 flex items-center justify-between"
+                                >
+                                    <h3
+                                        class="text-lg font-semibold text-gray-900"
+                                    >
                                         Account Tickets
-                                        <span v-if="!ticketsLoading" class="text-sm font-normal text-gray-500 ml-2">
+                                        <span
+                                            v-if="!ticketsLoading"
+                                            class="text-sm font-normal text-gray-500 ml-2"
+                                        >
                                             ({{ accountTickets.length }})
                                         </span>
                                     </h3>
@@ -586,7 +706,7 @@
                                         New Ticket
                                     </button>
                                 </div>
-                                
+
                                 <!-- Ticket List -->
                                 <TicketList
                                     :tickets="accountTickets"
@@ -727,7 +847,6 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -745,7 +864,9 @@
         <UserFormModal
             :show="showCreateUserModal"
             :user="selectedUser"
-            :account-id="account?.id"
+            :accounts="account ? [account] : []"
+            :role-templates="roleTemplates"
+            :preselected-account-id="account?.id"
             nested
             @close="showCreateUserModal = false"
             @saved="handleUserSaved"
@@ -753,18 +874,19 @@
 
         <!-- Ticket Creation Modal -->
         <CreateTicketModalTabbed
-            :show="showCreateTicketModal" 
+            :show="showCreateTicketModal"
             :account-id="account?.id"
+            :preselected-agent-id="currentUser?.id"
             nested
             @close="showCreateTicketModal = false"
-            @created="handleTicketCreated"
+            @ticket-created="handleTicketCreated"
         />
     </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { Link } from "@inertiajs/vue3";
+import { Link, usePage } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import BillingRateOverrides from "@/Components/Accounts/BillingRateOverrides.vue";
 import AccountFormModal from "@/Components/AccountFormModal.vue";
@@ -773,6 +895,7 @@ import UserFormModal from "@/Components/UserFormModal.vue";
 import CreateTicketModalTabbed from "@/Components/Modals/CreateTicketModalTabbed.vue";
 import TicketList from "@/Components/Tickets/TicketList.vue";
 import { useTicketsTable } from "@/Composables/useTicketsTable";
+import { useRoleTemplatesQuery } from "@/Composables/queries/useUsersQuery";
 import axios from "axios";
 
 // Tab icons
@@ -825,14 +948,24 @@ const workflowTransitions = ref({});
 // Mock user for tickets table (account context)
 const mockUser = ref({
     id: 1,
-    name: 'Account User',
-    user_type: 'customer'
+    name: "Account User",
+    user_type: "customer",
 });
 
+// Get current user from page props
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user);
+
 // TanStack Table setup for account tickets
-const {
-    table: ticketsTable,
-} = useTicketsTable(accountTickets, mockUser, false); // false = can't view all accounts
+const { table: ticketsTable } = useTicketsTable(
+    accountTickets,
+    mockUser,
+    false
+); // false = can't view all accounts
+
+// TanStack Query for role templates
+const { data: roleTemplatesData } = useRoleTemplatesQuery();
+const roleTemplates = computed(() => roleTemplatesData.value?.data || []);
 
 // Tab configuration
 const accountTabs = [
@@ -876,10 +1009,7 @@ const loadAccount = async () => {
         account.value = response.data.data;
 
         // Load related data
-        await Promise.all([
-            loadAccountStats(),
-            loadRecentActivity(),
-        ]);
+        await Promise.all([loadAccountStats(), loadRecentActivity()]);
     } catch (err) {
         console.error("Failed to load account:", err);
         error.value =
@@ -895,7 +1025,7 @@ const loadAccountStats = async () => {
         users_count: 0,
         active_tickets_count: 0,
         total_tickets_count: 0,
-        total_time_hours: 0
+        total_time_hours: 0,
     };
 };
 
@@ -907,7 +1037,9 @@ const loadRecentActivity = async () => {
 const loadAccountUsers = async () => {
     usersLoading.value = true;
     try {
-        const response = await axios.get(`/api/accounts/${props.accountId}/users`);
+        const response = await axios.get(
+            `/api/accounts/${props.accountId}/users`
+        );
         accountUsers.value = response.data.data || [];
         // Update stats with actual user count
         stats.value.users_count = accountUsers.value.length;
@@ -923,16 +1055,17 @@ const loadAccountTickets = async () => {
     ticketsLoading.value = true;
     try {
         const response = await axios.get(`/api/tickets`, {
-            params: { 
+            params: {
                 account_id: props.accountId,
-                per_page: 100
-            }
+                per_page: 100,
+            },
         });
         accountTickets.value = response.data.data || [];
         // Update stats with ticket counts
         stats.value.total_tickets_count = accountTickets.value.length;
         stats.value.active_tickets_count = accountTickets.value.filter(
-            ticket => !['closed', 'resolved'].includes(ticket.status?.toLowerCase())
+            (ticket) =>
+                !["closed", "resolved"].includes(ticket.status?.toLowerCase())
         ).length;
     } catch (err) {
         console.error("Failed to load account tickets:", err);
@@ -945,16 +1078,15 @@ const loadAccountTickets = async () => {
 // Load ticket configuration data
 const loadTicketConfig = async () => {
     try {
-        const response = await axios.get('/api/settings/ticket-config');
+        const response = await axios.get("/api/settings/ticket-config");
         const data = response.data.data;
         ticketStatuses.value = data.statuses || [];
         ticketPriorities.value = data.priorities || [];
         workflowTransitions.value = data.workflow_transitions || {};
     } catch (err) {
-        console.error('Failed to load ticket configuration:', err);
+        console.error("Failed to load ticket configuration:", err);
     }
 };
-
 
 const formatAccountType = (type) => {
     const types = {
@@ -978,7 +1110,6 @@ const formatDate = (dateString) => {
 
     return date.toLocaleDateString();
 };
-
 
 const activateAccount = async () => {
     try {
@@ -1044,13 +1175,10 @@ const handleTicketCreated = () => {
 
 // Tab-specific data loading
 const loadTabData = async (tab) => {
-    if (tab === 'users' && accountUsers.value.length === 0) {
+    if (tab === "users" && accountUsers.value.length === 0) {
         await loadAccountUsers();
-    } else if (tab === 'tickets' && accountTickets.value.length === 0) {
-        await Promise.all([
-            loadAccountTickets(),
-            loadTicketConfig()
-        ]);
+    } else if (tab === "tickets" && accountTickets.value.length === 0) {
+        await Promise.all([loadAccountTickets(), loadTicketConfig()]);
     }
 };
 

@@ -2,7 +2,7 @@ import "../css/app.css";
 import "./bootstrap";
 import "./echo";
 
-import { createInertiaApp } from "@inertiajs/vue3";
+import { createInertiaApp, router } from "@inertiajs/vue3";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 import { createApp, h } from "vue";
 import { ZiggyVue } from "../../vendor/tightenco/ziggy";
@@ -24,6 +24,11 @@ createInertiaApp({
             window.initializeCSRF();
         }
 
+        // Update CSRF token if provided via Inertia props
+        if (props.initialPage?.props?.csrf_token && window.updateCSRFToken) {
+            window.updateCSRFToken(props.initialPage.props.csrf_token);
+        }
+
         return createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
@@ -36,4 +41,12 @@ createInertiaApp({
     progress: {
         color: "#4B5563",
     },
+});
+
+// Global Inertia page listener to update CSRF tokens
+router.on('navigate', (event) => {
+    // Update CSRF token on every page navigation if provided
+    if (event.detail.page?.props?.csrf_token && window.updateCSRFToken) {
+        window.updateCSRFToken(event.detail.page.props.csrf_token);
+    }
 });

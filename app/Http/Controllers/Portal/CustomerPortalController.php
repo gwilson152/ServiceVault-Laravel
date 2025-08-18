@@ -272,7 +272,7 @@ class CustomerPortalController extends Controller
             'closed_tickets' => Ticket::where('account_id', $account->id)
                 ->where('status', 'closed')->count(),
             'hours_this_month' => TimeEntry::where('account_id', $account->id)
-                ->where('date', '>=', $thisMonth)
+                ->where('started_at', '>=', $thisMonth)
                 ->sum('duration') / 3600,
             'team_members' => $account->users()->count(),
             'pending_tasks' => 0, // Placeholder for task management

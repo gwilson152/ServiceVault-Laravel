@@ -84,7 +84,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Tickets management
     Route::get('/tickets', [App\Http\Controllers\Api\TicketController::class, 'indexView'])->name('tickets.index');
     Route::get('/tickets/create', [App\Http\Controllers\Api\TicketController::class, 'create'])->name('tickets.create');
-    Route::get('/tickets/{ticket}', [App\Http\Controllers\Api\TicketController::class, 'showView'])->name('tickets.show');
+    Route::get('/tickets/{ticket}/{tab?}', [App\Http\Controllers\Api\TicketController::class, 'showView'])->name('tickets.show')
+         ->where('tab', '(messages|time|addons|activity|billing)');
     
     
     // Placeholder routes for navigation (to be implemented later)

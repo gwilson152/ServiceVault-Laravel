@@ -10,13 +10,6 @@
           </div>
           
           <div class="flex items-center space-x-4">
-            <Link 
-              :href="route('portal.projects')"
-              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              View Projects
-            </Link>
-            
             <div class="relative" ref="profileDropdown">
               <button
                 @click="showProfileMenu = !showProfileMenu"
@@ -62,20 +55,20 @@
       <div v-else>
         <!-- Quick Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <!-- Active Projects -->
+          <!-- Closed Tickets -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center">
               <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
               </div>
               <div class="ml-5 w-0 flex-1">
                 <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">Active Projects</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ stats.active_projects || 0 }}</dd>
+                  <dt class="text-sm font-medium text-gray-500 truncate">Closed Tickets</dt>
+                  <dd class="text-lg font-medium text-gray-900">{{ stats.closed_tickets || 0 }}</dd>
                 </dl>
               </div>
             </div>
@@ -187,12 +180,12 @@
             </div>
           </div>
 
-          <!-- Project Activity -->
+          <!-- Recent Activity -->
           <div class="bg-white rounded-lg shadow-sm border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 class="text-lg font-semibold text-gray-900">Recent Project Activity</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
               <Link 
-                :href="route('portal.time-tracking')" 
+                :href="route('time-entries')" 
                 class="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 View Time Reports →
@@ -260,17 +253,17 @@
             </Link>
             
             <Link
-              :href="route('portal.projects')"
+              :href="route('time-entries')"
               class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-medium text-gray-900">View Projects</p>
-                <p class="text-xs text-gray-500">Track project progress</p>
+                <p class="text-sm font-medium text-gray-900">View Time Entries</p>
+                <p class="text-xs text-gray-500">Track time and activity</p>
               </div>
             </Link>
           </div>

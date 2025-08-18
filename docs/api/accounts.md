@@ -1,20 +1,20 @@
 # Accounts API
 
-Business account management with hierarchical structure support.
+Simplified business account management for customer and partner organizations.
 
 ## Overview
 
-The Accounts API provides comprehensive business account management with support for hierarchical account structures, allowing for complex organizational relationships and subsidiary management.
+The Accounts API provides streamlined business account management with a simplified, flat structure. Each account represents a business entity or organization that can have users, tickets, and billing configurations.
 
 ## Endpoints
 
-### List Accounts (Hierarchical)
+### List Accounts
 
 ```http
 GET /api/accounts
 ```
 
-Returns all accounts in hierarchical order, with parent accounts listed before their children.
+Returns all accounts in the system.
 
 **Response:**
 ```json
@@ -22,61 +22,46 @@ Returns all accounts in hierarchical order, with parent accounts listed before t
   "data": [
     {
       "id": "uuid",
-      "name": "Parent Company Inc",
-      "display_name": "Parent Company Inc",
-      "company_name": "Parent Company Inc",
+      "name": "Acme Corporation",
+      "display_name": "Acme Corporation",
       "account_type": "customer",
       "account_type_display": "Customer",
-      "hierarchy_level": 0,
-      "has_children": true,
-      "children_count": 2,
       "users_count": 5,
       "is_active": true,
       "status": "active",
       "contact_person": "John Doe",
-      "email": "john@parent.com",
+      "email": "john@acme.com",
       "phone": "+1-555-0123",
-      "created_at": "2025-01-01T00:00:00Z",
-      "updated_at": "2025-01-01T00:00:00Z"
-    },
-    {
-      "id": "uuid",
-      "name": "Subsidiary A",
-      "display_name": "Subsidiary A",
-      "company_name": "Subsidiary A LLC",
-      "account_type": "customer",
-      "account_type_display": "Customer", 
-      "hierarchy_level": 1,
-      "has_children": false,
-      "children_count": 0,
-      "users_count": 3,
-      "parent_id": "parent-uuid",
-      "is_active": true,
-      "status": "active",
+      "website": "https://acme.com",
+      "address": "123 Business St",
+      "city": "Business City",
+      "state": "BC",
+      "postal_code": "12345",
+      "country": "USA",
       "created_at": "2025-01-01T00:00:00Z",
       "updated_at": "2025-01-01T00:00:00Z"
     }
   ],
   "meta": {
     "total": 10,
-    "hierarchical": true
+    "per_page": 50,
+    "current_page": 1
   }
 }
 ```
 
 **Key Features:**
-- Accounts are returned in hierarchical order (parent → child → grandchild)
-- `hierarchy_level` indicates the depth in the hierarchy (0 = root account)
-- `children_count` shows how many direct subsidiaries the account has
+- Simple flat account structure
 - `users_count` shows the number of users assigned to the account
+- `display_name` provides a consistent account identifier
 
-### Get Hierarchical Selector Data
+### Get Account Selector Data
 
 ```http
-GET /api/accounts/selector/hierarchical
+GET /api/accounts/selector
 ```
 
-Returns accounts structured for hierarchical selector components (dropdowns, trees).
+Returns accounts formatted for selector components (dropdowns, search).
 
 **Response:**
 ```json
@@ -84,20 +69,10 @@ Returns accounts structured for hierarchical selector components (dropdowns, tre
   "data": [
     {
       "id": "uuid",
-      "name": "Parent Company Inc",
-      "parent_id": null,
-      "depth": 0,
-      "has_children": true,
-      "children": [
-        {
-          "id": "uuid",
-          "name": "Subsidiary A",
-          "parent_id": "parent-uuid",
-          "depth": 1,
-          "has_children": false,
-          "children": []
-        }
-      ]
+      "name": "Acme Corporation",
+      "display_name": "Acme Corporation",
+      "account_type": "customer",
+      "is_active": true
     }
   ],
   "meta": {
@@ -117,18 +92,24 @@ POST /api/accounts
 ```json
 {
   "name": "New Account",
-  "company_name": "New Account LLC",
   "account_type": "customer",
-  "parent_id": "parent-uuid",
   "description": "Account description",
   "contact_person": "Jane Smith",
   "email": "jane@newaccount.com",
   "phone": "+1-555-0456",
+  "website": "https://newaccount.com",
   "address": "123 Business St",
   "city": "Business City",
   "state": "BC",
   "postal_code": "12345",
   "country": "USA",
+  "billing_address": "123 Business St",
+  "billing_city": "Business City",
+  "billing_state": "BC",
+  "billing_postal_code": "12345",
+  "billing_country": "USA",
+  "tax_id": "12-3456789",
+  "notes": "Important client notes",
   "is_active": true
 }
 ```
@@ -140,8 +121,12 @@ POST /api/accounts
   "data": {
     "id": "new-uuid",
     "name": "New Account",
-    "hierarchy_level": 1,
-    // ... other account fields
+    "display_name": "New Account",
+    "account_type": "customer",
+    "is_active": true,
+    "users_count": 0,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
   }
 }
 ```
@@ -169,23 +154,23 @@ DELETE /api/accounts/{id}
 ```
 
 **Validation:**
-- Cannot delete accounts with active children
 - Cannot delete accounts with assigned users
+- Cannot delete accounts with active tickets
 - Returns 422 if validation fails
 
-## Hierarchy Features
+## Account Features
 
-### Hierarchy Levels
-- **Level 0**: Root accounts (no parent)
-- **Level 1+**: Subsidiary accounts (have parent)
-- Unlimited nesting depth supported
+### Account Structure
+- Simple flat structure with no parent-child relationships
+- Each account is independent and self-contained
+- Direct user-to-account assignments
 
 ### Visual Indicators
-The frontend displays hierarchical relationships using:
-- Tree-style connectors (└─, │)
-- Different icons for root vs subsidiary accounts
-- Color coding (blue for root, gray for subsidiaries)
-- Indentation based on hierarchy level
+The frontend displays accounts using:
+- Consistent account type badges
+- Status indicators (active/inactive)
+- User count displays
+- Clear account identification
 
 ### Account Types
 - `customer`: Active customer account
@@ -194,12 +179,32 @@ The frontend displays hierarchical relationships using:
 - `internal`: Internal company account
 
 ### Business Rules
-1. Root accounts can have unlimited subsidiaries
-2. Subsidiaries can have their own subsidiaries
-3. Users are assigned to specific accounts in the hierarchy
-4. Permissions can be inherited through hierarchy (when implemented)
+1. Each account operates independently
+2. Users are assigned to specific accounts
+3. Account names must be unique within the system
+4. Account types determine available features and permissions
+5. Billing rates can be account-specific or inherit global defaults
+
+## Field Definitions
+
+### Required Fields
+- `name`: Account display name (unique)
+- `account_type`: One of `customer`, `prospect`, `partner`, `internal`
+
+### Optional Fields
+- `description`: Account description or notes
+- `contact_person`: Primary contact name
+- `email`: Primary contact email
+- `phone`: Primary contact phone
+- `website`: Account website URL
+- `address`, `city`, `state`, `postal_code`, `country`: Primary address
+- `billing_address`, `billing_city`, `billing_state`, `billing_postal_code`, `billing_country`: Billing address
+- `tax_id`: Tax identification number
+- `notes`: Internal notes about the account
+- `is_active`: Account status (default: true)
 
 ## Related APIs
 - [Users API](users.md) - User-to-account assignments
-- [Roles & Permissions API](roles-permissions.md) - Account-based permissions
+- [Tickets API](tickets.md) - Account-based ticket management
+- [Billing Rates API](billing-rates.md) - Account-specific billing configuration
 - [Domain Mappings API](domain-mappings.md) - Automatic account assignment

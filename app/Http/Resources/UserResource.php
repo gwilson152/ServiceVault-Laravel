@@ -36,7 +36,6 @@ class UserResource extends JsonResource
                     'id' => $this->account->id,
                     'name' => $this->account->name,
                     'display_name' => $this->account->display_name,
-                    'company_name' => $this->account->company_name,
                     'account_type' => $this->account->account_type,
                     'is_active' => $this->account->is_active,
                     'hierarchy_level' => $this->account->hierarchy_level,

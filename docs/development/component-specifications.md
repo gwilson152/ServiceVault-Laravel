@@ -5,191 +5,204 @@ Vue.js component specifications and development guidelines for Service Vault.
 ## Widget System Components
 
 ### Dashboard Widget Base
+
 All dashboard widgets extend from base widget component:
 
 ```vue
 <template>
-  <div class="widget-container" :class="widgetClasses">
-    <div class="widget-header" v-if="showHeader">
-      <h3 class="widget-title">{{ title }}</h3>
-      <div class="widget-actions">
-        <slot name="actions" />
-      </div>
+    <div class="widget-container" :class="widgetClasses">
+        <div class="widget-header" v-if="showHeader">
+            <h3 class="widget-title">{{ title }}</h3>
+            <div class="widget-actions">
+                <slot name="actions" />
+            </div>
+        </div>
+        <div class="widget-content">
+            <slot />
+        </div>
     </div>
-    <div class="widget-content">
-      <slot />
-    </div>
-  </div>
 </template>
 
 <script setup lang="ts">
 interface WidgetProps {
-  title?: string;
-  showHeader?: boolean;
-  loading?: boolean;
-  error?: string | null;
-  size?: 'sm' | 'md' | 'lg';
+    title?: string;
+    showHeader?: boolean;
+    loading?: boolean;
+    error?: string | null;
+    size?: "sm" | "md" | "lg";
 }
 </script>
 ```
 
 ### Widget Development Pattern
+
 ```typescript
 // Widget registration
 export default {
-  id: 'widget-name',
-  component: 'WidgetComponent',
-  title: 'Widget Title',
-  description: 'Widget description',
-  permissions: ['widgets.dashboard.widget-name'],
-  defaultSize: { w: 6, h: 4 },
-  minSize: { w: 3, h: 2 },
-  maxSize: { w: 12, h: 8 }
-}
+    id: "widget-name",
+    component: "WidgetComponent",
+    title: "Widget Title",
+    description: "Widget description",
+    permissions: ["widgets.dashboard.widget-name"],
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 3, h: 2 },
+    maxSize: { w: 12, h: 8 },
+};
 ```
 
 ## Form Components
 
 ### UserSelector
 
-**Purpose**: Professional user selection with integrated user creation capabilities  
+**Purpose**: Professional user selection with integrated user creation capabilities
 **File**: `/resources/js/Components/UI/UserSelector.vue`
 
 Reusable user selection component with built-in "Create New User" functionality and context-aware account preselection:
 
 ```vue
 <UserSelector
-  v-model="selectedUserId"
-  :users="availableUsers"
-  :is-loading="usersLoading"
-  label="Assign to User"
-  placeholder="Select a user..."
-  required
-  :error="errors.user_id"
-  :show-create-option="true"
-  :accounts="accounts"
-  :role-templates="roleTemplates"
-  :preselected-account-id="currentAccountId"
-  @user-selected="handleUserSelection"
+    v-model="selectedUserId"
+    :users="availableUsers"
+    :is-loading="usersLoading"
+    label="Assign to User"
+    placeholder="Select a user..."
+    required
+    :error="errors.user_id"
+    :show-create-option="true"
+    :accounts="accounts"
+    :role-templates="roleTemplates"
+    :account-id="currentAccountId"
+    @user-selected="handleUserSelection"
 />
 ```
 
 **Key Features:**
-- **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared
-- **Built-in User Creation**: Integrated UserFormModal with preselected context
-- **Smart Viewport Positioning**: Dropup/dropdown mode based on available space
-- **Professional Selection Display**: Shows user card instead of search input when selected
-- **Context-Aware**: Pre-fills account context in user creation modal
+
+-   **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared
+-   **Built-in User Creation**: Integrated UserFormModal with preselected context
+-   **Smart Viewport Positioning**: Dropup/dropdown mode based on available space
+-   **Professional Selection Display**: Shows user card instead of search input when selected
+-   **Context-Aware**: Pre-fills account context in user creation modal
 
 **Props:**
-- `modelValue: string | object` - Selected user ID or user object
-- `users: Array` - Available users for selection
-- `isLoading: boolean` - Loading state indicator
-- `label: string` - Input label text
-- `placeholder: string` - Search placeholder text
-- `required: boolean` - Show required indicator
-- `error: string` - Error message to display
-- `reopenOnClear: boolean` - Auto-reopen on clear (default: true)
-- `showCreateOption: boolean` - Enable user creation (default: false)
-- `accounts: Array` - Accounts for user creation modal
-- `roleTemplates: Array` - Role templates for user creation modal
-- `preselectedAccountId: string | number` - Account to preselect in modal
+
+-   `modelValue: string | object` - Selected user ID or user object
+-   `users: Array` - Available users for selection
+-   `isLoading: boolean` - Loading state indicator
+-   `label: string` - Input label text
+-   `placeholder: string` - Search placeholder text
+-   `required: boolean` - Show required indicator
+-   `error: string` - Error message to display
+-   `reopenOnClear: boolean` - Auto-reopen on clear (default: true)
+-   `showCreateOption: boolean` - Enable user creation (default: false)
+-   `accounts: Array` - Accounts for user creation modal
+-   `roleTemplates: Array` - Role templates for user creation modal
+-   `preselectedAccountId: string | number` - Account to preselect in modal
 
 ### Account Selector
+
 Hierarchical account selection with permission filtering:
 
 ```vue
-<HierarchicalAccountSelector 
-  v-model="selectedAccountId"
-  :show-hierarchy="true"
-  :filter-accessible="true"
-  placeholder="Select account..."
-  @account-selected="handleAccountSelected"
+<HierarchicalAccountSelector
+    v-model="selectedAccountId"
+    :show-hierarchy="true"
+    :filter-accessible="true"
+    placeholder="Select account..."
+    @account-selected="handleAccountSelected"
 />
 ```
 
 **Props:**
-- `modelValue: string | null` - Selected account ID
-- `showHierarchy: boolean` - Show hierarchical structure
-- `filterAccessible: boolean` - Filter by user permissions
-- `placeholder: string` - Input placeholder text
+
+-   `modelValue: string | null` - Selected account ID
+-   `showHierarchy: boolean` - Show hierarchical structure
+-   `filterAccessible: boolean` - Filter by user permissions
+-   `placeholder: string` - Input placeholder text
 
 ### BillingRateSelector
 
-**Purpose**: Billing rate selection optimized for timer creation workflows  
+**Purpose**: Billing rate selection optimized for timer creation workflows
 **File**: `/resources/js/Components/UI/BillingRateSelector.vue`
 
 Specialized selector for billing rates with auto-default selection and timer integration:
 
 ```vue
 <BillingRateSelector
-  v-model="selectedRateId"
-  :rates="billingRates"
-  :is-loading="ratesLoading"
-  placeholder="No billing rate"
-  :reopen-on-clear="true"
-  @rate-selected="handleRateSelection"
+    v-model="selectedRateId"
+    :rates="billingRates"
+    :is-loading="ratesLoading"
+    placeholder="No billing rate"
+    :reopen-on-clear="true"
+    @rate-selected="handleRateSelection"
 />
 ```
 
 **Timer Integration Features:**
-- **Auto-Default Selection**: Automatically selects default billing rate when rates load
-- **Smart Viewport Positioning**: Critical for timer overlay positioning at screen bottom
-- **Professional Rate Display**: Shows rate name, hourly amount, and default indicators
-- **Auto-Reopen on Clear**: Seamless UX when users clear selections
+
+-   **Auto-Default Selection**: Automatically selects default billing rate when rates load
+-   **Smart Viewport Positioning**: Critical for timer overlay positioning at screen bottom
+-   **Professional Rate Display**: Shows rate name, hourly amount, and default indicators
+-   **Auto-Reopen on Clear**: Seamless UX when users clear selections
 
 **Props:**
-- `modelValue: string | number` - Selected billing rate ID
-- `rates: Array` - Available billing rates
-- `isLoading: boolean` - Loading state indicator
-- `placeholder: string` - Input placeholder
-- `reopenOnClear: boolean` - Auto-reopen behavior (default: true)
+
+-   `modelValue: string | number` - Selected billing rate ID
+-   `rates: Array` - Available billing rates
+-   `isLoading: boolean` - Loading state indicator
+-   `placeholder: string` - Input placeholder
+-   `reopenOnClear: boolean` - Auto-reopen behavior (default: true)
 
 ### Role Template Selector
+
 Role template selection with context filtering:
 
 ```vue
 <RoleTemplateSelector
-  v-model="selectedRoleId"
-  :context="'service_provider'"
-  :exclude-system-roles="false"
-  @role-selected="handleRoleSelected"
+    v-model="selectedRoleId"
+    :context="'service_provider'"
+    :exclude-system-roles="false"
+    @role-selected="handleRoleSelected"
 />
 ```
 
 ### Status Dropdown
+
 Workflow-aware ticket status selection component with transition validation:
 
 ```vue
 <StatusDropdown
-  v-model="ticket.status"
-  :statuses="ticketStatuses"
-  :workflow-transitions="workflowTransitions"
-  :loading="statusUpdating"
-  @change="handleStatusChange"
+    v-model="ticket.status"
+    :statuses="ticketStatuses"
+    :workflow-transitions="workflowTransitions"
+    :loading="statusUpdating"
+    @change="handleStatusChange"
 />
 ```
 
 **Props:**
-- `modelValue: string` - Current status key (required)
-- `statuses: Array` - Available status definitions with colors and metadata
-- `workflowTransitions: Object` - Allowed transitions from current status
-- `loading: boolean` - Show loading indicator during updates
-- `disabled: boolean` - Disable interaction
+
+-   `modelValue: string` - Current status key (required)
+-   `statuses: Array` - Available status definitions with colors and metadata
+-   `workflowTransitions: Object` - Allowed transitions from current status
+-   `loading: boolean` - Show loading indicator during updates
+-   `disabled: boolean` - Disable interaction
 
 **Features:**
-- **Workflow Validation**: Only shows statuses that are valid transitions from current state
-- **Visual Design**: Status colors and icons for easy identification
-- **Smart Positioning**: Fixed positioning to avoid table scroll conflicts
-- **Loading States**: Built-in loading overlay during status updates
-- **Development Mode**: Shows disabled options in dev mode for debugging
+
+-   **Workflow Validation**: Only shows statuses that are valid transitions from current state
+-   **Visual Design**: Status colors and icons for easy identification
+-   **Smart Positioning**: Fixed positioning to avoid table scroll conflicts
+-   **Loading States**: Built-in loading overlay during status updates
+-   **Development Mode**: Shows disabled options in dev mode for debugging
 
 **Event Data:**
+
 ```typescript
 interface StatusChangeEvent {
-  from: string;    // Previous status key
-  to: string;      // New status key  
-  timestamp: string; // ISO timestamp of change
+    from: string; // Previous status key
+    to: string; // New status key
+    timestamp: string; // ISO timestamp of change
 }
 ```
 
@@ -198,6 +211,7 @@ The component is designed for inline editing within data tables, particularly `T
 
 **Workflow Integration:**
 Status transitions are controlled by the `workflowTransitions` prop, which maps current status to allowed next statuses:
+
 ```javascript
 workflowTransitions: {
   'open': ['in_progress', 'closed'],
@@ -211,65 +225,70 @@ workflowTransitions: {
 ## Timer Components
 
 ### Timer Control Widget
+
 Individual timer controls with real-time updates:
 
 ```vue
 <TimerControl
-  :timer="timer"
-  :show-commit="true"
-  :admin-mode="hasAdminAccess"
-  @timer-updated="handleTimerUpdate"
-  @timer-committed="handleTimerCommit"
+    :timer="timer"
+    :show-commit="true"
+    :admin-mode="hasAdminAccess"
+    @timer-updated="handleTimerUpdate"
+    @timer-committed="handleTimerCommit"
 />
 ```
 
 **Features:**
-- Play/pause/stop controls
-- Real-time duration display
-- Admin override capabilities
-- Commit to time entry
+
+-   Play/pause/stop controls
+-   Real-time duration display
+-   Admin override capabilities
+-   Commit to time entry
 
 ### Multi-Timer FAB
+
 Floating action button for multi-timer management:
 
 ```vue
 <MultiTimerFAB
-  :active-timers="activeTimers"
-  :admin-mode="isAdmin"
-  @timer-started="handleTimerStart"
-  @show-all-timers="showTimerOverlay"
+    :active-timers="activeTimers"
+    :admin-mode="isAdmin"
+    @timer-started="handleTimerStart"
+    @show-all-timers="showTimerOverlay"
 />
 ```
 
 ## Permission-Aware Components
 
 ### Conditional Rendering
+
 Components automatically hide/show based on permissions:
 
 ```vue
 <template>
-  <div v-if="hasPermission('feature.access')">
-    <AdminControls v-if="hasPermission('admin.write')" />
-    <UserControls v-else />
-  </div>
+    <div v-if="hasPermission('feature.access')">
+        <AdminControls v-if="hasPermission('admin.write')" />
+        <UserControls v-else />
+    </div>
 </template>
 
 <script setup>
-import { usePermissions } from '@/composables/usePermissions';
+import { usePermissions } from "@/composables/usePermissions";
 
 const { hasPermission } = usePermissions();
 </script>
 ```
 
 ### Widget Permission Integration
+
 ```vue
 <script setup>
-import { useWidgetPermissions } from '@/composables/useWidgetPermissions';
+import { useWidgetPermissions } from "@/composables/useWidgetPermissions";
 
 const { canViewWidget, getVisibleWidgets } = useWidgetPermissions();
 
-const visibleWidgets = computed(() => 
-  getVisibleWidgets(availableWidgets.value)
+const visibleWidgets = computed(() =>
+    getVisibleWidgets(availableWidgets.value)
 );
 </script>
 ```
@@ -277,6 +296,7 @@ const visibleWidgets = computed(() =>
 ## Modal Components
 
 ### Standard Modal Pattern
+
 ```vue
 <DialogModal :show="showModal" @close="closeModal">
   <template #title>Modal Title</template>
@@ -295,43 +315,46 @@ const visibleWidgets = computed(() =>
 ```
 
 ### Confirmation Modal
+
 ```vue
 <ConfirmationModal
-  :show="showConfirm"
-  title="Delete Item"
-  message="This action cannot be undone."
-  confirm-text="Delete"
-  confirm-style="danger"
-  @confirmed="handleDelete"
-  @cancelled="showConfirm = false"
+    :show="showConfirm"
+    title="Delete Item"
+    message="This action cannot be undone."
+    confirm-text="Delete"
+    confirm-style="danger"
+    @confirmed="handleDelete"
+    @cancelled="showConfirm = false"
 />
 ```
 
 ## Real-Time Components
 
 ### Broadcasting Integration
+
 Components that need real-time updates:
 
 ```vue
 <script setup>
-import { useTimerBroadcasting } from '@/composables/useTimerBroadcasting';
+import { useTimerBroadcasting } from "@/composables/useTimerBroadcasting";
 
 const { activeTimers, connectToTimerChannel } = useTimerBroadcasting();
 
 onMounted(() => {
-  connectToTimerChannel();
+    connectToTimerChannel();
 });
 </script>
 ```
 
 ### Live Data Updates
+
 ```vue
 <script setup>
-import { useRealTimeData } from '@/composables/useRealTimeData';
+import { useRealTimeData } from "@/composables/useRealTimeData";
 
-const { data, isConnected, lastUpdate } = useRealTimeData('timers', {
-  refreshInterval: 30000,
-  enableBroadcasting: true
+const { data, isConnected, lastUpdate } = useRealTimeData("timers", {
+    refreshInterval: 30000,
+    enableBroadcasting: true,
 });
 </script>
 ```
@@ -339,29 +362,31 @@ const { data, isConnected, lastUpdate } = useRealTimeData('timers', {
 ## Component Development Guidelines
 
 ### 1. TypeScript Integration
+
 All components should use TypeScript with proper interfaces:
 
 ```typescript
 interface ComponentProps {
-  required: string;
-  optional?: boolean;
-  callback?: (data: any) => void;
+    required: string;
+    optional?: boolean;
+    callback?: (data: any) => void;
 }
 
 interface ComponentEmits {
-  'update:modelValue': [value: string];
-  'changed': [data: ComponentData];
+    "update:modelValue": [value: string];
+    changed: [data: ComponentData];
 }
 ```
 
 ### 2. Composable Integration
+
 Leverage Vue 3 composables for reusable logic:
 
 ```vue
 <script setup>
-import { usePermissions } from '@/composables/usePermissions';
-import { useForm } from '@/composables/useForm';
-import { useNotifications } from '@/composables/useNotifications';
+import { usePermissions } from "@/composables/usePermissions";
+import { useForm } from "@/composables/useForm";
+import { useNotifications } from "@/composables/useNotifications";
 
 const { hasPermission } = usePermissions();
 const { form, submit, processing } = useForm();
@@ -370,45 +395,48 @@ const { showSuccess, showError } = useNotifications();
 ```
 
 ### 3. Styling Standards
+
 Use Tailwind CSS with consistent patterns:
 
 ```vue
 <template>
-  <div class="component-container">
-    <!-- Card pattern -->
-    <div class="bg-white shadow rounded-lg p-6">
-      <!-- Header pattern -->
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-medium text-gray-900">{{ title }}</h3>
-        <slot name="actions" />
-      </div>
-      
-      <!-- Content pattern -->
-      <div class="space-y-4">
-        <slot />
-      </div>
+    <div class="component-container">
+        <!-- Card pattern -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <!-- Header pattern -->
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">{{ title }}</h3>
+                <slot name="actions" />
+            </div>
+
+            <!-- Content pattern -->
+            <div class="space-y-4">
+                <slot />
+            </div>
+        </div>
     </div>
-  </div>
 </template>
 ```
 
 ### 4. Accessibility Standards
+
 Ensure all components are accessible:
 
 ```vue
 <template>
-  <button
-    :aria-label="buttonLabel"
-    :aria-expanded="isExpanded"
-    :aria-controls="controlsId"
-    class="focus:outline-none focus:ring-2 focus:ring-indigo-500"
-  >
-    {{ text }}
-  </button>
+    <button
+        :aria-label="buttonLabel"
+        :aria-expanded="isExpanded"
+        :aria-controls="controlsId"
+        class="focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    >
+        {{ text }}
+    </button>
 </template>
 ```
 
 ### 5. Error Handling
+
 Implement consistent error handling:
 
 ```vue
@@ -416,11 +444,11 @@ Implement consistent error handling:
 const { showError } = useNotifications();
 
 const handleAction = async () => {
-  try {
-    await performAction();
-  } catch (error) {
-    showError(error.message || 'An error occurred');
-  }
+    try {
+        await performAction();
+    } catch (error) {
+        showError(error.message || "An error occurred");
+    }
 };
 </script>
 ```
@@ -428,24 +456,25 @@ const handleAction = async () => {
 ## Component Testing
 
 ### Unit Testing Pattern
-```javascript
-import { mount } from '@vue/test-utils';
-import Component from '@/Components/Component.vue';
 
-describe('Component', () => {
-  it('renders correctly with props', () => {
-    const wrapper = mount(Component, {
-      props: { title: 'Test Title' }
+```javascript
+import { mount } from "@vue/test-utils";
+import Component from "@/Components/Component.vue";
+
+describe("Component", () => {
+    it("renders correctly with props", () => {
+        const wrapper = mount(Component, {
+            props: { title: "Test Title" },
+        });
+
+        expect(wrapper.text()).toContain("Test Title");
     });
-    
-    expect(wrapper.text()).toContain('Test Title');
-  });
-  
-  it('emits events correctly', async () => {
-    const wrapper = mount(Component);
-    await wrapper.find('button').trigger('click');
-    
-    expect(wrapper.emitted()).toHaveProperty('clicked');
-  });
+
+    it("emits events correctly", async () => {
+        const wrapper = mount(Component);
+        await wrapper.find("button").trigger("click");
+
+        expect(wrapper.emitted()).toHaveProperty("clicked");
+    });
 });
 ```

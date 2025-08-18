@@ -13,6 +13,20 @@ if (token) {
     window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
 }
 
+// Helper function to update CSRF token from multiple sources
+window.updateCSRFToken = (newToken) => {
+    if (newToken) {
+        // Update axios default header
+        window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newToken;
+        
+        // Update the meta tag for consistency
+        const metaTag = document.head.querySelector('meta[name="csrf-token"]');
+        if (metaTag) {
+            metaTag.content = newToken;
+        }
+    }
+};
+
 // Configure axios for Sanctum
 window.axios.defaults.withCredentials = true;
 
@@ -27,14 +41,8 @@ const refreshCSRFToken = async () => {
         const newToken = response.data.csrf_token;
         
         if (newToken) {
-            // Update both the axios default header and the meta tag
-            window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newToken;
-            
-            // Update the meta tag for future reference
-            const metaTag = document.head.querySelector('meta[name="csrf-token"]');
-            if (metaTag) {
-                metaTag.content = newToken;
-            }
+            // Use the centralized token update function
+            window.updateCSRFToken(newToken);
         }
         
         return true;

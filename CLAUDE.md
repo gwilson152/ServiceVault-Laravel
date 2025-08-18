@@ -421,4 +421,4 @@ This CLAUDE.md file focuses on essential information for AI development assistan
 
 ---
 
-*Last Updated: August 18, 2025 - CSRF Token Management & Nuclear Reset Fixes: Implemented comprehensive CSRF token refresh system with automatic 419 error handling and proactive 10-minute refresh intervals. Fixed nuclear reset migration warnings by removing echo statements that interfered with frontend response parsing. Resolved Ticket Addon UUID generation and standardized billable column usage.*
+*Last Updated: August 18, 2025 - Enhanced CSRF Token Management: Implemented comprehensive CSRF token management system with session regeneration handling, Inertia props integration, and centralized token synchronization. Enhanced automatic 419 error handling and proactive 10-minute refresh intervals. Fixed nuclear reset migration warnings and standardized Ticket Addon UUID generation with billable column usage.*

@@ -21,13 +21,22 @@ export function useNavigationQuery() {
     } = useQuery({
         queryKey: queryKeys.navigation.items(),
         queryFn: async () => {
-            const response = await axios.get('/api/navigation')
-            return response.data.navigation || []
+            try {
+                const response = await axios.get('/api/navigation')
+                return response.data.navigation || []
+            } catch (error) {
+                console.error('Navigation query error:', error)
+                return []
+            }
         },
         staleTime: 1000 * 60 * 10, // 10 minutes - navigation doesn't change often
         gcTime: 1000 * 60 * 30,    // 30 minutes cache time
         refetchOnWindowFocus: false,  // Don't refetch navigation on focus
         refetchOnReconnect: false,    // Don't refetch on reconnect
+        retry: 1, // Only retry once on failure
+        onError: (error) => {
+            console.error('Navigation query failed:', error)
+        }
     })
 
     // Query for grouped navigation items
@@ -38,19 +47,31 @@ export function useNavigationQuery() {
     } = useQuery({
         queryKey: queryKeys.navigation.items(true),
         queryFn: async () => {
-            const response = await axios.get('/api/navigation', { 
-                params: { grouped: true } 
-            })
-            return {
-                navigation: response.data.navigation || {},
-                group_labels: response.data.group_labels || {}
+            try {
+                const response = await axios.get('/api/navigation', { 
+                    params: { grouped: true } 
+                })
+                return {
+                    navigation: response.data.navigation || {},
+                    group_labels: response.data.group_labels || {}
+                }
+            } catch (error) {
+                console.error('Grouped navigation query error:', error)
+                return {
+                    navigation: {},
+                    group_labels: {}
+                }
             }
         },
         staleTime: 1000 * 60 * 10,
         gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
-        enabled: false // Only load when explicitly requested
+        enabled: false, // Only load when explicitly requested
+        retry: 1,
+        onError: (error) => {
+            console.error('Grouped navigation query failed:', error)
+        }
     })
 
     // Mutation for checking route access

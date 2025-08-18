@@ -235,10 +235,8 @@ Retrieve comprehensive user information including relationships, statistics, and
       "id": 1,
       "name": "ACME Corp",
       "display_name": "ACME Corporation",
-      "company_name": "ACME Corporation",
       "account_type": "customer",
-      "is_active": true,
-      "hierarchy_level": 0
+      "is_active": true
     },
     "role_template_id": 2,
     "role_template": {

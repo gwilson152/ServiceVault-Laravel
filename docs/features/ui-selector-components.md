@@ -10,71 +10,77 @@ Service Vault features four polished selector components that provide standardiz
 
 ### UserSelector
 
-**Purpose**: Select system users with built-in create new user functionality  
-**File**: `/resources/js/Components/UI/UserSelector.vue`  
+**Purpose**: Select system users with built-in create new user functionality
+**File**: `/resources/js/Components/UI/UserSelector.vue`
 **Data Source**: User data via TanStack Query with account and role filtering
 
 #### Features
-- **Intelligent User Search**: Filters users by name, email, role, and account information
-- **Built-in User Creation**: Integrated "Create New User" option that opens UserFormModal
-- **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared for seamless UX
-- **Smart Viewport Positioning**: Dropup/dropdown mode based on available screen space
-- **Context-Aware Account Preselection**: Pre-fills account context in user creation modal
-- **Rich User Display**: Shows user name, email, role, and account information
-- **Conditional Display Logic**: Hides search input when user is selected, shows selected user card
-- **Loading and Empty States**: Professional loading indicators and "no users found" messaging
-- **Account Integration**: Filters and displays users with account and role context
+
+-   **Intelligent User Search**: Filters users by name, email, role, and account information
+-   **Built-in User Creation**: Integrated "Create New User" option that opens UserFormModal
+-   **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared for seamless UX
+-   **Smart Viewport Positioning**: Dropup/dropdown mode based on available screen space
+-   **Context-Aware Account Preselection**: Pre-fills account context in user creation modal
+-   **Rich User Display**: Shows user name, email, role, and account information
+-   **Conditional Display Logic**: Hides search input when user is selected, shows selected user card
+-   **Loading and Empty States**: Professional loading indicators and "no users found" messaging
+-   **Account Integration**: Filters and displays users with account and role context
 
 #### User Creation Integration
+
 ```javascript
 // Automatically opens UserFormModal with preselected account context
 const openCreateModal = () => {
-  showCreateUserModal.value = true
-  // UserFormModal receives preselectedAccountId from parent context
-}
+    showCreateUserModal.value = true;
+    // UserFormModal receives preselectedAccountId from parent context
+};
 
 const handleUserCreated = (user) => {
-  // New user automatically selected after creation
-  selectUser(user)
-  closeCreateModal()
-}
+    // New user automatically selected after creation
+    selectUser(user);
+    closeCreateModal();
+};
 ```
 
 #### Props
-- `modelValue`: Selected user ID or user object (String/Object)
-- `users`: Array of available users for selection
-- `isLoading`: Loading state indicator (Boolean)
-- `label`: Input label text (default: "User")
-- `placeholder`: Search placeholder text
-- `required`: Show required indicator (Boolean)
-- `error`: Error message to display
-- `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
-- `showCreateOption`: Enable "Create New User" functionality (default: false)
-- `noUsersMessage`: Custom message when no users available
-- `accounts`: Array of accounts for user creation modal
-- `roleTemplates`: Array of role templates for user creation modal
-- `preselectedAccountId`: Account ID to preselect in user creation modal
+
+-   `modelValue`: Selected user ID or user object (String/Object)
+-   `users`: Array of available users for selection
+-   `isLoading`: Loading state indicator (Boolean)
+-   `label`: Input label text (default: "User")
+-   `placeholder`: Search placeholder text
+-   `required`: Show required indicator (Boolean)
+-   `error`: Error message to display
+-   `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
+-   `showCreateOption`: Enable "Create New User" functionality (default: false)
+-   `noUsersMessage`: Custom message when no users available
+-   `accounts`: Array of accounts for user creation modal
+-   `roleTemplates`: Array of role templates for user creation modal
+-   `preselectedAccountId`: Account ID to preselect in user creation modal
 
 #### Usage Example
+
 ```vue
 <UserSelector
-  v-model="selectedUserId"
-  :users="availableUsers"
-  :is-loading="usersLoading"
-  label="Assign to User"
-  placeholder="Select a user..."
-  required
-  :error="errors.user_id"
-  :show-create-option="true"
-  :accounts="accounts"
-  :role-templates="roleTemplates"
-  :preselected-account-id="currentAccountId"
-  @user-selected="handleUserSelection"
+    v-model="selectedUserId"
+    :users="availableUsers"
+    :is-loading="usersLoading"
+    label="Assign to User"
+    placeholder="Select a user..."
+    required
+    :error="errors.user_id"
+    :show-create-option="true"
+    :accounts="accounts"
+    :role-templates="roleTemplates"
+    :account-id="currentAccountId"
+    @user-selected="handleUserSelection"
 />
 ```
 
 #### Smart Selection Display
+
 When a user is selected, the component shows a professional user card instead of the search input:
+
 ```vue
 <!-- Selected User Card -->
 <div class="p-2 bg-blue-50 border border-blue-200 rounded-lg">
@@ -98,25 +104,27 @@ When a user is selected, the component shows a professional user card instead of
 
 ### HierarchicalAccountSelector
 
-**Purpose**: Select business accounts with hierarchical relationship display and built-in account creation  
-**File**: `/resources/js/Components/UI/HierarchicalAccountSelector.vue`  
+**Purpose**: Select business accounts with hierarchical relationship display and built-in account creation
+**File**: `/resources/js/Components/UI/HierarchicalAccountSelector.vue`
 **Data Source**: `/api/accounts/selector/hierarchical`
 
 #### Features
-- **Hierarchical Display**: Shows account relationships with proper indentation and visual hierarchy
-- **Built-in Account Creation**: Integrated "Create New Account" option that opens AccountFormModal
-- **Rich Data Structure**: Displays account number, name, and hierarchy level with `display_name` formatting
-- **Smart Search**: Filters accounts by name, account number, and display hierarchy text
-- **Default Option**: "No account (general timer)" for non-client work scenarios
-- **Account Tree Navigation**: Flattened display of nested account relationships for easy selection
-- **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared for seamless UX
-- **CSRF Protection**: Enhanced CSRF token handling for secure account creation
+
+-   **Hierarchical Display**: Shows account relationships with proper indentation and visual hierarchy
+-   **Built-in Account Creation**: Integrated "Create New Account" option that opens AccountFormModal
+-   **Rich Data Structure**: Displays account number, name, and hierarchy level with `display_name` formatting
+-   **Smart Search**: Filters accounts by name, account number, and display hierarchy text
+-   **Default Option**: "No account (general timer)" for non-client work scenarios
+-   **Account Tree Navigation**: Flattened display of nested account relationships for easy selection
+-   **Auto-Reopen Behavior**: Automatically reopens dropdown when selections are cleared for seamless UX
+-   **CSRF Protection**: Enhanced CSRF token handling for secure account creation
 
 #### API Integration
+
 ```javascript
 const { data: accounts, isLoading } = useAccountsQuery({
-  endpoint: 'hierarchical' // Uses /api/accounts/selector/hierarchical
-})
+    endpoint: "hierarchical", // Uses /api/accounts/selector/hierarchical
+});
 
 // Account data structure includes:
 // {
@@ -130,61 +138,66 @@ const { data: accounts, isLoading } = useAccountsQuery({
 ```
 
 #### Account Creation Integration
+
 ```javascript
 // Automatically opens AccountFormModal for account creation
 const openCreateModal = async () => {
-  showDropdown.value = false
-  
-  // Ensure CSRF token is ready before opening modal
-  try {
-    await window.axios.get('/sanctum/csrf-cookie')
-  } catch (error) {
-    console.error('Failed to initialize CSRF token:', error)
-  }
-  
-  showCreateAccountModal.value = true
-}
+    showDropdown.value = false;
+
+    // Ensure CSRF token is ready before opening modal
+    try {
+        await window.axios.get("/sanctum/csrf-cookie");
+    } catch (error) {
+        console.error("Failed to initialize CSRF token:", error);
+    }
+
+    showCreateAccountModal.value = true;
+};
 
 const handleAccountCreated = (newAccount) => {
-  // Reload accounts to include the new one
-  loadAccounts().then(() => {
-    // New account automatically selected after creation
-    selectAccount(newAccount)
-    
-    // Emit event to parent to refresh account lists if needed
-    emit('account-created', newAccount)
-  })
-}
+    // Reload accounts to include the new one
+    loadAccounts().then(() => {
+        // New account automatically selected after creation
+        selectAccount(newAccount);
+
+        // Emit event to parent to refresh account lists if needed
+        emit("account-created", newAccount);
+    });
+};
 ```
 
 #### Props
-- `modelValue`: Selected account ID (String/Object)
-- `label`: Label text (default: "Account")
-- `placeholder`: Input placeholder text
-- `required`: Show required indicator (Boolean)
-- `error`: Error message to display
-- `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
-- `showCreateOption`: Enable "Create New Account" functionality (default: true)
-- `preselectedParentId`: Parent account ID for creating sub-accounts (String/Number)
+
+-   `modelValue`: Selected account ID (String/Object)
+-   `label`: Label text (default: "Account")
+-   `placeholder`: Input placeholder text
+-   `required`: Show required indicator (Boolean)
+-   `error`: Error message to display
+-   `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
+-   `showCreateOption`: Enable "Create New Account" functionality (default: true)
+-   `preselectedParentId`: Parent account ID for creating sub-accounts (String/Number)
 
 #### Usage Example
+
 ```vue
 <HierarchicalAccountSelector
-  v-model="selectedAccountId"
-  label="Customer Account"
-  placeholder="No account (general timer)"
-  required
-  :error="errors.account_id"
-  :reopen-on-clear="true"
-  :show-create-option="true"
-  :preselected-parent-id="parentAccountId"
-  @account-selected="handleAccountSelection"
-  @account-created="handleNewAccountCreated"
+    v-model="selectedAccountId"
+    label="Customer Account"
+    placeholder="No account (general timer)"
+    required
+    :error="errors.account_id"
+    :reopen-on-clear="true"
+    :show-create-option="true"
+    :parent-id="parentAccountId"
+    @account-selected="handleAccountSelection"
+    @account-created="handleNewAccountCreated"
 />
 ```
 
 #### Create New Account Display
+
 When `showCreateOption` is enabled, the component shows a green-styled create option at the top of the dropdown:
+
 ```vue
 <!-- Create New Account Option -->
 <div class="px-4 py-3 hover:bg-green-50 cursor-pointer border-b border-gray-100 bg-green-25">
@@ -205,66 +218,71 @@ When `showCreateOption` is enabled, the component shows a green-styled create op
 
 ### TicketSelector
 
-**Purpose**: Select service tickets with status filtering and rich display  
-**File**: `/resources/js/Components/UI/TicketSelector.vue`  
+**Purpose**: Select service tickets with status filtering and rich display
+**File**: `/resources/js/Components/UI/TicketSelector.vue`
 **Data Source**: Filtered ticket data via TanStack Query
 
 #### Features
-- **Account-Filtered Results**: Only shows tickets for selected account context
-- **Status-Based Filtering**: Automatically excludes `closed` and `cancelled` tickets
-- **Rich Display Information**: Shows ticket number, title, status badges, and priority
-- **Status Color Coding**: Visual status indicators with consistent color scheme:
-  - Green: Open, New tickets
-  - Blue: In Progress, Assigned tickets  
-  - Yellow: On Hold, Waiting tickets
-  - Red: Urgent, Critical priorities
-- **Real-Time Data**: Integrates with TanStack Query for efficient caching and updates
+
+-   **Account-Filtered Results**: Only shows tickets for selected account context
+-   **Status-Based Filtering**: Automatically excludes `closed` and `cancelled` tickets
+-   **Rich Display Information**: Shows ticket number, title, status badges, and priority
+-   **Status Color Coding**: Visual status indicators with consistent color scheme:
+    -   Green: Open, New tickets
+    -   Blue: In Progress, Assigned tickets
+    -   Yellow: On Hold, Waiting tickets
+    -   Red: Urgent, Critical priorities
+-   **Real-Time Data**: Integrates with TanStack Query for efficient caching and updates
 
 #### Status Badge Logic
+
 ```javascript
 const getStatusClasses = (statusName) => {
-  const status = statusName.toLowerCase()
-  if (status.includes('open') || status.includes('new')) {
-    return 'bg-green-100 text-green-800'
-  } else if (status.includes('progress') || status.includes('assigned')) {
-    return 'bg-blue-100 text-blue-800'
-  } else if (status.includes('hold') || status.includes('waiting')) {
-    return 'bg-yellow-100 text-yellow-800'
-  }
-  return 'bg-gray-100 text-gray-800'
-}
+    const status = statusName.toLowerCase();
+    if (status.includes("open") || status.includes("new")) {
+        return "bg-green-100 text-green-800";
+    } else if (status.includes("progress") || status.includes("assigned")) {
+        return "bg-blue-100 text-blue-800";
+    } else if (status.includes("hold") || status.includes("waiting")) {
+        return "bg-yellow-100 text-yellow-800";
+    }
+    return "bg-gray-100 text-gray-800";
+};
 ```
 
 #### Usage Example
+
 ```vue
 <TicketSelector
-  v-model="selectedTicketId"
-  :tickets="availableTickets"
-  :is-loading="ticketsLoading"
-  placeholder="No specific ticket"
-  @ticket-selected="handleTicketSelection"
+    v-model="selectedTicketId"
+    :tickets="availableTickets"
+    :is-loading="ticketsLoading"
+    placeholder="No specific ticket"
+    @ticket-selected="handleTicketSelection"
 />
 ```
 
 ### BillingRateSelector
 
-**Purpose**: Select billing rates with rate information and default handling  
-**File**: `/resources/js/Components/UI/BillingRateSelector.vue`  
+**Purpose**: Select billing rates with rate information and default handling
+**File**: `/resources/js/Components/UI/BillingRateSelector.vue`
 **Data Source**: `/api/billing/rates`
 
 #### Features
-- **Rate Information Display**: Shows rate name, hourly amount ($X.XX/hr), and default indicator
-- **Default Rate Preselection**: Automatically selects default billing rate when component loads
-- **Auto-Reopen on Clear**: Automatically reopens dropdown when selection is cleared for seamless UX
-- **Smart Viewport Positioning**: Dropup/dropdown mode based on screen position (critical for timer overlay)
-- **Search Functionality**: Filter rates by name, hourly amount, or description text
-- **Default Badge**: Visual indicator for organization default rates with blue styling
-- **Currency Formatting**: Proper financial formatting for hourly rates
-- **Rate Descriptions**: Optional additional context for billing rate selection
-- **Enhanced Keyboard Navigation**: Arrow keys, Enter, and Escape support
-- **Professional Selection Display**: Shows selected rate card instead of search input when selected
+
+-   **Rate Information Display**: Shows rate name, hourly amount ($X.XX/hr), and default indicator
+-   **Default Rate Preselection**: Automatically selects default billing rate when component loads
+-   **Auto-Reopen on Clear**: Automatically reopens dropdown when selection is cleared for seamless UX
+-   **Smart Viewport Positioning**: Dropup/dropdown mode based on screen position (critical for timer overlay)
+-   **Search Functionality**: Filter rates by name, hourly amount, or description text
+-   **Default Badge**: Visual indicator for organization default rates with blue styling
+-   **Currency Formatting**: Proper financial formatting for hourly rates
+-   **Rate Descriptions**: Optional additional context for billing rate selection
+-   **Enhanced Keyboard Navigation**: Arrow keys, Enter, and Escape support
+-   **Professional Selection Display**: Shows selected rate card instead of search input when selected
 
 #### Data Structure
+
 ```javascript
 // Billing rate data structure:
 // {
@@ -278,40 +296,51 @@ const getStatusClasses = (statusName) => {
 ```
 
 #### Props
-- `modelValue`: Selected billing rate ID (String/Number)
-- `rates`: Array of available billing rates
-- `isLoading`: Loading state indicator (Boolean)
-- `placeholder`: Input placeholder text (default: "Select billing rate...")
-- `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
+
+-   `modelValue`: Selected billing rate ID (String/Number)
+-   `rates`: Array of available billing rates
+-   `isLoading`: Loading state indicator (Boolean)
+-   `placeholder`: Input placeholder text (default: "Select billing rate...")
+-   `reopenOnClear`: Auto-reopen dropdown when cleared (default: true)
 
 #### Timer Integration
+
 BillingRateSelector is specifically optimized for timer creation workflows:
+
 ```javascript
 // Auto-select default rate when rates load
-watch(() => billingRates.value, (newRates) => {
-  if (newRates && !quickStartForm.billingRateId) {
-    const defaultRate = newRates.find(rate => rate.is_default) || newRates[0]
-    if (defaultRate) {
-      quickStartForm.billingRateId = defaultRate.id
-    }
-  }
-}, { immediate: true })
+watch(
+    () => billingRates.value,
+    (newRates) => {
+        if (newRates && !quickStartForm.billingRateId) {
+            const defaultRate =
+                newRates.find((rate) => rate.is_default) || newRates[0];
+            if (defaultRate) {
+                quickStartForm.billingRateId = defaultRate.id;
+            }
+        }
+    },
+    { immediate: true }
+);
 ```
 
 #### Usage Example
+
 ```vue
 <BillingRateSelector
-  v-model="selectedRateId"
-  :rates="billingRates"
-  :is-loading="ratesLoading"
-  placeholder="No billing rate"
-  :reopen-on-clear="true"
-  @rate-selected="handleRateSelection"
+    v-model="selectedRateId"
+    :rates="billingRates"
+    :is-loading="ratesLoading"
+    placeholder="No billing rate"
+    :reopen-on-clear="true"
+    @rate-selected="handleRateSelection"
 />
 ```
 
 #### Smart Clear and Reopen
+
 When users click the clear button on a selected rate, the component automatically:
+
 1. **Clears the selection** and emits the change
 2. **Reopens the dropdown** to show available options
 3. **Focuses the search input** for immediate typing
@@ -319,23 +348,23 @@ When users click the clear button on a selected rate, the component automaticall
 
 ```javascript
 const clearSelection = () => {
-  selectedRate.value = null
-  searchTerm.value = ''
-  emit('update:modelValue', null)
-  emit('rate-selected', null)
-  
-  // Optionally reopen dropdown and focus input
-  if (props.reopenOnClear) {
-    isOpen.value = true
-    setTimeout(() => {
-      const input = document.getElementById(inputId)
-      if (input) {
-        input.focus()
-        checkDropdownPosition()
-      }
-    }, 10)
-  }
-}
+    selectedRate.value = null;
+    searchTerm.value = "";
+    emit("update:modelValue", null);
+    emit("rate-selected", null);
+
+    // Optionally reopen dropdown and focus input
+    if (props.reopenOnClear) {
+        isOpen.value = true;
+        setTimeout(() => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.focus();
+                checkDropdownPosition();
+            }
+        }, 10);
+    }
+};
 ```
 
 ## Unified Design Patterns
@@ -345,7 +374,9 @@ const clearSelection = () => {
 All selector components feature intelligent "reopen on clear" functionality that provides seamless user experience when changing selections:
 
 #### Smart Clear Behavior
+
 When a user clears a selection (clicks the X button), the component automatically:
+
 1. **Reopens the dropdown** to show available options
 2. **Focuses the search input** for immediate typing
 3. **Checks viewport position** to ensure proper dropdown placement
@@ -353,26 +384,27 @@ When a user clears a selection (clicks the X button), the component automaticall
 
 ```javascript
 const clearSelection = () => {
-  selectedItem.value = null
-  searchTerm.value = ''
-  emit('update:modelValue', null)
-  emit('item-selected', null)
-  
-  // Optionally reopen dropdown and focus input
-  if (props.reopenOnClear) {
-    showDropdown.value = true
-    setTimeout(() => {
-      const input = document.getElementById(inputId)
-      if (input) {
-        input.focus()
-        checkDropdownPosition()
-      }
-    }, 10)
-  }
-}
+    selectedItem.value = null;
+    searchTerm.value = "";
+    emit("update:modelValue", null);
+    emit("item-selected", null);
+
+    // Optionally reopen dropdown and focus input
+    if (props.reopenOnClear) {
+        showDropdown.value = true;
+        setTimeout(() => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.focus();
+                checkDropdownPosition();
+            }
+        }, 10);
+    }
+};
 ```
 
 #### Configurable Behavior
+
 The `reopenOnClear` prop (default: `true`) allows disabling this behavior when needed:
 
 ```vue
@@ -400,7 +432,7 @@ All selector components implement a professional UX pattern where the search inp
 </div>
 
 <!-- Selected Item Display (only visible when selection made) -->
-<div 
+<div
   v-if="selectedItem"
   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md... cursor-pointer"
   @click="clearSelection"
@@ -418,17 +450,17 @@ All components implement intelligent dropdown positioning to prevent viewport ov
 
 ```javascript
 const checkDropdownPosition = () => {
-  const input = document.getElementById(inputId)
-  if (!input) return
-  
-  const inputRect = input.getBoundingClientRect()
-  const viewportHeight = window.innerHeight
-  const spaceBelow = viewportHeight - inputRect.bottom
-  const spaceAbove = inputRect.top
-  
-  // Switch to dropup mode if insufficient space below
-  dropupMode.value = spaceBelow < 250 && spaceAbove > spaceBelow
-}
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const inputRect = input.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - inputRect.bottom;
+    const spaceAbove = inputRect.top;
+
+    // Switch to dropup mode if insufficient space below
+    dropupMode.value = spaceBelow < 250 && spaceAbove > spaceBelow;
+};
 ```
 
 ### Enhanced Keyboard Navigation
@@ -439,7 +471,7 @@ Comprehensive keyboard support across all selector components:
 // Keyboard event handlers
 @keydown.escape="closeDropdown"
 @keydown.arrow-down.prevent="navigateDown"
-@keydown.arrow-up.prevent="navigateUp"  
+@keydown.arrow-up.prevent="navigateUp"
 @keydown.enter.prevent="selectHighlighted"
 
 // Navigation methods
@@ -467,6 +499,7 @@ const selectHighlighted = () => {
 All components include comprehensive accessibility support:
 
 #### ARIA Support
+
 ```vue
 <input
   :id="inputId"
@@ -491,17 +524,19 @@ All components include comprehensive accessibility support:
 ```
 
 #### Focus Management
-- Clear visual focus indicators for keyboard users
-- Proper tab order and focus restoration
-- Screen reader friendly announcements
-- High contrast mode support
+
+-   Clear visual focus indicators for keyboard users
+-   Proper tab order and focus restoration
+-   Screen reader friendly announcements
+-   High contrast mode support
 
 #### Unique Component IDs
+
 ```javascript
 // Generate unique IDs to prevent conflicts
-const selectorId = `selector-${Math.random().toString(36).substr(2, 9)}`
-const inputId = `input-${Math.random().toString(36).substr(2, 9)}`
-const dropdownId = `dropdown-${Math.random().toString(36).substr(2, 9)}`
+const selectorId = `selector-${Math.random().toString(36).substr(2, 9)}`;
+const inputId = `input-${Math.random().toString(36).substr(2, 9)}`;
+const dropdownId = `dropdown-${Math.random().toString(36).substr(2, 9)}`;
 ```
 
 ## Component Integration Patterns
@@ -512,54 +547,54 @@ The timer quick start form demonstrates optimal integration of all four selector
 
 ```vue
 <template>
-  <div class="space-y-3">
-    <!-- Timer Description -->
-    <input
-      v-model="quickStartForm.description"
-      type="text"
-      placeholder="Timer description..."
-      class="w-full px-3 py-2 border border-gray-300..."
-    />
-    
-    <!-- Account Selection -->
-    <HierarchicalAccountSelector
-      v-model="quickStartForm.accountId"
-      placeholder="No account (general timer)"
-      @account-selected="handleAccountSelected"
-    />
-    
-    <!-- Ticket Selection (conditional on account) -->
-    <TicketSelector
-      v-if="quickStartForm.accountId"
-      v-model="quickStartForm.ticketId"
-      :tickets="availableTickets"
-      :is-loading="ticketsLoading"
-      placeholder="No specific ticket"
-      @ticket-selected="handleTicketSelected"
-    />
-    
-    <!-- Billing Rate Selection (with auto-default selection) -->
-    <BillingRateSelector
-      v-model="quickStartForm.billingRateId"
-      :rates="billingRates"
-      :is-loading="billingRatesLoading"
-      placeholder="No billing rate"
-      :reopen-on-clear="true"
-      @rate-selected="handleRateSelected"
-    />
-    
-    <!-- Optional User Assignment (for ticket assignment scenarios) -->
-    <UserSelector
-      v-if="showUserAssignment"
-      v-model="quickStartForm.assignedUserId"
-      :users="availableUsers"
-      :is-loading="usersLoading"
-      label="Assign to"
-      placeholder="Select user..."
-      :show-create-option="false"
-      @user-selected="handleUserSelected"
-    />
-  </div>
+    <div class="space-y-3">
+        <!-- Timer Description -->
+        <input
+            v-model="quickStartForm.description"
+            type="text"
+            placeholder="Timer description..."
+            class="w-full px-3 py-2 border border-gray-300..."
+        />
+
+        <!-- Account Selection -->
+        <HierarchicalAccountSelector
+            v-model="quickStartForm.accountId"
+            placeholder="No account (general timer)"
+            @account-selected="handleAccountSelected"
+        />
+
+        <!-- Ticket Selection (conditional on account) -->
+        <TicketSelector
+            v-if="quickStartForm.accountId"
+            v-model="quickStartForm.ticketId"
+            :tickets="availableTickets"
+            :is-loading="ticketsLoading"
+            placeholder="No specific ticket"
+            @ticket-selected="handleTicketSelected"
+        />
+
+        <!-- Billing Rate Selection (with auto-default selection) -->
+        <BillingRateSelector
+            v-model="quickStartForm.billingRateId"
+            :rates="billingRates"
+            :is-loading="billingRatesLoading"
+            placeholder="No billing rate"
+            :reopen-on-clear="true"
+            @rate-selected="handleRateSelected"
+        />
+
+        <!-- Optional User Assignment (for ticket assignment scenarios) -->
+        <UserSelector
+            v-if="showUserAssignment"
+            v-model="quickStartForm.assignedUserId"
+            :users="availableUsers"
+            :is-loading="usersLoading"
+            label="Assign to"
+            placeholder="Select user..."
+            :show-create-option="false"
+            @user-selected="handleUserSelected"
+        />
+    </div>
 </template>
 ```
 
@@ -569,27 +604,35 @@ Reactive form state with proper defaults and reset logic:
 
 ```javascript
 const quickStartForm = reactive({
-  description: '',
-  accountId: '',        // Bound to HierarchicalAccountSelector
-  ticketId: '',         // Bound to TicketSelector (conditional)
-  billingRateId: '',    // Bound to BillingRateSelector (auto-default)
-  assignedUserId: ''    // Bound to UserSelector (optional)
-})
+    description: "",
+    accountId: "", // Bound to HierarchicalAccountSelector
+    ticketId: "", // Bound to TicketSelector (conditional)
+    billingRateId: "", // Bound to BillingRateSelector (auto-default)
+    assignedUserId: "", // Bound to UserSelector (optional)
+});
 
 // Clear ticket selection when account changes
-watch(() => quickStartForm.accountId, () => {
-  quickStartForm.ticketId = ''
-})
+watch(
+    () => quickStartForm.accountId,
+    () => {
+        quickStartForm.ticketId = "";
+    }
+);
 
 // Set default billing rate when rates load
-watch(() => billingRates.value, (newRates) => {
-  if (newRates && !quickStartForm.billingRateId) {
-    const defaultRate = newRates.find(rate => rate.is_default) || newRates[0]
-    if (defaultRate) {
-      quickStartForm.billingRateId = defaultRate.id
-    }
-  }
-}, { immediate: true })
+watch(
+    () => billingRates.value,
+    (newRates) => {
+        if (newRates && !quickStartForm.billingRateId) {
+            const defaultRate =
+                newRates.find((rate) => rate.is_default) || newRates[0];
+            if (defaultRate) {
+                quickStartForm.billingRateId = defaultRate.id;
+            }
+        }
+    },
+    { immediate: true }
+);
 ```
 
 ### Data Filtering and Relationships
@@ -599,65 +642,72 @@ Smart data filtering based on component relationships:
 ```javascript
 // Tickets filtered by selected account
 const ticketsFilter = computed(() => ({
-  account_id: quickStartForm.accountId || null
-}))
+    account_id: quickStartForm.accountId || null,
+}));
 
-const { data: tickets, isLoading: ticketsLoading } = useTicketsQuery(ticketsFilter)
+const { data: tickets, isLoading: ticketsLoading } =
+    useTicketsQuery(ticketsFilter);
 
 // Filter out closed/cancelled tickets
 const availableTickets = computed(() => {
-  if (!tickets.value) return []
-  return tickets.value.filter(ticket => 
-    ticket.status !== 'closed' && 
-    ticket.status !== 'cancelled'
-  )
-})
+    if (!tickets.value) return [];
+    return tickets.value.filter(
+        (ticket) => ticket.status !== "closed" && ticket.status !== "cancelled"
+    );
+});
 ```
 
 ## Performance Optimizations
 
 ### Efficient Data Loading
-- **TanStack Query Integration**: Optimized caching and background updates
-- **Conditional API Calls**: Only fetch data when needed (e.g., tickets only when account selected)
-- **Debounced Search**: Minimize API calls during user typing
-- **Smart Caching**: Reuse loaded data across component instances
+
+-   **TanStack Query Integration**: Optimized caching and background updates
+-   **Conditional API Calls**: Only fetch data when needed (e.g., tickets only when account selected)
+-   **Debounced Search**: Minimize API calls during user typing
+-   **Smart Caching**: Reuse loaded data across component instances
 
 ### Memory Management
-- **Event Cleanup**: Proper event listener removal on component unmount
-- **Reactive Cleanup**: Automatic cleanup of Vue reactivity watchers
-- **DOM Reference Management**: Clean component ID generation and cleanup
+
+-   **Event Cleanup**: Proper event listener removal on component unmount
+-   **Reactive Cleanup**: Automatic cleanup of Vue reactivity watchers
+-   **DOM Reference Management**: Clean component ID generation and cleanup
 
 ### Search Performance
+
 ```javascript
 // Optimized search filtering
 const filteredItems = computed(() => {
-  if (!searchTerm.value.trim()) return items.value
-  
-  const search = searchTerm.value.toLowerCase()
-  return items.value.filter(item => 
-    item.name.toLowerCase().includes(search) ||
-    item.displayText.toLowerCase().includes(search) ||
-    (item.description && item.description.toLowerCase().includes(search))
-  )
-})
+    if (!searchTerm.value.trim()) return items.value;
+
+    const search = searchTerm.value.toLowerCase();
+    return items.value.filter(
+        (item) =>
+            item.name.toLowerCase().includes(search) ||
+            item.displayText.toLowerCase().includes(search) ||
+            (item.description &&
+                item.description.toLowerCase().includes(search))
+    );
+});
 ```
 
 ## Error Handling
 
 ### Graceful Degradation
-- **Loading States**: Visual indicators during data fetching
-- **Empty States**: User-friendly messages when no data available
-- **Network Errors**: Retry mechanisms and fallback behavior
-- **Validation Errors**: Clear error messaging for invalid selections
+
+-   **Loading States**: Visual indicators during data fetching
+-   **Empty States**: User-friendly messages when no data available
+-   **Network Errors**: Retry mechanisms and fallback behavior
+-   **Validation Errors**: Clear error messaging for invalid selections
 
 ### User Feedback
+
 ```javascript
 // Loading state handling
 <div v-if="isLoading" class="px-3 py-2 text-sm text-gray-500">
   Loading {{ itemType }}...
 </div>
 
-// Empty state handling  
+// Empty state handling
 <div v-else-if="filteredItems.length === 0" class="px-3 py-2 text-sm text-gray-500">
   No {{ itemType }} found
 </div>
@@ -671,16 +721,18 @@ const filteredItems = computed(() => {
 ## Testing Considerations
 
 ### Component Testing
-- **Unit Tests**: Individual component behavior and state management
-- **Integration Tests**: Component interaction within forms and workflows
-- **Accessibility Tests**: Keyboard navigation and screen reader compatibility
-- **Performance Tests**: Large dataset handling and search responsiveness
+
+-   **Unit Tests**: Individual component behavior and state management
+-   **Integration Tests**: Component interaction within forms and workflows
+-   **Accessibility Tests**: Keyboard navigation and screen reader compatibility
+-   **Performance Tests**: Large dataset handling and search responsiveness
 
 ### User Experience Testing
-- **Usability Tests**: Real user interaction with selector components
-- **Viewport Tests**: Dropdown positioning across different screen sizes
-- **Keyboard Tests**: Full keyboard navigation workflows
-- **Mobile Tests**: Touch interaction and responsive behavior
+
+-   **Usability Tests**: Real user interaction with selector components
+-   **Viewport Tests**: Dropdown positioning across different screen sizes
+-   **Keyboard Tests**: Full keyboard navigation workflows
+-   **Mobile Tests**: Touch interaction and responsive behavior
 
 ## Modal Stacking Architecture
 
@@ -706,26 +758,29 @@ The form modals automatically manage their native dialog lifecycle:
 
 ```javascript
 // Watch for changes to populate form and manage dialog
-watch(() => props.open, async (isOpen) => {
-    if (isOpen) {
-        // Populate form data
-        resetForm()
-        errors.value = {}
-        
-        // Open dialog with delay to ensure proper stacking
-        await nextTick()
-        setTimeout(() => {
+watch(
+    () => props.open,
+    async (isOpen) => {
+        if (isOpen) {
+            // Populate form data
+            resetForm();
+            errors.value = {};
+
+            // Open dialog with delay to ensure proper stacking
+            await nextTick();
+            setTimeout(() => {
+                if (dialogRef.value) {
+                    dialogRef.value.showModal();
+                }
+            }, 50);
+        } else {
+            // Close dialog
             if (dialogRef.value) {
-                dialogRef.value.showModal()
+                dialogRef.value.close();
             }
-        }, 50)
-    } else {
-        // Close dialog
-        if (dialogRef.value) {
-            dialogRef.value.close()
         }
     }
-})
+);
 ```
 
 ### Modal Hierarchy
@@ -736,25 +791,27 @@ watch(() => props.open, async (isOpen) => {
 
 ### Benefits
 
-- **Proper Stacking**: Native dialog stacking context ensures correct z-order
-- **No Z-Index Conflicts**: Eliminates need for complex z-index management
-- **Consistent UX**: Reliable modal ordering across all browsers
-- **Teleport Integration**: Prevents DOM containment issues
+-   **Proper Stacking**: Native dialog stacking context ensures correct z-order
+-   **No Z-Index Conflicts**: Eliminates need for complex z-index management
+-   **Consistent UX**: Reliable modal ordering across all browsers
+-   **Teleport Integration**: Prevents DOM containment issues
 
 ## Future Enhancements
 
 ### Planned Improvements
-- **Multi-Select Support**: Allow selection of multiple items where appropriate
-- **Advanced Filtering**: Additional filter criteria and sorting options
-- **Custom Templates**: Configurable display templates for different use cases
-- **Virtualization**: Support for extremely large datasets with virtual scrolling
-- **Offline Support**: Local caching and offline-first functionality
+
+-   **Multi-Select Support**: Allow selection of multiple items where appropriate
+-   **Advanced Filtering**: Additional filter criteria and sorting options
+-   **Custom Templates**: Configurable display templates for different use cases
+-   **Virtualization**: Support for extremely large datasets with virtual scrolling
+-   **Offline Support**: Local caching and offline-first functionality
 
 ### API Enhancements
-- **Pagination Support**: Handle large datasets with efficient pagination
-- **Server-Side Search**: Delegate search filtering to backend for performance
-- **Bulk Operations**: Support for bulk selection and operations
-- **Real-Time Updates**: Live data updates via WebSocket integration
+
+-   **Pagination Support**: Handle large datasets with efficient pagination
+-   **Server-Side Search**: Delegate search filtering to backend for performance
+-   **Bulk Operations**: Support for bulk selection and operations
+-   **Real-Time Updates**: Live data updates via WebSocket integration
 
 ---
 

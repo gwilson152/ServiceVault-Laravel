@@ -241,7 +241,7 @@ const props = defineProps({
   type: {
     type: String,
     required: true,
-    validator: value => ['ticket', 'account', 'user', 'agent', 'billing-rate'].includes(value)
+    validator: value => ['ticket', 'account', 'user', 'agent', 'billing-rate', 'role-template'].includes(value)
   },
   items: {
     type: Array,
@@ -312,6 +312,7 @@ const emit = defineEmits([
   'user-created',
   'agent-selected',
   'rate-selected',
+  'role-template-selected',
 ])
 
 // State
@@ -468,6 +469,35 @@ const typeConfigs = {
         badges.push({
           text: 'Global Rate',
           classes: 'bg-green-100 text-green-800'
+        })
+      }
+      return badges
+    }
+  },
+  'role-template': {
+    icon: UserGroupIcon,
+    createModal: null, // Role templates typically don't have creation modals in user forms
+    createText: 'Create New Role',
+    createSubtext: 'Add a new role template',
+    titleField: 'name',
+    subtitleField: 'context',
+    keyField: 'id',
+    selectedClasses: 'p-3 bg-purple-50 border border-purple-200 rounded-lg',
+    iconClasses: 'w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center',
+    titleClasses: 'text-sm font-medium text-purple-900',
+    subtitleClasses: 'text-xs text-purple-700',
+    getBadges: (item) => {
+      const badges = []
+      if (item.context) {
+        badges.push({
+          text: item.context,
+          classes: 'bg-purple-100 text-purple-800'
+        })
+      }
+      if (item.is_system) {
+        badges.push({
+          text: 'System Role',
+          classes: 'bg-gray-100 text-gray-800'
         })
       }
       return badges
@@ -657,15 +687,40 @@ const getUserTypeBadgeClasses = (userType) => {
 
 // Initialize selected item from modelValue
 const initializeSelectedItem = () => {
+  console.log('UnifiedSelector - initializeSelectedItem called:', {
+    type: props.type,
+    modelValue: props.modelValue,
+    modelValueType: typeof props.modelValue,
+    itemsLength: props.items.length,
+    items: props.items.slice(0, 3).map(i => ({ id: getItemKey(i), name: i.name || i.title })) // Show first 3 items
+  });
+  
   if (props.modelValue && props.items.length > 0) {
     const item = props.items.find(i => getItemKey(i) == props.modelValue)
+    console.log('UnifiedSelector - Looking for item:', {
+      type: props.type,
+      lookingFor: props.modelValue,
+      foundItem: item ? { id: getItemKey(item), name: item.name || item.title } : null,
+      comparisonDetails: props.items.slice(0, 5).map(i => ({
+        itemId: getItemKey(i),
+        itemIdType: typeof getItemKey(i),
+        matches: getItemKey(i) == props.modelValue,
+        exactMatch: getItemKey(i) === props.modelValue
+      }))
+    });
+    
     if (item) {
       selectedItem.value = item
+      console.log('UnifiedSelector - Selected item set:', { id: getItemKey(item), name: item.name || item.title });
     } else {
       selectedItem.value = null
+      console.log('UnifiedSelector - No matching item found - clearing selection');
     }
   } else if (!props.modelValue) {
     selectedItem.value = null
+    console.log('UnifiedSelector - Cleared selection (no modelValue)');
+  } else {
+    console.log('UnifiedSelector - Cannot initialize: modelValue present but no items available');
   }
 }
 
@@ -678,5 +733,9 @@ watch(() => props.items, () => {
   initializeSelectedItem()
 })
 
+// Expose functions for parent components
+defineExpose({
+  initializeSelectedItem
+})
 
 </script>

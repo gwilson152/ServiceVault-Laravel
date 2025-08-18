@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TicketResource;
 use App\Models\Account;
 use App\Models\Ticket;
+use App\Models\TicketCategory;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -192,14 +193,18 @@ class TicketController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-
+        
+        // Get available categories for validation
+        $availableCategories = TicketCategory::getOptions();
+        $categoryKeys = collect($availableCategories)->pluck('key')->toArray();
+        
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string|max:10000',
             'account_id' => 'nullable|exists:accounts,id',
             'customer_id' => 'nullable|exists:users,id',
             'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'category' => ['required', Rule::in(['support', 'maintenance', 'development', 'consulting', 'other'])],
+            'category' => ['nullable', Rule::in($categoryKeys)],
             'agent_id' => 'nullable|exists:users,id',
             'due_date' => 'nullable|date|after:now',
             'estimated_hours' => 'nullable|integer|min:1|max:1000',
@@ -228,12 +233,37 @@ class TicketController extends Controller
                 return response()->json(['error' => 'You do not have access to this account.'], 403);
             }
         }
+        
+        // Set default category if not provided
+        if (empty($validated['category'])) {
+            $defaultCategory = TicketCategory::getDefault();
+            if ($defaultCategory) {
+                $validated['category'] = $defaultCategory->key;
+            } else if (count($categoryKeys) > 0) {
+                // Fallback to first available category if no default is set
+                $validated['category'] = $categoryKeys[0];
+            } else {
+                return response()->json(['error' => 'No categories available for ticket creation.'], 422);
+            }
+        }
 
         // Verify assigned user has access to the account if specified
         if (! empty($validated['agent_id'])) {
             $assignedUser = User::find($validated['agent_id']);
-            if ($assignedUser && $assignedUser->account_id !== $validated['account_id']) {
-                return response()->json(['error' => 'Assigned user does not have access to this account.'], 422);
+            if ($assignedUser) {
+                // Allow assignment if:
+                // 1. User belongs to the same account
+                // 2. User is a Super Admin
+                // 3. User has tickets.act_as_agent permission (cross-account agent)
+                // 4. User has admin.write permission (system admin)
+                $canAssign = $assignedUser->account_id === $validated['account_id'] ||
+                           $assignedUser->isSuperAdmin() ||
+                           $assignedUser->hasPermission('tickets.act_as_agent') ||
+                           $assignedUser->hasPermission('admin.write');
+                           
+                if (!$canAssign) {
+                    return response()->json(['error' => 'Assigned user does not have access to this account.'], 422);
+                }
             }
         }
 
@@ -297,7 +327,7 @@ class TicketController extends Controller
     /**
      * Show ticket view (Inertia)
      */
-    public function showView(Request $request, Ticket $ticket)
+    public function showView(Request $request, Ticket $ticket, $tab = null)
     {
         $user = $request->user();
 
@@ -361,10 +391,19 @@ class TicketController extends Controller
             'canAssignTicket' => $user->hasAnyPermission(['tickets.assign', 'tickets.assign.account', 'admin.write']),
         ];
 
+        // Validate tab parameter against available tabs
+        $validTabs = ['messages', 'time', 'addons', 'activity', 'billing'];
+        $activeTab = null;
+        
+        if ($tab && in_array($tab, $validTabs)) {
+            $activeTab = $tab;
+        }
+
         return Inertia::render('Tickets/Show', [
             'ticketId' => $ticket->id,
             'ticket' => new TicketResource($ticket),
             'permissions' => $permissions,
+            'activeTab' => $activeTab,
         ]);
     }
 
@@ -425,8 +464,20 @@ class TicketController extends Controller
         // Verify assigned user has access to the account if specified
         if (isset($validated['agent_id']) && $validated['agent_id']) {
             $assignedUser = User::find($validated['agent_id']);
-            if ($assignedUser->account_id !== $ticket->account_id) {
-                return response()->json(['error' => 'Assigned user does not have access to this account.'], 422);
+            if ($assignedUser) {
+                // Allow assignment if:
+                // 1. User belongs to the same account
+                // 2. User is a Super Admin
+                // 3. User has tickets.act_as_agent permission (cross-account agent)
+                // 4. User has admin.write permission (system admin)
+                $canAssign = $assignedUser->account_id === $ticket->account_id ||
+                           $assignedUser->isSuperAdmin() ||
+                           $assignedUser->hasPermission('tickets.act_as_agent') ||
+                           $assignedUser->hasPermission('admin.write');
+                           
+                if (!$canAssign) {
+                    return response()->json(['error' => 'Assigned user does not have access to this account.'], 422);
+                }
             }
         }
 
@@ -575,7 +626,17 @@ class TicketController extends Controller
         $assignedUser = User::find($validated['agent_id']);
 
         // Verify assigned user has access to the account
-        if ($assignedUser->account_id !== $ticket->account_id) {
+        // Allow assignment if:
+        // 1. User belongs to the same account
+        // 2. User is a Super Admin
+        // 3. User has tickets.act_as_agent permission (cross-account agent)
+        // 4. User has admin.write permission (system admin)
+        $canAssign = $assignedUser->account_id === $ticket->account_id ||
+                   $assignedUser->isSuperAdmin() ||
+                   $assignedUser->hasPermission('tickets.act_as_agent') ||
+                   $assignedUser->hasPermission('admin.write');
+                   
+        if (!$canAssign) {
             return response()->json(['error' => 'User does not have access to this account.'], 422);
         }
 
@@ -696,7 +757,17 @@ class TicketController extends Controller
         $teamMember = User::find($validated['user_id']);
 
         // Verify team member has access to the account
-        if ($teamMember->account_id !== $ticket->account_id) {
+        // Allow assignment if:
+        // 1. User belongs to the same account
+        // 2. User is a Super Admin
+        // 3. User has tickets.act_as_agent permission (cross-account agent)
+        // 4. User has admin.write permission (system admin)
+        $canAssign = $teamMember->account_id === $ticket->account_id ||
+                   $teamMember->isSuperAdmin() ||
+                   $teamMember->hasPermission('tickets.act_as_agent') ||
+                   $teamMember->hasPermission('admin.write');
+                   
+        if (!$canAssign) {
             return response()->json(['error' => 'User does not have access to this account.'], 422);
         }
 

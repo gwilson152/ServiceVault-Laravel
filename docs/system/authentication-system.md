@@ -280,7 +280,7 @@ return $user->hasPermission('timers.view');
 - Remember token functionality
 
 ### CSRF Token Management
-Service Vault implements an advanced CSRF token management system to prevent token mismatch errors:
+Service Vault implements a comprehensive CSRF token management system to prevent token mismatch errors, especially during session regeneration after login:
 
 **Automatic Token Refresh:**
 - Intercepts 419 CSRF errors and automatically refreshes tokens
@@ -292,8 +292,23 @@ Service Vault implements an advanced CSRF token management system to prevent tok
 - Prevents token staleness during long sessions
 - Background refresh without user interruption
 
+**Session Regeneration Handling:**
+- CSRF tokens shared via Inertia props on every page response
+- Automatic token updates after login session regeneration
+- Global navigation listener updates tokens on page changes
+- Centralized token management across frontend components
+
 **Implementation:**
 ```javascript
+// Centralized CSRF token management
+window.updateCSRFToken = (newToken) => {
+    if (newToken) {
+        window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newToken;
+        const metaTag = document.head.querySelector('meta[name="csrf-token"]');
+        if (metaTag) metaTag.content = newToken;
+    }
+};
+
 // Automatic CSRF token refresh on error
 window.axios.interceptors.response.use(
     response => response,
@@ -306,13 +321,26 @@ window.axios.interceptors.response.use(
     }
 );
 
-// Manual refresh available globally
-window.refreshCSRFToken();
+// Global Inertia navigation listener
+router.on('navigate', (event) => {
+    if (event.detail.page?.props?.csrf_token && window.updateCSRFToken) {
+        window.updateCSRFToken(event.detail.page.props.csrf_token);
+    }
+});
 ```
 
-**API Endpoint:**
+**Backend Integration:**
 ```php
-// GET /api/csrf-token - Returns fresh CSRF token
+// HandleInertiaRequests middleware shares CSRF tokens
+public function share(Request $request): array {
+    return [
+        ...parent::share($request),
+        'auth' => ['user' => $request->user()],
+        'csrf_token' => csrf_token(),  // Fresh token on every response
+    ];
+}
+
+// API endpoint for manual refresh
 Route::get('/csrf-token', function (Request $request) {
     return response()->json(['csrf_token' => csrf_token()]);
 });

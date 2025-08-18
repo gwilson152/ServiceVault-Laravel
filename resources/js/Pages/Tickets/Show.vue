@@ -340,7 +340,7 @@
                                 <button
                                     v-for="tab in tabs"
                                     :key="tab.id"
-                                    @click="activeTab = tab.id"
+                                    @click="navigateToTab(tab.id)"
                                     :class="[
                                         activeTab === tab.id
                                             ? 'border-blue-500 text-blue-600'
@@ -936,6 +936,11 @@ const props = defineProps({
         required: false,
         default: () => ({}),
     },
+    activeTab: {
+        type: String,
+        required: false,
+        default: null,
+    },
 });
 
 // Access user data from Inertia page props
@@ -1003,8 +1008,8 @@ const updateTicketMutation = useUpdateTicketMutation();
 const addCommentMutation = useAddCommentMutation();
 
 // UI State
-// Set default active tab to first available tab
-const activeTab = ref("messages");
+// Initialize active tab from prop or default to first available tab
+const activeTab = ref(props.activeTab || "messages");
 const editingDescription = ref(false);
 const editedDescription = ref("");
 const savingDescription = ref(false);
@@ -1086,11 +1091,28 @@ const tabs = computed(() => {
 watch(
     tabs,
     (newTabs) => {
-        if (
-            newTabs.length > 0 &&
-            !newTabs.find((tab) => tab.id === activeTab.value)
-        ) {
-            activeTab.value = newTabs[0].id;
+        if (newTabs.length > 0) {
+            // If current active tab is not available, redirect to first available tab
+            if (!newTabs.find((tab) => tab.id === activeTab.value)) {
+                const firstTab = newTabs[0].id;
+                // Navigate to the first available tab if current tab is not accessible
+                navigateToTab(firstTab);
+            }
+        }
+    },
+    { immediate: true }
+);
+
+// Watch for activeTab prop changes from URL navigation
+watch(
+    () => props.activeTab,
+    (newActiveTab) => {
+        if (newActiveTab && newActiveTab !== activeTab.value) {
+            // Check if the tab is available to the user
+            const availableTab = tabs.value.find(tab => tab.id === newActiveTab);
+            if (availableTab) {
+                activeTab.value = newActiveTab;
+            }
         }
     },
     { immediate: true }
@@ -1165,6 +1187,22 @@ const canManageTime = computed(() => {
 const currentUserId = computed(() => user.value?.id);
 
 // Methods
+const navigateToTab = (tabId) => {
+    // Update the URL to include the tab parameter
+    const currentUrl = route('tickets.show', { ticket: props.ticketId });
+    const newUrl = tabId === 'messages' ? currentUrl : `${currentUrl}/${tabId}`;
+    
+    // Navigate with Inertia to maintain state
+    router.visit(newUrl, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true, // Replace current history entry instead of adding new one
+        onSuccess: () => {
+            activeTab.value = tabId;
+        }
+    });
+};
+
 const getStatusClasses = (status) => {
     const statusMap = {
         open: "bg-blue-100 text-blue-800",

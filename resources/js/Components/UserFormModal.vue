@@ -162,6 +162,11 @@ const handleAccountCreated = (newAccount) => {
     // Additional logic can be added here if needed
 }
 
+const handleRoleSelected = (role) => {
+    // Role selection is automatically handled by v-model
+    // Additional logic can be added here if needed
+}
+
 const getAccountDisplayName = () => {
     if (!props.preselectedAccountId) return ''
     const account = props.accounts.find(acc => acc.id == props.preselectedAccountId)
@@ -385,17 +390,15 @@ const locales = [
                     <div class="border-b border-gray-200 pb-4">
                         <h4 class="text-lg font-medium text-gray-900 mb-4">Role Assignment</h4>
                         <div>
-                            <label for="role_template_id" class="block text-sm font-medium text-gray-700">Role Template</label>
-                            <select
-                                id="role_template_id"
+                            <UnifiedSelector
                                 v-model="form.role_template_id"
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            >
-                                <option :value="null">Select a role...</option>
-                                <option v-for="role in roleTemplates" :key="role.id" :value="role.id">
-                                    {{ role.name }} ({{ role.context }})
-                                </option>
-                            </select>
+                                type="role-template"
+                                :items="roleTemplates"
+                                label="Role Template"
+                                placeholder="Search and select a role..."
+                                :nested="true"
+                                @item-selected="handleRoleSelected"
+                            />
                             <p class="mt-1 text-xs text-gray-500">Select the role template for this user.</p>
                         </div>
                     </div>
