@@ -448,7 +448,7 @@ class SettingController extends Controller
     {
         $this->authorize('system.configure');
 
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'default_auto_stop' => 'boolean',
             'allow_concurrent_timers' => 'boolean',
             'auto_commit_on_stop' => 'boolean',
@@ -462,7 +462,9 @@ class SettingController extends Controller
             'show_timer_overlay' => 'boolean',
             'play_timer_sounds' => 'boolean',
             'allow_manual_time_override' => 'boolean',
-        ]);
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json([
@@ -475,7 +477,7 @@ class SettingController extends Controller
         try {
             // Update each setting with timer. prefix
             foreach ($request->all() as $key => $value) {
-                if (isset($validator->rules()[$key])) {
+                if (isset($rules[$key])) {
                     Setting::setValue("timer.{$key}", $value, 'timer');
                 }
             }

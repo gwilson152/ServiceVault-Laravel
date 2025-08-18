@@ -1,6 +1,6 @@
 # Roles & Permissions Management
 
-Service Vault implements a comprehensive **Three-Dimensional Permission System** that provides granular control over user access across functional operations, dashboard widgets, and page navigation.
+Service Vault implements a comprehensive **Three-Dimensional Permission System** with enhanced UX featuring permission descriptions, smart tooltips, and intuitive role management interfaces that provide granular control over user access across functional operations, dashboard widgets, and page navigation.
 
 ## System Overview
 
@@ -41,6 +41,29 @@ This three-dimensional approach ensures maximum flexibility while maintaining se
 - **Account User** - Single account access only
 
 All role templates except Super Admin are fully customizable.
+
+## Enhanced Role Management UX
+
+### Permission Descriptions & Tooltips
+**Comprehensive permission documentation** with intuitive explanations:
+- **Backend API Integration**: All permissions include detailed descriptions and purpose explanations
+- **Smart Tooltips**: No-delay hover tooltips on all permission checkboxes with technical details
+- **Permission Notation**: Inline documentation explaining hierarchical permission structure
+- **Context-Aware Help**: Permission descriptions adapt to service provider vs account user contexts
+
+### Improved Management Interface
+**Streamlined role editing experience**:
+- **Responsive Layout**: Wider columns and better spacing for complex permission matrices
+- **Permission Summary Panel**: Live summary of selected permissions with organized grouping
+- **Visual Hierarchy**: Clear section headings and logical permission grouping
+- **Enhanced Accessibility**: Better focus states, keyboard navigation, and screen reader support
+
+### User Experience Enhancements
+**Professional interface refinements**:
+- **Permission Grouping**: Logical organization by feature area (Admin, Billing, Tickets, etc.)
+- **Search & Filter**: Quick location of specific permissions
+- **Bulk Selection**: Efficient selection of related permissions
+- **Validation Feedback**: Clear error states and requirement explanations
 
 ## Three-Dimensional Permission Management
 

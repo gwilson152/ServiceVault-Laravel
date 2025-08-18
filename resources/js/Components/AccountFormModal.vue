@@ -299,6 +299,7 @@ const flatParents = computed(() => {
         :show="isModalOpen" 
         :title="modalTitle"
         max-width="2xl" 
+        :allow-dropdowns="true"
         @close="closeModal"
         :show-footer="false"
     >

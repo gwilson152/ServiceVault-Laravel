@@ -195,6 +195,7 @@ const locales = [
         :show="isOpen"
         :title="modalTitle"
         max-width="2xl"
+        :allow-dropdowns="true"
         @close="closeModal"
     >
             <form @submit.prevent="saveUser" class="px-6 py-4">

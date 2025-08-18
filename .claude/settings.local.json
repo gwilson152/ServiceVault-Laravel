@@ -19,7 +19,8 @@
       "Bash(php:*)",
       "Bash(vendor/bin/phpstan analyze:*)",
       "Bash(./vendor/bin/pint:*)",
-      "WebFetch(domain:inertiajs.com)"
+      "WebFetch(domain:inertiajs.com)",
+      "Bash(redis-cli:*)"
     ],
     "deny": []
   }

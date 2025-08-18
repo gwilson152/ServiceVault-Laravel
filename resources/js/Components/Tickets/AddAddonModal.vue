@@ -1,14 +1,14 @@
 <template>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-      <!-- Modal header -->
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900">Add Ticket Add-on</h3>
-        <p class="text-sm text-gray-600 mt-1">Request additional work or services for this ticket</p>
-      </div>
+  <StackedDialog
+    :show="true"
+    title="Add Ticket Add-on"
+    max-width="lg"
+    @close="$emit('cancelled')"
+  >
+    <div class="space-y-4">
+      <p class="text-sm text-gray-600">Add additional items, services, or charges to this ticket</p>
 
-      <!-- Modal body -->
-      <form @submit.prevent="submitForm" class="px-6 py-4 space-y-4">
+      <form @submit.prevent="submitForm" class="space-y-4">
         <!-- Add-on Template Selection -->
         <div v-if="addonTemplates.length > 0">
           <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -21,158 +21,172 @@
           >
             <option value="">Custom Add-on</option>
             <option v-for="template in addonTemplates" :key="template.id" :value="template">
-              {{ template.title }} - {{ template.type_label }}
+              {{ template.name }} - {{ template.category }}
             </option>
           </select>
         </div>
 
-        <!-- Title -->
+        <!-- Name -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
-            Title <span class="text-red-500">*</span>
+            Item Name <span class="text-red-500">*</span>
           </label>
           <input 
-            v-model="form.title" 
+            v-model="form.name" 
             type="text" 
             required
-            placeholder="Brief description of the additional work"
+            placeholder="Name of the additional item or service"
             class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
-          <p v-if="errors.title" class="text-red-500 text-xs mt-1">{{ errors.title }}</p>
+          <p v-if="errors.name" class="text-red-500 text-xs mt-1">{{ errors.name }}</p>
         </div>
 
-        <!-- Type -->
+        <!-- Category -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
-            Type <span class="text-red-500">*</span>
+            Category
           </label>
           <select 
-            v-model="form.type" 
-            required
+            v-model="form.category"
             class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Select Type</option>
-            <option value="additional_work">Additional Work</option>
-            <option value="emergency_support">Emergency Support</option>
-            <option value="consultation">Consultation</option>
-            <option value="training">Training</option>
-            <option value="custom">Custom</option>
+            <option value="">Select Category</option>
+            <option value="product">Product</option>
+            <option value="service">Service</option>
+            <option value="license">License</option>
+            <option value="hardware">Hardware</option>
+            <option value="software">Software</option>
+            <option value="expense">Expense</option>
+            <option value="other">Other</option>
           </select>
-          <p v-if="errors.type" class="text-red-500 text-xs mt-1">{{ errors.type }}</p>
-        </div>
-
-        <!-- Priority -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Priority <span class="text-red-500">*</span>
-          </label>
-          <select 
-            v-model="form.priority" 
-            required
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="low">Low</option>
-            <option value="normal">Normal</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
-          <p v-if="errors.priority" class="text-red-500 text-xs mt-1">{{ errors.priority }}</p>
+          <p v-if="errors.category" class="text-red-500 text-xs mt-1">{{ errors.category }}</p>
         </div>
 
         <!-- Description -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
-            Description <span class="text-red-500">*</span>
+            Description
           </label>
           <textarea 
             v-model="form.description" 
-            rows="4"
-            required
-            placeholder="Detailed description of the additional work or services needed..."
+            rows="3"
+            placeholder="Detailed description of the add-on item..."
             class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           ></textarea>
           <p v-if="errors.description" class="text-red-500 text-xs mt-1">{{ errors.description }}</p>
         </div>
 
-        <!-- Justification -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Business Justification
-          </label>
-          <textarea 
-            v-model="form.justification" 
-            rows="2"
-            placeholder="Why is this additional work necessary? How does it benefit the project?"
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          ></textarea>
-        </div>
-
-        <!-- Estimated Hours -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Estimated Hours <span class="text-red-500">*</span>
-          </label>
-          <input 
-            v-model.number="form.estimated_hours" 
-            type="number" 
-            min="0"
-            step="0.5"
-            required
-            placeholder="0"
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <p v-if="errors.estimated_hours" class="text-red-500 text-xs mt-1">{{ errors.estimated_hours }}</p>
-        </div>
-
-        <!-- Estimated Cost -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Estimated Cost <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+        <!-- Quantity and Unit Price Row -->
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Quantity -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Quantity <span class="text-red-500">*</span>
+            </label>
             <input 
-              v-model.number="form.estimated_cost" 
+              v-model.number="form.quantity" 
               type="number" 
               min="0"
               step="0.01"
               required
+              placeholder="1"
+              class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p v-if="errors.quantity" class="text-red-500 text-xs mt-1">{{ errors.quantity }}</p>
+          </div>
+
+          <!-- Unit Price -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Unit Price <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+              <input 
+                v-model.number="form.unit_price" 
+                type="number" 
+                min="0"
+                step="0.01"
+                required
+                placeholder="0.00"
+                class="w-full border border-gray-300 rounded-md pl-8 pr-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <p v-if="errors.unit_price" class="text-red-500 text-xs mt-1">{{ errors.unit_price }}</p>
+          </div>
+        </div>
+
+        <!-- Discount Amount -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Discount Amount
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+            <input 
+              v-model.number="form.discount_amount" 
+              type="number" 
+              min="0"
+              step="0.01"
               placeholder="0.00"
               class="w-full border border-gray-300 rounded-md pl-8 pr-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          <p v-if="errors.estimated_cost" class="text-red-500 text-xs mt-1">{{ errors.estimated_cost }}</p>
         </div>
 
-        <!-- Expected Delivery Date -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Expected Delivery Date
-          </label>
-          <input 
-            v-model="form.expected_completion_date" 
-            type="date" 
-            :min="today"
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+        <!-- Checkboxes Row -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex items-center">
+            <input 
+              v-model="form.is_billable" 
+              type="checkbox" 
+              id="billable"
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label for="billable" class="ml-2 block text-sm text-gray-900">
+              Billable
+            </label>
+          </div>
+          
+          <div class="flex items-center">
+            <input 
+              v-model="form.is_taxable" 
+              type="checkbox" 
+              id="taxable"
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label for="taxable" class="ml-2 block text-sm text-gray-900">
+              Taxable
+            </label>
+          </div>
         </div>
 
-        <!-- Approval Required Notice -->
+        <!-- Total Preview -->
+        <div v-if="totalPreview > 0" class="bg-gray-50 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700">Estimated Total:</span>
+            <span class="text-lg font-bold text-gray-900">${{ totalPreview.toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <!-- Status Notice -->
         <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
           <div class="flex">
             <svg class="w-5 h-5 text-blue-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div class="text-sm">
-              <p class="text-blue-700 font-medium">Approval Required</p>
-              <p class="text-blue-600 mt-1">This add-on request will be submitted for approval before work begins.</p>
+              <p class="text-blue-700 font-medium">Add-on Status</p>
+              <p class="text-blue-600 mt-1">New add-ons will be created with "{{ form.status }}" status and may require approval before billing.</p>
             </div>
           </div>
         </div>
       </form>
+    </div>
 
-      <!-- Modal footer -->
-      <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-end space-x-3">
+
+    <template #footer>
+      <div class="flex items-center justify-end space-x-3">
         <button
           @click="$emit('cancelled')"
           type="button"
@@ -185,16 +199,17 @@
           :disabled="submitting"
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ submitting ? 'Submitting...' : 'Submit Add-on Request' }}
+          {{ submitting ? 'Adding...' : 'Add Item' }}
         </button>
       </div>
-    </div>
-  </div>
+    </template>
+  </StackedDialog>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import StackedDialog from '@/Components/StackedDialog.vue'
 
 // Props
 const props = defineProps({
@@ -214,22 +229,24 @@ const selectedTemplate = ref('')
 
 // Form data
 const form = ref({
-  title: '',
-  type: '',
-  priority: 'normal',
+  name: '',
+  category: '',
   description: '',
-  justification: '',
-  estimated_hours: 0,
-  estimated_cost: 0,
-  expected_completion_date: ''
+  quantity: 1,
+  unit_price: 0,
+  discount_amount: 0,
+  is_billable: true,
+  is_taxable: true,
+  billing_category: 'addon'
 })
 
 // Form errors
 const errors = ref({})
 
 // Computed properties
-const today = computed(() => {
-  return new Date().toISOString().split('T')[0]
+const totalPreview = computed(() => {
+  const subtotal = (form.value.quantity || 0) * (form.value.unit_price || 0)
+  return Math.max(0, subtotal - (form.value.discount_amount || 0))
 })
 
 // Methods
@@ -248,42 +265,31 @@ const applyTemplate = () => {
 
   const template = selectedTemplate.value
   form.value = {
-    title: template.title || '',
-    type: template.type || '',
-    priority: template.priority || 'normal',
+    name: template.name || '',
+    category: template.category || '',
     description: template.description || '',
-    justification: template.justification || '',
-    estimated_hours: template.estimated_hours || 0,
-    estimated_cost: template.estimated_cost || 0,
-    expected_completion_date: form.value.expected_completion_date
+    quantity: template.default_quantity || 1,
+    unit_price: template.default_price || 0,
+    discount_amount: 0,
+    is_billable: true,
+    is_taxable: template.is_taxable || true,
+    billing_category: 'addon'
   }
 }
 
 const validateForm = () => {
   errors.value = {}
 
-  if (!form.value.title.trim()) {
-    errors.value.title = 'Title is required'
+  if (!form.value.name.trim()) {
+    errors.value.name = 'Item name is required'
   }
 
-  if (!form.value.type) {
-    errors.value.type = 'Type is required'
+  if (!form.value.quantity || form.value.quantity <= 0) {
+    errors.value.quantity = 'Quantity must be greater than 0'
   }
 
-  if (!form.value.priority) {
-    errors.value.priority = 'Priority is required'
-  }
-
-  if (!form.value.description.trim()) {
-    errors.value.description = 'Description is required'
-  }
-
-  if (!form.value.estimated_hours || form.value.estimated_hours <= 0) {
-    errors.value.estimated_hours = 'Estimated hours must be greater than 0'
-  }
-
-  if (!form.value.estimated_cost || form.value.estimated_cost <= 0) {
-    errors.value.estimated_cost = 'Estimated cost must be greater than 0'
+  if (!form.value.unit_price || form.value.unit_price <= 0) {
+    errors.value.unit_price = 'Unit price must be greater than 0'
   }
 
   return Object.keys(errors.value).length === 0
@@ -297,14 +303,15 @@ const submitForm = async () => {
   try {
     const payload = {
       ticket_id: props.ticket.id,
-      title: form.value.title.trim(),
-      type: form.value.type,
-      priority: form.value.priority,
-      description: form.value.description.trim(),
-      justification: form.value.justification.trim(),
-      estimated_hours: form.value.estimated_hours,
-      estimated_cost: form.value.estimated_cost,
-      expected_completion_date: form.value.expected_completion_date || null
+      name: form.value.name.trim(),
+      category: form.value.category || 'other',
+      description: form.value.description.trim() || null,
+      quantity: form.value.quantity,
+      unit_price: form.value.unit_price,
+      discount_amount: form.value.discount_amount || 0,
+      is_billable: form.value.is_billable,
+      is_taxable: form.value.is_taxable,
+      billing_category: form.value.billing_category
     }
 
     await axios.post('/api/ticket-addons', payload)

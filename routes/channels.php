@@ -15,22 +15,22 @@ use Illuminate\Support\Facades\Broadcast;
 */
 
 // User-specific private channels
-Broadcast::channel('user.{userId}', function (User $user, int $userId) {
-    return (int) $user->id === $userId;
+Broadcast::channel('user.{userId}', function (User $user, string $userId) {
+    return (int) $user->id === (int) $userId;
 });
 
 // Timer synchronization channels
-Broadcast::channel('user.{userId}.timers', function (User $user, int $userId) {
-    return (int) $user->id === $userId;
+Broadcast::channel('user.{userId}.timers', function (User $user, string $userId) {
+    return (int) $user->id === (int) $userId;
 });
 
 // Account-wide channels (for managers/admins)
-Broadcast::channel('account.{accountId}', function (User $user, int $accountId) {
+Broadcast::channel('account.{accountId}', function (User $user, string $accountId) {
     return $user->hasPermissionForAccount('view_account_data', $accountId);
 });
 
 // Account timer channels (for team leads to monitor team timers)
-Broadcast::channel('account.{accountId}.timers', function (User $user, int $accountId) {
+Broadcast::channel('account.{accountId}.timers', function (User $user, string $accountId) {
     return $user->hasPermissionForAccount('manage_team_timers', $accountId) ||
            $user->hasPermissionForAccount('view_team_timers', $accountId);
 });

@@ -34,7 +34,7 @@ class TimerController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Timer::class);
-        
+
         $query = Timer::with(['billingRate', 'ticket'])
             ->where('user_id', $request->user()->id);
 
@@ -62,7 +62,7 @@ class TimerController extends Controller
         if ($request->boolean('include_all_devices')) {
             $query->orWhere(function ($q) use ($request) {
                 $q->where('user_id', $request->user()->id)
-                  ->where('is_synced', true);
+                    ->where('is_synced', true);
             });
         }
 
@@ -110,7 +110,7 @@ class TimerController extends Controller
         try {
             $userId = $user->id;
             $ticketId = $request->input('ticket_id');
-            
+
             // If ticket_id is provided, enforce per-ticket timer limitation
             if ($ticketId) {
                 // Check if user already has an active timer for this ticket
@@ -121,7 +121,7 @@ class TimerController extends Controller
                     ], 422);
                 }
             }
-            
+
             // Stop any running timers if single timer mode is requested (now defaults to false)
             if ($request->boolean('stop_others', false)) {
                 $this->timerService->stopAllUserTimers($userId, $request->input('device_id'));
@@ -159,7 +159,7 @@ class TimerController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to start timer',
                 'error' => $e->getMessage(),
@@ -208,7 +208,7 @@ class TimerController extends Controller
                     'previous_billing_rate_id' => $originalBillingRateId,
                 ]);
             }
-            
+
             $timer->save();
 
             // Load billing rate for calculated amount
@@ -230,7 +230,7 @@ class TimerController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to update timer',
                 'error' => $e->getMessage(),
@@ -269,7 +269,7 @@ class TimerController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to stop timer',
                 'error' => $e->getMessage(),
@@ -326,10 +326,10 @@ class TimerController extends Controller
             if ($timer->paused_at) {
                 $pausedDuration = max(0, (int) now()->diffInSeconds($timer->paused_at));
             }
-            
+
             // Ensure total_paused_duration is always a non-negative integer
             $totalPausedDuration = max(0, (int) (($timer->total_paused_duration ?? 0) + $pausedDuration));
-            
+
             $timer->update([
                 'status' => 'running',
                 'paused_at' => null,
@@ -362,7 +362,7 @@ class TimerController extends Controller
                 'user_id' => auth()->id() ?? 'unknown',
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'message' => 'Failed to resume timer',
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
@@ -409,7 +409,7 @@ class TimerController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to commit timer',
                 'error' => $e->getMessage(),
@@ -474,7 +474,7 @@ class TimerController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to adjust timer duration',
                 'error' => $e->getMessage(),
@@ -522,7 +522,7 @@ class TimerController extends Controller
     public function current(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Timer::class);
-        
+
         $timers = Timer::with(['billingRate'])
             ->where('user_id', $request->user()->id)
             ->whereIn('status', ['running', 'paused'])
@@ -562,7 +562,7 @@ class TimerController extends Controller
                 ],
             ];
         }
-        
+
         return response()->json([
             'data' => $timerData,
             'totals' => [
@@ -598,9 +598,9 @@ class TimerController extends Controller
     public function statistics(Request $request): JsonResponse
     {
         $user = $request->user();
-        $includeTickets = $request->boolean('include_service_tickets', false);
+        $includeTickets = $request->boolean('include_tickets', false);
         $status = $request->input('status');
-        
+
         // Get base statistics from TimerService
         $stats = $this->timerService->getUserStatistics(
             $user->id,
@@ -706,7 +706,7 @@ class TimerController extends Controller
         $request->validate([
             'include_all_statuses' => 'boolean',
         ]);
-        
+
         $query = Timer::with(['user', 'billingRate', 'ticket'])
             ->where('ticket_id', $ticketId);
 
@@ -743,9 +743,9 @@ class TimerController extends Controller
             'description' => 'required|string|max:1000',
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
         ]);
-        
+
         $userId = $user->id;
-        
+
         // Check if user already has an active timer for this ticket
         if (Timer::userHasActiveTimerForTicket($userId, $ticketId)) {
             return response()->json([
@@ -753,12 +753,12 @@ class TimerController extends Controller
                 'existing_timer' => new TimerResource(Timer::getUserActiveTimerForTicket($userId, $ticketId))
             ], 422);
         }
-        
+
         DB::beginTransaction();
         try {
             // Get ticket info for account_id
             $ticket = \App\Models\Ticket::findOrFail($ticketId);
-            
+
             $timer = Timer::create([
                 'user_id' => $userId,
                 'ticket_id' => $ticketId,
@@ -790,7 +790,7 @@ class TimerController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to start timer for ticket',
                 'error' => $e->getMessage(),
@@ -909,7 +909,7 @@ class TimerController extends Controller
         foreach ($timers as $timer) {
             $currentDuration = $timer->duration;
             $currentAmount = $timer->calculated_amount;
-            
+
             $totalAmount += $currentAmount ?? 0;
             $totalDuration += $currentDuration;
 
@@ -928,7 +928,7 @@ class TimerController extends Controller
                 ],
             ];
         }
-        
+
         return response()->json([
             'data' => $timerData,
             'totals' => [
@@ -989,7 +989,7 @@ class TimerController extends Controller
 
         $pausedDuration = $timer->paused_at ? max(0, (int) now()->diffInSeconds($timer->paused_at)) : 0;
         $totalPausedDuration = max(0, (int) (($timer->total_paused_duration ?? 0) + $pausedDuration));
-        
+
         $timer->update([
             'status' => 'running',
             'paused_at' => null,
@@ -1042,7 +1042,7 @@ class TimerController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to stop timer',
                 'error' => $e->getMessage(),
@@ -1063,19 +1063,19 @@ class TimerController extends Controller
         ]);
 
         $ticketIds = $request->input('ticket_ids');
-        
+
         // Get all active timers for the provided ticket IDs
         $timers = Timer::with(['user', 'billingRate', 'ticket'])
             ->whereIn('ticket_id', $ticketIds)
             ->whereIn('status', ['running', 'paused'])
             ->get();
-        
+
         // Group timers by ticket_id for easier frontend consumption
         $timersByTicket = [];
         foreach ($ticketIds as $ticketId) {
             $timersByTicket[$ticketId] = [];
         }
-        
+
         foreach ($timers as $timer) {
             $timersByTicket[$timer->ticket_id][] = new TimerResource($timer);
         }

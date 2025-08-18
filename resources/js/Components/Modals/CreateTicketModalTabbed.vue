@@ -7,6 +7,7 @@
     max-width="2xl"
     :saving="isSubmitting"
     save-label="Create Ticket"
+    :allow-dropdowns="true"
     @close="$emit('close')"
     @save="submitForm"
     @tab-change="activeTab = $event"

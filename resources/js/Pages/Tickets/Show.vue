@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Page Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
+    <div class="min-h-screen bg-gray-50">
+        <!-- Page Header -->
+        <div class="bg-white shadow-sm border-b border-gray-200">
             <div class="px-4 sm:px-6 lg:px-8 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
@@ -362,338 +362,21 @@
                         <!-- Tab Content -->
                         <div class="p-6">
                             <!-- Comments & Messages Tab -->
-                            <div
-                                v-if="activeTab === 'messages'"
-                                class="space-y-6"
-                            >
-                                <!-- Message Thread -->
-                                <div class="space-y-4">
-                                    <div
-                                        v-if="messages?.length === 0"
-                                        class="text-center py-8 text-gray-500"
-                                    >
-                                        <svg
-                                            class="w-12 h-12 mx-auto mb-4 text-gray-300"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.524A11.956 11.956 0 012 21c0-1.68.322-3.283.913-4.755A12.026 12.026 0 012 12C2 7.582 5.582 4 10 4s8 3.582 8 8z"
-                                            />
-                                        </svg>
-                                        <p>
-                                            No messages yet. Start the
-                                            conversation!
-                                        </p>
-                                    </div>
-
-                                    <div
-                                        v-for="message in messages"
-                                        :key="message.id"
-                                        :class="[
-                                            'flex space-x-3 p-4 rounded-lg',
-                                            message.is_internal
-                                                ? 'bg-yellow-50 border border-yellow-200'
-                                                : 'bg-gray-50',
-                                        ]"
-                                    >
-                                        <!-- Avatar -->
-                                        <div class="flex-shrink-0">
-                                            <div
-                                                class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center"
-                                            >
-                                                <span
-                                                    class="text-sm font-medium text-gray-700"
-                                                >
-                                                    {{
-                                                        message.user?.name
-                                                            ?.charAt(0)
-                                                            ?.toUpperCase() ||
-                                                        "?"
-                                                    }}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Message Content -->
-                                        <div class="flex-1 min-w-0">
-                                            <div
-                                                class="flex items-center space-x-2 mb-2"
-                                            >
-                                                <p
-                                                    class="text-sm font-medium text-gray-900"
-                                                >
-                                                    {{
-                                                        message.user?.name ||
-                                                        "Unknown User"
-                                                    }}
-                                                </p>
-                                                <span
-                                                    v-if="message.is_internal"
-                                                    class="px-2 py-1 bg-yellow-200 text-yellow-800 text-xs rounded-full font-medium"
-                                                >
-                                                    Internal
-                                                </span>
-                                                <span
-                                                    class="text-xs text-gray-500"
-                                                    >{{
-                                                        formatDateTime(
-                                                            message.created_at
-                                                        )
-                                                    }}</span
-                                                >
-                                                <span
-                                                    v-if="message.was_edited"
-                                                    class="text-xs text-gray-400"
-                                                    >(edited)</span
-                                                >
-                                            </div>
-                                            <div
-                                                class="text-sm text-gray-700"
-                                                v-html="
-                                                    formatMessage(
-                                                        message.content
-                                                    )
-                                                "
-                                            ></div>
-
-                                            <!-- Attachment Indicator -->
-                                            <div
-                                                v-if="
-                                                    message.attachments?.length
-                                                "
-                                                class="mt-3"
-                                            >
-                                                <div
-                                                    class="flex items-center space-x-2 text-sm text-gray-500"
-                                                >
-                                                    <svg
-                                                        class="w-4 h-4"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path
-                                                            stroke-linecap="round"
-                                                            stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                                                        />
-                                                    </svg>
-                                                    <span
-                                                        >{{
-                                                            message.attachments
-                                                                .length
-                                                        }}
-                                                        file{{
-                                                            message.attachments
-                                                                .length > 1
-                                                                ? "s"
-                                                                : ""
-                                                        }}
-                                                        attached</span
-                                                    >
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Message Composer -->
-                                <div class="border-t border-gray-200 pt-6">
-                                    <form @submit.prevent="sendMessage">
-                                        <div class="mb-4">
-                                            <textarea
-                                                v-model="newMessage"
-                                                placeholder="Type your message..."
-                                                rows="4"
-                                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                :required="
-                                                    selectedFiles.length === 0
-                                                "
-                                            ></textarea>
-                                        </div>
-
-                                        <!-- Selected Files Preview -->
-                                        <div
-                                            v-if="selectedFiles.length > 0"
-                                            class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                                        >
-                                            <div
-                                                class="flex items-center justify-between mb-2"
-                                            >
-                                                <span
-                                                    class="text-sm font-medium text-gray-700"
-                                                    >Selected Files ({{
-                                                        selectedFiles.length
-                                                    }})</span
-                                                >
-                                                <button
-                                                    type="button"
-                                                    @click="selectedFiles = []"
-                                                    class="text-red-600 hover:text-red-700 text-sm"
-                                                >
-                                                    Clear All
-                                                </button>
-                                            </div>
-                                            <div class="space-y-1">
-                                                <div
-                                                    v-for="(
-                                                        file, index
-                                                    ) in selectedFiles"
-                                                    :key="index"
-                                                    class="flex items-center justify-between py-1"
-                                                >
-                                                    <div
-                                                        class="flex items-center space-x-2"
-                                                    >
-                                                        <svg
-                                                            class="w-4 h-4 text-gray-400"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            viewBox="0 0 24 24"
-                                                        >
-                                                            <path
-                                                                stroke-linecap="round"
-                                                                stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                            />
-                                                        </svg>
-                                                        <span
-                                                            class="text-sm text-gray-700"
-                                                            >{{
-                                                                file.name
-                                                            }}</span
-                                                        >
-                                                        <span
-                                                            class="text-xs text-gray-500"
-                                                            >({{
-                                                                formatFileSize(
-                                                                    file.size
-                                                                )
-                                                            }})</span
-                                                        >
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        @click="
-                                                            selectedFiles.splice(
-                                                                index,
-                                                                1
-                                                            )
-                                                        "
-                                                        class="text-red-600 hover:text-red-700 text-xs"
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Message Options -->
-                                        <div
-                                            class="flex items-center justify-between"
-                                        >
-                                            <div
-                                                class="flex items-center space-x-4"
-                                            >
-                                                <label
-                                                    class="flex items-center"
-                                                >
-                                                    <input
-                                                        v-model="
-                                                            messageIsInternal
-                                                        "
-                                                        type="checkbox"
-                                                        class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                    />
-                                                    <span
-                                                        class="text-sm text-gray-600"
-                                                        >Internal (not visible
-                                                        to customer)</span
-                                                    >
-                                                </label>
-
-                                                <label
-                                                    class="flex items-center cursor-pointer"
-                                                >
-                                                    <input
-                                                        type="file"
-                                                        multiple
-                                                        class="hidden"
-                                                        @change="
-                                                            handleFileUpload
-                                                        "
-                                                    />
-                                                    <svg
-                                                        class="w-5 h-5 mr-2 text-gray-400"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path
-                                                            stroke-linecap="round"
-                                                            stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                                                        />
-                                                    </svg>
-                                                    <span
-                                                        class="text-sm text-gray-600"
-                                                        >Attach files</span
-                                                    >
-                                                </label>
-                                            </div>
-
-                                            <button
-                                                type="submit"
-                                                :disabled="
-                                                    (!newMessage.trim() &&
-                                                        selectedFiles.length ===
-                                                            0) ||
-                                                    sendingMessage
-                                                "
-                                                class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center space-x-2"
-                                            >
-                                                <span>{{
-                                                    sendingMessage
-                                                        ? uploadingFiles &&
-                                                          selectedFiles.length >
-                                                              0
-                                                            ? "Uploading..."
-                                                            : "Sending..."
-                                                        : "Send"
-                                                }}</span>
-                                                <svg
-                                                    class="w-4 h-4"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
+                            <div v-if="activeTab === 'messages'">
+                                <TicketCommentsSection
+                                    :ticket-id="props.ticketId"
+                                    :messages="messages"
+                                    :permissions="permissions"
+                                    :on-message-sent="sendMessage"
+                                    :on-new-message="handleNewComment"
+                                />
                             </div>
 
                             <!-- Time Tracking Tab -->
                             <div v-if="activeTab === 'time'" class="space-y-6">
                                 <TimeTrackingManager
                                     :ticket="ticket"
-                                    :current-user-id="currentUserId"
-                                    :can-manage-time="canManageTime"
+                                    :permissions="permissions"
                                     @updated="loadTimeTrackingData"
                                 />
                             </div>
@@ -706,7 +389,7 @@
                                 <TicketAddonManager
                                     :ticket="ticket"
                                     :permissions="permissions"
-                                    @updated="loadTicketDetails"
+                                    @updated="refetchTicket"
                                 />
                             </div>
 
@@ -906,7 +589,12 @@
                                 </p>
                             </div>
 
-                            <div v-if="permissions?.canViewTimers && activeTimers?.length > 0">
+                            <div
+                                v-if="
+                                    permissions?.canViewTimers &&
+                                    activeTimers?.length > 0
+                                "
+                            >
                                 <label class="text-sm font-medium text-gray-600"
                                     >Active Timers</label
                                 >
@@ -1199,7 +887,7 @@
             @assigned="handleAssignmentChanged"
             @cancelled="showAssignModal = false"
         />
-  </div>
+    </div>
 </template>
 
 <script setup>
@@ -1226,11 +914,12 @@ import BillingOverview from "@/Components/Tickets/BillingOverview.vue";
 import TitleEditModal from "@/Components/Tickets/TitleEditModal.vue";
 import StatusChangeModal from "@/Components/Tickets/StatusChangeModal.vue";
 import AssignmentModal from "@/Components/Tickets/AssignmentModal.vue";
+import TicketCommentsSection from "@/Components/Tickets/TicketCommentsSection.vue";
 
 // Define persistent layout
 defineOptions({
-  layout: AppLayout
-})
+    layout: AppLayout,
+});
 
 // Props
 const props = defineProps({
@@ -1274,29 +963,38 @@ const {
 
 // Real-time comment handling
 const handleNewComment = (comment) => {
-    console.log('New comment received via broadcasting:', comment);
-    
+    console.log("New comment received via broadcasting:", comment);
+
     // Always refetch comments to ensure we get the latest data with proper formatting
     // This is more reliable than manually manipulating the reactive data
-    console.log('Triggering comment refetch due to new comment');
+    console.log("Triggering comment refetch due to new comment");
     refetchMessages();
 };
 
-// Set up real-time broadcasting for comments
-useTicketCommentBroadcasting(ticketId, handleNewComment);
+// Set up real-time broadcasting for comments with user permissions
+const userPermissions = {
+    canViewInternalComments:
+        props.permissions?.canViewInternalComments || false,
+    isAdmin: user.value?.isSuperAdmin || false,
+    canManageTickets: props.permissions?.canManageTickets || false,
+};
+useTicketCommentBroadcasting(props.ticketId, handleNewComment, userPermissions);
 
 // Only query timers if user has timer permissions
-const { data: activeTimers, isLoading: timersLoading } = props.permissions?.canViewTimers
+const { data: activeTimers, isLoading: timersLoading } = props.permissions
+    ?.canViewTimers
     ? useTicketTimersQuery(ticketId)
     : { data: ref([]), isLoading: ref(false) };
 
 // Only query time entries if user has permission
-const { data: timeEntries, isLoading: timeEntriesLoading } = props.permissions?.canViewTimeEntries
+const { data: timeEntries, isLoading: timeEntriesLoading } = props.permissions
+    ?.canViewTimeEntries
     ? useTicketTimeEntriesQuery(ticketId)
     : { data: ref([]), isLoading: ref(false) };
 
 // Related tickets for activity tab
-const { data: relatedTickets, isLoading: relatedLoading } = props.permissions?.canViewActivity
+const { data: relatedTickets, isLoading: relatedLoading } = props.permissions
+    ?.canViewActivity
     ? useTicketRelatedQuery(ticketId)
     : { data: ref([]), isLoading: ref(false) };
 
@@ -1307,11 +1005,6 @@ const addCommentMutation = useAddCommentMutation();
 // UI State
 // Set default active tab to first available tab
 const activeTab = ref("messages");
-const newMessage = ref("");
-const messageIsInternal = ref(false);
-const sendingMessage = computed(() => addCommentMutation.isPending.value);
-const selectedFiles = ref([]);
-const uploadingFiles = ref(false);
 const editingDescription = ref(false);
 const editedDescription = ref("");
 const savingDescription = ref(false);
@@ -1348,11 +1041,17 @@ const tabs = computed(() => {
     }
 
     // Time Tracking tab - only if user can view timers or time entries
-    if (props.permissions?.canViewTimers || props.permissions?.canViewTimeEntries) {
+    if (
+        props.permissions?.canViewTimers ||
+        props.permissions?.canViewTimeEntries
+    ) {
         availableTabs.push({
             id: "time",
             label: "Time Tracking",
-            badge: activeTimers.value?.length > 0 ? activeTimers.value.length : null,
+            badge:
+                activeTimers.value?.length > 0
+                    ? activeTimers.value.length
+                    : null,
         });
     }
 
@@ -1384,11 +1083,18 @@ const tabs = computed(() => {
 });
 
 // Watch for tabs changes and update active tab if current one is not available
-watch(tabs, (newTabs) => {
-    if (newTabs.length > 0 && !newTabs.find(tab => tab.id === activeTab.value)) {
-        activeTab.value = newTabs[0].id;
-    }
-}, { immediate: true });
+watch(
+    tabs,
+    (newTabs) => {
+        if (
+            newTabs.length > 0 &&
+            !newTabs.find((tab) => tab.id === activeTab.value)
+        ) {
+            activeTab.value = newTabs[0].id;
+        }
+    },
+    { immediate: true }
+);
 
 const statusClasses = computed(() => {
     if (!ticket.value) return "";
@@ -1449,7 +1155,11 @@ const canAssign = computed(() => {
 
 const canManageTime = computed(() => {
     // Check permissions passed from backend
-    return props.permissions?.canViewTimers || props.permissions?.canCreateTimers || false;
+    return (
+        props.permissions?.canViewTimers ||
+        props.permissions?.canCreateTimers ||
+        false
+    );
 });
 
 const currentUserId = computed(() => user.value?.id);
@@ -1552,57 +1262,25 @@ watch(
 );
 
 // Action methods
-const sendMessage = async () => {
-    if (
-        (!newMessage.value.trim() && selectedFiles.value.length === 0) ||
-        sendingMessage.value ||
-        !ticket.value?.id
-    )
-        return;
-
-    uploadingFiles.value = true;
-
+const sendMessage = async (messageData) => {
+    if (!ticket.value?.id) return;
+    
     try {
-        // Create FormData for file upload
+        // Create FormData as expected by the API
         const formData = new FormData();
-
-        // Only add content if there is some
-        const content = newMessage.value.trim();
-        if (content) {
-            formData.append("content", content);
-        } else if (selectedFiles.value.length > 0) {
-            formData.append("content", "File attachment");
-        }
-
-        // Convert boolean to string for FormData
-        formData.append("is_internal", messageIsInternal.value ? "1" : "0");
-
-        // Add files to FormData
-        selectedFiles.value.forEach((file, index) => {
-            formData.append(`attachments[${index}]`, file);
-        });
-
+        formData.append("content", messageData.content);
+        formData.append("is_internal", messageData.is_internal ? "1" : "0");
+        
         await addCommentMutation.mutateAsync({
             ticketId: ticket.value.id,
             formData,
         });
-
-        // Reset form
-        newMessage.value = "";
-        messageIsInternal.value = false;
-        selectedFiles.value = [];
+        
+        // Refresh messages to show the new comment
+        refetchMessages();
     } catch (error) {
         console.error("Failed to send message:", error);
-
-        // Show validation errors to user
-        if (error.response?.status === 422 && error.response?.data?.errors) {
-            const errors = error.response.data.errors;
-            const errorMessages = Object.values(errors).flat();
-            console.error("Validation errors:", errorMessages);
-            // TODO: Show error notification with specific validation messages
-        }
-    } finally {
-        uploadingFiles.value = false;
+        throw error; // Re-throw so the component can handle it
     }
 };
 

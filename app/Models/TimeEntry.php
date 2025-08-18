@@ -55,6 +55,15 @@ class TimeEntry extends Model
     ];
 
     /**
+     * The model's default values for attributes.
+     *
+     * @var array
+     */
+    protected $attributes = [
+        'billable' => true,
+    ];
+
+    /**
      * Get the user that owns the time entry.
      */
     public function user(): BelongsTo

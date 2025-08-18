@@ -14,7 +14,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **StackedDialog Architecture**: Native dialog-based modal system with proper stacking and z-index management
 - **Complete Billing System**: Two-tier billing rate hierarchy (Account-specific → Global) with unified management
 - **Feature-Specific Agent Permissions**: Granular agent assignment control for timers, tickets, time entries, and billing
-- **Real-Time Broadcasting**: Laravel Echo + Vue composables with cross-component synchronization
+- **Real-Time Broadcasting**: Laravel Reverb WebSocket server with instant ticket messaging and timer synchronization
 - **TanStack Query Integration**: Optimized data fetching, caching, and error handling
 - **Comprehensive API**: RESTful endpoints with bulk operations and three-dimensional authentication
 - **Enterprise Authentication**: Laravel Sanctum hybrid session/token auth with granular abilities
@@ -26,8 +26,10 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **StackedDialog Architecture**: All modals converted to use native dialog with proper stacking and z-index management
 - **Streamlined Ticket Creation**: Merged basic info and assignment tabs for improved user experience
 - **Enhanced Modal System**: Vertical expansion to fit content, proper modal stacking, and consistent UI
+- **Real-Time Ticket Messaging**: Live comments with Laravel Reverb WebSocket broadcasting and permission-based filtering
 - **Enhanced Role Management**: Comprehensive permission descriptions, tooltips, notation guides, and improved layout with summary panel
 - **Left-Aligned Timer Interface**: Timer overlay and individual timers now align left with improved visual hierarchy
+- **Fixed Ticket Addon System**: Resolved UUID generation issues and standardized billable column usage across all models
 
 ## Documentation
 
@@ -77,6 +79,7 @@ When creating new features or modifying existing ones, ensure documentation is u
 ```bash
 # Development servers (DO NOT run these automatically - user will start them manually)
 php artisan serve         # Start Laravel server (http://localhost:8000)
+php artisan reverb:start  # Start WebSocket server (http://localhost:8080) - for real-time features
 npm run dev              # Start Vite dev server (with HMR)
 
 # Database operations  
@@ -104,6 +107,11 @@ npm run dev             # Development with hot reload
 # DELETE /api/timers/{timer}?force=true  # Force delete timer
 # POST   /api/timers/sync                # Cross-device timer synchronization
 # POST   /api/timers/bulk                # Bulk operations (stop, pause, resume, delete)
+
+# Real-Time Broadcasting API (Laravel Reverb WebSocket)
+# GET    /broadcasting/auth              # WebSocket channel authorization (session-based)
+# Private channels: ticket.{id}, user.{id}, account.{id}
+# Events: comment.created, timer.started, timer.stopped, etc.
 
 # Time Entry Management API
 # GET    /api/time-entries               # List time entries with filtering and pagination
@@ -402,4 +410,4 @@ This CLAUDE.md file focuses on essential information for AI development assistan
 
 ---
 
-*Last Updated: Current - Unified Selector System and StackedDialog Architecture: Consistent component interface for all entity selectors with native dialog-based modal stacking, vertical content expansion, and streamlined user experience*
+*Last Updated: August 18, 2025 - Ticket Addon System Fixes: Resolved UUID generation issues in TicketAddon model by properly implementing HasUuid trait. Standardized billable column usage across Timer, TimeEntry, and related controllers for consistency. Removed incorrect timeEntries relationship from TicketAddon model (addons and time entries are both associated with tickets, but not with each other).*

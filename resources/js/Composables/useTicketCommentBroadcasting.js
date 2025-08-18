@@ -1,65 +1,97 @@
-import { onMounted, onUnmounted } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { onMounted, onUnmounted, ref } from 'vue'
 
-export function useTicketCommentBroadcasting(ticketId, onCommentReceived) {
-    const page = usePage()
-    const user = page.props?.auth?.user
-    
+export function useTicketCommentBroadcasting(ticketId, onCommentReceived, userPermissions = {}) {
     let channel = null
+    const connectionStatus = ref('disconnected')
     
-    const connectToChannel = () => {
-        if (!ticketId || !window.Echo || !user) {
-            console.log('TicketCommentBroadcasting: Cannot connect - missing requirements')
+    // Helper function to check if user can see internal comments
+    const canViewInternalComments = () => {
+        return userPermissions.canViewInternalComments || 
+               userPermissions.isAdmin || 
+               userPermissions.canManageTickets
+    }
+    
+    // Helper function to filter comments based on user permissions
+    const shouldShowComment = (comment) => {
+        // Always show non-internal comments
+        if (!comment.is_internal) {
+            return true
+        }
+        // Only show internal comments if user has permission
+        return canViewInternalComments()
+    }
+    
+    const connect = () => {
+        if (!ticketId || !window.Echo) {
+            console.log('Real-time: WebSocket not available')
+            connectionStatus.value = 'unavailable'
             return
         }
 
         try {
+            connectionStatus.value = 'connecting'
+            
             // Connect to private ticket channel
             channel = window.Echo.private(`ticket.${ticketId}`)
             
             // Listen for new comments
             channel.listen('.comment.created', (event) => {
-                console.log('TicketCommentBroadcasting: New comment received', event)
+                console.log('Real-time: New comment received via WebSocket', event)
                 
-                // Filter internal comments if user doesn't have permission to see them
                 const comment = event.comment
-                // For now, let's simplify the permission check to allow all comments and let the backend handle filtering
-                console.log('TicketCommentBroadcasting: Processing comment', comment.id, 'Internal:', comment.is_internal)
                 
-                // Call the callback with the new comment
+                // Check permissions before showing
+                if (!shouldShowComment(comment)) {
+                    console.log('Real-time: Filtering out internal comment (no permission)', comment)
+                    return
+                }
+                
+                console.log('Real-time: Calling onCommentReceived with comment:', comment)
                 if (onCommentReceived && typeof onCommentReceived === 'function') {
                     onCommentReceived(comment)
+                } else {
+                    console.warn('Real-time: onCommentReceived is not a function:', onCommentReceived)
                 }
             })
             
-            console.log('TicketCommentBroadcasting: Connected to ticket channel', ticketId)
+            // Handle successful connection
+            channel.subscribed(() => {
+                console.log('Real-time: Connected successfully')
+                connectionStatus.value = 'connected'
+            })
+            
+            // Handle connection errors
+            channel.error((error) => {
+                console.log('Real-time: Connection failed')
+                connectionStatus.value = 'failed'
+            })
             
         } catch (error) {
-            console.error('TicketCommentBroadcasting: Connection error', error)
+            console.log('Real-time: Setup failed')
+            connectionStatus.value = 'failed'
         }
     }
     
-    const disconnectFromChannel = () => {
+    const disconnect = () => {
         if (channel) {
-            console.log('TicketCommentBroadcasting: Disconnecting from ticket channel', ticketId)
-            window.Echo.leave(`ticket.${ticketId}`)
+            window.Echo?.leave(`ticket.${ticketId}`)
             channel = null
         }
+        connectionStatus.value = 'disconnected'
     }
     
     // Lifecycle management
     onMounted(() => {
-        console.log('TicketCommentBroadcasting: Mounting for ticket', ticketId)
-        connectToChannel()
+        connect()
     })
     
     onUnmounted(() => {
-        console.log('TicketCommentBroadcasting: Unmounting for ticket', ticketId)
-        disconnectFromChannel()
+        disconnect()
     })
     
     return {
-        connectToChannel,
-        disconnectFromChannel
+        connectionStatus,
+        connect,
+        disconnect
     }
 }

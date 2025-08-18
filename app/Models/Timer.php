@@ -35,6 +35,7 @@ class Timer extends Model
         'device_id',
         'is_synced',
         'metadata',
+        'billable',
     ];
 
     /**
@@ -49,6 +50,16 @@ class Timer extends Model
         'is_synced' => 'boolean',
         'metadata' => 'array',
         'total_paused_duration' => 'integer',
+        'billable' => 'boolean',
+    ];
+
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array
+     */
+    protected $attributes = [
+        'billable' => true,
     ];
 
     /**

@@ -40,6 +40,10 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    allowDropdowns: {
+        type: Boolean,
+        default: false,
+    },
 })
 
 const emit = defineEmits(['close', 'save', 'tab-change'])
@@ -96,6 +100,7 @@ const setActiveTab = (tabId) => {
         :closeable="closeable"
         :show-footer="false"
         :pad-content="false"
+        :allow-dropdowns="allowDropdowns"
         @close="close"
     >
         <!-- Tab Navigation Below Header -->

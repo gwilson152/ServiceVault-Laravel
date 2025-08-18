@@ -242,6 +242,30 @@ Advanced in-timer configuration without interrupting workflow:
 </template>
 ```
 
+#### Permission-Based Settings Access
+Timer settings gracefully handle different user permission levels:
+
+```javascript
+// useTimerSettings.js - Permission-aware loading
+const loadSettings = async (force = false) => {
+  try {
+    const response = await axios.get('/api/settings/timer')
+    // Load settings from API for authorized users
+  } catch (error) {
+    // Graceful fallback for users without timer permissions
+    if (error.response?.status === 403) {
+      console.info('Timer settings not accessible for this user, using defaults')
+      return defaultSettings // Use local defaults
+    }
+  }
+}
+```
+
+**Permission Requirements for Timer Settings:**
+- **Read Access**: `timers.read`, `timers.write`, `admin.read`, or `system.configure`
+- **Update Access**: `system.configure` (Super Admin only)
+- **Fallback Behavior**: Users without permissions use default settings without errors
+
 ### Advanced Commit Workflow
 Professional time entry creation with business-friendly features:
 

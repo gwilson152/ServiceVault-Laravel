@@ -14,6 +14,9 @@ System architecture, design patterns, and technical specifications for Service V
 - **[Timer System](timer-system.md)** - Multi-timer architecture with cross-device sync ✅ CURRENT
 - **[Widget System](widget-system.md)** - Permission-driven dashboard widgets ✅ CURRENT
 
+### UI & Component Architecture
+- **[Modal Dialog System](modal-dialog-system.md)** - StackedDialog, TabbedDialog, and dropdown overflow management ✅ CURRENT
+
 ## Technology Stack
 
 ### Backend Architecture

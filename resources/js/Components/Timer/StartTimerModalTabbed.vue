@@ -3,6 +3,7 @@
     :show="show"
     :title="mode === 'edit' ? 'Edit Timer' : 'Start New Timer'"
     max-width="2xl"
+    :allow-dropdowns="true"
     @close="$emit('close')"
   >
     <!-- Error messages -->
@@ -360,7 +361,33 @@ const loadBillingRates = async () => {
     billingRatesLoading.value = true
     const params = form.value.accountId ? `?account_id=${form.value.accountId}` : ''
     const response = await axios.get(`/api/billing-rates${params}`)
-    availableBillingRates.value = response.data.data
+    
+    // Filter to only show rates for the selected account or global rates
+    const allRates = response.data.data
+    
+    availableBillingRates.value = allRates.filter(rate => {
+      // Always include global rates (no account_id)
+      if (!rate.account_id) return true
+      
+      // Include account-specific rates only if they match the selected account
+      if (form.value.accountId) {
+        return rate.account_id === parseInt(form.value.accountId)
+      }
+      
+      // If no account selected, exclude all account-specific rates
+      return false
+    })
+    
+    
+    // Check if currently selected billing rate is still valid after filtering
+    if (form.value.billingRateId) {
+      const currentRateStillValid = availableBillingRates.value.find(rate => 
+        rate.id === form.value.billingRateId
+      )
+      if (!currentRateStillValid) {
+        form.value.billingRateId = null // Reset if current rate is no longer valid
+      }
+    }
     
     // Auto-select default billing rate if none is currently selected
     if (!form.value.billingRateId && availableBillingRates.value.length > 0) {
@@ -479,18 +506,9 @@ watch(() => props.show, (isOpen) => {
     } else {
       resetForm()
       
-      // Debug logging
-      console.log('Timer modal opened:', {
-        canAssignToOthers: canAssignToOthers.value,
-        userId: user.value?.id,
-        userName: user.value?.name,
-        userPermissions: user.value?.permissions,
-        currentFormUserId: form.value.userId
-      })
       
       // Always auto-select current user (managers can change it later)
       if (user.value?.id) {
-        console.log('Auto-selecting current user:', user.value.id)
         form.value.userId = user.value.id
       }
     }
@@ -500,7 +518,6 @@ watch(() => props.show, (isOpen) => {
 // Watch for user data availability and ensure proper auto-selection
 watch(() => user.value, (newUser) => {
   if (newUser && props.show && !form.value.userId) {
-    console.log('User data became available, auto-selecting:', newUser.id)
     form.value.userId = newUser.id
   }
 }, { immediate: true })

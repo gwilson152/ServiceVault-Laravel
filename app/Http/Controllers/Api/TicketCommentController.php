@@ -25,11 +25,18 @@ class TicketCommentController extends Controller
             return response()->json(['error' => 'Unauthorized access.'], 403);
         }
         
-        // Get comments with user information
-        $comments = $ticket->comments()
+        // Build query for comments
+        $query = $ticket->comments()
             ->with('user:id,name,email')
             ->topLevel() // Only top-level comments for now (no threading)
-            ->get();
+            ->orderBy('created_at', 'asc');
+        
+        // If 'since' parameter is provided, only get comments after that timestamp
+        if ($request->has('since') && $request->since) {
+            $query->where('created_at', '>', $request->since);
+        }
+        
+        $comments = $query->get();
         
         // Filter internal comments based on user permissions
         if (!$user->hasAnyPermission(['admin.read', 'tickets.manage', 'tickets.view.internal'])) {

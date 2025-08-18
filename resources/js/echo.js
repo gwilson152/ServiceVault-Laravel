@@ -4,44 +4,32 @@ import Pusher from 'pusher-js'
 // Configure Pusher
 window.Pusher = Pusher
 
-// Create Echo instance for WebSocket connections
-window.Echo = new Echo({
-    broadcaster: 'pusher',
-    key: import.meta.env.VITE_PUSHER_APP_KEY,
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
-    wsHost: import.meta.env.VITE_PUSHER_HOST ?? '127.0.0.1',
-    wsPort: import.meta.env.VITE_PUSHER_PORT ?? 6001,
-    wssPort: import.meta.env.VITE_PUSHER_PORT ?? 6001,
-    forceTLS: false,
-    encrypted: false,
-    disableStats: true,
-    enabledTransports: ['ws', 'wss'],
-    auth: {
-        headers: {
-            Authorization: 'Bearer ' + document.querySelector('meta[name="api-token"]')?.getAttribute('content'),
+// Laravel Reverb WebSocket real-time broadcasting
+try {
+    // Get current host to match WebSocket connection
+    const currentHost = window.location.hostname
+    const isSecure = window.location.protocol === 'https:'
+    const wsPort = import.meta.env.VITE_REVERB_PORT ?? 8080
+    
+    window.Echo = new Echo({
+        broadcaster: 'reverb',
+        key: import.meta.env.VITE_REVERB_APP_KEY,
+        wsHost: currentHost,
+        wsPort: wsPort,
+        wssPort: wsPort,
+        forceTLS: isSecure,
+        encrypted: isSecure,
+        enabledTransports: ['ws', 'wss'],
+        auth: {
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+            },
         },
-    },
-})
-
-// Mock implementation disabled - using real Echo WebSocket connection above
-// const createMockChannel = () => ({
-//     listen: (event, callback) => {
-//         console.log('Mock Echo: Listening for event', event);
-//         return createMockChannel();
-//     },
-//     stopListening: () => createMockChannel(),
-//     subscribed: (callback) => {
-//         setTimeout(() => callback && callback(), 100)
-//         return createMockChannel()
-//     },
-//     error: (callback) => createMockChannel()
-// })
-// 
-// window.Echo = {
-//     channel: () => createMockChannel(),
-//     private: () => createMockChannel(),
-//     join: () => createMockChannel(),
-//     leave: () => {},
-// }
+    })
+    console.log(`Laravel Reverb WebSocket initialized for ${currentHost}:${wsPort}`)
+} catch (error) {
+    console.log('WebSocket initialization failed:', error)
+    window.Echo = null
+}
 
 export default window.Echo

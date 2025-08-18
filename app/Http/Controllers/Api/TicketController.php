@@ -343,6 +343,7 @@ class TicketController extends Controller
             // Comment permissions (for Messages tab)
             'canViewComments' => $ticket->canBeViewedBy($user), // If can view ticket, can view comments
             'canAddComments' => $user->hasAnyPermission(['tickets.comment', 'tickets.edit.account', 'tickets.view.account']),
+            'canViewInternalComments' => $user->hasAnyPermission(['admin.read', 'tickets.manage', 'tickets.view.internal']),
             
             // Add-on permissions (for Add-ons tab)
             'canViewAddons' => $ticket->canBeViewedBy($user), // If can view ticket, can view add-ons

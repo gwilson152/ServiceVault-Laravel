@@ -46,7 +46,6 @@ class Ticket extends Model
         'resolved_at' => 'datetime',
         'closed_at' => 'datetime',
         'metadata' => 'array',
-        'billable' => 'boolean',
         'requires_approval' => 'boolean',
         'quoted_amount' => 'decimal:2',
     ];

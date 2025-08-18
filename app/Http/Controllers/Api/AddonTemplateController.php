@@ -16,23 +16,23 @@ class AddonTemplateController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         // Only users who can create addons should see templates
         if (!$user->hasAnyPermission(['tickets.create', 'tickets.edit', 'admin.write'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to view addon templates'
             ], 403);
         }
-        
+
         $query = AddonTemplate::active()->ordered();
-        
+
         // Filter by category if provided
         if ($request->filled('category')) {
             $query->byCategory($request->category);
         }
-        
+
         $templates = $query->get();
-        
+
         return response()->json([
             'data' => $templates,
             'categories' => AddonTemplate::getCategories(),
@@ -46,13 +46,13 @@ class AddonTemplateController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         if (!$user->hasAnyPermission(['admin.write', 'system.manage'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to create addon templates'
             ], 403);
         }
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -70,7 +70,7 @@ class AddonTemplateController extends Controller
             'sort_order' => 'integer|min:0',
             'metadata' => 'nullable|array'
         ]);
-        
+
         // Set defaults
         $validated['allow_quantity_override'] = $validated['allow_quantity_override'] ?? true;
         $validated['allow_price_override'] = $validated['allow_price_override'] ?? false;
@@ -79,9 +79,9 @@ class AddonTemplateController extends Controller
         $validated['is_active'] = $validated['is_active'] ?? true;
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
         $validated['default_tax_rate'] = $validated['default_tax_rate'] ?? 0.0000;
-        
+
         $template = AddonTemplate::create($validated);
-        
+
         return response()->json([
             'data' => $template,
             'message' => 'Addon template created successfully'
@@ -105,13 +105,13 @@ class AddonTemplateController extends Controller
     public function update(Request $request, AddonTemplate $addonTemplate): JsonResponse
     {
         $user = $request->user();
-        
+
         if (!$user->hasAnyPermission(['admin.write', 'system.manage'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to update addon templates'
             ], 403);
         }
-        
+
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
@@ -129,9 +129,9 @@ class AddonTemplateController extends Controller
             'sort_order' => 'integer|min:0',
             'metadata' => 'nullable|array'
         ]);
-        
+
         $addonTemplate->update($validated);
-        
+
         return response()->json([
             'data' => $addonTemplate,
             'message' => 'Addon template updated successfully'
@@ -144,72 +144,72 @@ class AddonTemplateController extends Controller
     public function destroy(AddonTemplate $addonTemplate): JsonResponse
     {
         $user = request()->user();
-        
+
         if (!$user->hasAnyPermission(['admin.write', 'system.manage'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to delete addon templates'
             ], 403);
         }
-        
+
         // Check if template is being used
         if ($addonTemplate->ticketAddons()->exists()) {
             return response()->json([
                 'message' => 'Cannot delete template that is being used by existing addons'
             ], 422);
         }
-        
+
         $addonTemplate->delete();
-        
+
         return response()->json([
             'message' => 'Addon template deleted successfully'
         ]);
     }
-    
+
     /**
      * Create addon from template for a specific ticket
      */
     public function createAddon(Request $request, AddonTemplate $addonTemplate): JsonResponse
     {
         $user = $request->user();
-        
+
         $validated = $request->validate([
-            'service_ticket_id' => 'required|exists:service_tickets,id',
+            'service_ticket_id' => 'required|exists:tickets,id',
             'quantity' => 'nullable|numeric|min:0.01|max:99999.99',
             'unit_price' => 'nullable|numeric|min:0|max:999999.99',
             'discount_amount' => 'nullable|numeric|min:0|max:999999.99',
             'description' => 'nullable|string',
             'metadata' => 'nullable|array'
         ]);
-        
+
         $ticket = Ticket::findOrFail($validated['service_ticket_id']);
         $this->authorize('update', $ticket);
-        
+
         // Prepare overrides
         $overrides = [];
-        
+
         if (isset($validated['quantity']) && $addonTemplate->allow_quantity_override) {
             $overrides['quantity'] = $validated['quantity'];
         }
-        
+
         if (isset($validated['unit_price']) && $addonTemplate->allow_price_override) {
             $overrides['unit_price'] = $validated['unit_price'];
         }
-        
+
         if (isset($validated['discount_amount'])) {
             $overrides['discount_amount'] = $validated['discount_amount'];
         }
-        
+
         if (isset($validated['description'])) {
             $overrides['description'] = $validated['description'];
         }
-        
+
         if (isset($validated['metadata'])) {
             $overrides['metadata'] = $validated['metadata'];
         }
-        
+
         $addon = $addonTemplate->createAddonForTicket($ticket, $user, $overrides);
         $addon->load(['addedBy:id,name', 'template:id,name']);
-        
+
         return response()->json([
             'data' => $addon,
             'message' => 'Addon created from template successfully'

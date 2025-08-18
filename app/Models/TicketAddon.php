@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class TicketAddon extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'ticket_id',
@@ -123,7 +123,7 @@ class TicketAddon extends Model
      */
     public function scopeBillable($query)
     {
-        return $query->where('billable', true);
+        return $query->where('is_billable', true);
     }
 
     /**

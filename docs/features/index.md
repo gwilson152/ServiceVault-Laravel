@@ -10,10 +10,12 @@ Functional specifications and user guides for Service Vault features.
 - **[Permission Descriptions](permission-descriptions.md)** - Comprehensive permission explanation system with smart tooltips ✅ NEW
 - **[Time Tracking](time-tracking.md)** - Enhanced timer assignment system with refined overlay functionality ✅ REFINED
 - **[Service Tickets](service-tickets.md)** - Comprehensive ticket workflow system with fully functional detail pages ✅ REFINED
+- **[Ticket Addons](ticket-addons.md)** - Additional services/products system with StackedDialog architecture ✅ FIXED
 - **[Ticket Configuration](ticket-configuration.md)** - Drag-drop workflow management with optimistic UI updates ✅ COMPLETED
 - **[Widget-Based Dashboard](widget-dashboard.md)** - Dynamic dashboard with auto-discovery and complete widget registry ✅ REFINED
 - **[Customer Portal](customer-portal.md)** - Complete customer interface with dashboard, projects, and billing access ✅ NEW
 - **[UI Selector Components](ui-selector-components.md)** - Professional selector components with unified UX patterns ✅ NEW
+- **[Real-Time Messaging](real-time-messaging.md)** - Laravel Reverb WebSocket server with instant ticket comments and permission-based filtering ✅ NEW
 
 ## Advanced Features
 - **[Billing & Financial Management](billing-system.md)** - Two-tier rate hierarchy, invoice generation, financial reporting ✅ UPDATED

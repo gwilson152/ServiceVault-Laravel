@@ -30,6 +30,10 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    allowDropdowns: {
+        type: Boolean,
+        default: false,
+    },
 })
 
 const emit = defineEmits(['close'])
@@ -240,8 +244,11 @@ onUnmounted(() => {
             >
                 <div
                     v-show="show"
-                    class="mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full flex flex-col"
-                    :class="maxWidthClass"
+                    class="mb-6 transform rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full flex flex-col"
+                    :class="[
+                        allowDropdowns ? 'overflow-visible' : 'overflow-hidden',
+                        maxWidthClass
+                    ]"
                     @click.stop
                 >
                     <!-- Header -->
@@ -274,7 +281,10 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Content -->
-                    <div class="flex-1 overflow-auto" :class="{ 'p-6': padContent }">
+                    <div class="flex-1" :class="[
+                        allowDropdowns ? 'overflow-visible' : 'overflow-auto',
+                        { 'p-6': padContent }
+                    ]">
                         <slot v-if="showSlot" />
                     </div>
 

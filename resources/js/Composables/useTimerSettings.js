@@ -110,6 +110,13 @@ export function useTimerSettings() {
       return timerSettings.value
       
     } catch (error) {
+      // Handle 403 errors gracefully - user doesn't have permission
+      if (error.response?.status === 403) {
+        console.info('Timer settings not accessible for this user, using defaults')
+        settingsLoaded.value = true
+        return timerSettings.value
+      }
+      
       console.error('Failed to load timer settings:', error)
       settingsError.value = error.response?.data?.message || 'Failed to load timer settings'
       

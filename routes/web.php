@@ -8,6 +8,7 @@ use App\Http\Controllers\Portal\CustomerPortalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SetupController;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -151,3 +152,6 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// Broadcasting Routes
+Broadcast::routes(['middleware' => 'auth']);

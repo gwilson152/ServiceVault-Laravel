@@ -101,7 +101,8 @@
     <div
       v-if="showDropdown && !selectedItem"
       ref="dropdown"
-      class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+      class="absolute w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+      style="z-index: 9999;"
       :class="dropdownPosition"
     >
       <div v-if="loading" class="p-4 text-center text-gray-500">
@@ -217,7 +218,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, Teleport } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   UserIcon,
   BuildingOfficeIcon,
@@ -676,4 +677,6 @@ watch(() => props.modelValue, () => {
 watch(() => props.items, () => {
   initializeSelectedItem()
 })
+
+
 </script>

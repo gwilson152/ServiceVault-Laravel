@@ -25,7 +25,7 @@ class StoreTimerRequest extends FormRequest
             // Note: project_id validation removed - projects no longer used
             'task_id' => 'nullable|exists:tasks,id',
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
-            'service_ticket_id' => 'nullable|exists:service_tickets,id',
+            'service_ticket_id' => 'nullable|exists:tickets,id',
             'description' => 'nullable|string|max:1000',
             'device_id' => 'nullable|string|max:255',
             'stop_others' => 'boolean',

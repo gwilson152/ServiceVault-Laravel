@@ -95,6 +95,30 @@ php --ri xdebug
 tail -f /tmp/xdebug.log
 ```
 
+### Laravel Validation Issues
+
+#### Validator Rules Access
+When using Laravel validation, avoid calling `$validator->rules()` as it doesn't exist:
+
+```php
+// ❌ WRONG - This causes 500 errors
+foreach ($request->all() as $key => $value) {
+    if (isset($validator->rules()[$key])) {
+        // Process value
+    }
+}
+
+// ✅ CORRECT - Store rules separately
+$rules = ['field' => 'required|string'];
+$validator = Validator::make($request->all(), $rules);
+
+foreach ($request->all() as $key => $value) {
+    if (isset($rules[$key])) {
+        // Process value
+    }
+}
+```
+
 ### Common Issues
 
 #### Port Conflicts
