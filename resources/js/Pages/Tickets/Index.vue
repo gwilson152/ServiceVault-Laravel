@@ -210,69 +210,35 @@
               </div>
             </div>
             
-            <!-- Loading State -->
-            <div v-if="isLoading" class="p-8 text-center">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p class="mt-2 text-gray-500">Loading tickets...</p>
-            </div>
-            
-            <!-- Error State -->
-            <div v-else-if="error" class="p-8 text-center">
-              <div class="rounded-md bg-red-50 p-4">
-                <div class="text-sm text-red-700">
-                  Failed to load tickets. Please try again.
-                </div>
-                <button 
-                  @click="refetchTickets"
-                  class="mt-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
-            
-            <!-- Empty State -->
-            <div v-else-if="filteredTickets.length === 0" class="p-8 text-center">
-              <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h3 class="mt-2 text-sm font-medium text-gray-900">No tickets found</h3>
-              <p class="mt-1 text-sm text-gray-500">
-                {{ hasActiveFilters ? 'Try adjusting your filters' : 'Get started by creating a new ticket' }}
-              </p>
-              <div class="mt-6">
-                <button
-                  v-if="!hasActiveFilters"
-                  @click="showCreateModal = true"
-                  class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
-                  Create New Ticket
-                </button>
-              </div>
-            </div>
-            
-            <!-- Business Table View -->
-            <div v-else style="overflow: visible;">
-              <div class="overflow-x-auto relative" style="overflow-y: visible;">
-                <TicketsTable
-                  :table="table"
-                  :user="user"
-                  :timersByTicket="timersByTicket"
-                  :density="tableDensity"
-                  :ticket-statuses="ticketStatuses"
-                  :ticket-priorities="ticketPriorities"
-                  :workflow-transitions="workflowTransitions"
-                  @timer-started="handleTimerEvent"
-                  @timer-stopped="handleTimerEvent"
-                  @timer-paused="handleTimerEvent"
-                  @time-entry-created="handleTimeEntryCreated"
-                  @open-manual-time-entry="openManualTimeEntry"
-                  @open-ticket-addon="openTicketAddon"
-                  @status-updated="handleStatusUpdated"
-                  @priority-updated="handlePriorityUpdated"
-                />
-              </div>
-            </div>
+            <!-- Ticket List -->
+            <TicketList
+              :tickets="filteredTickets"
+              :table="table"
+              :user="user"
+              :timers-by-ticket="timersByTicket"
+              :ticket-statuses="ticketStatuses"
+              :ticket-priorities="ticketPriorities"
+              :workflow-transitions="workflowTransitions"
+              :is-loading="isLoading"
+              :error="error"
+              error-message="Failed to load tickets. Please try again."
+              :density="tableDensity"
+              empty-title="No tickets found"
+              :empty-message="hasActiveFilters ? 'Try adjusting your filters' : 'Get started by creating a new ticket'"
+              :show-create-button="!hasActiveFilters"
+              create-button-text="Create New Ticket"
+              :show-retry-button="true"
+              @retry="refetchTickets"
+              @create-ticket="showCreateModal = true"
+              @timer-started="handleTimerEvent"
+              @timer-stopped="handleTimerEvent"
+              @timer-paused="handleTimerEvent"
+              @time-entry-created="handleTimeEntryCreated"
+              @open-manual-time-entry="openManualTimeEntry"
+              @open-ticket-addon="openTicketAddon"
+              @status-updated="handleStatusUpdated"
+              @priority-updated="handlePriorityUpdated"
+            />
             
           </div>
         </div>
@@ -375,6 +341,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
 import CreateTicketModalTabbed from '@/Components/Modals/CreateTicketModalTabbed.vue'
 import TicketsTable from '@/Components/Tables/TicketsTable.vue'
+import TicketList from '@/Components/Tickets/TicketList.vue'
 import { useTicketsTable } from '@/Composables/useTicketsTable'
 import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'
 

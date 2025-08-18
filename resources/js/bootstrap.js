@@ -16,10 +16,53 @@ if (token) {
 // Configure axios for Sanctum
 window.axios.defaults.withCredentials = true;
 
+// Function to refresh CSRF token
+const refreshCSRFToken = async () => {
+    try {
+        // First, refresh the CSRF cookie
+        await axios.get('/sanctum/csrf-cookie');
+        
+        // Then get a fresh token from a lightweight endpoint
+        const response = await axios.get('/api/csrf-token');
+        const newToken = response.data.csrf_token;
+        
+        if (newToken) {
+            // Update both the axios default header and the meta tag
+            window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newToken;
+            
+            // Update the meta tag for future reference
+            const metaTag = document.head.querySelector('meta[name="csrf-token"]');
+            if (metaTag) {
+                metaTag.content = newToken;
+            }
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Failed to refresh CSRF token:', error);
+        return false;
+    }
+};
+
+// Make refresh function globally available
+window.refreshCSRFToken = refreshCSRFToken;
+
 // Initialize CSRF cookie for API requests
 window.initializeCSRF = async () => {
     try {
         await axios.get('/sanctum/csrf-cookie');
+        
+        // Set up periodic CSRF token refresh (every 10 minutes)
+        if (!window.csrfRefreshInterval) {
+            window.csrfRefreshInterval = setInterval(async () => {
+                try {
+                    await refreshCSRFToken();
+                    console.log('CSRF token refreshed proactively');
+                } catch (error) {
+                    console.error('Proactive CSRF refresh failed:', error);
+                }
+            }, 10 * 60 * 1000); // 10 minutes
+        }
     } catch (error) {
         console.error('Failed to initialize CSRF cookie:', error);
     }
@@ -28,10 +71,32 @@ window.initializeCSRF = async () => {
 // Add response interceptor for error handling
 window.axios.interceptors.response.use(
     response => response,
-    error => {
-        if (error.response && error.response.status === 401) {
-            window.location.href = '/login';
+    async error => {
+        if (error.response) {
+            const status = error.response.status;
+            
+            // Handle CSRF token mismatch (419)
+            if (status === 419) {
+                console.log('CSRF token mismatch detected, attempting to refresh...');
+                const refreshed = await refreshCSRFToken();
+                
+                if (refreshed) {
+                    // Retry the original request with the new token
+                    console.log('CSRF token refreshed, retrying request...');
+                    return window.axios.request(error.config);
+                } else {
+                    // If refresh fails, redirect to login
+                    console.log('CSRF token refresh failed, redirecting to login...');
+                    window.location.href = '/login';
+                }
+            }
+            
+            // Handle unauthorized (401)
+            if (status === 401) {
+                window.location.href = '/login';
+            }
         }
+        
         return Promise.reject(error);
     }
 );

@@ -275,9 +275,48 @@ return $user->hasPermission('timers.view');
 
 ### Session Security
 - Secure cookie configuration
-- CSRF protection on all forms
+- CSRF protection on all forms with automatic token refresh
 - Session fixation protection
 - Remember token functionality
+
+### CSRF Token Management
+Service Vault implements an advanced CSRF token management system to prevent token mismatch errors:
+
+**Automatic Token Refresh:**
+- Intercepts 419 CSRF errors and automatically refreshes tokens
+- Retries failed requests with fresh tokens
+- No manual page refresh required
+
+**Proactive Refresh:**
+- Tokens are refreshed every 10 minutes automatically
+- Prevents token staleness during long sessions
+- Background refresh without user interruption
+
+**Implementation:**
+```javascript
+// Automatic CSRF token refresh on error
+window.axios.interceptors.response.use(
+    response => response,
+    async error => {
+        if (error.response?.status === 419) {
+            await refreshCSRFToken();
+            return window.axios.request(error.config);
+        }
+        return Promise.reject(error);
+    }
+);
+
+// Manual refresh available globally
+window.refreshCSRFToken();
+```
+
+**API Endpoint:**
+```php
+// GET /api/csrf-token - Returns fresh CSRF token
+Route::get('/csrf-token', function (Request $request) {
+    return response()->json(['csrf_token' => csrf_token()]);
+});
+```
 
 ### API Security  
 - Token-based authentication with expiration

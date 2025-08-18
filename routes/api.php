@@ -24,6 +24,13 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+// CSRF token endpoint for frontend token refresh
+Route::get('/csrf-token', function (Request $request) {
+    return response()->json([
+        'csrf_token' => csrf_token()
+    ]);
+});
+
 // API routes with authentication (web session + sanctum)
 Route::middleware(['auth:sanctum'])->group(function () {
     

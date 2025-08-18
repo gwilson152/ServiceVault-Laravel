@@ -605,95 +605,24 @@
                                     </button>
                                 </div>
                                 
-                                <!-- Loading State -->
-                                <div v-if="ticketsLoading" class="p-6 text-center">
-                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                                    <p class="mt-2 text-gray-500">Loading tickets...</p>
-                                </div>
-                                
-                                <!-- Empty State -->
-                                <div v-else-if="accountTickets.length === 0" class="p-6 text-center text-gray-500">
-                                    <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <p class="text-lg font-medium text-gray-900 mb-1">No tickets found</p>
-                                    <p class="text-sm text-gray-500">Get started by creating the first ticket for this account.</p>
-                                </div>
-                                
-                                <!-- Tickets List -->
-                                <div v-else class="overflow-x-auto">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <thead class="bg-gray-50">
-                                            <tr>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Ticket
-                                                </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Status
-                                                </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Priority
-                                                </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Assigned To
-                                                </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Updated
-                                                </th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Actions
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
-                                            <tr v-for="ticket in accountTickets" :key="ticket.id" class="hover:bg-gray-50">
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <div>
-                                                        <Link 
-                                                            :href="route('tickets.show', ticket.id)"
-                                                            class="text-sm font-medium text-blue-600 hover:text-blue-700"
-                                                        >
-                                                            #{{ ticket.ticket_number || ticket.id }}
-                                                        </Link>
-                                                        <p class="text-sm text-gray-900 mt-1 line-clamp-2">
-                                                            {{ ticket.title }}
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <span 
-                                                        class="px-2 py-1 text-xs font-semibold rounded-full"
-                                                        :class="getStatusColor(ticket.status)"
-                                                    >
-                                                        {{ ticket.status }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <span 
-                                                        class="px-2 py-1 text-xs font-semibold rounded-full"
-                                                        :class="getPriorityColor(ticket.priority)"
-                                                    >
-                                                        {{ ticket.priority }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {{ ticket.assigned_agent?.name || 'Unassigned' }}
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {{ formatDate(ticket.updated_at) }}
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    <Link 
-                                                        :href="route('tickets.show', ticket.id)"
-                                                        class="text-blue-600 hover:text-blue-900"
-                                                    >
-                                                        View
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <!-- Ticket List -->
+                                <TicketList
+                                    :tickets="accountTickets"
+                                    :table="ticketsTable"
+                                    :user="mockUser"
+                                    :timers-by-ticket="timersByTicket"
+                                    :ticket-statuses="ticketStatuses"
+                                    :ticket-priorities="ticketPriorities"
+                                    :workflow-transitions="workflowTransitions"
+                                    :is-loading="ticketsLoading"
+                                    :error="false"
+                                    :density="'compact'"
+                                    empty-title="No tickets found"
+                                    empty-message="Get started by creating the first ticket for this account."
+                                    create-button-text="New Ticket"
+                                    :show-retry-button="false"
+                                    @create-ticket="handleCreateTicket"
+                                />
                             </div>
                         </div>
 
@@ -860,6 +789,8 @@ import AccountFormModal from "@/Components/AccountFormModal.vue";
 import UsersTable from "@/Components/Tables/UsersTable.vue";
 import UserFormModal from "@/Components/UserFormModal.vue";
 import CreateTicketModalTabbed from "@/Components/Modals/CreateTicketModalTabbed.vue";
+import TicketList from "@/Components/Tickets/TicketList.vue";
+import { useTicketsTable } from "@/Composables/useTicketsTable";
 import axios from "axios";
 
 // Tab icons
@@ -904,6 +835,22 @@ const usersLoading = ref(false);
 const accountTickets = ref([]);
 const showCreateTicketModal = ref(false);
 const ticketsLoading = ref(false);
+const timersByTicket = ref({});
+const ticketStatuses = ref([]);
+const ticketPriorities = ref([]);
+const workflowTransitions = ref({});
+
+// Mock user for tickets table (account context)
+const mockUser = ref({
+    id: 1,
+    name: 'Account User',
+    user_type: 'customer'
+});
+
+// TanStack Table setup for account tickets
+const {
+    table: ticketsTable,
+} = useTicketsTable(accountTickets, mockUser, false); // false = can't view all accounts
 
 // Tab configuration
 const accountTabs = [
@@ -1013,6 +960,19 @@ const loadAccountTickets = async () => {
     }
 };
 
+// Load ticket configuration data
+const loadTicketConfig = async () => {
+    try {
+        const response = await axios.get('/api/settings/ticket-config');
+        const data = response.data.data;
+        ticketStatuses.value = data.statuses || [];
+        ticketPriorities.value = data.priorities || [];
+        workflowTransitions.value = data.workflow_transitions || {};
+    } catch (err) {
+        console.error('Failed to load ticket configuration:', err);
+    }
+};
+
 
 const formatAccountType = (type) => {
     const types = {
@@ -1037,27 +997,6 @@ const formatDate = (dateString) => {
     return date.toLocaleDateString();
 };
 
-const getStatusColor = (status) => {
-    const colors = {
-        'open': 'bg-blue-100 text-blue-800',
-        'in_progress': 'bg-yellow-100 text-yellow-800',
-        'pending': 'bg-orange-100 text-orange-800',
-        'resolved': 'bg-green-100 text-green-800',
-        'closed': 'bg-gray-100 text-gray-800',
-        'cancelled': 'bg-red-100 text-red-800'
-    }
-    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
-}
-
-const getPriorityColor = (priority) => {
-    const colors = {
-        'low': 'bg-green-100 text-green-800',
-        'normal': 'bg-blue-100 text-blue-800',
-        'high': 'bg-orange-100 text-orange-800',
-        'urgent': 'bg-red-100 text-red-800'
-    }
-    return colors[priority?.toLowerCase()] || 'bg-gray-100 text-gray-800'
-};
 
 const activateAccount = async () => {
     try {
@@ -1126,7 +1065,10 @@ const loadTabData = async (tab) => {
     if (tab === 'users' && accountUsers.value.length === 0) {
         await loadAccountUsers();
     } else if (tab === 'tickets' && accountTickets.value.length === 0) {
-        await loadAccountTickets();
+        await Promise.all([
+            loadAccountTickets(),
+            loadTicketConfig()
+        ]);
     }
 };
 
@@ -1137,6 +1079,8 @@ watch(activeTab, (newTab) => {
 
 onMounted(() => {
     loadAccount();
+    // Load ticket configuration on initial load
+    loadTicketConfig();
 });
 </script>
 

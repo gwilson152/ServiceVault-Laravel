@@ -190,6 +190,7 @@ Service Vault implements a hybrid authentication system with Laravel Breeze (web
 - Token-based API authentication with 23 granular abilities
 - All policies support both authentication methods
 - Three-dimensional permission system (Functional + Widget + Page)
+- **Advanced CSRF Token Management**: Automatic refresh on 419 errors with proactive 10-minute intervals
 
 **Quick Reference:**
 ```php
@@ -198,6 +199,16 @@ if ($user->currentAccessToken()) {
     return $user->tokenCan('timers:read');
 }
 return $user->hasPermission('timers.view');
+```
+
+**CSRF Token Management:**
+```javascript
+// Automatic CSRF refresh available globally
+window.refreshCSRFToken();
+
+// Automatic handling of 419 errors with retry
+// Proactive refresh every 10 minutes
+// No manual page refresh required
 ```
 
 ## Time Management System
@@ -410,4 +421,4 @@ This CLAUDE.md file focuses on essential information for AI development assistan
 
 ---
 
-*Last Updated: August 18, 2025 - Ticket Addon System Fixes: Resolved UUID generation issues in TicketAddon model by properly implementing HasUuid trait. Standardized billable column usage across Timer, TimeEntry, and related controllers for consistency. Removed incorrect timeEntries relationship from TicketAddon model (addons and time entries are both associated with tickets, but not with each other).*
+*Last Updated: August 18, 2025 - CSRF Token Management & Nuclear Reset Fixes: Implemented comprehensive CSRF token refresh system with automatic 419 error handling and proactive 10-minute refresh intervals. Fixed nuclear reset migration warnings by removing echo statements that interfered with frontend response parsing. Resolved Ticket Addon UUID generation and standardized billable column usage.*

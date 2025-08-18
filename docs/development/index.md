@@ -47,6 +47,7 @@ php artisan make:policy ModelPolicy --model=Model
 
 ### Debugging & Testing
 - **[Debugging](debugging.md)** - Xdebug configuration and VS Code setup ✅ CURRENT
+- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions including CSRF token management ✅ CURRENT
 - **Testing**: PHPUnit configured with database testing
 - **Code Style**: PSR-12 standards with PHP CS Fixer
 
