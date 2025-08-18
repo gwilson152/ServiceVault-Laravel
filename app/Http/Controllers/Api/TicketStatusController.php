@@ -16,7 +16,7 @@ class TicketStatusController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         // Only admins can view all statuses
         if (!$user->hasAnyPermission(['admin.read', 'settings.manage', 'tickets.manage'])) {
             return response()->json([
@@ -51,7 +51,7 @@ class TicketStatusController extends Controller
     public function options(Request $request): JsonResponse
     {
         $options = TicketStatus::getOptions();
-        
+
         return response()->json([
             'options' => $options,
             'default_status' => TicketStatus::getDefault()?->key
@@ -64,7 +64,7 @@ class TicketStatusController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to create ticket statuses'
@@ -81,7 +81,7 @@ class TicketStatusController extends Controller
             'is_active' => 'boolean',
             'is_default' => 'boolean',
             'is_closed' => 'boolean',
-            'is_billable' => 'boolean',
+            'billable' => 'boolean',
             'sort_order' => 'integer|min:0',
             'metadata' => 'nullable|array'
         ]);
@@ -90,7 +90,7 @@ class TicketStatusController extends Controller
         $validated['is_active'] = $validated['is_active'] ?? true;
         $validated['is_default'] = $validated['is_default'] ?? false;
         $validated['is_closed'] = $validated['is_closed'] ?? false;
-        $validated['is_billable'] = $validated['is_billable'] ?? true;
+        $validated['billable'] = $validated['billable'] ?? true;
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
 
         $status = TicketStatus::create($validated);
@@ -119,7 +119,7 @@ class TicketStatusController extends Controller
     public function update(Request $request, TicketStatus $ticketStatus): JsonResponse
     {
         $user = $request->user();
-        
+
         if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to update ticket statuses'
@@ -142,7 +142,7 @@ class TicketStatusController extends Controller
             'is_active' => 'boolean',
             'is_default' => 'boolean',
             'is_closed' => 'boolean',
-            'is_billable' => 'boolean',
+            'billable' => 'boolean',
             'sort_order' => 'integer|min:0',
             'metadata' => 'nullable|array'
         ]);
@@ -161,7 +161,7 @@ class TicketStatusController extends Controller
     public function destroy(TicketStatus $ticketStatus): JsonResponse
     {
         $user = request()->user();
-        
+
         if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to delete ticket statuses'
@@ -210,7 +210,7 @@ class TicketStatusController extends Controller
     public function reorder(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to reorder ticket statuses'

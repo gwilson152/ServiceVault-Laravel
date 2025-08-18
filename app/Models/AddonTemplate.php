@@ -87,7 +87,7 @@ class AddonTemplate extends Model
             'sku' => $this->sku,
             'unit_price' => $this->default_unit_price,
             'quantity' => $this->default_quantity,
-            'is_billable' => $this->is_billable,
+            'billable' => $this->billable,
             'is_taxable' => $this->is_taxable,
             'billing_category' => $this->billing_category,
             'tax_rate' => $this->default_tax_rate,

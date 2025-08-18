@@ -821,7 +821,7 @@ const payload = {
     started_at: `${form.value.date} ${form.value.start_time}:00`,
     duration: totalDuration.value,
     description: form.value.description.trim(),
-    billable: form.value.is_billable,
+    billable: form.value.billable,
     // No break_duration field - completely removed
 };
 ```

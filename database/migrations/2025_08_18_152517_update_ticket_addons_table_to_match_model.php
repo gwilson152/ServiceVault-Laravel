@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -18,29 +17,27 @@ return new class extends Migration
             $table->string('sku')->nullable()->after('category');
             $table->decimal('discount_amount', 10, 2)->default(0)->after('unit_price');
             $table->decimal('tax_rate', 8, 4)->default(0)->after('discount_amount');
-            $table->boolean('is_billable')->default(true)->after('tax_rate');
-            $table->boolean('is_taxable')->default(true)->after('is_billable');
+            $table->boolean('is_taxable')->default(true)->after('tax_rate');
             $table->string('billing_category')->default('addon')->after('is_taxable');
             $table->uuid('addon_template_id')->nullable()->after('billing_category');
             $table->uuid('approved_by_user_id')->nullable()->after('addon_template_id');
             $table->timestamp('approved_at')->nullable()->after('approved_by_user_id');
             $table->text('approval_notes')->nullable()->after('approved_at');
             $table->json('metadata')->nullable()->after('approval_notes');
-            
+
             // Drop old columns that don't match the model
-            $table->dropColumn(['discount_percent', 'notes', 'billable']);
-            
+            $table->dropColumn(['discount_percent', 'notes']);
+
             // Add foreign key constraints
             $table->foreign('added_by_user_id')->references('id')->on('users')->onDelete('set null');
             $table->foreign('approved_by_user_id')->references('id')->on('users')->onDelete('set null');
             $table->foreign('addon_template_id')->references('id')->on('addon_templates')->onDelete('set null');
-            
+
             // Add indexes
             $table->index('added_by_user_id');
             $table->index('approved_by_user_id');
             $table->index('category');
             $table->index('billing_category');
-            $table->index('is_billable');
         });
     }
 
@@ -54,14 +51,14 @@ return new class extends Migration
             $table->dropForeign(['added_by_user_id']);
             $table->dropForeign(['approved_by_user_id']);
             $table->dropForeign(['addon_template_id']);
-            
+
             // Drop indexes
             $table->dropIndex(['added_by_user_id']);
             $table->dropIndex(['approved_by_user_id']);
             $table->dropIndex(['category']);
             $table->dropIndex(['billing_category']);
-            $table->dropIndex(['is_billable']);
-            
+            $table->dropIndex(['billable']);
+
             // Drop new columns
             $table->dropColumn([
                 'added_by_user_id',
@@ -69,7 +66,7 @@ return new class extends Migration
                 'sku',
                 'discount_amount',
                 'tax_rate',
-                'is_billable',
+                'billable',
                 'is_taxable',
                 'billing_category',
                 'addon_template_id',
@@ -78,7 +75,7 @@ return new class extends Migration
                 'approval_notes',
                 'metadata'
             ]);
-            
+
             // Add back old columns
             $table->decimal('discount_percent', 5, 2)->default(0);
             $table->text('notes')->nullable();

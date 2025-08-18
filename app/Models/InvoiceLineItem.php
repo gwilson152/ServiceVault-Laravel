@@ -23,7 +23,7 @@ class InvoiceLineItem extends Model
         'tax_rate',
         'tax_amount',
         'total_amount',
-        'is_billable',
+        'billable',
         'metadata',
     ];
 
@@ -34,7 +34,7 @@ class InvoiceLineItem extends Model
         'tax_rate' => 'decimal:4',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
-        'is_billable' => 'boolean',
+        'billable' => 'boolean',
         'metadata' => 'array',
     ];
 
@@ -93,6 +93,6 @@ class InvoiceLineItem extends Model
 
     public function scopeBillable($query)
     {
-        return $query->where('is_billable', true);
+        return $query->where('billable', true);
     }
 }

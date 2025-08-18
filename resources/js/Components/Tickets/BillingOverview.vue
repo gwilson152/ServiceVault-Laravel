@@ -99,9 +99,7 @@
                             Billable Hours
                         </p>
                         <p class="text-2xl font-bold text-purple-600">
-                            {{
-                                formatDuration(summary.is_billable_hours * 3600)
-                            }}
+                            {{ formatDuration(summary.billable_hours * 3600) }}
                         </p>
                     </div>
                     <div
@@ -308,7 +306,7 @@
                             <td
                                 class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600"
                             >
-                                ${{ entry.is_billable_amount || "0.00" }}
+                                ${{ entry.billable_amount || "0.00" }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span

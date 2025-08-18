@@ -23,7 +23,7 @@ class TicketStatus extends Model
         'is_active',
         'is_default',
         'is_closed',
-        'is_billable',
+        'billable',
         'sort_order',
         'metadata'
     ];
@@ -32,7 +32,7 @@ class TicketStatus extends Model
         'is_active' => 'boolean',
         'is_default' => 'boolean',
         'is_closed' => 'boolean',
-        'is_billable' => 'boolean',
+        'billable' => 'boolean',
         'metadata' => 'array'
     ];
 
@@ -135,7 +135,7 @@ class TicketStatus extends Model
     {
         $transitions = self::getWorkflowTransitions();
         $nextKeys = $transitions[$this->key] ?? [];
-        
+
         return self::whereIn('key', $nextKeys)
             ->active()
             ->ordered()

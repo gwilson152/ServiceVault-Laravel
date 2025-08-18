@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -24,15 +23,15 @@ return new class extends Migration
             $table->decimal('tax_rate', 5, 4)->default(0);
             $table->decimal('tax_amount', 10, 2)->default(0);
             $table->decimal('total_amount', 10, 2);
-            $table->boolean('is_billable')->default(true);
+            $table->boolean('billable')->default(true);
             $table->json('metadata')->nullable();
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('invoice_id')->references('id')->on('invoices')->onDelete('cascade');
             $table->foreign('time_entry_id')->references('id')->on('time_entries')->onDelete('set null');
             $table->foreign('ticket_addon_id')->references('id')->on('ticket_addons')->onDelete('set null');
-            
+
             // Indexes
             $table->index(['invoice_id', 'line_type']);
             $table->index('time_entry_id');

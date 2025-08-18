@@ -20,7 +20,7 @@ The Ticket Addon system allows users to add additional services, products, or ex
 │ - account_id    │       │ - category      │       │ - duration      │
 │ - status        │       │ - unit_price    │       │ - billable      │
 │ - priority      │       │ - quantity      │       │ - account_id    │
-│                 │       │ - is_billable   │       │                 │
+│                 │       │ - billable   │       │                 │
 │                 │       │ - is_taxable    │       │                 │
 └─────────────────┘       └─────────────────┘       └─────────────────┘
         │                          │                          │
@@ -47,17 +47,18 @@ The Ticket Addon system allows users to add additional services, products, or ex
 ### Model Configuration
 
 **TicketAddon Model:**
+
 ```php
 class TicketAddon extends Model
 {
     use HasFactory, HasUuid; // ✅ Fixed: Properly implements UUID trait
-    
+
     // Relationships
     public function ticket(): BelongsTo
     public function addedBy(): BelongsTo
     public function approvedBy(): BelongsTo
     public function template(): BelongsTo
-    
+
     // NO timeEntries relationship (addons are not directly related to time entries)
 }
 ```
@@ -65,51 +66,57 @@ class TicketAddon extends Model
 ### Database Schema
 
 **Standardized Billable Columns:**
-- All models use consistent `billable` column (not `is_billable`)
-- `time_entries.billable` - Boolean for billing time tracking
-- `ticket_addons.is_billable` - Boolean for addon billing (different naming for clarity)
+
+-   All models use consistent `billable` column (not `billable`)
+-   `time_entries.billable` - Boolean for billing time tracking
+-   `ticket_addons.billable` - Boolean for addon billing (different naming for clarity)
 
 ### Recent Fixes (August 18, 2025)
 
-1. **UUID Generation Issue**: 
-   - Problem: TicketAddon model was missing HasUuid trait implementation
-   - Solution: Added `HasUuid` trait to model class declaration
-   - Result: Proper UUID generation for all new addon records
+1. **UUID Generation Issue**:
+
+    - Problem: TicketAddon model was missing HasUuid trait implementation
+    - Solution: Added `HasUuid` trait to model class declaration
+    - Result: Proper UUID generation for all new addon records
 
 2. **Billable Column Standardization**:
-   - Problem: Inconsistent usage between `billable` and `is_billable` across codebase
-   - Solution: Standardized all Timer and TimeEntry models to use existing `billable` column
-   - Result: Consistent billable functionality across all time-related models
+
+    - Problem: Inconsistent usage between `billable` and `billable` across codebase
+    - Solution: Standardized all Timer and TimeEntry models to use existing `billable` column
+    - Result: Consistent billable functionality across all time-related models
 
 3. **Incorrect Relationship Removal**:
-   - Problem: TicketAddon model had incorrect `timeEntries()` relationship
-   - Solution: Removed relationship and updated controller/UI accordingly
-   - Result: Clean data model following proper relationship architecture
+    - Problem: TicketAddon model had incorrect `timeEntries()` relationship
+    - Solution: Removed relationship and updated controller/UI accordingly
+    - Result: Clean data model following proper relationship architecture
 
 ## UI Architecture
 
 ### StackedDialog Implementation
 
 **Components:**
-- `AddAddonModal.vue` - Create new addons with StackedDialog
-- `EditAddonModal.vue` - Edit pending addons with restrictions
-- `AddonApprovalModal.vue` - Approve/reject addon workflow
-- `TicketAddonManager.vue` - Main addon management interface
+
+-   `AddAddonModal.vue` - Create new addons with StackedDialog
+-   `EditAddonModal.vue` - Edit pending addons with restrictions
+-   `AddonApprovalModal.vue` - Approve/reject addon workflow
+-   `TicketAddonManager.vue` - Main addon management interface
 
 ### Category Alignment
 
 Addon categories are aligned with billing settings:
-- product
-- service  
-- license
-- hardware
-- software
-- expense
-- other
+
+-   product
+-   service
+-   license
+-   hardware
+-   software
+-   expense
+-   other
 
 ## API Endpoints
 
 ### Core Operations
+
 ```bash
 # Get addons for specific ticket
 GET /api/tickets/{id}/addons
@@ -122,7 +129,7 @@ POST /api/ticket-addons
     "category": "license",
     "unit_price": 12.50,
     "quantity": 1,
-    "is_billable": true,
+    "billable": true,
     "is_taxable": true,
     "billing_category": "addon"
 }
@@ -142,14 +149,15 @@ DELETE /api/ticket-addons/{id}
 
 ### Permissions
 
-- `tickets.view` - View ticket addons
-- `tickets.edit` - Create/edit addons  
-- `tickets.approve` - Approve/reject addons
-- `admin.write` - Full addon management
+-   `tickets.view` - View ticket addons
+-   `tickets.edit` - Create/edit addons
+-   `tickets.approve` - Approve/reject addons
+-   `admin.write` - Full addon management
 
 ## Business Logic
 
 ### Approval Workflow
+
 1. **Created** - Auto-approved by default (configurable)
 2. **Pending** - Awaiting manager approval (if enabled)
 3. **Approved** - Can be marked complete
@@ -157,10 +165,11 @@ DELETE /api/ticket-addons/{id}
 5. **Completed** - Final state
 
 ### Billing Integration
-- Approved addons contribute to ticket total cost
-- Integrates with two-tier billing rate system
-- Supports tax calculations and discounts
-- Tracks total amounts for financial reporting
+
+-   Approved addons contribute to ticket total cost
+-   Integrates with two-tier billing rate system
+-   Supports tax calculations and discounts
+-   Tracks total amounts for financial reporting
 
 ## Best Practices
 
@@ -184,17 +193,20 @@ DELETE /api/ticket-addons/{id}
 ### Common Issues
 
 **UUID Generation Errors:**
-- Ensure model uses `HasUuid` trait in class declaration
-- Check that `id` field is properly defined as UUID in migration
 
-**Billable Column Errors:**  
-- Use `billable` for time-related models (Timer, TimeEntry)
-- Use `is_billable` for addon models (TicketAddon)
-- Ensure database schema matches model expectations
+-   Ensure model uses `HasUuid` trait in class declaration
+-   Check that `id` field is properly defined as UUID in migration
+
+**Billable Column Errors:**
+
+-   Use `billable` for time-related models (Timer, TimeEntry)
+-   Use `billable` for addon models (TicketAddon)
+-   Ensure database schema matches model expectations
 
 **Relationship Errors:**
-- Addons belong to tickets, not time entries
-- Time entries belong to tickets, not addons  
-- Both can reference accounts independently
+
+-   Addons belong to tickets, not time entries
+-   Time entries belong to tickets, not addons
+-   Both can reference accounts independently
 
 This documentation reflects the current state after the August 18, 2025 fixes and should be referenced for all future addon-related development.

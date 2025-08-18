@@ -54,7 +54,7 @@ export function useTimeEntriesQuery() {
             queryKey: computed(() =>
                 queryKeys.timeEntries.list({
                     status: optionsRef.status,
-                    billable: optionsRef.is_billable,
+                    billable: optionsRef.billable,
                     date_from: optionsRef.date_from,
                     date_to: optionsRef.date_to,
                     page: optionsRef.page || 1,

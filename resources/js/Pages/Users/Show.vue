@@ -1409,7 +1409,7 @@
                                                         }}
                                                         <div
                                                             v-if="
-                                                                entry.is_billable
+                                                                entry.billable
                                                             "
                                                             class="text-xs text-green-600"
                                                         >

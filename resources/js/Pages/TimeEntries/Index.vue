@@ -262,7 +262,7 @@
                                 >Billable</label
                             >
                             <select
-                                v-model="filters.is_billable"
+                                v-model="filters.billable"
                                 class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                             >
                                 <option value="">All Entries</option>
@@ -393,7 +393,7 @@
                                             {{ entry.status }}
                                         </span>
                                         <span
-                                            v-if="entry.is_billable"
+                                            v-if="entry.billable"
                                             class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                                         >
                                             Billable

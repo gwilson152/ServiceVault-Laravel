@@ -62,7 +62,7 @@ class AddonTemplateController extends Controller
             'default_quantity' => 'required|numeric|min:0.01|max:99999.99',
             'allow_quantity_override' => 'boolean',
             'allow_price_override' => 'boolean',
-            'is_billable' => 'boolean',
+            'billable' => 'boolean',
             'is_taxable' => 'boolean',
             'billing_category' => 'required|string|in:addon,expense,product,service',
             'default_tax_rate' => 'nullable|numeric|min:0|max:1',
@@ -74,7 +74,7 @@ class AddonTemplateController extends Controller
         // Set defaults
         $validated['allow_quantity_override'] = $validated['allow_quantity_override'] ?? true;
         $validated['allow_price_override'] = $validated['allow_price_override'] ?? false;
-        $validated['is_billable'] = $validated['is_billable'] ?? true;
+        $validated['billable'] = $validated['billable'] ?? true;
         $validated['is_taxable'] = $validated['is_taxable'] ?? true;
         $validated['is_active'] = $validated['is_active'] ?? true;
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
@@ -121,7 +121,7 @@ class AddonTemplateController extends Controller
             'default_quantity' => 'sometimes|numeric|min:0.01|max:99999.99',
             'allow_quantity_override' => 'boolean',
             'allow_price_override' => 'boolean',
-            'is_billable' => 'boolean',
+            'billable' => 'boolean',
             'is_taxable' => 'boolean',
             'billing_category' => 'sometimes|string|in:addon,expense,product,service',
             'default_tax_rate' => 'nullable|numeric|min:0|max:1',

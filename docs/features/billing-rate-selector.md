@@ -286,7 +286,7 @@ const loadBillingRatesForAccount = async (accountId) => {
 
 // Handle rate selection with billing calculation
 const handleRateSelected = (rate) => {
-    if (rate && form.value.is_billable) {
+    if (rate && form.value.billable) {
         calculateBillingAmount();
     }
 };

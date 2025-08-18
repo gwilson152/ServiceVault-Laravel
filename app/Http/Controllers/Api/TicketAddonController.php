@@ -76,7 +76,7 @@ class TicketAddonController extends Controller
             'quantity' => 'required|numeric|min:0.01|max:99999.99',
             'discount_amount' => 'nullable|numeric|min:0|max:999999.99',
             'tax_rate' => 'nullable|numeric|min:0|max:1',
-            'is_billable' => 'boolean',
+            'billable' => 'boolean',
             'is_taxable' => 'boolean',
             'billing_category' => 'required|string|in:addon,expense,product,service',
             'addon_template_id' => 'nullable|exists:addon_templates,id',
@@ -93,7 +93,7 @@ class TicketAddonController extends Controller
         // Set defaults
         $validated['discount_amount'] = $validated['discount_amount'] ?? 0.00;
         $validated['tax_rate'] = $validated['tax_rate'] ?? 0.0000;
-        $validated['is_billable'] = $validated['is_billable'] ?? true;
+        $validated['billable'] = $validated['billable'] ?? true;
         $validated['is_taxable'] = $validated['is_taxable'] ?? true;
 
         // Auto-approve addons - no approval workflow needed
@@ -153,7 +153,7 @@ class TicketAddonController extends Controller
             'quantity' => 'sometimes|numeric|min:0.01|max:99999.99',
             'discount_amount' => 'nullable|numeric|min:0|max:999999.99',
             'tax_rate' => 'nullable|numeric|min:0|max:1',
-            'is_billable' => 'boolean',
+            'billable' => 'boolean',
             'is_taxable' => 'boolean',
             'billing_category' => 'sometimes|string|in:addon,expense,product,service',
             'metadata' => 'nullable|array'

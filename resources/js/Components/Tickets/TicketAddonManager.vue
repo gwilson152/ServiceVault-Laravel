@@ -116,7 +116,7 @@
                                 {{ formatStatus(addon.status) }}
                             </span>
                             <span
-                                v-if="addon.is_billable"
+                                v-if="addon.billable"
                                 class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium"
                             >
                                 Billable
@@ -244,12 +244,12 @@
                         <p
                             class="mt-1 text-sm"
                             :class="
-                                addon.is_billable
+                                addon.billable
                                     ? 'text-green-600'
                                     : 'text-red-600'
                             "
                         >
-                            {{ addon.is_billable ? "Yes" : "No" }}
+                            {{ addon.billable ? "Yes" : "No" }}
                         </p>
                     </div>
                     <div v-if="addon.is_taxable">
@@ -316,7 +316,6 @@
                         ></div>
                     </div>
                 </div>
-
             </div>
         </div>
 

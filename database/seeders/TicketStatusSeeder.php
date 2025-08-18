@@ -24,7 +24,7 @@ class TicketStatusSeeder extends Seeder
                 'is_active' => true,
                 'is_default' => true,
                 'is_closed' => false,
-                'is_billable' => true,
+                'billable' => true,
                 'sort_order' => 1
             ],
             [
@@ -37,7 +37,7 @@ class TicketStatusSeeder extends Seeder
                 'is_active' => true,
                 'is_default' => false,
                 'is_closed' => false,
-                'is_billable' => true,
+                'billable' => true,
                 'sort_order' => 2
             ],
             [
@@ -50,7 +50,7 @@ class TicketStatusSeeder extends Seeder
                 'is_active' => true,
                 'is_default' => false,
                 'is_closed' => false,
-                'is_billable' => false,
+                'billable' => false,
                 'sort_order' => 3
             ],
             [
@@ -63,7 +63,7 @@ class TicketStatusSeeder extends Seeder
                 'is_active' => true,
                 'is_default' => false,
                 'is_closed' => false,
-                'is_billable' => false,
+                'billable' => false,
                 'sort_order' => 4
             ],
             [
@@ -76,7 +76,7 @@ class TicketStatusSeeder extends Seeder
                 'is_active' => true,
                 'is_default' => false,
                 'is_closed' => false,
-                'is_billable' => true,
+                'billable' => true,
                 'sort_order' => 5
             ],
             [
@@ -89,7 +89,7 @@ class TicketStatusSeeder extends Seeder
                 'is_active' => true,
                 'is_default' => false,
                 'is_closed' => true,
-                'is_billable' => false,
+                'billable' => false,
                 'sort_order' => 6
             ],
             [
@@ -102,14 +102,14 @@ class TicketStatusSeeder extends Seeder
                 'is_active' => true,
                 'is_default' => false,
                 'is_closed' => true,
-                'is_billable' => false,
+                'billable' => false,
                 'sort_order' => 7
             ]
         ];
 
         foreach ($statuses as $statusData) {
             TicketStatus::updateOrCreate(
-                ['key' => $statusData['key']], 
+                ['key' => $statusData['key']],
                 $statusData
             );
         }

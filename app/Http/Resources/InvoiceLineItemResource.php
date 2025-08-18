@@ -24,9 +24,9 @@ class InvoiceLineItemResource extends JsonResource
             'tax_rate' => $this->tax_rate,
             'tax_amount' => number_format($this->tax_amount, 2),
             'total_amount' => number_format($this->total_amount, 2),
-            'is_billable' => $this->is_billable,
+            'billable' => $this->billable,
             'metadata' => $this->metadata,
-            
+
             // Relationships
             'time_entry' => $this->whenLoaded('timeEntry', function () {
                 return [
@@ -35,7 +35,7 @@ class InvoiceLineItemResource extends JsonResource
                     'duration_formatted' => $this->timeEntry->duration_formatted,
                 ];
             }),
-            
+
             'ticket_addon' => $this->whenLoaded('ticketAddon', function () {
                 return [
                     'id' => $this->ticketAddon->id,

@@ -182,7 +182,7 @@
                                 </div>
                             </div>
                             <div class="text-sm font-medium text-green-600">
-                                ${{ entry.is_billable_amount || "0.00" }}
+                                ${{ entry.billable_amount || "0.00" }}
                             </div>
                         </div>
                     </div>
@@ -457,7 +457,7 @@ const allAddonsSelected = computed(() => {
 const totalAmount = computed(() => {
     const timeTotal = props.unbilledEntries.reduce((sum, entry) => {
         return form.value.selected_time_entries.includes(entry.id)
-            ? sum + parseFloat(entry.is_billable_amount || 0)
+            ? sum + parseFloat(entry.billable_amount || 0)
             : sum;
     }, 0);
 

@@ -260,9 +260,7 @@
                                     v-if="entry.break_duration"
                                     class="text-xs text-gray-500"
                                 >
-                                    -{{
-                                        formatDuration(entry.break_duration)
-                                    }}
+                                    -{{ formatDuration(entry.break_duration) }}
                                     break
                                 </div>
                             </td>
@@ -285,12 +283,10 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
                                     <span
-                                        v-if="entry.is_billable"
+                                        v-if="entry.billable"
                                         class="text-green-600 text-sm"
                                     >
-                                        ${{
-                                            entry.is_billable_amount || "0.00"
-                                        }}
+                                        ${{ entry.billable_amount || "0.00" }}
                                     </span>
                                     <span v-else class="text-gray-400 text-sm">
                                         Non-billable
@@ -380,7 +376,7 @@
                 </div>
                 <div class="text-center">
                     <div class="text-2xl font-bold text-green-600">
-                        {{ formatDuration(summary.is_billable_time) }}
+                        {{ formatDuration(summary.billable_time) }}
                     </div>
                     <div class="text-sm text-gray-600">Billable</div>
                 </div>

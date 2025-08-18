@@ -8,17 +8,18 @@ The billing system is built as an integrated component of the Service Vault plat
 
 ### Architecture Principles
 
-- **Integration-First Design**: Seamlessly integrates with timers, tickets, and account management
-- **Permission-Based Security**: Three-dimensional permission system for fine-grained access control
-- **Account-Aware Operations**: Hierarchical account structure with inherited billing configurations
-- **Real-Time Processing**: Live updates and synchronization across all billing operations
-- **Scalable Design**: Optimized for high-volume billing operations with efficient database queries
+-   **Integration-First Design**: Seamlessly integrates with timers, tickets, and account management
+-   **Permission-Based Security**: Three-dimensional permission system for fine-grained access control
+-   **Account-Aware Operations**: Hierarchical account structure with inherited billing configurations
+-   **Real-Time Processing**: Live updates and synchronization across all billing operations
+-   **Scalable Design**: Optimized for high-volume billing operations with efficient database queries
 
 ## Database Architecture
 
 ### Core Tables
 
 #### invoices
+
 ```sql
 CREATE TABLE invoices (
     id UUID PRIMARY KEY,
@@ -42,6 +43,7 @@ CREATE TYPE invoice_status AS ENUM (
 ```
 
 #### payments
+
 ```sql
 CREATE TABLE payments (
     id UUID PRIMARY KEY,
@@ -68,6 +70,7 @@ CREATE TYPE payment_status AS ENUM (
 ```
 
 #### billing_rates
+
 ```sql
 CREATE TABLE billing_rates (
     id UUID PRIMARY KEY,
@@ -84,6 +87,7 @@ CREATE TABLE billing_rates (
 ```
 
 #### addon_templates
+
 ```sql
 CREATE TABLE addon_templates (
     id UUID PRIMARY KEY,
@@ -93,7 +97,7 @@ CREATE TABLE addon_templates (
     sku VARCHAR(100),
     default_unit_price DECIMAL(10,2) NOT NULL,
     default_quantity INTEGER DEFAULT 1,
-    is_billable BOOLEAN DEFAULT true,
+    billable BOOLEAN DEFAULT true,
     is_taxable BOOLEAN DEFAULT true,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP,
@@ -158,7 +162,7 @@ class Invoice extends Model
 
     public function getIsOverdueAttribute(): bool
     {
-        return $this->status === 'overdue' || 
+        return $this->status === 'overdue' ||
                ($this->status === 'sent' && $this->due_date < now());
     }
 
@@ -242,7 +246,7 @@ class BillingRate extends Model
     public function timers() { return $this->hasMany(Timer::class, 'billing_rate_id'); }
 
     // Scopes
-    public function scopeActive($query) 
+    public function scopeActive($query)
     {
         return $query->where('is_active', true)
                     ->where('effective_date', '<=', now());
@@ -283,7 +287,7 @@ class InvoiceController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         // Permission check with three-dimensional system
         if (!$user->hasAnyPermission(['admin.read', 'billing.admin', 'invoices.view.all'])) {
             abort(403, 'Insufficient permissions');
@@ -305,7 +309,7 @@ class InvoiceController extends Controller
     public function store(StoreInvoiceRequest $request)
     {
         $user = $request->user();
-        
+
         if (!$user->hasAnyPermission(['admin.write', 'billing.admin', 'invoices.create'])) {
             abort(403, 'Insufficient permissions');
         }
@@ -341,7 +345,7 @@ class InvoiceController extends Controller
             ->orderBy('invoice_number', 'desc')
             ->first();
 
-        $nextNumber = $lastInvoice 
+        $nextNumber = $lastInvoice
             ? intval(substr($lastInvoice->invoice_number, strlen($prefix))) + 1
             : 1;
 
@@ -393,7 +397,7 @@ class BillingService
             foreach ($groupedEntries as $rateId => $entries) {
                 $totalHours = $entries->sum('duration_hours');
                 $rate = $entries->first()->timer->billingRate;
-                
+
                 $invoice->lineItems()->create([
                     'description' => "Professional Services - {$rate->name}",
                     'quantity' => $totalHours,
@@ -452,7 +456,7 @@ class BillingService
                   ->whereNull('account_id');
             })
             ->orderByRaw('
-                CASE 
+                CASE
                     WHEN user_id IS NOT NULL AND account_id IS NOT NULL THEN 1
                     WHEN user_id IS NOT NULL AND account_id IS NULL THEN 2
                     WHEN user_id IS NULL AND account_id IS NOT NULL THEN 3
@@ -471,6 +475,7 @@ class BillingService
 The billing system includes four specialized dashboard widgets with permission-based filtering:
 
 #### Widget Registry Configuration
+
 ```php
 // In WidgetRegistryService.php
 'billing-overview' => [
@@ -507,51 +512,54 @@ The billing system includes four specialized dashboard widgets with permission-b
 ```
 
 #### Widget Component Architecture
+
 ```vue
 <!-- BillingOverviewWidget.vue -->
 <template>
-  <div class="widget-content">
-    <div class="widget-header">
-      <h3 class="widget-title">{{ widgetConfig?.name || 'Billing Overview' }}</h3>
-      <button @click="refreshData" :disabled="isLoading">
-        <RefreshIcon :class="{ 'animate-spin': isLoading }" />
-      </button>
+    <div class="widget-content">
+        <div class="widget-header">
+            <h3 class="widget-title">
+                {{ widgetConfig?.name || "Billing Overview" }}
+            </h3>
+            <button @click="refreshData" :disabled="isLoading">
+                <RefreshIcon :class="{ 'animate-spin': isLoading }" />
+            </button>
+        </div>
+
+        <div class="widget-data">
+            <div class="grid grid-cols-2 gap-4">
+                <MetricCard
+                    :value="totalRevenue"
+                    label="Total Revenue"
+                    format="currency"
+                />
+                <MetricCard
+                    :value="pendingInvoices"
+                    label="Pending Invoices"
+                    format="number"
+                />
+            </div>
+        </div>
     </div>
-    
-    <div class="widget-data">
-      <div class="grid grid-cols-2 gap-4">
-        <MetricCard 
-          :value="totalRevenue" 
-          label="Total Revenue" 
-          format="currency" 
-        />
-        <MetricCard 
-          :value="pendingInvoices" 
-          label="Pending Invoices" 
-          format="number" 
-        />
-      </div>
-    </div>
-  </div>
 </template>
 
 <script setup>
 const props = defineProps({
-  widgetData: Object,
-  widgetConfig: Object,
-  accountContext: Object
-})
+    widgetData: Object,
+    widgetConfig: Object,
+    accountContext: Object,
+});
 
 const refreshData = async () => {
-  const params = new URLSearchParams()
-  if (props.accountContext?.id) {
-    params.append('account_id', props.accountContext.id)
-  }
-  
-  const response = await fetch(`/api/billing/overview?${params}`)
-  const data = await response.json()
-  // Update widget data...
-}
+    const params = new URLSearchParams();
+    if (props.accountContext?.id) {
+        params.append("account_id", props.accountContext.id);
+    }
+
+    const response = await fetch(`/api/billing/overview?${params}`);
+    const data = await response.json();
+    // Update widget data...
+};
 </script>
 ```
 
@@ -562,21 +570,22 @@ const refreshData = async () => {
 The billing system fully integrates with Service Vault's three-dimensional permission system:
 
 #### 1. Functional Permissions (Business Logic)
+
 ```php
 // Example: Invoice creation check
 public function store(StoreInvoiceRequest $request)
 {
     $user = $request->user();
-    
+
     // Check functional permission
     if (!$user->hasAnyPermission([
         'invoices.create',
-        'invoices.edit.account', 
+        'invoices.edit.account',
         'billing.admin'
     ])) {
         abort(403, 'Cannot create invoices');
     }
-    
+
     // Additional account-scoped validation
     if (!$user->hasPermissionForAccount('invoices.create', $request->account)) {
         abort(403, 'Cannot create invoices for this account');
@@ -585,16 +594,18 @@ public function store(StoreInvoiceRequest $request)
 ```
 
 #### 2. Widget Permissions (Dashboard Access)
+
 ```php
 // Widget filtering in dashboard
 $availableWidgets = $widgetRegistry->getAvailableWidgets($user);
 $billingWidgets = array_filter($availableWidgets, function ($widget) use ($user) {
-    return $widget['category'] === 'financial' && 
+    return $widget['category'] === 'financial' &&
            $user->hasAnyPermission($widget['permissions']);
 });
 ```
 
 #### 3. Page Permissions (Route Access)
+
 ```php
 // Navigation filtering
 $navigationItems = $navigationService->getNavigationForUser($user);
@@ -610,6 +621,7 @@ $billingAccess = $user->hasAnyPermission([
 ### Database Optimizations
 
 #### Indexed Queries
+
 ```sql
 -- Primary indexes for billing queries
 CREATE INDEX idx_invoices_account_status ON invoices (account_id, status);
@@ -619,6 +631,7 @@ CREATE INDEX idx_invoices_due_date_status ON invoices (due_date, status);
 ```
 
 #### Query Optimization
+
 ```php
 // Optimized invoice queries with eager loading
 $invoices = Invoice::with([
@@ -640,35 +653,36 @@ $billingRate = Cache::remember(
 ### Frontend Optimizations
 
 #### TanStack Table Integration
+
 ```vue
 <!-- Optimized table with virtual scrolling -->
 <script setup>
-import { useVueTable, createColumnHelper } from '@tanstack/vue-table'
+import { useVueTable, createColumnHelper } from "@tanstack/vue-table";
 
-const columnHelper = createColumnHelper()
+const columnHelper = createColumnHelper();
 
 const columns = [
-  columnHelper.accessor('invoice_number', {
-    header: 'Invoice #',
-    cell: info => info.getValue()
-  }),
-  columnHelper.accessor('total_amount', {
-    header: 'Amount',
-    cell: info => formatCurrency(info.getValue())
-  }),
-  columnHelper.accessor('status', {
-    header: 'Status',
-    cell: info => h(StatusBadge, { status: info.getValue() })
-  })
-]
+    columnHelper.accessor("invoice_number", {
+        header: "Invoice #",
+        cell: (info) => info.getValue(),
+    }),
+    columnHelper.accessor("total_amount", {
+        header: "Amount",
+        cell: (info) => formatCurrency(info.getValue()),
+    }),
+    columnHelper.accessor("status", {
+        header: "Status",
+        cell: (info) => h(StatusBadge, { status: info.getValue() }),
+    }),
+];
 
 const table = useVueTable({
-  data: invoices,
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel()
-})
+    data: invoices,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+});
 </script>
 ```
 
@@ -677,6 +691,7 @@ const table = useVueTable({
 ### RESTful API Design
 
 #### Resource Structure
+
 ```
 /api/billing/
 ├── invoices/           # Invoice management
@@ -688,37 +703,39 @@ const table = useVueTable({
 ```
 
 #### Response Format
+
 ```json
 {
-  "data": {
-    "id": "uuid",
-    "invoice_number": "INV-000001",
-    "account": {
-      "id": "uuid",
-      "name": "Acme Corp"
+    "data": {
+        "id": "uuid",
+        "invoice_number": "INV-000001",
+        "account": {
+            "id": "uuid",
+            "name": "Acme Corp"
+        },
+        "total_amount": "1250.00",
+        "status": "sent",
+        "line_items": [
+            {
+                "description": "Professional Services",
+                "quantity": 10.5,
+                "unit_price": "125.00",
+                "line_total": "1312.50"
+            }
+        ]
     },
-    "total_amount": "1250.00",
-    "status": "sent",
-    "line_items": [
-      {
-        "description": "Professional Services",
-        "quantity": 10.5,
-        "unit_price": "125.00",
-        "line_total": "1312.50"
-      }
-    ]
-  },
-  "meta": {
-    "current_page": 1,
-    "per_page": 15,
-    "total": 45
-  }
+    "meta": {
+        "current_page": 1,
+        "per_page": 15,
+        "total": 45
+    }
 }
 ```
 
 ### API Authentication
 
 #### Token Abilities
+
 ```php
 // Billing-specific token abilities
 'billing:read'          // View billing data
@@ -737,6 +754,7 @@ const table = useVueTable({
 ### Access Control
 
 #### Permission Validation
+
 ```php
 class BillingPolicy
 {
@@ -758,7 +776,7 @@ class BillingPolicy
 
         // Account-based permission check
         return $user->hasPermissionForAccount(
-            'billing.view.account', 
+            'billing.view.account',
             $invoice->account
         );
     }
@@ -774,6 +792,7 @@ class BillingPolicy
 ```
 
 #### Data Isolation
+
 ```php
 // Account-scoped queries for security
 public function scopeForUser($query, User $user)
@@ -783,7 +802,7 @@ public function scopeForUser($query, User $user)
     }
 
     $accessibleAccountIds = $user->getAccessibleAccountIds('billing.view.account');
-    
+
     return $query->whereIn('account_id', $accessibleAccountIds);
 }
 ```
@@ -791,6 +810,7 @@ public function scopeForUser($query, User $user)
 ### Audit Logging
 
 #### Financial Operation Logging
+
 ```php
 class BillingAuditService
 {
@@ -829,21 +849,22 @@ class BillingAuditService
 ### Timer System Integration
 
 #### Automatic Rate Assignment
+
 ```php
 class TimerService
 {
     public function startTimer(array $data): Timer
     {
         $timer = Timer::create($data);
-        
+
         // Automatically assign billing rate
         $billingRate = app(BillingService::class)
             ->getBillingRateForTimer($timer);
-            
+
         if ($billingRate) {
             $timer->update(['billing_rate_id' => $billingRate->id]);
         }
-        
+
         return $timer;
     }
 
@@ -856,8 +877,8 @@ class TimerService
                 'account_id' => $timer->account_id,
                 'duration_hours' => $timer->duration_hours,
                 'billing_rate_id' => $timer->billing_rate_id,
-                'billable_amount' => $timer->billing_rate 
-                    ? $timer->duration_hours * $timer->billing_rate->rate 
+                'billable_amount' => $timer->billing_rate
+                    ? $timer->duration_hours * $timer->billing_rate->rate
                     : null
             ]);
 
@@ -872,6 +893,7 @@ class TimerService
 ### Service Ticket Integration
 
 #### Addon Billing
+
 ```php
 class TicketService
 {
@@ -898,6 +920,7 @@ class TicketService
 ## Deployment Considerations
 
 ### Environment Configuration
+
 ```bash
 # .env billing configuration
 BILLING_CURRENCY=USD
@@ -909,13 +932,14 @@ BILLING_RATE_CACHE_TTL=300
 ```
 
 ### Production Optimizations
-- **Database Connection Pooling**: For high-volume billing operations
-- **Redis Caching**: Cache billing rates and frequently accessed data
-- **Queue Processing**: Background invoice generation and email sending
-- **File Storage**: Optimized PDF generation and storage for invoices
+
+-   **Database Connection Pooling**: For high-volume billing operations
+-   **Redis Caching**: Cache billing rates and frequently accessed data
+-   **Queue Processing**: Background invoice generation and email sending
+-   **File Storage**: Optimized PDF generation and storage for invoices
 
 ---
 
 **Service Vault Billing System Architecture** - Enterprise-grade financial management system architecture for B2B service platforms.
 
-*Last Updated: August 12, 2025 - Phase 13B Complete*
+_Last Updated: August 12, 2025 - Phase 13B Complete_

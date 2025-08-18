@@ -275,7 +275,7 @@
                             <div class="flex items-center">
                                 <input
                                     id="billable"
-                                    v-model="form.is_billable"
+                                    v-model="form.billable"
                                     type="checkbox"
                                     class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                 />
@@ -288,7 +288,7 @@
                             </div>
 
                             <!-- Billing Amount (if billable and rate selected) -->
-                            <div v-if="form.is_billable && selectedBillingRate">
+                            <div v-if="form.billable && selectedBillingRate">
                                 <label
                                     class="block text-sm font-medium text-gray-700 mb-1"
                                 >
@@ -589,7 +589,7 @@ const selectedBillingRate = computed(() => {
 });
 
 const totalBillingAmount = computed(() => {
-    return form.value.is_billable ? form.value.billingAmount : 0;
+    return form.value.billable ? form.value.billingAmount : 0;
 });
 
 const durationValidationErrors = computed(() => {
@@ -779,7 +779,7 @@ const handleAgentSelected = (agent) => {
 
 const calculateBillingAmount = () => {
     if (
-        form.value.is_billable &&
+        form.value.billable &&
         selectedBillingRate.value &&
         totalDurationSeconds.value > 0
     ) {
@@ -810,7 +810,7 @@ const submitTimeEntry = async () => {
             ticket_id: form.value.ticketId,
             user_id: form.value.userId || user.value.id,
             billing_rate_id: form.value.billingRateId || null,
-            billable: form.value.is_billable,
+            billable: form.value.billable,
             billed_amount: form.value.billingAmount,
             duration: duration,
             started_at: `${form.value.date} ${form.value.startTime}:00`,
@@ -1002,7 +1002,7 @@ const initializeForm = async () => {
         form.value.ticketId = props.timeEntry.ticket_id;
         form.value.userId = props.timeEntry.user_id;
         form.value.billingRateId = props.timeEntry.billing_rate_id;
-        form.value.is_billable = props.timeEntry.is_billable;
+        form.value.billable = props.timeEntry.billable;
         form.value.billingAmount = props.timeEntry.billed_amount || 0;
         form.value.notes = props.timeEntry.notes || "";
 
@@ -1049,7 +1049,7 @@ watch(
 );
 
 watch(
-    () => form.value.is_billable,
+    () => form.value.billable,
     () => {
         calculateBillingAmount();
     }

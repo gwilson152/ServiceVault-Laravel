@@ -25,7 +25,7 @@ class TicketAddon extends Model
         'discount_amount',
         'tax_rate',
         'total_amount',
-        'is_billable',
+        'billable',
         'is_taxable',
         'billing_category',
         'addon_template_id',
@@ -42,7 +42,7 @@ class TicketAddon extends Model
         'discount_amount' => 'decimal:2',
         'tax_rate' => 'decimal:4',
         'total_amount' => 'decimal:2',
-        'is_billable' => 'boolean',
+        'billable' => 'boolean',
         'is_taxable' => 'boolean',
         'approved_at' => 'datetime',
         'metadata' => 'array'
@@ -50,7 +50,7 @@ class TicketAddon extends Model
 
     protected $attributes = [
         'status' => 'approved',
-        'is_billable' => true,
+        'billable' => true,
         'is_taxable' => true,
         'quantity' => 1,
         'discount_amount' => 0,
@@ -77,12 +77,12 @@ class TicketAddon extends Model
     {
         $subtotal = $this->unit_price * $this->quantity;
         $afterDiscount = $subtotal - $this->discount_amount;
-        
+
         $taxAmount = 0;
         if ($this->is_taxable && $this->tax_rate > 0) {
             $taxAmount = $afterDiscount * $this->tax_rate;
         }
-        
+
         $this->total_amount = $afterDiscount + $taxAmount;
     }
 
@@ -123,7 +123,7 @@ class TicketAddon extends Model
      */
     public function scopeBillable($query)
     {
-        return $query->where('is_billable', true);
+        return $query->where('billable', true);
     }
 
     /**
@@ -198,7 +198,7 @@ class TicketAddon extends Model
     protected function formattedTotal(): Attribute
     {
         return Attribute::make(
-            get: fn () => '$' . number_format($this->total_amount, 2)
+            get: fn() => '$' . number_format($this->total_amount, 2)
         );
     }
 
@@ -208,7 +208,7 @@ class TicketAddon extends Model
     protected function formattedUnitPrice(): Attribute
     {
         return Attribute::make(
-            get: fn () => '$' . number_format($this->unit_price, 2)
+            get: fn() => '$' . number_format($this->unit_price, 2)
         );
     }
 }

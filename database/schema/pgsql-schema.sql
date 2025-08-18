@@ -27,8 +27,8 @@ CREATE FUNCTION public.check_time_entry_ticket_account_consistency() RETURNS tri
                 -- If ticket_id is provided, ensure it belongs to the same account
                 IF NEW.ticket_id IS NOT NULL THEN
                     IF NOT EXISTS (
-                        SELECT 1 FROM tickets 
-                        WHERE tickets.id = NEW.ticket_id 
+                        SELECT 1 FROM tickets
+                        WHERE tickets.id = NEW.ticket_id
                         AND tickets.account_id = NEW.account_id
                     ) THEN
                         RAISE EXCEPTION 'Time entry ticket must belong to the same account as the time entry';
@@ -304,7 +304,7 @@ CREATE TABLE public.invoice_line_items (
     tax_rate numeric(5,4) DEFAULT '0'::numeric NOT NULL,
     tax_amount numeric(10,2) DEFAULT '0'::numeric NOT NULL,
     total_amount numeric(10,2) NOT NULL,
-    is_billable boolean DEFAULT true NOT NULL,
+    billable boolean DEFAULT true NOT NULL,
     metadata json,
     created_at timestamp(0) without time zone,
     updated_at timestamp(0) without time zone
@@ -757,7 +757,7 @@ CREATE TABLE public.ticket_statuses (
     is_active boolean DEFAULT true NOT NULL,
     is_closed boolean DEFAULT false NOT NULL,
     is_default boolean DEFAULT false NOT NULL,
-    is_billable boolean DEFAULT true NOT NULL,
+    billable boolean DEFAULT true NOT NULL,
     sort_order integer DEFAULT 0 NOT NULL,
     created_at timestamp(0) without time zone,
     updated_at timestamp(0) without time zone

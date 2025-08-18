@@ -238,12 +238,11 @@
                                             }}</span
                                         >
                                         <span
-                                            v-if="activity.details.is_billable"
+                                            v-if="activity.details.billable"
                                             class="text-green-600 text-xs"
                                         >
                                             Billable: ${{
-                                                activity.details
-                                                    .is_billable_amount
+                                                activity.details.billable_amount
                                             }}
                                         </span>
                                     </div>

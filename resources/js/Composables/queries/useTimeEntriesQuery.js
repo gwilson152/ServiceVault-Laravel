@@ -12,7 +12,7 @@ export function useTimeEntriesQuery() {
             queryKey: computed(() =>
                 queryKeys.timeEntries.list({
                     status: optionsRef.status,
-                    billable: optionsRef.is_billable,
+                    billable: optionsRef.billable,
                     date_from: optionsRef.date_from,
                     date_to: optionsRef.date_to,
                     page: optionsRef.page || 1,
@@ -23,8 +23,8 @@ export function useTimeEntriesQuery() {
                 const params = new URLSearchParams();
                 if (optionsRef.status)
                     params.append("status", optionsRef.status);
-                if (optionsRef.is_billable)
-                    params.append("billable", optionsRef.is_billable);
+                if (optionsRef.billable)
+                    params.append("billable", optionsRef.billable);
                 if (optionsRef.date_from)
                     params.append("date_from", optionsRef.date_from);
                 if (optionsRef.date_to)
