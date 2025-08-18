@@ -12,7 +12,6 @@ class PermissionService
 {
     /**
      * Check if a user has a specific permission for an account.
-     * Implements hierarchical permission inheritance through account relationships.
      */
     public function hasPermissionForAccount(User $user, string $permission, Account $account): bool
     {
@@ -22,14 +21,7 @@ class PermissionService
         // Cache permissions for 5 minutes as per original design
         return Cache::remember($cacheKey, 300, function () use ($user, $permission, $account) {
             // Check direct permissions for this account
-            if ($this->hasDirectPermission($user, $permission, $account)) {
-                return true;
-            }
-
-            // Check inherited permissions from parent accounts
-            return $account->ancestors()->contains(function ($parentAccount) use ($user, $permission) {
-                return $this->hasDirectPermission($user, $permission, $parentAccount);
-            });
+            return $this->hasDirectPermission($user, $permission, $account);
         });
     }
 
@@ -59,7 +51,7 @@ class PermissionService
     }
 
     /**
-     * Get all permissions a user has for an account (including inherited).
+     * Get all permissions a user has for an account.
      */
     public function getUserPermissionsForAccount(User $user, Account $account): array
     {
@@ -72,14 +64,6 @@ class PermissionService
             $roleTemplates = $this->getUserRoleTemplatesForAccount($user, $account);
             foreach ($roleTemplates as $roleTemplate) {
                 $permissions = array_merge($permissions, $roleTemplate->permissions ?? []);
-            }
-
-            // Get inherited permissions from parent accounts
-            foreach ($account->ancestors() as $parentAccount) {
-                $parentRoleTemplates = $this->getUserRoleTemplatesForAccount($user, $parentAccount);
-                foreach ($parentRoleTemplates as $roleTemplate) {
-                    $permissions = array_merge($permissions, $roleTemplate->permissions ?? []);
-                }
             }
 
             return array_unique($permissions);

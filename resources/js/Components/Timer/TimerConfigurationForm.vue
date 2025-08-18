@@ -33,7 +33,6 @@
         :label="showLabels ? 'Account' : null"
         :placeholder="accountPlaceholder"
         :required="false"
-        :hierarchical="true"
         :error="errors.accountId"
         @item-selected="handleAccountSelected"
       />

@@ -55,7 +55,6 @@
               placeholder="Select account (optional for general timers)"
               :error="errors.accountId"
               :can-create="true"
-              :hierarchical="true"
               :nested="true"
               @item-selected="handleAccountSelected"
             />

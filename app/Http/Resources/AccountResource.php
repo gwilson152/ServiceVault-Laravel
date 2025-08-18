@@ -22,7 +22,6 @@ class AccountResource extends JsonResource
             'account_type' => $this->account_type,
             'account_type_display' => $this->account_type_display,
             'description' => $this->description,
-            'parent_id' => $this->parent_id,
             'is_active' => $this->is_active,
             'status' => $this->is_active ? 'active' : 'inactive',
             
@@ -52,11 +51,7 @@ class AccountResource extends JsonResource
             'tax_id' => $this->tax_id,
             'notes' => $this->notes,
             
-            // Hierarchy Information
-            'hierarchy_level' => $this->hierarchy_level,
-            'has_parent' => !is_null($this->parent_id),
-            'has_children' => $this->children()->count() > 0,
-            'children_count' => $this->children()->count(),
+            // Account Information
             'users_count' => $this->users()->count(),
             
             // System Information
@@ -65,9 +60,6 @@ class AccountResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             
-            // Include hierarchy relationships when loaded
-            'parent' => $this->whenLoaded('parent'),
-            'children' => $this->whenLoaded('children'),
             
             // Include users when loaded
             'users' => $this->whenLoaded('users'),

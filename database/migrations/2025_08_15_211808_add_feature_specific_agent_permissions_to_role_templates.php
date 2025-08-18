@@ -45,12 +45,7 @@ return new class extends Migration
                     $roleTemplate->permissions = $permissions;
                     $roleTemplate->save();
                     
-                    echo "Added " . implode(', ', $added) . " permissions to {$roleName} role template.\n";
-                } else {
-                    echo "All feature-specific agent permissions already exist in {$roleName} role template.\n";
                 }
-            } else {
-                echo "Role template '{$roleName}' not found, skipping.\n";
             }
         }
     }
@@ -93,7 +88,6 @@ return new class extends Migration
                     $roleTemplate->permissions = array_values($permissions);
                     $roleTemplate->save();
                     
-                    echo "Removed " . implode(', ', $removed) . " permissions from {$roleName} role template.\n";
                 }
             }
         }

@@ -24,8 +24,8 @@ export function useAccountQuery(id) {
 export function useAccountSelectorQuery() {
   return useQuery({
     queryKey: queryKeys.accounts.selector,
-    queryFn: () => accountsApi.getSelector().then(res => res.data),
-    staleTime: 1000 * 60 * 10, // 10 minutes - hierarchical data doesn't change often
+    queryFn: () => accountsApi.getAll().then(res => ({ data: res.data.data })),
+    staleTime: 1000 * 60 * 10, // 10 minutes
   })
 }
 

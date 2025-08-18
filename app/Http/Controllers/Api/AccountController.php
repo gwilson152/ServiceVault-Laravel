@@ -26,21 +26,15 @@ class AccountController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // Load accounts with hierarchy by default for better display
         $accounts = Account::query()
-            ->with(['parent', 'children', 'users'])
-            ->orderBy('parent_id', 'asc')
+            ->with(['users'])
             ->orderBy('name', 'asc')
             ->get();
 
-        // Build hierarchical structure for display
-        $hierarchicalAccounts = $this->buildHierarchicalDisplayList($accounts);
-
         return response()->json([
-            'data' => AccountResource::collection($hierarchicalAccounts),
+            'data' => AccountResource::collection($accounts),
             'meta' => [
-                'total' => $accounts->count(),
-                'hierarchical' => true
+                'total' => $accounts->count()
             ]
         ]);
     }
@@ -54,8 +48,8 @@ class AccountController extends Controller
         
         // Check if user has permission to view this account's users
         if (!$user->hasAnyPermission(['admin.read', 'admin.write', 'accounts.manage', 'users.manage.account'])) {
-            // If not admin, only allow if it's their own account or they have hierarchy access
-            if ($account->id !== $user->account_id && !$user->hasPermission('accounts.hierarchy.access')) {
+            // If not admin, only allow if it's their own account
+            if ($account->id !== $user->account_id) {
                 return response()->json(['error' => 'Unauthorized access.'], 403);
             }
         }
@@ -82,21 +76,14 @@ class AccountController extends Controller
     }
 
     /**
-     * Get accounts for hierarchical selector (critical for domain mapping).
+     * Get accounts for selector components.
      */
     public function selector(Request $request): JsonResponse
     {
-        // For now, return all accounts until permission system is fully implemented
         $accounts = Account::query()->get();
 
-        // Load hierarchy for AccountSelector component
-        $accounts->load(['parent', 'children']);
-
-        // Build hierarchical structure for frontend
-        $hierarchical = $this->buildHierarchicalAccounts($accounts);
-
         return response()->json([
-            'data' => $hierarchical,
+            'data' => $accounts,
             'meta' => [
                 'count' => $accounts->count(),
                 'for_selector' => true
@@ -116,7 +103,6 @@ class AccountController extends Controller
             'company_name' => 'nullable|string|max:255',
             'account_type' => 'required|in:customer,prospect,partner,internal',
             'description' => 'nullable|string',
-            'parent_id' => 'nullable|exists:accounts,id',
             'contact_person' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:50',
@@ -149,7 +135,7 @@ class AccountController extends Controller
      */
     public function show(Account $account): JsonResponse
     {
-        $account->load(['parent', 'children', 'users']);
+        $account->load(['users']);
         
         return response()->json([
             'data' => new AccountResource($account)
@@ -166,7 +152,6 @@ class AccountController extends Controller
             'company_name' => 'nullable|string|max:255',
             'account_type' => 'required|in:customer,prospect,partner,internal',
             'description' => 'nullable|string',
-            'parent_id' => 'nullable|exists:accounts,id',
             'contact_person' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:50',
@@ -198,13 +183,7 @@ class AccountController extends Controller
      * Remove the specified resource from storage.
      */
     public function destroy(Account $account): JsonResponse
-    {
-        if ($account->children()->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete account that has child accounts'
-            ], 422);
-        }
-        
+    {        
         if ($account->users()->exists()) {
             return response()->json([
                 'message' => 'Cannot delete account that has assigned users'
@@ -218,86 +197,4 @@ class AccountController extends Controller
         ]);
     }
 
-    /**
-     * Build hierarchical display list maintaining parent-child relationships.
-     */
-    protected function buildHierarchicalDisplayList($accounts): array
-    {
-        $accountsById = $accounts->keyBy('id');
-        $displayList = [];
-        
-        // First, add all root accounts
-        foreach ($accounts as $account) {
-            if (!$account->parent_id) {
-                $displayList = array_merge($displayList, $this->flattenAccountTree($account, $accountsById, 0));
-            }
-        }
-        
-        return $displayList;
-    }
-    
-    /**
-     * Recursively flatten account tree for hierarchical display.
-     */
-    protected function flattenAccountTree(Account $account, $accountsById, int $depth): array
-    {
-        $list = [$account];
-        
-        // Set hierarchy level for display
-        $account->hierarchy_level = $depth;
-        
-        // Add children recursively
-        foreach ($account->children as $child) {
-            if ($accountsById->has($child->id)) {
-                $list = array_merge($list, $this->flattenAccountTree($child, $accountsById, $depth + 1));
-            }
-        }
-        
-        return $list;
-    }
-
-    /**
-     * Build hierarchical account structure for AccountSelector component.
-     */
-    protected function buildHierarchicalAccounts($accounts): array
-    {
-        $hierarchy = [];
-        $accountsById = $accounts->keyBy('id');
-
-        foreach ($accounts as $account) {
-            if (!$account->parent_id) {
-                // Root level account
-                $hierarchy[] = $this->buildAccountTree($account, $accountsById, 0);
-            }
-        }
-
-        return $hierarchy;
-    }
-
-    /**
-     * Recursively build account tree with depth indicators.
-     */
-    protected function buildAccountTree(Account $account, $accountsById, int $depth): array
-    {
-        $node = [
-            'id' => $account->id,
-            'name' => $account->name,
-            'display_name' => $account->company_name ?: $account->name, // Computed display_name
-            'company_name' => $account->company_name,
-            'account_type' => $account->account_type,
-            'parent_id' => $account->parent_id,
-            'depth' => $depth,
-            'has_children' => $account->children()->count() > 0,
-            'children' => []
-        ];
-
-        // Add children recursively
-        foreach ($account->children as $child) {
-            if ($accountsById->has($child->id)) {
-                $node['children'][] = $this->buildAccountTree($child, $accountsById, $depth + 1);
-            }
-        }
-
-        return $node;
-    }
 }

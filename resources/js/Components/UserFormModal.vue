@@ -356,7 +356,6 @@ const locales = [
                                 :items="accounts"
                                 label="Primary Account"
                                 placeholder="Select an account..."
-                                :hierarchical="true"
                                 :can-create="true"
                                 :nested="true"
                                 @item-selected="handleAccountSelected"

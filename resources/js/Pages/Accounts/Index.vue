@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import AccountFormModal from '@/Components/AccountFormModal.vue'
 import { ref, onMounted, computed, watch } from 'vue'
-import { useCreateAccountMutation, useUpdateAccountMutation, useAccountSelectorQuery } from '@/Composables/queries/useAccountsQuery'
+import { useCreateAccountMutation, useUpdateAccountMutation } from '@/Composables/queries/useAccountsQuery'
 import axios from 'axios'
 
 // Define persistent layout
@@ -20,8 +20,8 @@ const selectedAccount = ref(null)
 const showDeleteConfirm = ref(false)
 const accountToDelete = ref(null)
 
-// TanStack Query hooks
-const { data: availableParents, isLoading: loadingParents } = useAccountSelectorQuery()
+// TanStack Query hooks (no longer needed for parents)
+// const { data: availableParents, isLoading: loadingParents } = useAccountSelectorQuery()
 
 const loadAccounts = async () => {
     try {
@@ -145,7 +145,7 @@ onMounted(() => {
                         Accounts Management
                     </h2>
                     <p class="text-sm text-gray-600 mt-1">
-                        Manage customer accounts, hierarchies, and access permissions
+                        Manage customer accounts and access permissions
                     </p>
                 </div>
             </div>
@@ -229,7 +229,7 @@ onMounted(() => {
                                             Type
                                         </th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Hierarchy
+                                            Users
                                         </th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Status
@@ -247,22 +247,10 @@ onMounted(() => {
                                         <!-- Company / Account -->
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center">
-                                                <!-- Hierarchy indicators -->
-                                                <div v-if="account.hierarchy_level > 0" class="flex items-center mr-2 text-gray-400">
-                                                    <div class="flex">
-                                                        <span v-for="level in account.hierarchy_level" :key="level" class="mr-4">
-                                                            <span v-if="level === account.hierarchy_level" class="text-gray-400">└─</span>
-                                                            <span v-else class="text-gray-200">│</span>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                
                                                 <div class="flex-shrink-0 h-10 w-10">
-                                                    <div class="h-10 w-10 rounded-full flex items-center justify-center"
-                                                         :class="account.hierarchy_level === 0 ? 'bg-indigo-100' : 'bg-gray-100'">
-                                                        <svg class="h-5 w-5" :class="account.hierarchy_level === 0 ? 'text-indigo-600' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path v-if="account.hierarchy_level === 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5m14 0l-2-2m2 2l-2-2"/>
-                                                            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                    <div class="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-100">
+                                                        <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5m14 0l-2-2m2 2l-2-2"/>
                                                         </svg>
                                                     </div>
                                                 </div>
@@ -296,24 +284,19 @@ onMounted(() => {
                                             </span>
                                         </td>
                                         
-                                        <!-- Hierarchy -->
+                                        <!-- Users -->
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <div class="flex items-center space-x-2">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                                      :class="account.hierarchy_level === 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'">
-                                                    {{ account.hierarchy_level === 0 ? 'Root Account' : `Subsidiary L${account.hierarchy_level}` }}
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                    {{ account.users_count || 0 }} users
                                                 </span>
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                <span v-if="account.children_count > 0" class="mr-2">{{ account.children_count }} subsidiaries</span>
-                                                <span>{{ account.users_count || 0 }} users</span>
                                             </div>
                                         </td>
                                         
                                         <!-- Status -->
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span :class="getStatusColor(account.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                                                {{ account.status || 'Active' }}
+                                            <span :class="getStatusColor(account.is_active ? 'active' : 'inactive')" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                                                {{ account.is_active ? 'Active' : 'Inactive' }}
                                             </span>
                                             <div class="text-xs text-gray-500 mt-1">
                                                 {{ new Date(account.created_at).toLocaleDateString() }}

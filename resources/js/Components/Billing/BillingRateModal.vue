@@ -149,7 +149,6 @@
                           v-model="form.account_id"
                           type="account"
                           :items="availableAccounts"
-                          :hierarchical="true"
                           placeholder="Choose an account..."
                           class="w-full"
                         />

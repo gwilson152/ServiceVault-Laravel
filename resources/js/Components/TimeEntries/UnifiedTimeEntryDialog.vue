@@ -66,7 +66,6 @@
                                     placeholder="Select account..."
                                     :required="true"
                                     :error="errors.accountId"
-                                    :hierarchical="true"
                                     @item-selected="handleAccountSelected"
                                 />
                             </div>

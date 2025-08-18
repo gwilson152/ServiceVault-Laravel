@@ -8,7 +8,6 @@
       :label="accountLabel"
       :placeholder="accountPlaceholder"
       :required="accountRequired"
-      :hierarchical="true"
       :error="accountError"
       @item-selected="handleAccountSelected"
     />

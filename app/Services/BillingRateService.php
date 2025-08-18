@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\Cache;
 class BillingRateService
 {
     /**
-     * Get the effective billing rate for an account, following inheritance hierarchy.
+     * Get the effective billing rate for an account.
      * 
-     * Priority: Account-specific → Parent account → Grandparent → Global default → First active
+     * Priority: Account-specific → Global default → First active
      * 
      * @param Account $account
      * @param string|null $rateType Optional rate type filter
@@ -21,7 +21,6 @@ class BillingRateService
      */
     public function getEffectiveRateForAccount(Account $account, ?string $rateType = null): ?BillingRate
     {
-        // Disable caching temporarily for debugging
         // 1. Check for account-specific default rate
         $accountRate = $this->getAccountSpecificDefaultRate($account, $rateType);
         if ($accountRate) {
@@ -31,20 +30,7 @@ class BillingRateService
             return $accountRate;
         }
         
-        // 2. Traverse up the account hierarchy
-        $current = $account;
-        while ($parent = $current->parent) {
-            $parentRate = $this->getAccountSpecificDefaultRate($parent, $rateType);
-            if ($parentRate) {
-                $parentRate->inheritance_source = 'parent';
-                $parentRate->inherited_from_account = $parent->name;
-                $parentRate->inherited_from_account_id = $parent->id;
-                return $parentRate;
-            }
-            $current = $parent;
-        }
-        
-        // 3. Fall back to global default rate
+        // 2. Fall back to global default rate
         $globalRate = $this->getGlobalDefaultRate($rateType);
         if ($globalRate) {
             $globalRate->inheritance_source = 'global';
@@ -53,19 +39,18 @@ class BillingRateService
             return $globalRate;
         }
         
-        // 4. Last resort: first active rate
+        // 3. Last resort: first active rate
         return $this->getFirstActiveRate($rateType);
     }
     
     /**
-     * Get all available billing rates for an account, including inherited ones.
+     * Get all available billing rates for an account.
      * 
      * @param Account $account
      * @return Collection<BillingRate>
      */
     public function getAvailableRatesForAccount(Account $account): Collection
     {
-        // Disable caching temporarily for debugging
         $rates = collect();
         
         // 1. Get account-specific rates
@@ -82,28 +67,7 @@ class BillingRateService
             $rates->push($rate);
         }
         
-        // 2. Get inherited rates from parent accounts
-        $current = $account;
-        while ($parent = $current->parent) {
-            $parentRates = BillingRate::where('account_id', $parent->id)
-                ->where('is_active', true)
-                ->orderBy('is_default', 'desc')
-                ->orderBy('name')
-                ->get();
-                
-            foreach ($parentRates as $rate) {
-                // Only add if we don't already have a rate with the same name from a closer ancestor
-                if (!$rates->where('name', $rate->name)->count()) {
-                    $rate->inheritance_source = 'parent';
-                    $rate->inherited_from_account = $parent->name;
-                    $rate->inherited_from_account_id = $parent->id;
-                    $rates->push($rate);
-                }
-            }
-            $current = $parent;
-        }
-        
-        // 3. Get global rates
+        // 2. Get global rates
         $globalRates = BillingRate::whereNull('account_id')
             ->whereNull('user_id')
             ->where('is_active', true)
@@ -122,14 +86,12 @@ class BillingRateService
         }
         
         return $rates->sortBy(function ($rate) {
-            // Sort by: account-specific defaults first, then inheritance source, then name
+            // Sort by: account-specific defaults first, then global, then by name
             $priority = 0;
             if ($rate->inheritance_source === 'account' && $rate->is_default) $priority = 1;
             elseif ($rate->inheritance_source === 'account') $priority = 2;
-            elseif ($rate->inheritance_source === 'parent' && $rate->is_default) $priority = 3;
-            elseif ($rate->inheritance_source === 'parent') $priority = 4;
-            elseif ($rate->inheritance_source === 'global' && $rate->is_default) $priority = 5;
-            else $priority = 6;
+            elseif ($rate->inheritance_source === 'global' && $rate->is_default) $priority = 3;
+            else $priority = 4;
             
             return sprintf('%02d_%s', $priority, $rate->name);
         })->values();
@@ -147,7 +109,7 @@ class BillingRateService
     }
     
     /**
-     * Clear cached billing rates for an account and its descendants.
+     * Clear cached billing rates for an account.
      * Call this when billing rates are modified.
      * 
      * @param Account $account
@@ -158,13 +120,6 @@ class BillingRateService
         // Clear cache for this account
         Cache::forget("billing_rate_effective_{$account->id}");
         Cache::forget("billing_rates_available_{$account->id}");
-        
-        // Clear cache for all descendant accounts (they might inherit from this account)
-        $descendants = $this->getAllDescendants($account);
-        foreach ($descendants as $descendant) {
-            Cache::forget("billing_rate_effective_{$descendant->id}");
-            Cache::forget("billing_rates_available_{$descendant->id}");
-        }
     }
     
     /**
@@ -248,22 +203,4 @@ class BillingRateService
         return $rate;
     }
     
-    /**
-     * Get all descendants of an account recursively.
-     * 
-     * @param Account $account
-     * @return Collection<Account>
-     */
-    private function getAllDescendants(Account $account): Collection
-    {
-        $descendants = collect();
-        
-        $children = Account::where('parent_id', $account->id)->get();
-        foreach ($children as $child) {
-            $descendants->push($child);
-            $descendants = $descendants->merge($this->getAllDescendants($child));
-        }
-        
-        return $descendants;
-    }
 }

@@ -138,7 +138,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Account routes (hierarchical selector support)
     Route::apiResource('accounts', AccountController::class);
     
-    Route::get('accounts/selector/hierarchical', [AccountController::class, 'selector'])
+    Route::get('accounts/selector', [AccountController::class, 'selector'])
         ->name('accounts.selector');
         
     // Account users endpoint

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed, nextTick } from 'vue'
-import { useCreateAccountMutation, useUpdateAccountMutation, useAccountSelectorQuery } from '@/Composables/queries/useAccountsQuery'
+import { useCreateAccountMutation, useUpdateAccountMutation } from '@/Composables/queries/useAccountsQuery'
 import StackedDialog from '@/Components/StackedDialog.vue'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 
@@ -33,7 +33,6 @@ const form = ref({
     company_name: '',
     account_type: 'customer',
     description: '',
-    parent_id: null,
     contact_person: '',
     email: '',
     phone: '',
@@ -55,7 +54,6 @@ const form = ref({
 
 const errors = ref({})
 const activeTab = ref('basic')
-const fetchedParentAccount = ref(null)
 
 const tabs = [
     { id: 'basic', name: 'Basic Info', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
@@ -66,7 +64,6 @@ const tabs = [
 ]
 
 // TanStack Query hooks
-const { data: availableParents, isLoading: loadingParents } = useAccountSelectorQuery()
 const createMutation = useCreateAccountMutation()
 const updateMutation = useUpdateAccountMutation()
 
@@ -79,27 +76,12 @@ watch(() => isModalOpen.value, async (isOpen) => {
     if (isOpen) {
         if (props.account) {
             // Editing existing account
-            const parentId = props.account.parent_id || props.account.parent_account_id || null
-            
-            console.log('AccountFormModal - Populating form for editing:', {
-                accountId: props.account.id,
-                accountName: props.account.name,
-                parentId: parentId,
-                hasParentAccount: !!props.account.parent_account,
-                parentAccountData: props.account.parent_account
-            })
-            
-            // If we have a parent ID but no parent account data, fetch it
-            if (parentId && !props.account.parent_account && fetchedParentAccount.value?.id !== parentId) {
-                await fetchParentAccountDirectly(parentId)
-            }
             
             form.value = {
                 name: props.account.name || '',
                 company_name: props.account.company_name || '',
                 account_type: props.account.account_type || 'customer',
                 description: props.account.description || '',
-                parent_id: parentId,
                 contact_person: props.account.contact_person || '',
                 email: props.account.email || '',
                 phone: props.account.phone || '',
@@ -133,7 +115,6 @@ const resetForm = () => {
         company_name: '',
         account_type: 'customer',
         description: '',
-        parent_id: null,
         contact_person: '',
         email: '',
         phone: '',
@@ -197,101 +178,8 @@ const closeModal = () => {
     emit('close')
 }
 
-const handleParentAccountSelected = (account) => {
-    // Account selection is automatically handled by v-model
-    // Additional logic can be added here if needed
-}
 
-const handleParentAccountCreated = (newAccount) => {
-    // The UnifiedSelector will automatically select the newly created account
-    // Additional logic can be added here if needed
-}
 
-const fetchParentAccountDirectly = async (parentId) => {
-    try {
-        console.log('Fetching parent account data for ID:', parentId)
-        const response = await window.axios.get(`/api/accounts/${parentId}`)
-        const parentAccount = response.data.data
-        
-        fetchedParentAccount.value = parentAccount
-        console.log('Successfully fetched parent account:', parentAccount)
-    } catch (error) {
-        console.error('Failed to fetch parent account:', error)
-        // Set a placeholder entry if fetch fails
-        fetchedParentAccount.value = {
-            id: parentId,
-            name: `Account #${parentId}`,
-            account_type: 'customer'
-        }
-    }
-}
-
-const flattenAccountTree = (accounts, depth = 0) => {
-    let flattened = []
-    for (const account of accounts) {
-        // Don't show current account as a parent option when editing
-        if (!isEditing.value || account.id !== props.account?.id) {
-            flattened.push({
-                ...account,
-                display_name: '  '.repeat(depth) + account.name
-            })
-        }
-        if (account.children && account.children.length > 0) {
-            flattened.push(...flattenAccountTree(account.children, depth + 1))
-        }
-    }
-    return flattened
-}
-
-const flatParents = computed(() => {
-    const accounts = flattenAccountTree(availableParents.value?.data || [])
-    
-    // When editing, ensure the current parent account is included in the options
-    if (isEditing.value && props.account) {
-        const currentParentId = props.account.parent_id || props.account.parent_account_id
-        
-        if (currentParentId) {
-            const parentExists = accounts.some(acc => acc.id == currentParentId)
-            
-            if (!parentExists) {
-                // Try to get parent account data from props.account first
-                const parentAccount = props.account.parent_account || fetchedParentAccount.value
-                
-                if (parentAccount && parentAccount.id == currentParentId) {
-                    // Add the current parent account to the options
-                    accounts.unshift({
-                        ...parentAccount,
-                        id: parentAccount.id,
-                        name: parentAccount.name,
-                        display_name: parentAccount.name + ' (Current Parent)',
-                        account_type: parentAccount.account_type || 'customer'
-                    })
-                } else {
-                    // Create a placeholder if we still don't have parent data
-                    accounts.unshift({
-                        id: currentParentId,
-                        name: `Account #${currentParentId}`,
-                        display_name: `Account #${currentParentId} (Current Parent)`,
-                        account_type: 'customer'
-                    })
-                }
-            }
-        }
-    }
-    
-    console.log('AccountFormModal - flatParents computed:', {
-        isEditing: isEditing.value,
-        accountParentId: props.account?.parent_id || props.account?.parent_account_id,
-        formParentId: form.value.parent_id,
-        hasParentAccount: !!props.account?.parent_account,
-        hasFetchedParent: !!fetchedParentAccount.value,
-        fetchedParentId: fetchedParentAccount.value?.id,
-        availableAccounts: accounts.length,
-        accounts: accounts.map(acc => ({ id: acc.id, name: acc.name, display_name: acc.display_name }))
-    })
-    
-    return accounts
-})
 </script>
 
 <template>
@@ -390,23 +278,6 @@ const flatParents = computed(() => {
                                 <p v-if="errors.account_type" class="mt-1 text-sm text-red-600">{{ errors.account_type[0] }}</p>
                             </div>
 
-                            <!-- Parent Account -->
-                            <div>
-                                <UnifiedSelector
-                                    v-model="form.parent_id"
-                                    type="account"
-                                    :items="flatParents"
-                                    label="Parent Account"
-                                    placeholder="No parent (Root level)"
-                                    :hierarchical="true"
-                                    :can-create="true"
-                                    :nested="true"
-                                    :error="errors.parent_id"
-                                    @item-selected="handleParentAccountSelected"
-                                    @item-created="handleParentAccountCreated"
-                                />
-                                <p class="mt-1 text-xs text-gray-500">Select a parent account to create a subsidiary relationship.</p>
-                            </div>
                         </div>
 
                         <!-- Description -->

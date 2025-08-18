@@ -478,33 +478,222 @@
 
                         <!-- Users Tab -->
                         <div v-show="activeTab === 'users'">
-                            <div
-                                class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-                            >
-                                <h3
-                                    class="text-lg font-semibold text-gray-900 mb-4"
-                                >
-                                    Account Users
-                                </h3>
-                                <p class="text-gray-600">
-                                    User management interface coming soon...
-                                </p>
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                                <!-- Header -->
+                                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                                    <h3 class="text-lg font-semibold text-gray-900">
+                                        Account Users
+                                        <span v-if="!usersLoading" class="text-sm font-normal text-gray-500 ml-2">
+                                            ({{ accountUsers.length }})
+                                        </span>
+                                    </h3>
+                                    <button
+                                        @click="handleCreateUser"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                                    >
+                                        Add User
+                                    </button>
+                                </div>
+                                
+                                <!-- Loading State -->
+                                <div v-if="usersLoading" class="p-6 text-center">
+                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                                    <p class="mt-2 text-gray-500">Loading users...</p>
+                                </div>
+                                
+                                <!-- Empty State -->
+                                <div v-else-if="accountUsers.length === 0" class="p-6 text-center text-gray-500">
+                                    <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    <p class="text-lg font-medium text-gray-900 mb-1">No users found</p>
+                                    <p class="text-sm text-gray-500">Get started by adding the first user to this account.</p>
+                                </div>
+                                
+                                <!-- Users List -->
+                                <div v-else class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    User
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Role
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Status
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Last Active
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <tr v-for="user in accountUsers" :key="user.id" class="hover:bg-gray-50">
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="flex items-center">
+                                                        <div class="flex-shrink-0 h-10 w-10">
+                                                            <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                                                <span class="text-sm font-medium text-gray-700">
+                                                                    {{ (user.name || '').charAt(0).toUpperCase() }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="ml-4">
+                                                            <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+                                                            <div class="text-sm text-gray-500">{{ user.email }}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {{ user.role_template?.name || 'No Role' }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span 
+                                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                                        :class="user.is_active 
+                                                            ? 'bg-green-100 text-green-800' 
+                                                            : 'bg-red-100 text-red-800'"
+                                                    >
+                                                        {{ user.is_active ? 'Active' : 'Inactive' }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {{ user.last_login_at ? formatDate(user.last_login_at) : 'Never' }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <button 
+                                                        @click="handleEditUser(user)"
+                                                        class="text-blue-600 hover:text-blue-900 mr-3"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <Link 
+                                                        :href="route('users.show', user.id)"
+                                                        class="text-gray-600 hover:text-gray-900"
+                                                    >
+                                                        View
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Tickets Tab -->
                         <div v-show="activeTab === 'tickets'">
-                            <div
-                                class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-                            >
-                                <h3
-                                    class="text-lg font-semibold text-gray-900 mb-4"
-                                >
-                                    Account Tickets
-                                </h3>
-                                <p class="text-gray-600">
-                                    Ticket list interface coming soon...
-                                </p>
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                                <!-- Header -->
+                                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                                    <h3 class="text-lg font-semibold text-gray-900">
+                                        Account Tickets
+                                        <span v-if="!ticketsLoading" class="text-sm font-normal text-gray-500 ml-2">
+                                            ({{ accountTickets.length }})
+                                        </span>
+                                    </h3>
+                                    <button
+                                        @click="handleCreateTicket"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                                    >
+                                        New Ticket
+                                    </button>
+                                </div>
+                                
+                                <!-- Loading State -->
+                                <div v-if="ticketsLoading" class="p-6 text-center">
+                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                                    <p class="mt-2 text-gray-500">Loading tickets...</p>
+                                </div>
+                                
+                                <!-- Empty State -->
+                                <div v-else-if="accountTickets.length === 0" class="p-6 text-center text-gray-500">
+                                    <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <p class="text-lg font-medium text-gray-900 mb-1">No tickets found</p>
+                                    <p class="text-sm text-gray-500">Get started by creating the first ticket for this account.</p>
+                                </div>
+                                
+                                <!-- Tickets List -->
+                                <div v-else class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Ticket
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Status
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Priority
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Assigned To
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Updated
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <tr v-for="ticket in accountTickets" :key="ticket.id" class="hover:bg-gray-50">
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div>
+                                                        <Link 
+                                                            :href="route('tickets.show', ticket.id)"
+                                                            class="text-sm font-medium text-blue-600 hover:text-blue-700"
+                                                        >
+                                                            #{{ ticket.ticket_number || ticket.id }}
+                                                        </Link>
+                                                        <p class="text-sm text-gray-900 mt-1 line-clamp-2">
+                                                            {{ ticket.title }}
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span 
+                                                        class="px-2 py-1 text-xs font-semibold rounded-full"
+                                                        :class="getStatusColor(ticket.status)"
+                                                    >
+                                                        {{ ticket.status }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span 
+                                                        class="px-2 py-1 text-xs font-semibold rounded-full"
+                                                        :class="getPriorityColor(ticket.priority)"
+                                                    >
+                                                        {{ ticket.priority }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {{ ticket.assigned_agent?.name || 'Unassigned' }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {{ formatDate(ticket.updated_at) }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <Link 
+                                                        :href="route('tickets.show', ticket.id)"
+                                                        class="text-blue-600 hover:text-blue-900"
+                                                    >
+                                                        View
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
@@ -628,67 +817,6 @@
                             </div>
                         </div>
 
-                        <!-- Account Hierarchy -->
-                        <div
-                            v-if="
-                                account.parent_account_id || children.length > 0
-                            "
-                            class="bg-white rounded-lg shadow-sm border border-gray-200"
-                        >
-                            <div class="p-6 border-b border-gray-200">
-                                <h3 class="text-lg font-semibold text-gray-900">
-                                    Account Hierarchy
-                                </h3>
-                            </div>
-                            <div class="p-6">
-                                <!-- Parent Account -->
-                                <div
-                                    v-if="account.parent_account_id"
-                                    class="mb-4"
-                                >
-                                    <h4
-                                        class="text-sm font-medium text-gray-700 mb-2"
-                                    >
-                                        Parent Account
-                                    </h4>
-                                    <Link
-                                        :href="
-                                            route(
-                                                'accounts.show',
-                                                account.parent_account_id
-                                            )
-                                        "
-                                        class="text-blue-600 hover:text-blue-700"
-                                    >
-                                        {{
-                                            account.parent_account?.name ||
-                                            "Loading..."
-                                        }}
-                                    </Link>
-                                </div>
-
-                                <!-- Child Accounts -->
-                                <div v-if="children.length > 0">
-                                    <h4
-                                        class="text-sm font-medium text-gray-700 mb-2"
-                                    >
-                                        Child Accounts
-                                    </h4>
-                                    <div class="space-y-2">
-                                        <Link
-                                            v-for="child in children"
-                                            :key="child.id"
-                                            :href="
-                                                route('accounts.show', child.id)
-                                            "
-                                            class="block text-blue-600 hover:text-blue-700 text-sm"
-                                        >
-                                            {{ child.name }}
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -701,15 +829,37 @@
             @close="handleModalClose"
             @saved="handleAccountSaved"
         />
+
+        <!-- User Management Modal -->
+        <UserFormModal
+            :show="showCreateUserModal"
+            :user="selectedUser"
+            :account-id="account?.id"
+            nested
+            @close="showCreateUserModal = false"
+            @saved="handleUserSaved"
+        />
+
+        <!-- Ticket Creation Modal -->
+        <CreateTicketModalTabbed
+            :show="showCreateTicketModal" 
+            :account-id="account?.id"
+            nested
+            @close="showCreateTicketModal = false"
+            @created="handleTicketCreated"
+        />
     </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { Link } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import BillingRateOverrides from "@/Components/Accounts/BillingRateOverrides.vue";
 import AccountFormModal from "@/Components/AccountFormModal.vue";
+import UsersTable from "@/Components/Tables/UsersTable.vue";
+import UserFormModal from "@/Components/UserFormModal.vue";
+import CreateTicketModalTabbed from "@/Components/Modals/CreateTicketModalTabbed.vue";
 import axios from "axios";
 
 // Tab icons
@@ -738,12 +888,22 @@ const props = defineProps({
 const account = ref(null);
 const stats = ref({});
 const recentActivity = ref([]);
-const children = ref([]);
 const loading = ref(true);
 const error = ref(null);
 const showEditModal = ref(false);
 const showMoreActions = ref(false);
 const activeTab = ref("overview");
+
+// User management state
+const accountUsers = ref([]);
+const showCreateUserModal = ref(false);
+const selectedUser = ref(null);
+const usersLoading = ref(false);
+
+// Ticket management state
+const accountTickets = ref([]);
+const showCreateTicketModal = ref(false);
+const ticketsLoading = ref(false);
 
 // Tab configuration
 const accountTabs = [
@@ -783,18 +943,13 @@ const loadAccount = async () => {
     error.value = null;
 
     try {
-        const response = await axios.get(`/api/accounts/${props.accountId}`, {
-            params: {
-                include: 'parent_account'
-            }
-        });
+        const response = await axios.get(`/api/accounts/${props.accountId}`);
         account.value = response.data.data;
 
         // Load related data
         await Promise.all([
             loadAccountStats(),
             loadRecentActivity(),
-            loadChildren(),
         ]);
     } catch (err) {
         console.error("Failed to load account:", err);
@@ -806,37 +961,58 @@ const loadAccount = async () => {
 };
 
 const loadAccountStats = async () => {
-    try {
-        const response = await axios.get(
-            `/api/accounts/${props.accountId}/stats`
-        );
-        stats.value = response.data.data || {};
-    } catch (err) {
-        console.error("Failed to load account stats:", err);
-    }
+    // Mock stats data - replace with actual API call when endpoint is available
+    stats.value = {
+        users_count: 0,
+        active_tickets_count: 0,
+        total_tickets_count: 0,
+        total_time_hours: 0
+    };
 };
 
 const loadRecentActivity = async () => {
+    // Mock activity data - replace with actual API call when endpoint is available
+    recentActivity.value = [];
+};
+
+const loadAccountUsers = async () => {
+    usersLoading.value = true;
     try {
-        const response = await axios.get(
-            `/api/accounts/${props.accountId}/activity`
-        );
-        recentActivity.value = response.data.data || [];
+        const response = await axios.get(`/api/accounts/${props.accountId}/users`);
+        accountUsers.value = response.data.data || [];
+        // Update stats with actual user count
+        stats.value.users_count = accountUsers.value.length;
     } catch (err) {
-        console.error("Failed to load recent activity:", err);
+        console.error("Failed to load account users:", err);
+        accountUsers.value = [];
+    } finally {
+        usersLoading.value = false;
     }
 };
 
-const loadChildren = async () => {
+const loadAccountTickets = async () => {
+    ticketsLoading.value = true;
     try {
-        const response = await axios.get(
-            `/api/accounts/${props.accountId}/children`
-        );
-        children.value = response.data.data || [];
+        const response = await axios.get(`/api/tickets`, {
+            params: { 
+                account_id: props.accountId,
+                per_page: 100
+            }
+        });
+        accountTickets.value = response.data.data || [];
+        // Update stats with ticket counts
+        stats.value.total_tickets_count = accountTickets.value.length;
+        stats.value.active_tickets_count = accountTickets.value.filter(
+            ticket => !['closed', 'resolved'].includes(ticket.status?.toLowerCase())
+        ).length;
     } catch (err) {
-        console.error("Failed to load child accounts:", err);
+        console.error("Failed to load account tickets:", err);
+        accountTickets.value = [];
+    } finally {
+        ticketsLoading.value = false;
     }
 };
+
 
 const formatAccountType = (type) => {
     const types = {
@@ -859,6 +1035,28 @@ const formatDate = (dateString) => {
     if (diffDays < 7) return `${diffDays} days ago`;
 
     return date.toLocaleDateString();
+};
+
+const getStatusColor = (status) => {
+    const colors = {
+        'open': 'bg-blue-100 text-blue-800',
+        'in_progress': 'bg-yellow-100 text-yellow-800',
+        'pending': 'bg-orange-100 text-orange-800',
+        'resolved': 'bg-green-100 text-green-800',
+        'closed': 'bg-gray-100 text-gray-800',
+        'cancelled': 'bg-red-100 text-red-800'
+    }
+    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
+}
+
+const getPriorityColor = (priority) => {
+    const colors = {
+        'low': 'bg-green-100 text-green-800',
+        'normal': 'bg-blue-100 text-blue-800',
+        'high': 'bg-orange-100 text-orange-800',
+        'urgent': 'bg-red-100 text-red-800'
+    }
+    return colors[priority?.toLowerCase()] || 'bg-gray-100 text-gray-800'
 };
 
 const activateAccount = async () => {
@@ -896,7 +1094,57 @@ const handleModalClose = () => {
     showEditModal.value = false;
 };
 
+// User management handlers
+const handleCreateUser = () => {
+    selectedUser.value = null;
+    showCreateUserModal.value = true;
+};
+
+const handleEditUser = (user) => {
+    selectedUser.value = user;
+    showCreateUserModal.value = true;
+};
+
+const handleUserSaved = () => {
+    showCreateUserModal.value = false;
+    selectedUser.value = null;
+    loadAccountUsers(); // Refresh the user list
+};
+
+// Ticket management handlers
+const handleCreateTicket = () => {
+    showCreateTicketModal.value = true;
+};
+
+const handleTicketCreated = () => {
+    showCreateTicketModal.value = false;
+    loadAccountTickets(); // Refresh the ticket list
+};
+
+// Tab-specific data loading
+const loadTabData = async (tab) => {
+    if (tab === 'users' && accountUsers.value.length === 0) {
+        await loadAccountUsers();
+    } else if (tab === 'tickets' && accountTickets.value.length === 0) {
+        await loadAccountTickets();
+    }
+};
+
+// Watch for tab changes to load data as needed
+watch(activeTab, (newTab) => {
+    loadTabData(newTab);
+});
+
 onMounted(() => {
     loadAccount();
 });
 </script>
+
+<style scoped>
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>

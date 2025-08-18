@@ -17,7 +17,6 @@ class Account extends Model
         'company_name',
         'account_type',
         'description',
-        'parent_id',
         'contact_person',
         'email',
         'phone',
@@ -46,69 +45,6 @@ class Account extends Model
         'account_type' => 'string',
     ];
     
-    // Hierarchical relationships
-    public function parent()
-    {
-        return $this->belongsTo(Account::class, 'parent_id');
-    }
-    
-    public function children()
-    {
-        return $this->hasMany(Account::class, 'parent_id');
-    }
-    
-    public function descendants()
-    {
-        return $this->hasMany(Account::class, 'parent_id')->with('descendants');
-    }
-    
-    public function ancestors()
-    {
-        $ancestors = collect();
-        $parent = $this->parent;
-        
-        while ($parent) {
-            $ancestors->push($parent);
-            $parent = $parent->parent;
-        }
-        
-        return $ancestors;
-    }
-    
-    /**
-     * Get all descendant account IDs (children, grandchildren, etc.)
-     * 
-     * @return \Illuminate\Support\Collection
-     */
-    public function getAllDescendantIds()
-    {
-        $descendantIds = collect();
-        
-        // Get direct children
-        $children = $this->children()->pluck('id');
-        $descendantIds = $descendantIds->merge($children);
-        
-        // Recursively get children of children
-        foreach ($children as $childId) {
-            $child = static::find($childId);
-            if ($child) {
-                $descendantIds = $descendantIds->merge($child->getAllDescendantIds());
-            }
-        }
-        
-        return $descendantIds->unique();
-    }
-    
-    /**
-     * Get all accessible account IDs for a user with hierarchy access
-     * (includes own account + all descendants)
-     * 
-     * @return \Illuminate\Support\Collection
-     */
-    public function getAccessibleAccountIds()
-    {
-        return collect([$this->id])->merge($this->getAllDescendantIds());
-    }
     
     // User relationships
     public function users()
@@ -191,18 +127,6 @@ class Account extends Model
         return $types[$this->account_type] ?? ucfirst($this->account_type);
     }
     
-    public function getHierarchyLevelAttribute(): int
-    {
-        $level = 0;
-        $parent = $this->parent;
-        
-        while ($parent) {
-            $level++;
-            $parent = $parent->parent;
-        }
-        
-        return $level;
-    }
     
     // Scopes for business queries
     public function scopeByType($query, $type)
@@ -215,13 +139,4 @@ class Account extends Model
         return $query->where('is_active', true);
     }
     
-    public function scopeRootLevel($query)
-    {
-        return $query->whereNull('parent_id');
-    }
-    
-    public function scopeWithHierarchy($query)
-    {
-        return $query->with(['parent', 'children']);
-    }
 }

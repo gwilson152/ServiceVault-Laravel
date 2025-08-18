@@ -82,7 +82,6 @@
               label="Account"
               placeholder="Select account for this ticket..."
               required
-              :hierarchical="true"
               :can-create="true"
               :nested="true"
               :error="errors.account_id"

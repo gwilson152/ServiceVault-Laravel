@@ -34,12 +34,7 @@ return new class extends Migration
                     $roleTemplate->permissions = $permissions;
                     $roleTemplate->save();
                     
-                    echo "Added 'timers.act_as_agent' permission to {$roleName} role template.\n";
-                } else {
-                    echo "Permission 'timers.act_as_agent' already exists in {$roleName} role template.\n";
                 }
-            } else {
-                echo "Role template '{$roleName}' not found, skipping.\n";
             }
         }
     }
@@ -71,7 +66,6 @@ return new class extends Migration
                 $roleTemplate->permissions = array_values($permissions);
                 $roleTemplate->save();
                 
-                echo "Removed 'timers.act_as_agent' permission from {$roleName} role template.\n";
             }
         }
     }
