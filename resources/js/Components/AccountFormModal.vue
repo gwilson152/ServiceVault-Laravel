@@ -30,7 +30,6 @@ const isModalOpen = computed(() => props.open || props.show)
 
 const form = ref({
     name: '',
-    company_name: '',
     account_type: 'customer',
     description: '',
     contact_person: '',
@@ -79,7 +78,6 @@ watch(() => isModalOpen.value, async (isOpen) => {
             
             form.value = {
                 name: props.account.name || '',
-                company_name: props.account.company_name || '',
                 account_type: props.account.account_type || 'customer',
                 description: props.account.description || '',
                 contact_person: props.account.contact_person || '',
@@ -112,7 +110,6 @@ watch(() => isModalOpen.value, async (isOpen) => {
 const resetForm = () => {
     form.value = {
         name: '',
-        company_name: '',
         account_type: 'customer',
         description: '',
         contact_person: '',
@@ -245,20 +242,6 @@ const closeModal = () => {
                                     :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.name }"
                                 />
                                 <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name[0] }}</p>
-                            </div>
-
-                            <!-- Company Name -->
-                            <div>
-                                <label for="company_name" class="block text-sm font-medium text-gray-700">Company Name</label>
-                                <input
-                                    id="company_name"
-                                    v-model="form.company_name"
-                                    type="text"
-                                    placeholder="Legal business name"
-                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.company_name }"
-                                />
-                                <p v-if="errors.company_name" class="mt-1 text-sm text-red-600">{{ errors.company_name[0] }}</p>
                             </div>
 
                             <!-- Account Type -->

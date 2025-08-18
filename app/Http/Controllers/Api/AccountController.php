@@ -100,7 +100,6 @@ class AccountController extends Controller
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'company_name' => 'nullable|string|max:255',
             'account_type' => 'required|in:customer,prospect,partner,internal',
             'description' => 'nullable|string',
             'contact_person' => 'nullable|string|max:255',
@@ -149,7 +148,6 @@ class AccountController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'company_name' => 'nullable|string|max:255',
             'account_type' => 'required|in:customer,prospect,partner,internal',
             'description' => 'nullable|string',
             'contact_person' => 'nullable|string|max:255',

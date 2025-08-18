@@ -56,7 +56,6 @@
                 
                 <div class="flex-1">
                   <p class="text-sm font-medium text-gray-900">{{ account.name }}</p>
-                  <p v-if="account.company_name" class="text-xs text-gray-600">{{ account.company_name }}</p>
                 </div>
               </div>
             </div>
@@ -154,7 +153,6 @@ const filteredAccounts = computed(() => {
   const term = accountSearchTerm.value.toLowerCase()
   return accounts.value.filter(account => 
     account.name.toLowerCase().includes(term) ||
-    (account.company_name && account.company_name.toLowerCase().includes(term))
   )
 })
 

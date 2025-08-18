@@ -14,7 +14,6 @@ class Account extends Model
     
     protected $fillable = [
         'name',
-        'company_name',
         'account_type',
         'description',
         'contact_person',
@@ -86,7 +85,7 @@ class Account extends Model
     // Business information accessors
     public function getDisplayNameAttribute(): string
     {
-        return $this->company_name ?: $this->name;
+        return $this->name;
     }
     
     public function getFullAddressAttribute(): ?string

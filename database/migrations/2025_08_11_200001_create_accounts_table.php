@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('accounts', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');
-            $table->string('company_name')->nullable();
             $table->enum('account_type', ['customer', 'prospect', 'partner', 'internal'])->default('customer');
             $table->text('description')->nullable();
             $table->uuid('parent_id')->nullable();

@@ -27,6 +27,7 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
         header: 'Ticket Details',
         cell: info => info.getValue(),
         enableSorting: true,
+        // Main content column - no fixed width, will expand to fill space
       }),
     ]
 
@@ -37,6 +38,9 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
           id: 'account',
           header: 'Account/Customer',
           enableSorting: true,
+          size: 200, // Fixed width for account column
+          minSize: 150,
+          maxSize: 250,
         })
       )
     }
@@ -46,12 +50,18 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
       columnHelper.display({
         id: 'timer',
         header: 'Timer/Actions',
+        size: 120, // Fixed width for actions
+        minSize: 100,
+        maxSize: 150,
       }),
       
       columnHelper.accessor('updated_at', {
         header: 'Updated',
         cell: info => info.getValue(),
         enableSorting: true,
+        size: 100, // Fixed width for date
+        minSize: 80,
+        maxSize: 120,
       })
     )
 

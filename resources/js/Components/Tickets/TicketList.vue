@@ -41,8 +41,8 @@
   </div>
   
   <!-- Business Table View -->
-  <div v-else style="overflow: visible;">
-    <div class="overflow-x-auto relative" style="overflow-y: visible;">
+  <div v-else class="w-full">
+    <div class="overflow-x-auto">
       <!-- Full TanStack Table (for main tickets page) -->
       <TicketsTable
         v-if="table"
@@ -64,22 +64,22 @@
       />
       
       <!-- Simple Table (for contexts without TanStack Table) -->
-      <table v-else class="min-w-full divide-y divide-gray-200" style="min-width: 800px">
+      <table v-else class="w-full table-auto divide-y divide-gray-200">
         <thead class="bg-gray-50 border-b border-gray-300">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
               Ticket Details
             </th>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+            <th class="w-20 px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
               Actions
             </th>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+            <th class="w-40 px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
               Assigned To
             </th>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+            <th class="w-24 px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
               Total Time
             </th>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+            <th class="w-28 px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
               Updated
             </th>
           </tr>
@@ -93,8 +93,8 @@
             <!-- Combined Ticket Details Column -->
             <td :class="[
               density === 'compact' ? 'px-3 py-2' : 'px-6 py-4', 
-              'whitespace-nowrap border-b border-gray-100'
-            ]">
+              'border-b border-gray-100'
+            ]"> <!-- Removed whitespace-nowrap to allow content expansion -->
               <div :class="density === 'compact' ? 'mb-1' : 'mb-2'">
                 <div class="text-sm font-semibold text-blue-600 hover:text-blue-800">
                   <Link 
@@ -141,10 +141,10 @@
             
             <!-- Actions Column -->
             <td :class="[
-              density === 'compact' ? 'px-3 py-2' : 'px-6 py-4', 
-              'text-right border-b border-gray-100'
+              density === 'compact' ? 'px-2 py-2' : 'px-3 py-4', 
+              'w-20 text-center border-b border-gray-100'
             ]">
-              <div class="flex items-center justify-end space-x-2">
+              <div class="flex items-center justify-center">
                 <Link 
                   :href="route('tickets.show', ticket.id)"
                   class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded transition-colors"
@@ -157,7 +157,7 @@
             <!-- Assigned To Column -->
             <td :class="[
               density === 'compact' ? 'px-3 py-2' : 'px-6 py-4', 
-              'whitespace-nowrap text-sm text-gray-900 border-b border-gray-100'
+              'w-40 whitespace-nowrap text-sm text-gray-900 border-b border-gray-100'
             ]">
               <div class="flex items-center">
                 <div class="flex-shrink-0 w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center mr-2">
@@ -173,16 +173,16 @@
             
             <!-- Total Time Column -->
             <td :class="[
-              density === 'compact' ? 'px-3 py-2' : 'px-6 py-4', 
-              'whitespace-nowrap text-sm text-gray-500 border-b border-gray-100'
+              density === 'compact' ? 'px-2 py-2' : 'px-3 py-4', 
+              'w-24 whitespace-nowrap text-sm text-gray-500 border-b border-gray-100 text-center'
             ]">
               {{ formatDuration(ticket.total_time_logged || 0) }}
             </td>
             
             <!-- Updated Column -->
             <td :class="[
-              density === 'compact' ? 'px-3 py-2' : 'px-6 py-4', 
-              'whitespace-nowrap text-sm text-gray-500 border-b border-gray-100'
+              density === 'compact' ? 'px-2 py-2' : 'px-3 py-4', 
+              'w-28 whitespace-nowrap text-sm text-gray-500 border-b border-gray-100 text-center'
             ]">
               {{ formatDate(ticket.updated_at) }}
             </td>
@@ -349,5 +349,41 @@ const formatDate = (dateString) => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Table auto-sizing styles */
+.table-auto {
+  table-layout: auto;
+}
+
+/* Ensure the main ticket details column expands */
+table.table-auto th:first-child,
+table.table-auto td:first-child {
+  width: auto;
+}
+
+/* Fixed width columns */
+table.table-auto .w-20 {
+  width: 5rem !important;
+  min-width: 5rem;
+  max-width: 5rem;
+}
+
+table.table-auto .w-24 {
+  width: 6rem !important;
+  min-width: 6rem;
+  max-width: 6rem;
+}
+
+table.table-auto .w-28 {
+  width: 7rem !important;
+  min-width: 7rem;
+  max-width: 7rem;
+}
+
+table.table-auto .w-40 {
+  width: 10rem !important;
+  min-width: 10rem;
+  max-width: 10rem;
 }
 </style>

@@ -1,12 +1,11 @@
 <template>
   <div class="overflow-x-auto">
     <table 
-      class="min-w-full divide-y divide-gray-200" 
+      class="w-full table-auto divide-y divide-gray-200" 
       :class="{
         'table-comfortable': density === 'comfortable',
         'table-compact': density === 'compact'
       }"
-      style="min-width: 800px"
     >
       <thead class="bg-gray-50 border-b border-gray-300">
         <tr
@@ -17,17 +16,24 @@
             v-for="header in headerGroup.headers"
             :key="header.id"
             :colspan="header.colSpan"
+            :style="header.column.columnDef.size ? { width: header.column.columnDef.size + 'px' } : {}"
             :class="[
               density === 'compact' ? 'px-3 py-2' : 'px-6 py-3',
               'text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200',
               {
                 'cursor-pointer hover:bg-gray-100': header.column.getCanSort(),
-                'text-right': header.id === 'actions'
+                'text-center': ['timer', 'updated_at'].includes(header.id),
+                'w-20': header.id === 'timer',
+                'w-28': header.id === 'updated_at',
+                'w-48': header.id === 'account'
               }
             ]"
             @click="header.column.getToggleSortingHandler()?.($event)"
           >
-            <div class="flex items-center" :class="{ 'justify-end': header.id === 'actions' }">
+            <div class="flex items-center" :class="{ 
+              'justify-center': ['timer', 'updated_at'].includes(header.id),
+              'justify-start': !['timer', 'updated_at'].includes(header.id)
+            }">
               <FlexRender
                 :render="header.column.columnDef.header"
                 :props="header.getContext()"
@@ -56,13 +62,18 @@
           <td
             v-for="cell in row.getVisibleCells()"
             :key="cell.id"
+            :style="cell.column.columnDef.size ? { width: cell.column.columnDef.size + 'px' } : {}"
             :class="[
               density === 'compact' ? 'px-3 py-2' : 'px-6 py-4',
-              'whitespace-nowrap border-b border-gray-100',
+              'border-b border-gray-100',
               {
-                'text-right': cell.column.id === 'timer',
+                'text-center': ['timer', 'updated_at'].includes(cell.column.id),
                 'text-sm text-gray-900': !['ticket_number', 'status', 'priority', 'timer', 'actions', 'account', 'assigned_to', 'total_time_logged'].includes(cell.column.id),
-                'text-sm text-gray-500': cell.column.id === 'updated_at'
+                'text-sm text-gray-500': cell.column.id === 'updated_at',
+                'whitespace-nowrap': cell.column.id !== 'ticket_number', // Allow ticket details to wrap
+                'w-20': cell.column.id === 'timer',
+                'w-28': cell.column.id === 'updated_at',
+                'w-48': cell.column.id === 'account'
               }
             ]"
           >

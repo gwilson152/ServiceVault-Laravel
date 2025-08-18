@@ -1512,12 +1512,6 @@
                                             >
                                                 {{ account.display_name }}
                                             </h4>
-                                            <p
-                                                v-if="account.company_name"
-                                                class="text-sm text-gray-500"
-                                            >
-                                                {{ account.company_name }}
-                                            </p>
                                             <div
                                                 class="flex items-center mt-2 space-x-3"
                                             >

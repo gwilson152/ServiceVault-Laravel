@@ -51,12 +51,6 @@
                                             : "Inactive"
                                     }}
                                 </span>
-                                <span
-                                    v-if="account?.company_name"
-                                    class="text-sm text-gray-500"
-                                >
-                                    {{ account.company_name }}
-                                </span>
                             </div>
                         </div>
                     </div>
@@ -203,18 +197,6 @@
                                             >
                                             <p class="mt-1 text-gray-900">
                                                 {{ account.name }}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <label
-                                                class="text-sm font-medium text-gray-500"
-                                                >Company Name</label
-                                            >
-                                            <p class="mt-1 text-gray-900">
-                                                {{
-                                                    account.company_name ||
-                                                    "N/A"
-                                                }}
                                             </p>
                                         </div>
                                         <div>

@@ -42,7 +42,6 @@ const filteredAccounts = computed(() => {
     const query = searchQuery.value.toLowerCase()
     return accounts.value.filter(account => 
         account.name.toLowerCase().includes(query) ||
-        account.company_name?.toLowerCase().includes(query) ||
         account.contact_person?.toLowerCase().includes(query) ||
         account.email?.toLowerCase().includes(query) ||
         account.phone?.toLowerCase().includes(query)
@@ -257,9 +256,6 @@ onMounted(() => {
                                                 <div class="ml-4">
                                                     <div class="text-sm font-medium text-gray-900">
                                                         {{ account.display_name || account.name }}
-                                                    </div>
-                                                    <div v-if="account.company_name && account.company_name !== account.name" class="text-sm text-gray-500">
-                                                        {{ account.name }}
                                                     </div>
                                                 </div>
                                             </div>
