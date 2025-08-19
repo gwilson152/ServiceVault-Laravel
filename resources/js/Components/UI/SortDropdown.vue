@@ -2,7 +2,8 @@
   <div class="relative inline-block text-left">
     <div>
       <button
-        @click="isOpen = !isOpen"
+        ref="dropdownButton"
+        @click="openDropdown"
         type="button"
         class="inline-flex items-center justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
       >
@@ -38,7 +39,9 @@
             :class="{ 'bg-blue-50 text-blue-700': isCurrentSort(option.key, option.direction) }"
             role="menuitem"
           >
-            <component :is="option.icon" class="w-4 h-4 mr-3 text-gray-400" />
+            <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+            </svg>
             <div class="flex-1">
               <div class="font-medium">{{ option.label }}</div>
               <div class="text-xs text-gray-500">{{ option.description }}</div>
@@ -76,6 +79,7 @@ const props = defineProps({
 })
 
 const isOpen = ref(false)
+const dropdownButton = ref(null)
 const dropdown = ref(null)
 const dropdownPosition = ref({ top: 0, left: 0 })
 
@@ -85,50 +89,43 @@ const sortOptions = [
     key: 'created_at',
     direction: 'desc',
     label: 'Newest First',
-    description: 'Recently created tickets',
-    icon: 'svg'
+    description: 'Recently created tickets'
   },
   {
     key: 'created_at',
     direction: 'asc',
     label: 'Oldest First',
-    description: 'Oldest created tickets',
-    icon: 'svg'
+    description: 'Oldest created tickets'
   },
   {
     key: 'updated_at',
     direction: 'desc',
     label: 'Recently Updated',
-    description: 'Latest activity first',
-    icon: 'svg'
+    description: 'Latest activity first'
   },
   {
     key: 'due_date',
     direction: 'asc',
     label: 'Due Date (Soonest)',
-    description: 'Urgent tickets first',
-    icon: 'svg'
+    description: 'Urgent tickets first'
   },
   {
     key: 'due_date',
     direction: 'desc',
     label: 'Due Date (Latest)',
-    description: 'Furthest due dates first',
-    icon: 'svg'
+    description: 'Furthest due dates first'
   },
   {
     key: 'ticket_number',
     direction: 'desc',
     label: 'Ticket Number (High)',
-    description: 'Highest ticket numbers',
-    icon: 'svg'
+    description: 'Highest ticket numbers'
   },
   {
     key: 'ticket_number',
     direction: 'asc',
     label: 'Ticket Number (Low)',
-    description: 'Lowest ticket numbers',
-    icon: 'svg'
+    description: 'Lowest ticket numbers'
   }
 ]
 
@@ -159,14 +156,11 @@ const setSorting = (key, direction) => {
 
 const updateDropdownPosition = () => {
   nextTick(() => {
-    if (isOpen.value && dropdown.value) {
-      const button = dropdown.value.previousElementSibling
-      if (button) {
-        const rect = button.getBoundingClientRect()
-        dropdownPosition.value = {
-          top: rect.bottom + window.scrollY,
-          left: rect.left + window.scrollX
-        }
+    if (isOpen.value && dropdownButton.value) {
+      const rect = dropdownButton.value.getBoundingClientRect()
+      dropdownPosition.value = {
+        top: rect.bottom + window.scrollY + 4, // Add small gap
+        left: rect.left + window.scrollX
       }
     }
   })
@@ -174,6 +168,10 @@ const updateDropdownPosition = () => {
 
 // Watch for dropdown opening to update position
 const openDropdown = () => {
+  if (isOpen.value) {
+    isOpen.value = false
+    return
+  }
   isOpen.value = true
   updateDropdownPosition()
 }

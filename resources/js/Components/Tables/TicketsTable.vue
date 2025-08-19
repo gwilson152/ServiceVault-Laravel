@@ -479,17 +479,7 @@ const formatPriority = (priority) => {
   return priority.charAt(0).toUpperCase() + priority.slice(1)
 }
 
-const formatDuration = (seconds) => {
-  if (!seconds) return '0h 0m'
-  
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  }
-  return `${minutes}m`
-}
+// Use formatDuration from formats utility (imported above)
 
 const formatHours = (seconds) => {
   if (!seconds) return '0.00 hrs'
@@ -497,19 +487,7 @@ const formatHours = (seconds) => {
   return `${hours} hrs`
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24))
-  
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7) return `${diffDays} days ago`
-  
-  return date.toLocaleDateString()
-}
+// Use formatDate from formats utility (imported above)
 
 // Removed inline editing functions for simplified table view
 </script>
