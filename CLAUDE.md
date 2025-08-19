@@ -37,6 +37,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Enhanced Role Management**: Comprehensive permission descriptions, tooltips, notation guides, and improved layout with summary panel
 - **Left-Aligned Timer Interface**: Timer overlay and individual timers now align left with improved visual hierarchy
 - **Fixed Ticket Addon System**: Resolved UUID generation issues and standardized billable column usage across all models
+- **Unified Ticket Edit Dialog**: Ticket detail page uses the same CreateTicketModalTabbed component for editing, providing consistent UI/UX with smart data prefilling
 
 ## Documentation
 

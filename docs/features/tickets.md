@@ -148,6 +148,78 @@ $ticket = ServiceTicket::create([
 ]);
 ```
 
+#### Ticket Editing
+
+**Unified Edit Experience (August 2025)**
+
+The same CreateTicketModalTabbed component is used for editing existing tickets, providing a consistent user interface:
+
+**Edit Mode Features:**
+
+-   **Automatic Data Prefilling**: All form fields are automatically populated with current ticket data
+-   **Smart Data Handling**: Properly converts API response data to form-compatible formats
+-   **Date Formatting**: Converts due dates to datetime-local input format (YYYY-MM-DDTHH:mm)
+-   **Category Handling**: Supports both object and string category formats from API
+-   **Tag Processing**: Converts tag arrays to comma-separated strings for editing
+-   **Agent Mapping**: Handles both `agent_id` and `assigned_to.id` relationship formats
+
+**Edit API Integration:**
+
+```php
+// Update existing ticket via PUT request
+PUT /api/tickets/{ticket}
+
+// Example update payload
+{
+    "title": "Updated ticket title",
+    "description": "Updated description...",
+    "account_id": 123,
+    "customer_id": 456,
+    "agent_id": 789,
+    "priority": "high",
+    "category": "technical_support",
+    "due_date": "2025-08-25T14:30:00Z",
+    "tags": ["server", "urgent", "database"]
+}
+```
+
+**Data Handling in Edit Mode:**
+
+```javascript
+// Form prefilling logic in resetForm()
+if (isEditMode.value && props.ticket) {
+    form.title = props.ticket.title || "";
+    form.description = props.ticket.description || "";
+    form.account_id = props.ticket.account_id || null;
+    form.customer_id = props.ticket.customer_id || null;
+    
+    // Handle agent assignment - supports both formats
+    form.agent_id = props.ticket.agent_id || props.ticket.assigned_to?.id || null;
+    
+    // Handle category - object or string
+    form.category = typeof props.ticket.category === 'object' 
+        ? props.ticket.category.key || props.ticket.category.name || ""
+        : props.ticket.category;
+    
+    // Format due_date for datetime-local input
+    if (props.ticket.due_date) {
+        const date = new Date(props.ticket.due_date);
+        form.due_date = date.toISOString().slice(0, 16);
+    }
+    
+    // Convert tags array to comma-separated string
+    form.tags = Array.isArray(props.ticket.tags) 
+        ? props.ticket.tags.join(", ") 
+        : (props.ticket.tags || "");
+}
+```
+
+**Access Points:**
+
+-   **Ticket Detail Page**: "Edit Ticket" option in actions dropdown menu
+-   **Ticket Table**: Context menu right-click option (coming soon)
+-   **Account Pages**: Edit button in ticket lists
+
 #### Ticket Categories
 
 -   `technical_support` - Technical issues and troubleshooting
@@ -873,6 +945,13 @@ The ticket detail page (`/tickets/{id}`) serves as the central hub for all ticke
 -   **Activity**: Complete audit trail with filtering and detailed event tracking
 -   **Billing**: Invoice integration showing which time entries are billed
 
+#### Enhanced Editing Functionality
+
+-   **Unified Edit Dialog**: Uses the same CreateTicketModalTabbed component for consistent editing experience
+-   **Action Menu Integration**: "Edit Ticket" option available in the actions dropdown
+-   **Smart Data Prefilling**: Automatically populates all form fields with current ticket data
+-   **Real-time Updates**: Changes are immediately reflected after saving
+
 #### Key Features
 
 ```vue
@@ -997,5 +1076,39 @@ The enhanced ticket detail page utilizes modular Vue.js components:
 -   **`BillingOverview.vue`**: Financial tracking and invoice integration
 -   **`AddTimeEntryModal.vue`**: Streamlined time entry creation
 -   **`EditTimeEntryModal.vue`**: Time entry modification interface
+-   **`CreateTicketModalTabbed.vue`**: Unified ticket creation and editing dialog
+
+#### Unified Edit Integration
+
+The ticket detail page seamlessly integrates the unified edit dialog:
+
+```vue
+<!-- Edit functionality integrated into ticket detail page -->
+<template>
+  <!-- Actions dropdown in ticket header -->
+  <div class="actions-dropdown">
+    <button v-if="canEdit" @click="showEditModal = true">
+      Edit Ticket
+    </button>
+  </div>
+
+  <!-- Unified edit modal -->
+  <CreateTicketModalTabbed
+    :show="showEditModal"
+    mode="edit"
+    :ticket="ticket"
+    @close="showEditModal = false"
+    @ticket-updated="handleTicketUpdated"
+  />
+</template>
+
+<script setup>
+const handleTicketUpdated = (updatedTicket) => {
+  // Refresh ticket data and activity timeline
+  refetchTicket();
+  refetchMessages();
+};
+</script>
+```
 
 Service Vault's service ticket system provides comprehensive workflow management with an enhanced detail page interface, seamless timer integration, real-time collaboration, and extensive customization options for enterprise service delivery.

@@ -17,6 +17,7 @@ System architecture, design patterns, and technical specifications for Service V
 
 ### UI & Component Architecture
 - **[Modal Dialog System](modal-dialog-system.md)** - StackedDialog, TabbedDialog, and dropdown overflow management ✅ CURRENT
+- **[Unified Dialog Pattern](unified-dialog-pattern.md)** - Single components for create/edit operations ✅ CURRENT
 
 ## Technology Stack
 
