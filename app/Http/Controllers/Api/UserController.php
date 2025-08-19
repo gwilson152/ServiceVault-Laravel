@@ -556,16 +556,16 @@ class UserController extends Controller
 
     /**
      * Get permissions that allow a user to be an agent for the specified type
-     * Simple ABAC approach: if you can manage/assign work of this type, you can be assigned work of this type
+     * Multi-layer approach: Feature-specific act_as_agent permissions + management permissions + admin
      */
     private function getAgentPermissions(string $agentType): array
     {
         return match($agentType) {
-            'timer' => ['timers.assign', 'timers.manage', 'admin.write'],
-            'ticket' => ['tickets.assign', 'tickets.manage', 'admin.write'],
-            'time' => ['time.assign', 'time.manage', 'admin.write'],
-            'billing' => ['billing.manage', 'billing.admin', 'admin.write'],
-            default => ['timers.assign', 'timers.manage', 'admin.write'] // Default for backward compatibility
+            'timer' => ['timers.act_as_agent', 'timers.assign', 'timers.manage', 'admin.write'],
+            'ticket' => ['tickets.act_as_agent', 'tickets.assign', 'tickets.manage', 'admin.write'],
+            'time' => ['time.act_as_agent', 'time.assign', 'time.manage', 'admin.write'],
+            'billing' => ['billing.act_as_agent', 'billing.manage', 'billing.admin', 'admin.write'],
+            default => ['timers.act_as_agent', 'timers.assign', 'timers.manage', 'admin.write'] // Default for backward compatibility
         };
     }
 }

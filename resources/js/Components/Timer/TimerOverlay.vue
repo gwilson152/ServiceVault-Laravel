@@ -226,6 +226,15 @@
     </div>
   </div>
 
+  <!-- Time Entry Commit Dialog -->
+  <UnifiedTimeEntryDialog
+    :show="showCommitDialog"
+    mode="timer-commit"
+    :timer-data="timerToCommit"
+    @close="closeCommitDialog"
+    @timer-committed="handleTimerCommitted"
+  />
+
   <!-- Start Timer Button (when no active timer) -->
   <div
     v-else
@@ -252,6 +261,7 @@ import {
   ChevronDownIcon,
   EllipsisVerticalIcon,
 } from '@heroicons/vue/24/outline'
+import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
 
 // Reactive state
 const currentTimer = ref(null)
@@ -262,6 +272,8 @@ const ticketNumber = ref('')
 const selectedProject = ref('')
 const selectedBillingRate = ref('')
 const manualDuration = ref('')
+const showCommitDialog = ref(false)
+const timerToCommit = ref(null)
 
 // Mock data - will be replaced with real API calls
 const projects = ref([
@@ -396,15 +408,17 @@ const stopTimer = async () => {
 
 const commitTimer = async () => {
   try {
-    await axios.post(`/api/timers/${currentTimer.value.id}/commit`, {
-      description: description.value,
-    })
-    currentTimer.value = null
-    stopDurationUpdate()
-    alert('Timer committed to time entry')
+    // Pause the timer if it's running before opening commit dialog
+    if (currentTimer.value.status === 'running') {
+      await pauseTimer()
+    }
+
+    // Open unified time entry dialog for timer commit
+    timerToCommit.value = currentTimer.value
+    showCommitDialog.value = true
   } catch (error) {
-    console.error('Failed to commit timer:', error)
-    alert('Failed to commit timer')
+    console.error('Failed to pause timer for commit:', error)
+    alert('Failed to prepare timer for commit')
   }
 }
 
@@ -421,6 +435,23 @@ const deleteTimer = async () => {
     console.error('Failed to delete timer:', error)
     alert('Failed to delete timer')
   }
+}
+
+const closeCommitDialog = () => {
+  showCommitDialog.value = false
+  timerToCommit.value = null
+}
+
+// Handle timer commit from UnifiedTimeEntryDialog
+const handleTimerCommitted = ({ timeEntry, timerData }) => {
+  // Remove the timer from the overlay since it's now committed
+  currentTimer.value = null
+  stopDurationUpdate()
+
+  // Close the dialog
+  closeCommitDialog()
+
+  console.log('Timer committed successfully:', timeEntry)
 }
 
 // Update functions

@@ -49,7 +49,7 @@ All platform documentation is centralized in `/docs/index.md`. Refer to the docu
 - API documentation
 - Deployment guides
 
-**Primary Reference**: [Documentation Index](docs/index.md)
+**Primary Reference**: [Documentation Index](docs/README.md)
 
 ## Development Server Policy
 
@@ -64,20 +64,28 @@ All platform documentation is centralized in `/docs/index.md`. Refer to the docu
 **IMPORTANT**: Always update documentation when making code changes:
 
 1. **Code Changes** → Update relevant documentation files
-2. **New Features** → Add to `/docs/features/` 
+2. **New Features** → Add to `/docs/guides/` 
 3. **API Changes** → Update `/docs/api/` specifications
-4. **Architecture Changes** → Update `/docs/architecture/`
-5. **Development Process Changes** → Update `/docs/development/`
+4. **Architecture Changes** → Update `/docs/technical/`
+5. **Development Process Changes** → Update `/docs/technical/development.md`
 
-**Documentation Structure**:
+**Streamlined Documentation Structure**:
 ```
 docs/
-├── index.md                    # Master index
-├── development/                # Development guides
-├── architecture/               # System architecture  
-├── features/                   # Feature specifications
-├── api/                        # API documentation
-└── deployment/                 # Infrastructure guides
+├── README.md                   # Master documentation index
+├── guides/                     # User & developer guides
+│   ├── setup.md               # Installation and configuration
+│   ├── timers.md              # Timer system usage
+│   ├── tickets-billing.md     # Service tickets and billing
+│   └── users-permissions.md   # Users, roles, and permissions
+├── api/                        # API reference documentation
+│   ├── auth.md                # Authentication and tokens
+│   ├── resources.md           # Core API endpoints
+│   └── billing.md             # Billing and financial APIs
+└── technical/                  # Technical implementation details
+    ├── architecture.md         # System architecture
+    ├── database.md            # Database schema reference
+    └── development.md         # Development workflows
 ```
 
 When creating new features or modifying existing ones, ensure documentation is updated in the same commit or pull request.
@@ -408,24 +416,30 @@ private function getRequiredAgentPermission(string $agentType): string
 }
 ```
 
-## 📚 Detailed Technical Documentation
+## 📚 Complete Documentation Reference
 
-For comprehensive technical details, refer to the organized documentation in `/docs/`:
+For comprehensive technical details, refer to the **streamlined documentation** in `/docs/`:
 
-### **Core System Architecture**
-- **[Authentication System](docs/system/authentication-system.md)** - Laravel Sanctum, token management, domain-based assignment
-- **[Three-Dimensional Permissions](docs/architecture/three-dimensional-permissions.md)** - Functional + Widget + Page permission system
-- **[Feature-Specific Agent Permissions](docs/features/feature-specific-agent-permissions.md)** - Granular agent assignment control with multi-layer determination
-- **[Timer System Architecture](docs/architecture/timer-system.md)** - Multi-timer design, Redis state, real-time sync
-- **[Time Management](docs/features/time-management.md)** - Tabbed interface, API endpoints, permission matrix
+### **User & Developer Guides**
+- **[Setup Guide](docs/guides/setup.md)** - Installation, configuration, and quick start
+- **[Timer System Guide](docs/guides/timers.md)** - Multi-timer usage, concurrent timers, real-time sync
+- **[Tickets & Billing Guide](docs/guides/tickets-billing.md)** - Service tickets, billing rates, invoice generation
+- **[Users & Permissions Guide](docs/guides/users-permissions.md)** - Three-dimensional permissions, role management, feature-specific agents
 
-### **Additional Documentation**
-- **[Documentation Index](docs/index.md)** - Complete documentation structure and overview
-- **[API Reference](docs/api/index.md)** - REST API endpoints and specifications  
-- **[Development Guide](docs/development/index.md)** - Development workflows and standards
-- **[Features Documentation](docs/features/index.md)** - User guides and feature specifications
+### **API Reference Documentation**
+- **[Authentication API](docs/api/auth.md)** - Laravel Sanctum, tokens, sessions, domain mapping
+- **[Core Resources API](docs/api/resources.md)** - Tickets, timers, time entries, users, accounts
+- **[Billing & Financial API](docs/api/billing.md)** - Billing rates, invoices, payments, reporting
 
-This CLAUDE.md file focuses on essential information for AI development assistance. For detailed implementation guides, architecture deep-dives, and comprehensive feature documentation, always refer to the structured documentation in the `/docs` folder.
+### **Technical Implementation**
+- **[System Architecture](docs/technical/architecture.md)** - Technology stack, core systems, performance, security
+- **[Database Schema](docs/technical/database.md)** - PostgreSQL schema, relationships, indexes, migrations
+- **[Development Guide](docs/technical/development.md)** - Coding standards, testing, deployment, troubleshooting
+
+### **Documentation Index**
+- **[Master Documentation Index](docs/README.md)** - Complete overview with quick start and recent fixes
+
+This CLAUDE.md file focuses on essential development context. For detailed implementation guides, API specifications, and system architecture, always refer to the streamlined documentation structure in `/docs/`.
 
 ---
 
