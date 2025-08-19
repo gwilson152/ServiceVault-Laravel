@@ -9,29 +9,34 @@ The Business Account System provides comprehensive customer relationship managem
 ## Account Types
 
 ### Customer Accounts
-- **Primary Business Relationships**: Organizations that purchase services
-- **Complete Business Information**: Company details, contact information, addresses
-- **Billing Integration**: Tax IDs, billing addresses, payment processing
-- **Service History**: Ticket history, time tracking, service delivery records
+
+-   **Primary Business Relationships**: Organizations that purchase services
+-   **Complete Business Information**: Company details, contact information, addresses
+-   **Billing Integration**: Tax IDs, billing addresses, payment processing
+-   **Service History**: Ticket history, time tracking, service delivery records
 
 ### Prospect Accounts
-- **Potential Customers**: Organizations in sales pipeline
-- **Lead Management**: Contact information, notes, qualification status
-- **Conversion Tracking**: Progress from prospect to customer
 
-### Partner Accounts  
-- **Business Partners**: Vendors, contractors, referral partners
-- **Collaboration Management**: Joint projects, referral tracking
-- **Partnership Terms**: Contract details, commission structures
+-   **Potential Customers**: Organizations in sales pipeline
+-   **Lead Management**: Contact information, notes, qualification status
+-   **Conversion Tracking**: Progress from prospect to customer
+
+### Partner Accounts
+
+-   **Business Partners**: Vendors, contractors, referral partners
+-   **Collaboration Management**: Joint projects, referral tracking
+-   **Partnership Terms**: Contract details, commission structures
 
 ### Internal Accounts
-- **Service Provider Organizations**: Your company and divisions
-- **Department Management**: Different business units or locations
-- **Internal Operations**: Company hierarchy, internal projects
+
+-   **Service Provider Organizations**: Your company and divisions
+-   **Department Management**: Different business units or locations
+-   **Internal Operations**: Company hierarchy, internal projects
 
 ## Account Data Structure
 
 ### Core Business Information
+
 ```php
 'name'              // Account display name
 'company_name'      // Legal business name
@@ -42,6 +47,7 @@ The Business Account System provides comprehensive customer relationship managem
 ```
 
 ### Contact Information
+
 ```php
 'contact_person'    // Primary contact name
 'email'            // Primary email address
@@ -50,6 +56,7 @@ The Business Account System provides comprehensive customer relationship managem
 ```
 
 ### Address Information
+
 ```php
 'address'          // Street address
 'city'             // City
@@ -59,6 +66,7 @@ The Business Account System provides comprehensive customer relationship managem
 ```
 
 ### Billing Information
+
 ```php
 'billing_address'       // Billing street address
 'billing_city'          // Billing city
@@ -69,6 +77,7 @@ The Business Account System provides comprehensive customer relationship managem
 ```
 
 ### Business Details
+
 ```php
 'notes'             // Internal notes
 'settings'          // Account-specific settings
@@ -78,20 +87,23 @@ The Business Account System provides comprehensive customer relationship managem
 ## Account Hierarchy System
 
 ### Parent-Child Relationships
-- **Unlimited Depth**: Support for complex corporate structures
-- **Permission Inheritance**: Access rights cascade through hierarchy
-- **Context Awareness**: Users can access parent and subsidiary accounts
-- **Visual Hierarchy**: Tree-view interface showing organizational structure
+
+-   **Unlimited Depth**: Support for complex corporate structures
+-   **Permission Inheritance**: Access rights cascade through hierarchy
+-   **Context Awareness**: Users can access parent and subsidiary accounts
+-   **Visual Hierarchy**: Tree-view interface showing organizational structure
 
 ### Hierarchy Use Cases
-- **Corporate Structures**: Parent company → subsidiaries → divisions
-- **Geographic Organization**: Global company → regional offices → local branches  
-- **Service Delivery**: Customer → departments → projects
-- **Internal Organization**: Service provider → teams → individuals
+
+-   **Corporate Structures**: Parent company → subsidiaries → divisions
+-   **Geographic Organization**: Global company → regional offices → local branches
+-   **Service Delivery**: Customer → departments → projects
+-   **Internal Organization**: Service provider → teams → individuals
 
 ## Database Schema
 
 ### Accounts Table
+
 ```sql
 CREATE TABLE accounts (
     id BIGINT PRIMARY KEY,
@@ -100,20 +112,20 @@ CREATE TABLE accounts (
     account_type ENUM('customer', 'prospect', 'partner', 'internal') DEFAULT 'customer',
     description TEXT,
     parent_id BIGINT REFERENCES accounts(id),
-    
+
     -- Contact Information
     contact_person VARCHAR(255),
     email VARCHAR(255),
     phone VARCHAR(50),
     website VARCHAR(255),
-    
-    -- Address Information  
+
+    -- Address Information
     address TEXT,
     city VARCHAR(100),
     state VARCHAR(100),
     postal_code VARCHAR(20),
     country VARCHAR(100),
-    
+
     -- Billing Information
     billing_address TEXT,
     billing_city VARCHAR(100),
@@ -121,16 +133,16 @@ CREATE TABLE accounts (
     billing_postal_code VARCHAR(20),
     billing_country VARCHAR(100),
     tax_id VARCHAR(100),
-    
+
     -- Business Details
     notes TEXT,
     settings JSON,
     theme_settings JSON,
     is_active BOOLEAN DEFAULT true,
-    
+
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
-    
+
     INDEX idx_account_type (account_type),
     INDEX idx_parent_id (parent_id),
     INDEX idx_active (is_active),
@@ -139,6 +151,7 @@ CREATE TABLE accounts (
 ```
 
 ### Account Relationships
+
 ```sql
 -- Many-to-many user assignments
 CREATE TABLE account_user (
@@ -152,48 +165,57 @@ CREATE TABLE account_user (
 ## Account Management Interface
 
 ### Account List View
-- **Business-Focused Columns**: Company name, contact info, type, hierarchy level
-- **Search & Filtering**: Company name, contact person, email, phone, type
-- **Visual Indicators**: Account type badges, hierarchy indentation, status indicators
-- **Quick Actions**: View, edit, manage users, delete
+
+-   **Business-Focused Columns**: Company name, contact info, type, hierarchy level
+-   **Search & Filtering**: Company name, contact person, email, phone, type
+-   **Visual Indicators**: Account type badges, hierarchy indentation, status indicators
+-   **Quick Actions**: View, edit, manage users, delete
 
 ### Account Form Interface
+
 Organized in logical sections:
 
 #### Basic Information
-- Account name and company name
-- Account type selection
-- Parent account hierarchy selection
-- Description
 
-#### Contact Information  
-- Primary contact person
-- Email address and phone number
-- Website URL
+-   Account name and company name
+-   Account type selection
+-   Parent account hierarchy selection
+-   Description
+
+#### Contact Information
+
+-   Primary contact person
+-   Email address and phone number
+-   Website URL
 
 #### Address Information
-- Complete mailing address
-- City, state, postal code, country
+
+-   Complete mailing address
+-   City, state, postal code, country
 
 #### Billing Information
-- Separate billing address (with copy function)
-- Tax ID/VAT number
-- "Copy from address above" convenience feature
+
+-   Separate billing address (with copy function)
+-   Tax ID/VAT number
+-   "Copy from address above" convenience feature
 
 #### Business Details
-- Internal notes
-- Active/inactive status toggle
+
+-   Internal notes
+-   Active/inactive status toggle
 
 ### Account Management Features
-- **Hierarchy Visualization**: Tree view showing parent-child relationships
-- **User Assignment**: Assign users to accounts with role-based permissions
-- **Permission Context**: Account-scoped access controls
-- **Activity History**: Track changes and service history
-- **Integration Points**: Service tickets, time tracking, billing
+
+-   **Hierarchy Visualization**: Tree view showing parent-child relationships
+-   **User Assignment**: Assign users to accounts with role-based permissions
+-   **Permission Context**: Account-scoped access controls
+-   **Activity History**: Track changes and service history
+-   **Integration Points**: Service tickets, time tracking, billing
 
 ## API Endpoints
 
 ### Account Management
+
 ```bash
 # Standard CRUD operations
 GET    /api/accounts                    # List accounts with business info
@@ -208,6 +230,7 @@ GET    /api/accounts?with_hierarchy=true    # Accounts with parent/children
 ```
 
 ### Account Validation
+
 ```php
 // Creation/Update Validation Rules
 'name' => 'required|string|max:255',
@@ -225,19 +248,22 @@ GET    /api/accounts?with_hierarchy=true    # Accounts with parent/children
 ## Account Context System
 
 ### Context Switching
-- **Service Provider Mode**: Can access all customer accounts
-- **Account User Mode**: Restricted to assigned accounts only  
-- **Hierarchy Access**: Automatic access to parent and child accounts
-- **Permission Scoping**: Account-specific permission filtering
+
+-   **Service Provider Mode**: Can access all customer accounts
+-   **Account User Mode**: Restricted to assigned accounts only
+-   **Hierarchy Access**: Automatic access to parent and child accounts
+-   **Permission Scoping**: Account-specific permission filtering
 
 ### Data Isolation
-- **Account-Scoped Data**: Service tickets, time entries, billing records
-- **Permission Boundaries**: Users can only access authorized accounts
-- **Data Segregation**: Complete isolation between unrelated accounts
+
+-   **Account-Scoped Data**: Service tickets, time entries, billing records
+-   **Permission Boundaries**: Users can only access authorized accounts
+-   **Data Segregation**: Complete isolation between unrelated accounts
 
 ## Business Logic
 
 ### Account Relationships
+
 ```php
 // Eloquent relationships
 public function parent()
@@ -255,13 +281,14 @@ public function users()
     return $this->belongsToMany(User::class);
 }
 
-public function serviceTickets()
+public function tickets()
 {
     return $this->hasMany(ServiceTicket::class);
 }
 ```
 
 ### Business Information Accessors
+
 ```php
 public function getDisplayNameAttribute(): string
 {
@@ -271,7 +298,7 @@ public function getDisplayNameAttribute(): string
 public function getFullAddressAttribute(): ?string
 {
     return implode(', ', array_filter([
-        $this->address, $this->city, 
+        $this->address, $this->city,
         $this->state, $this->postal_code, $this->country
     ]));
 }
@@ -291,11 +318,13 @@ public function getHierarchyLevelAttribute(): int
 ## Setup Integration
 
 ### Initial Account Creation
+
 During system setup, an **internal** account is created:
+
 ```php
 $account = Account::create([
     'name' => $request->company_name,
-    'company_name' => $request->company_name, 
+    'company_name' => $request->company_name,
     'account_type' => 'internal',           // Service provider account
     'description' => 'Primary company account (Service Provider)',
     'email' => $request->company_email,
@@ -310,16 +339,19 @@ This ensures the super admin is assigned to the service provider's internal acco
 The account system was migrated from web-focused to business-focused:
 
 ### Removed Fields
-- `slug` - No longer needed for business accounts
-- Web-specific metadata that doesn't apply to business relationships
+
+-   `slug` - No longer needed for business accounts
+-   Web-specific metadata that doesn't apply to business relationships
 
 ### Added Fields
-- Complete business information schema
-- Contact and address management
-- Billing information support
-- Business-specific metadata
+
+-   Complete business information schema
+-   Contact and address management
+-   Billing information support
+-   Business-specific metadata
 
 ### Data Migration
+
 ```php
 // Migration preserves existing accounts while adding business fields
 Schema::table('accounts', function (Blueprint $table) {
@@ -331,14 +363,15 @@ Schema::table('accounts', function (Blueprint $table) {
 ## Future Enhancements
 
 ### Advanced Features (Post-MVP)
-- **Account Health Scoring**: Business metrics and engagement tracking
-- **Advanced Hierarchy Management**: Bulk operations, permission inheritance rules
-- **Integration Capabilities**: CRM integration, external system sync
-- **Reporting & Analytics**: Account performance, service delivery metrics
-- **Communication History**: All interactions, emails, calls, meetings
-- **Document Management**: Contracts, agreements, compliance documents
+
+-   **Account Health Scoring**: Business metrics and engagement tracking
+-   **Advanced Hierarchy Management**: Bulk operations, permission inheritance rules
+-   **Integration Capabilities**: CRM integration, external system sync
+-   **Reporting & Analytics**: Account performance, service delivery metrics
+-   **Communication History**: All interactions, emails, calls, meetings
+-   **Document Management**: Contracts, agreements, compliance documents
 
 ---
 
-**Last Updated**: August 11, 2025  
+**Last Updated**: August 11, 2025
 **Status**: ✅ Completed - Business-focused account system fully implemented

@@ -19,7 +19,7 @@ class TicketAddonController extends Controller
         $user = $request->user();
 
         // Get ticket ID from request
-        $ticketId = $request->get('service_ticket_id');
+        $ticketId = $request->get('ticket_id');
 
         if ($ticketId) {
             // Get addons for specific ticket

@@ -174,6 +174,13 @@
                             >
                                 <div class="py-1">
                                     <button
+                                        v-if="canEdit"
+                                        @click="showEditModal = true; showActionsMenu = false"
+                                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                        Edit Ticket
+                                    </button>
+                                    <button
                                         @click="duplicateTicket"
                                         class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                     >
@@ -887,6 +894,16 @@
             @assigned="handleAssignmentChanged"
             @cancelled="showAssignModal = false"
         />
+
+        <!-- Edit Ticket Modal -->
+        <CreateTicketModalTabbed
+            :show="showEditModal"
+            mode="edit"
+            :ticket="ticket"
+            :nested="false"
+            @close="showEditModal = false"
+            @ticket-updated="handleTicketUpdated"
+        />
     </div>
 </template>
 
@@ -915,6 +932,7 @@ import TitleEditModal from "@/Components/Tickets/TitleEditModal.vue";
 import StatusChangeModal from "@/Components/Tickets/StatusChangeModal.vue";
 import AssignmentModal from "@/Components/Tickets/AssignmentModal.vue";
 import TicketCommentsSection from "@/Components/Tickets/TicketCommentsSection.vue";
+import CreateTicketModalTabbed from "@/Components/Modals/CreateTicketModalTabbed.vue";
 
 // Define persistent layout
 defineOptions({
@@ -1018,6 +1036,7 @@ const showStatusModal = ref(false);
 const showAssignModal = ref(false);
 const activeTimer = ref(null);
 const showActionsMenu = ref(false);
+const showEditModal = ref(false);
 
 // Debug log to see what we received
 console.log("Ticket Show page initialized with ticketId:", props.ticketId);
@@ -1424,6 +1443,13 @@ const handleStatusChanged = (newStatus) => {
 const handleAssignmentChanged = (newAgent) => {
     showAssignModal.value = false;
     // Refetch data to get updated assignment and activity log
+    refetchTicket();
+    refetchMessages();
+};
+
+const handleTicketUpdated = (updatedTicket) => {
+    showEditModal.value = false;
+    // Refetch ticket data and messages to get updated info and activity log
     refetchTicket();
     refetchMessages();
 };

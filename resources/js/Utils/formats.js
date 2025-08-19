@@ -3,19 +3,24 @@
  * Respects system settings for consistent formatting across the application
  */
 
-import { usePage } from '@inertiajs/vue3'
+/**
+ * Default system settings
+ */
+const DEFAULT_SETTINGS = {
+  date_format: 'Y-m-d',
+  time_format: 'H:i',
+  currency: 'USD',
+  language: 'en',
+  timezone: 'UTC'
+}
 
 /**
- * Get system settings from page props
+ * Get system settings, with fallback to defaults
+ * @param {Object} providedSettings - Settings object (usually from usePage props)
+ * @returns {Object} Merged settings with defaults
  */
-const getSettings = () => {
-  try {
-    const page = usePage()
-    return page.props.settings || {}
-  } catch (error) {
-    console.warn('Failed to get system settings:', error)
-    return {}
-  }
+const getSettings = (providedSettings = {}) => {
+  return { ...DEFAULT_SETTINGS, ...providedSettings }
 }
 
 /**
@@ -57,6 +62,10 @@ const convertPhpToJsFormat = (phpFormat, type = 'date') => {
 
 /**
  * Format a date string according to system settings
+ * @param {string} dateString - Date string to format
+ * @param {Object} options - Formatting options
+ * @param {Object} options.settings - System settings object
+ * @returns {string} Formatted date string
  */
 export const formatDate = (dateString, options = {}) => {
   if (!dateString) return ''
@@ -65,7 +74,7 @@ export const formatDate = (dateString, options = {}) => {
     const date = new Date(dateString)
     if (isNaN(date.getTime())) return dateString
     
-    const settings = getSettings()
+    const settings = getSettings(options.settings)
     const format = options.format || settings.date_format || 'Y-m-d'
     
     // Handle relative dates for recent dates if requested
@@ -101,6 +110,10 @@ export const formatDate = (dateString, options = {}) => {
 
 /**
  * Format a time string according to system settings
+ * @param {string} timeString - Time string to format
+ * @param {Object} options - Formatting options
+ * @param {Object} options.settings - System settings object
+ * @returns {string} Formatted time string
  */
 export const formatTime = (timeString, options = {}) => {
   if (!timeString) return ''
@@ -113,7 +126,7 @@ export const formatTime = (timeString, options = {}) => {
       
     if (isNaN(date.getTime())) return timeString
     
-    const settings = getSettings()
+    const settings = getSettings(options.settings)
     const format = options.format || settings.time_format || 'H:i'
     const locale = settings.language || 'en-US'
     
@@ -139,6 +152,10 @@ export const formatTime = (timeString, options = {}) => {
 
 /**
  * Format a full datetime string according to system settings
+ * @param {string} dateTimeString - DateTime string to format
+ * @param {Object} options - Formatting options
+ * @param {Object} options.settings - System settings object
+ * @returns {string} Formatted datetime string
  */
 export const formatDateTime = (dateTimeString, options = {}) => {
   if (!dateTimeString) return ''
@@ -147,7 +164,7 @@ export const formatDateTime = (dateTimeString, options = {}) => {
     const date = new Date(dateTimeString)
     if (isNaN(date.getTime())) return dateTimeString
     
-    const settings = getSettings()
+    const settings = getSettings(options.settings)
     const dateFormat = options.dateFormat || settings.date_format || 'Y-m-d'
     const timeFormat = options.timeFormat || settings.time_format || 'H:i'
     const locale = settings.language || 'en-US'
@@ -179,7 +196,7 @@ export const formatDateTime = (dateTimeString, options = {}) => {
     }
     
     // Fallback
-    return `${formatDate(dateTimeString, { format: dateFormat, relative: false })} ${formatTime(dateTimeString, { format: timeFormat })}`
+    return `${formatDate(dateTimeString, { format: dateFormat, relative: false, settings: options.settings })} ${formatTime(dateTimeString, { format: timeFormat, settings: options.settings })}`
     
   } catch (error) {
     console.warn('DateTime formatting error:', error)
@@ -189,12 +206,16 @@ export const formatDateTime = (dateTimeString, options = {}) => {
 
 /**
  * Format currency according to system settings
+ * @param {number} amount - Amount to format
+ * @param {Object} options - Formatting options
+ * @param {Object} options.settings - System settings object
+ * @returns {string} Formatted currency string
  */
 export const formatCurrency = (amount, options = {}) => {
   if (amount === null || amount === undefined) return ''
   
   try {
-    const settings = getSettings()
+    const settings = getSettings(options.settings)
     const currency = options.currency || settings.currency || 'USD'
     const locale = settings.language || 'en-US'
     
@@ -304,12 +325,16 @@ const getIntlTimeFormatOptions = (phpFormat) => {
 
 /**
  * Format number according to locale
+ * @param {number} number - Number to format
+ * @param {Object} options - Formatting options
+ * @param {Object} options.settings - System settings object
+ * @returns {string} Formatted number string
  */
 export const formatNumber = (number, options = {}) => {
   if (number === null || number === undefined) return ''
   
   try {
-    const settings = getSettings()
+    const settings = getSettings(options.settings)
     const locale = settings.language || 'en-US'
     
     return new Intl.NumberFormat(locale, {
@@ -326,12 +351,16 @@ export const formatNumber = (number, options = {}) => {
 
 /**
  * Format percentage
+ * @param {number} value - Percentage value to format
+ * @param {Object} options - Formatting options
+ * @param {Object} options.settings - System settings object
+ * @returns {string} Formatted percentage string
  */
 export const formatPercentage = (value, options = {}) => {
   if (value === null || value === undefined) return ''
   
   try {
-    const settings = getSettings()
+    const settings = getSettings(options.settings)
     const locale = settings.language || 'en-US'
     
     return new Intl.NumberFormat(locale, {

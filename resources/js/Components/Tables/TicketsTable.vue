@@ -73,7 +73,7 @@
                 'text-center': ['actions', 'updated_at', 'created_at', 'due_date'].includes(cell.column.id),
                 'text-sm text-gray-900': !['ticket_number', 'status', 'priority', 'actions', 'account', 'assigned_to', 'total_time_logged', 'updated_at', 'created_at', 'due_date'].includes(cell.column.id),
                 'text-sm text-gray-500': ['updated_at', 'created_at', 'due_date'].includes(cell.column.id),
-                'whitespace-nowrap': cell.column.id !== 'ticket_number', // Allow ticket details to wrap
+                'whitespace-nowrap': !['ticket_number'].includes(cell.column.id), // Only allow ticket details column to wrap
                 'w-20': cell.column.id === 'actions',
                 'w-28': ['updated_at', 'created_at', 'due_date'].includes(cell.column.id),
                 'w-48': cell.column.id === 'account',
@@ -86,18 +86,41 @@
             <div v-if="cell.column.id === 'ticket_number'">
               <!-- Ticket Number & Title -->
               <div class="mb-2">
-                <div class="text-sm font-semibold text-blue-600 hover:text-blue-800">
+                <div class="text-sm font-semibold text-blue-600 hover:text-blue-800 whitespace-nowrap">
                   <Link :href="`/tickets/${cell.row.original.id}`" class="hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded">
                     {{ cell.row.original.ticket_number }}
                   </Link>
                 </div>
                 <div 
                   :class="[
-                    'text-sm text-gray-700 max-w-sm',
+                    'text-sm text-gray-700 max-w-sm font-medium',
                     density === 'compact' ? 'mt-0.5 line-clamp-1' : 'mt-1 line-clamp-2'
                   ]"
+                  :title="cell.row.original.title"
                 >
                   {{ cell.row.original.title }}
+                </div>
+              </div>
+              
+              <!-- Customer & Agent Info -->
+              <div class="mb-2 text-xs text-gray-600 space-y-0.5">
+                <!-- Customer Info -->
+                <div v-if="cell.row.original.customer" class="flex items-center">
+                  <svg class="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span class="font-medium text-gray-700">{{ cell.row.original.customer.name }}</span>
+                  <span class="ml-1 text-gray-500">{{ cell.row.original.account?.name ? `(${cell.row.original.account.name})` : '' }}</span>
+                </div>
+                
+                <!-- Agent Info -->
+                <div class="flex items-center">
+                  <svg class="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span class="text-gray-600">
+                    Agent: <span class="font-medium text-gray-700">{{ cell.row.original.assigned_to?.name || 'Unassigned' }}</span>
+                  </span>
                 </div>
               </div>
               
@@ -195,9 +218,37 @@
               </div>
             </div>
             
+            <!-- Created Date Column -->
+            <span v-else-if="cell.column.id === 'created_at'">
+              {{ formatDate(cell.getValue(), { relative: true }) }}
+            </span>
+            
+            <!-- Due Date Column -->
+            <span v-else-if="cell.column.id === 'due_date'">
+              <span v-if="cell.getValue()" :class="getDueDateClasses(cell.getValue())">
+                {{ formatDate(cell.getValue(), { relative: false }) }}
+              </span>
+              <span v-else class="text-gray-400 text-xs">No due date</span>
+            </span>
+            
+            <!-- Category Column -->
+            <span v-else-if="cell.column.id === 'category'">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                {{ cell.getValue() }}
+              </span>
+            </span>
+            
+            <!-- Assigned Agent Column -->
+            <span v-else-if="cell.column.id === 'assigned_agent'">
+              <span v-if="cell.getValue() && cell.getValue() !== 'Unassigned'" class="text-sm text-gray-900">
+                {{ cell.getValue() }}
+              </span>
+              <span v-else class="text-sm text-gray-400">Unassigned</span>
+            </span>
+            
             <!-- Updated Column -->
             <span v-else-if="cell.column.id === 'updated_at'">
-              {{ formatDate(cell.getValue()) }}
+              {{ formatDate(cell.getValue(), { relative: true }) }}
             </span>
             
             <!-- Default Cell Renderer -->
@@ -380,6 +431,7 @@ import { ref } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { FlexRender } from '@tanstack/vue-table'
 import { useContextMenu } from '@/Composables/useContextMenu'
+import { useFormats } from '@/Composables/useFormats'
 import ContextMenu from '@/Components/UI/ContextMenu.vue'
 // Removed inline editing and timer components for simplified table view
 
@@ -413,6 +465,9 @@ const {
   openContextMenu,
   closeContextMenu
 } = useContextMenu()
+
+// Formatting utilities with system settings
+const { formatDate, formatDuration } = useFormats()
 
 // Removed inline editing functionality for simplified table view
 

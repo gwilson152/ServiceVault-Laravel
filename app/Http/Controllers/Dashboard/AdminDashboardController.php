@@ -170,17 +170,56 @@ class AdminDashboardController extends Controller
      */
     private function getRecentSystemActivity(): array
     {
+        $activities = collect();
+        
+        // Recent user registrations
         $recentUsers = User::latest()->limit(5)->get(['id', 'name', 'email', 'created_at']);
+        foreach ($recentUsers as $user) {
+            $activities->push([
+                'id' => 'user_' . $user->id,
+                'type' => 'user_created',
+                'title' => 'New user registered',
+                'description' => $user->name . ' (' . $user->email . ')',
+                'created_at' => $user->created_at,
+                'user' => $user
+            ]);
+        }
+        
+        // Recent timers
         $recentTimers = Timer::with(['user:id,name', 'account:id,name'])
-            ->latest()->limit(10)->get();
+            ->latest()->limit(5)->get();
+        foreach ($recentTimers as $timer) {
+            $activities->push([
+                'id' => 'timer_' . $timer->id,
+                'type' => 'timer_created',
+                'title' => 'Timer started',
+                'description' => ($timer->user ? $timer->user->name : 'Unknown user') . 
+                               ($timer->account ? ' for ' . $timer->account->name : ''),
+                'created_at' => $timer->started_at ?? $timer->created_at,
+                'user' => $timer->user,
+                'account' => $timer->account
+            ]);
+        }
+        
+        // Recent time entries
         $recentTimeEntries = TimeEntry::with(['user:id,name', 'account:id,name'])
-            ->latest()->limit(10)->get();
-            
-        return [
-            'recent_users' => $recentUsers,
-            'recent_timers' => $recentTimers,
-            'recent_time_entries' => $recentTimeEntries
-        ];
+            ->latest()->limit(5)->get();
+        foreach ($recentTimeEntries as $entry) {
+            $activities->push([
+                'id' => 'time_entry_' . $entry->id,
+                'type' => 'time_entry_created',
+                'title' => 'Time entry logged',
+                'description' => ($entry->user ? $entry->user->name : 'Unknown user') . 
+                               ' logged ' . gmdate('H:i:s', $entry->duration) . 
+                               ($entry->account ? ' for ' . $entry->account->name : ''),
+                'created_at' => $entry->started_at ?? $entry->created_at,
+                'user' => $entry->user,
+                'account' => $entry->account
+            ]);
+        }
+        
+        // Sort by created_at and return most recent 15 items
+        return $activities->sortByDesc('created_at')->take(15)->values()->toArray();
     }
     
     /**

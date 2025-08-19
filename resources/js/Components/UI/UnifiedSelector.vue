@@ -687,40 +687,40 @@ const getUserTypeBadgeClasses = (userType) => {
 
 // Initialize selected item from modelValue
 const initializeSelectedItem = () => {
-  console.log('UnifiedSelector - initializeSelectedItem called:', {
-    type: props.type,
-    modelValue: props.modelValue,
-    modelValueType: typeof props.modelValue,
-    itemsLength: props.items.length,
-    items: props.items.slice(0, 3).map(i => ({ id: getItemKey(i), name: i.name || i.title })) // Show first 3 items
-  });
+  // console.log('UnifiedSelector - initializeSelectedItem called:', {
+  //   type: props.type,
+  //   modelValue: props.modelValue,
+  //   modelValueType: typeof props.modelValue,
+  //   itemsLength: props.items.length,
+  //   items: props.items.slice(0, 3).map(i => ({ id: getItemKey(i), name: i.name || i.title })) // Show first 3 items
+  // });
   
   if (props.modelValue && props.items.length > 0) {
     const item = props.items.find(i => getItemKey(i) == props.modelValue)
-    console.log('UnifiedSelector - Looking for item:', {
-      type: props.type,
-      lookingFor: props.modelValue,
-      foundItem: item ? { id: getItemKey(item), name: item.name || item.title } : null,
-      comparisonDetails: props.items.slice(0, 5).map(i => ({
-        itemId: getItemKey(i),
-        itemIdType: typeof getItemKey(i),
-        matches: getItemKey(i) == props.modelValue,
-        exactMatch: getItemKey(i) === props.modelValue
-      }))
-    });
+    // console.log('UnifiedSelector - Looking for item:', {
+    //   type: props.type,
+    //   lookingFor: props.modelValue,
+    //   foundItem: item ? { id: getItemKey(item), name: item.name || item.title } : null,
+    //   comparisonDetails: props.items.slice(0, 5).map(i => ({
+    //     itemId: getItemKey(i),
+    //     itemIdType: typeof getItemKey(i),
+    //     matches: getItemKey(i) == props.modelValue,
+    //     exactMatch: getItemKey(i) === props.modelValue
+    //   }))
+    // });
     
     if (item) {
       selectedItem.value = item
-      console.log('UnifiedSelector - Selected item set:', { id: getItemKey(item), name: item.name || item.title });
+      // console.log('UnifiedSelector - Selected item set:', { id: getItemKey(item), name: item.name || item.title });
     } else {
       selectedItem.value = null
-      console.log('UnifiedSelector - No matching item found - clearing selection');
+      // console.log('UnifiedSelector - No matching item found - clearing selection');
     }
   } else if (!props.modelValue) {
     selectedItem.value = null
-    console.log('UnifiedSelector - Cleared selection (no modelValue)');
+    // console.log('UnifiedSelector - Cleared selection (no modelValue)');
   } else {
-    console.log('UnifiedSelector - Cannot initialize: modelValue present but no items available');
+    // console.log('UnifiedSelector - Cannot initialize: modelValue present but no items available');
   }
 }
 

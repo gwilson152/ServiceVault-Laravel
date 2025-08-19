@@ -1,12 +1,12 @@
 <template>
     <TabbedDialog
         :show="show"
-        title="Create New Ticket"
+        :title="isEditMode ? 'Edit Ticket' : 'Create New Ticket'"
         :tabs="tabs"
         default-tab="basic"
         max-width="2xl"
         :saving="isSubmitting"
-        save-label="Create Ticket"
+        :save-label="isEditMode ? 'Update Ticket' : 'Create Ticket'"
         :allow-dropdowns="true"
         @close="$emit('close')"
         @save="submitForm"
@@ -383,6 +383,7 @@ import UserSelector from "@/Components/UI/UserSelector.vue";
 import axios from "axios";
 import { useCreateTicketMutation } from "@/Composables/queries/useTicketsQuery";
 import { useRoleTemplatesQuery } from "@/Composables/queries/useUsersQuery";
+import { useFormats } from "@/Composables/useFormats";
 
 // Props
 const props = defineProps({
@@ -402,10 +403,20 @@ const props = defineProps({
         type: [String, Number],
         default: null,
     },
+    // Edit mode props
+    mode: {
+        type: String,
+        default: 'create',
+        validator: (value) => ['create', 'edit'].includes(value)
+    },
+    ticket: {
+        type: Object,
+        default: () => null
+    },
 });
 
 // Emits
-const emit = defineEmits(["close", "ticket-created"]);
+const emit = defineEmits(["close", "ticket-created", "ticket-updated"]);
 
 // Tab configuration
 const tabs = [
@@ -469,6 +480,9 @@ const user = computed(() => page.props.auth?.user);
 const createTicketMutation = useCreateTicketMutation();
 const { data: roleTemplatesData } = useRoleTemplatesQuery();
 
+// Formatting utilities
+const { formatDate } = useFormats();
+
 // Computed
 const canAssignTickets = computed(() => {
     // Simplified ABAC logic - check if user can assign tickets to others
@@ -480,10 +494,10 @@ const canAssignTickets = computed(() => {
 
 const canPresetCurrentUserAsAgent = computed(() => {
     if (!user.value || !props.accountId) {
-        console.log('CreateTicketModalTabbed - Cannot preset agent: no user or accountId', {
-            hasUser: !!user.value,
-            accountId: props.accountId
-        });
+        // console.log('CreateTicketModalTabbed - Cannot preset agent: no user or accountId', {
+        //     hasUser: !!user.value,
+        //     accountId: props.accountId
+        // });
         return false;
     }
     
@@ -495,21 +509,24 @@ const canPresetCurrentUserAsAgent = computed(() => {
     
     const canPreset = hasTicketAgent || hasAdminWrite || isSuperAdmin || isAgent;
     
-    console.log('CreateTicketModalTabbed - Agent preset check:', {
-        userId: user.value.id,
-        userType: user.value.user_type,
-        hasTicketAgent,
-        hasAdminWrite,
-        isSuperAdmin,
-        isAgent,
-        canPreset,
-        permissions: user.value.permissions
-    });
+    // console.log('CreateTicketModalTabbed - Agent preset check:', {
+    //     userId: user.value.id,
+    //     userType: user.value.user_type,
+    //     hasTicketAgent,
+    //     hasAdminWrite,
+    //     isSuperAdmin,
+    //     isAgent,
+    //     canPreset,
+    //     permissions: user.value.permissions
+    // });
     
     return canPreset;
 });
 
 const roleTemplates = computed(() => roleTemplatesData.value?.data || []);
+
+// Edit mode computed
+const isEditMode = computed(() => props.mode === 'edit');
 
 // Methods
 const getCategoryName = (categoryKey) => {
@@ -520,73 +537,79 @@ const getCategoryName = (categoryKey) => {
 };
 
 const resetForm = () => {
-    console.log('CreateTicketModalTabbed - resetForm called with props:', {
-        accountId: props.accountId,
-        accountIdType: typeof props.accountId,
-        preselectedAgentId: props.preselectedAgentId
-    });
-    
-    form.title = "";
-    form.description = "";
-    
-    // Explicitly set account_id from props
-    if (props.accountId) {
-        form.account_id = props.accountId;
-        console.log('CreateTicketModalTabbed - Setting form.account_id from props:', props.accountId);
+    if (isEditMode.value && props.ticket) {
+        // Prefill form with ticket data for edit mode
+        form.title = props.ticket.title || "";
+        form.description = props.ticket.description || "";
+        form.account_id = props.ticket.account_id || null;
+        form.customer_id = props.ticket.customer_id || null;
+        // Handle agent assignment - could be agent_id or assigned_to.id
+        form.agent_id = props.ticket.agent_id || props.ticket.assigned_to?.id || null;
+        form.priority = props.ticket.priority || "normal";
+        // Handle category - it might be an object with key property or a string key
+        if (props.ticket.category) {
+            form.category = typeof props.ticket.category === 'object' 
+                ? props.ticket.category.key || props.ticket.category.name || ""
+                : props.ticket.category;
+        } else {
+            form.category = "";
+        }
+        // Format due_date for datetime-local input (YYYY-MM-DDTHH:mm format)
+        if (props.ticket.due_date) {
+            const date = new Date(props.ticket.due_date);
+            form.due_date = date.toISOString().slice(0, 16);
+        } else {
+            form.due_date = "";
+        }
+        form.tags = Array.isArray(props.ticket.tags) ? props.ticket.tags.join(", ") : (props.ticket.tags || "");
+        form.start_timer = false; // Always false for edit mode
+        form.send_notifications = true;
     } else {
-        form.account_id = null;
-        console.log('CreateTicketModalTabbed - No props.accountId, setting form.account_id to null');
+        // Create mode - use default values and props
+        form.title = "";
+        form.description = "";
+        
+        // Explicitly set account_id from props
+        if (props.accountId) {
+            form.account_id = props.accountId;
+        } else {
+            form.account_id = null;
+        }
+        
+        form.customer_id = null;
+        // Only preset agent if user can legitimately be assigned to this account
+        form.agent_id = (props.preselectedAgentId && canPresetCurrentUserAsAgent.value) ? props.preselectedAgentId : null;
+        form.priority = "normal";
+        
+        // Set category to default if categories are already loaded
+        if (availableCategories.value.length > 0) {
+            // Try to find default category from loaded data
+            const defaultCategoryFromOptions = availableCategories.value.find(cat => cat.is_default);
+            form.category = defaultCategoryFromOptions?.key || availableCategories.value[0].key;
+        } else {
+            form.category = "";
+        }
+        
+        form.due_date = "";
+        form.tags = "";
+        form.start_timer = false;
+        form.send_notifications = true;
     }
     
-    form.customer_id = null;
-    // Only preset agent if user can legitimately be assigned to this account
-    form.agent_id = (props.preselectedAgentId && canPresetCurrentUserAsAgent.value) ? props.preselectedAgentId : null;
-    form.priority = "normal";
-    
-    // Set category to default if categories are already loaded
-    if (availableCategories.value.length > 0) {
-        // Try to find default category from loaded data
-        const defaultCategoryFromOptions = availableCategories.value.find(cat => cat.is_default);
-        form.category = defaultCategoryFromOptions?.key || availableCategories.value[0].key;
-    } else {
-        form.category = "";
-    }
-    
-    form.due_date = "";
-    form.tags = "";
-    form.start_timer = false;
-    form.send_notifications = true;
     errors.value = {};
-    
-    console.log('CreateTicketModalTabbed - resetForm completed, form.account_id is now:', form.account_id);
-    
-    // Verify the account exists in available accounts
-    if (form.account_id && availableAccounts.value.length > 0) {
-        const matchingAccount = availableAccounts.value.find(a => a.id == form.account_id);
-        console.log('CreateTicketModalTabbed - Account lookup:', {
-            looking_for: form.account_id,
-            found_account: matchingAccount ? { id: matchingAccount.id, name: matchingAccount.name } : null,
-            available_count: availableAccounts.value.length,
-            all_accounts: availableAccounts.value.map(a => ({ id: a.id, name: a.name }))
-        });
-    }
 };
 
 const handleAgentSelected = (agent) => {
     // Agent selection is automatically handled by v-model
-    console.log("Agent selected:", agent);
+    // console.log("Agent selected:", agent);
 };
 
 const handleAgentCreated = (newAgent) => {
     // Add the newly created agent to the available agents list
     availableAgents.value.push(newAgent);
-    console.log("New agent created and added to list:", newAgent);
+    // console.log("New agent created and added to list:", newAgent);
 };
 
-const formatDate = (dateString) => {
-    if (!dateString) return "";
-    return new Date(dateString).toLocaleString();
-};
 
 const handleAccountSelected = (account) => {
     form.customer_id = null;
@@ -618,12 +641,12 @@ const loadAccounts = async () => {
         availableAccounts.value = response.data.data;
         flatAccounts.value = flattenAccounts(response.data.data);
         
-        console.log('CreateTicketModalTabbed - Accounts loaded:', {
-            count: availableAccounts.value.length,
-            accounts: availableAccounts.value.map(a => ({ id: a.id, name: a.name })),
-            lookingForAccountId: props.accountId,
-            foundAccount: availableAccounts.value.find(a => a.id === props.accountId)
-        });
+        // console.log('CreateTicketModalTabbed - Accounts loaded:', {
+        //     count: availableAccounts.value.length,
+        //     accounts: availableAccounts.value.map(a => ({ id: a.id, name: a.name })),
+        //     lookingForAccountId: props.accountId,
+        //     foundAccount: availableAccounts.value.find(a => a.id === props.accountId)
+        // });
     } catch (error) {
         console.error("Failed to load accounts:", error);
     }
@@ -669,17 +692,17 @@ const loadAgents = async (accountId = null) => {
 
         const response = await axios.get("/api/users/agents", { params });
         availableAgents.value = response.data.data || [];
-        console.log("CreateTicketModalTabbed - Loaded ticket agents:", {
-            count: availableAgents.value.length,
-            accountId: accountId,
-            agents: availableAgents.value.map((a) => ({
-                id: a.id,
-                name: a.name,
-                email: a.email,
-                user_type: a.user_type,
-                permissions: a.permissions?.includes?.("tickets.act_as_agent"),
-            })),
-        });
+        // console.log("CreateTicketModalTabbed - Loaded ticket agents:", {
+        //     count: availableAgents.value.length,
+        //     accountId: accountId,
+        //     agents: availableAgents.value.map((a) => ({
+        //         id: a.id,
+        //         name: a.name,
+        //         email: a.email,
+        //         user_type: a.user_type,
+        //         permissions: a.permissions?.includes?.("tickets.act_as_agent"),
+        //     })),
+        // });
     } catch (error) {
         console.error("Failed to load agents:", error);
         availableAgents.value = [];
@@ -694,29 +717,29 @@ const loadCategories = async () => {
         const response = await axios.get("/api/ticket-categories/options");
         availableCategories.value = response.data.options || [];
 
-        console.log("CreateTicketModalTabbed - Categories loaded:", {
-            categoriesCount: availableCategories.value.length,
-            defaultCategory: response.data.default_category,
-            currentFormCategory: form.category,
-        });
+        // console.log("CreateTicketModalTabbed - Categories loaded:", {
+        //     categoriesCount: availableCategories.value.length,
+        //     defaultCategory: response.data.default_category,
+        //     currentFormCategory: form.category,
+        // });
 
         // Always set default category if available and form category is empty
         if (response.data.default_category && (!form.category || form.category === "")) {
             form.category = response.data.default_category;
-            console.log(
-                "CreateTicketModalTabbed - Set default category:",
-                response.data.default_category
-            );
+            // console.log(
+            //     "CreateTicketModalTabbed - Set default category:",
+            //     response.data.default_category
+            // );
         } else if (
             availableCategories.value.length > 0 &&
             (!form.category || form.category === "")
         ) {
             // Fallback: if no explicit default but categories exist, use the first one
             form.category = availableCategories.value[0].key;
-            console.log(
-                "CreateTicketModalTabbed - Set first category as default:",
-                availableCategories.value[0].key
-            );
+            // console.log(
+            //     "CreateTicketModalTabbed - Set first category as default:",
+            //     availableCategories.value[0].key
+            // );
         }
     } catch (error) {
         console.error("Failed to load categories:", error);
@@ -749,10 +772,10 @@ const submitForm = async () => {
         // Prepare form data
         const payload = { ...form };
 
-        console.log(
-            "CreateTicketModalTabbed - Form data before processing:",
-            payload
-        );
+        // console.log(
+        //     "CreateTicketModalTabbed - Form data before processing:",
+        //     payload
+        // );
 
         // Process tags
         if (payload.tags) {
@@ -777,7 +800,7 @@ const submitForm = async () => {
         // Remove empty agent_id to allow tickets without agents
         if (!payload.agent_id || payload.agent_id === "") {
             delete payload.agent_id;
-            console.log("Creating ticket without agent assignment");
+            // console.log("Creating ticket without agent assignment");
         }
 
         // Remove empty customer_id
@@ -785,11 +808,18 @@ const submitForm = async () => {
             delete payload.customer_id;
         }
 
-        console.log("CreateTicketModalTabbed - Processed payload:", payload);
+        // console.log("CreateTicketModalTabbed - Processed payload:", payload);
 
-        const result = await createTicketMutation.mutateAsync(payload);
+        if (isEditMode.value && props.ticket) {
+            // Update existing ticket
+            const response = await axios.put(`/api/tickets/${props.ticket.id}`, payload);
+            emit("ticket-updated", response.data);
+        } else {
+            // Create new ticket
+            const result = await createTicketMutation.mutateAsync(payload);
+            emit("ticket-created", result);
+        }
 
-        emit("ticket-created", result);
         emit("close");
 
         // Reset form with preselected values
@@ -815,7 +845,7 @@ const submitForm = async () => {
         // Handle specific agent assignment error
         if (error.response?.status === 422 && 
             error.response?.data?.error === 'Assigned user does not have access to this account.') {
-            console.log('Agent assignment failed - retrying without agent');
+            // console.log('Agent assignment failed - retrying without agent');
             // Clear the agent and try again
             form.agent_id = null;
             errors.value = {
@@ -846,7 +876,7 @@ const submitForm = async () => {
                     delete retryPayload.customer_id;
                 }
                 
-                console.log("CreateTicketModalTabbed - Retrying without agent:", retryPayload);
+                // console.log("CreateTicketModalTabbed - Retrying without agent:", retryPayload);
                 const result = await createTicketMutation.mutateAsync(retryPayload);
                 
                 emit("ticket-created", result);
@@ -895,16 +925,16 @@ watch(
     () => props.show,
     async (isOpen) => {
         if (isOpen) {
-            console.log('CreateTicketModalTabbed - Modal opened with props:', {
-                accountId: props.accountId,
-                accountIdType: typeof props.accountId,
-                accountIdTruthy: !!props.accountId,
-                preselectedAgentId: props.preselectedAgentId,
-                preselectedAgentIdType: typeof props.preselectedAgentId,
-                currentUser: user.value,
-                canPresetAgent: canPresetCurrentUserAsAgent.value,
-                allProps: { ...props }
-            });
+            // console.log('CreateTicketModalTabbed - Modal opened with props:', {
+            //     accountId: props.accountId,
+            //     accountIdType: typeof props.accountId,
+            //     accountIdTruthy: !!props.accountId,
+            //     preselectedAgentId: props.preselectedAgentId,
+            //     preselectedAgentIdType: typeof props.preselectedAgentId,
+            //     currentUser: user.value,
+            //     canPresetAgent: canPresetCurrentUserAsAgent.value,
+            //     allProps: { ...props }
+            // });
             
             activeTab.value = "basic";
             
@@ -922,7 +952,7 @@ watch(
             await nextTick();
             accountSelectorKey.value = Date.now(); // Use timestamp for unique key
             
-            console.log('CreateTicketModalTabbed - Form initialized with account_id:', form.account_id);
+            // console.log('CreateTicketModalTabbed - Form initialized with account_id:', form.account_id);
         }
     }
 );

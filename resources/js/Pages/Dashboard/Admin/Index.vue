@@ -203,8 +203,9 @@
                         </div>
                       </div>
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">{{ activity.description }}</p>
-                        <p class="text-sm text-gray-500">{{ activity.created_at }}</p>
+                        <p class="text-sm font-medium text-gray-900">{{ activity.title || activity.description }}</p>
+                        <p class="text-sm text-gray-600">{{ activity.description }}</p>
+                        <p class="text-sm text-gray-500">{{ formatDate(activity.created_at) }}</p>
                       </div>
                     </div>
                   </div>
@@ -282,5 +283,11 @@ const formatDuration = (seconds) => {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   return `${hours}h ${minutes}m`
+}
+
+// Helper method to format date
+const formatDate = (date) => {
+  if (!date) return ''
+  return new Date(date).toLocaleString()
 }
 </script>

@@ -31,7 +31,7 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
     toggleColumn, 
     resetVisibility, 
     isColumnVisible 
-  } = useColumnVisibility('tickets', user.value, defaultVisibility)
+  } = useColumnVisibility('tickets', user, defaultVisibility)
 
   // Available columns metadata
   const availableColumns = computed(() => {
@@ -220,7 +220,7 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
         ...columnFilters.value.filter(f => f.id !== 'account'),
         { 
           id: 'account', 
-          value: user.value?.name,
+          value: user?.name,
         }
       ])
     } else if (assignment === 'unassigned') {

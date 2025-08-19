@@ -139,3 +139,97 @@ Generated files for each entity:
 - `database/seeders/EntityNameSeeder.php`
 
 This systematic approach ensures a complete, consistent, and properly structured database schema for Service Vault.
+
+## Migration Troubleshooting
+
+### Common Issues and Solutions
+
+#### Duplicate Table Errors
+**Error**: `SQLSTATE[42P07]: Duplicate table: 7 ERROR: relation "table_name" already exists`
+
+**Solution**: Add existence check to migration:
+```php
+public function up(): void
+{
+    // Check if table already exists before creating
+    if (Schema::hasTable('table_name')) {
+        return;
+    }
+    
+    Schema::create('table_name', function (Blueprint $table) {
+        // table definition
+    });
+}
+```
+
+#### Migration State Inconsistencies
+**Problem**: Migration shows as run but table doesn't exist, or vice versa.
+
+**Solution**: 
+```bash
+# Check migration status
+php artisan migrate:status
+
+# Roll back specific migration
+php artisan migrate:rollback --step=1
+
+# Re-run migrations
+php artisan migrate
+```
+
+#### Field Validation Errors
+**Problem**: API requests failing due to missing validation rules for database fields.
+
+**Solution**: Update corresponding Request classes:
+```php
+// Example: StoreTimerRequest.php
+public function rules(): array
+{
+    return [
+        'ticket_id' => 'nullable|exists:tickets,id',
+        'account_id' => 'nullable|exists:accounts,id',
+        'user_id' => 'nullable|exists:users,id',
+        // ... other rules
+    ];
+}
+```
+
+#### Currency Field Removal
+If removing currency fields from existing tables:
+```bash
+# Create migration to drop currency columns
+php artisan make:migration remove_currency_from_billing_rates_table --table=billing_rates
+
+# In migration file:
+public function up()
+{
+    Schema::table('billing_rates', function (Blueprint $table) {
+        if (Schema::hasColumn('billing_rates', 'currency')) {
+            $table->dropColumn('currency');
+        }
+    });
+}
+```
+
+### Best Practices for Stable Migrations
+
+1. **Always check for existence** before creating/dropping structures
+2. **Use reversible operations** in down() methods
+3. **Update Request validation** when adding new fields
+4. **Test migrations** on fresh database before deploying
+5. **Keep migrations atomic** - one logical change per migration
+6. **Use descriptive names** that indicate the purpose of the change
+
+### Emergency Recovery
+
+If migrations fail in production:
+```bash
+# Mark specific migration as run without executing
+php artisan migrate:fake [migration_name]
+
+# Force run specific migration
+php artisan migrate --force
+
+# Nuclear option - fresh install (DESTRUCTIVE)
+php artisan system:nuclear-reset --user-id=1
+```

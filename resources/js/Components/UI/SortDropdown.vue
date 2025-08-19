@@ -130,6 +130,9 @@ const sortOptions = [
 ]
 
 const currentSort = computed(() => {
+  if (!props.table?.getState) {
+    return { id: 'created_at', desc: true }
+  }
   const sorting = props.table.getState().sorting
   return sorting.length > 0 ? sorting[0] : { id: 'created_at', desc: true }
 })
@@ -150,7 +153,9 @@ const isCurrentSort = (key, direction) => {
 }
 
 const setSorting = (key, direction) => {
-  props.table.setSorting([{ id: key, desc: direction === 'desc' }])
+  if (props.table?.setSorting) {
+    props.table.setSorting([{ id: key, desc: direction === 'desc' }])
+  }
   isOpen.value = false
 }
 

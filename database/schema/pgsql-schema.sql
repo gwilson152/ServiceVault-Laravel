@@ -547,10 +547,10 @@ CREATE TABLE public.roles (
 
 
 --
--- Name: service_ticket_agent; Type: TABLE; Schema: public; Owner: -
+-- Name: ticket_agent; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.service_ticket_agent (
+CREATE TABLE public.ticket_agent (
     id bigint NOT NULL,
     ticket_id uuid NOT NULL,
     user_id uuid NOT NULL,
@@ -564,10 +564,10 @@ CREATE TABLE public.service_ticket_agent (
 
 
 --
--- Name: service_ticket_agent_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: ticket_agent_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.service_ticket_agent_id_seq
+CREATE SEQUENCE public.ticket_agent_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -576,10 +576,10 @@ CREATE SEQUENCE public.service_ticket_agent_id_seq
 
 
 --
--- Name: service_ticket_agent_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: ticket_agent_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.service_ticket_agent_id_seq OWNED BY public.service_ticket_agent.id;
+ALTER SEQUENCE public.ticket_agent_id_seq OWNED BY public.ticket_agent.id;
 
 
 --
@@ -947,10 +947,10 @@ ALTER TABLE ONLY public.migrations ALTER COLUMN id SET DEFAULT nextval('public.m
 
 
 --
--- Name: service_ticket_agent id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: ticket_agent id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.service_ticket_agent ALTER COLUMN id SET DEFAULT nextval('public.service_ticket_agent_id_seq'::regclass);
+ALTER TABLE ONLY public.ticket_agent ALTER COLUMN id SET DEFAULT nextval('public.ticket_agent_id_seq'::regclass);
 
 
 --
@@ -1186,19 +1186,19 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: service_ticket_agent service_ticket_agent_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ticket_agent ticket_agent_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.service_ticket_agent
-    ADD CONSTRAINT service_ticket_agent_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.ticket_agent
+    ADD CONSTRAINT ticket_agent_pkey PRIMARY KEY (id);
 
 
 --
--- Name: service_ticket_agent service_ticket_agent_ticket_id_user_id_role_unique; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ticket_agent ticket_agent_ticket_id_user_id_role_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.service_ticket_agent
-    ADD CONSTRAINT service_ticket_agent_ticket_id_user_id_role_unique UNIQUE (ticket_id, user_id, role);
+ALTER TABLE ONLY public.ticket_agent
+    ADD CONSTRAINT ticket_agent_ticket_id_user_id_role_unique UNIQUE (ticket_id, user_id, role);
 
 
 --
@@ -1589,24 +1589,24 @@ CREATE INDEX roles_account_id_is_active_index ON public.roles USING btree (accou
 
 
 --
--- Name: service_ticket_agent_ticket_id_index; Type: INDEX; Schema: public; Owner: -
+-- Name: ticket_agent_ticket_id_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX service_ticket_agent_ticket_id_index ON public.service_ticket_agent USING btree (ticket_id);
-
-
---
--- Name: service_ticket_agent_ticket_id_user_id_index; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX service_ticket_agent_ticket_id_user_id_index ON public.service_ticket_agent USING btree (ticket_id, user_id);
+CREATE INDEX ticket_agent_ticket_id_index ON public.ticket_agent USING btree (ticket_id);
 
 
 --
--- Name: service_ticket_agent_user_id_index; Type: INDEX; Schema: public; Owner: -
+-- Name: ticket_agent_ticket_id_user_id_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX service_ticket_agent_user_id_index ON public.service_ticket_agent USING btree (user_id);
+CREATE INDEX ticket_agent_ticket_id_user_id_index ON public.ticket_agent USING btree (ticket_id, user_id);
+
+
+--
+-- Name: ticket_agent_user_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ticket_agent_user_id_index ON public.ticket_agent USING btree (user_id);
 
 
 --
@@ -2020,19 +2020,19 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: service_ticket_agent service_ticket_agent_ticket_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ticket_agent ticket_agent_ticket_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.service_ticket_agent
-    ADD CONSTRAINT service_ticket_agent_ticket_id_foreign FOREIGN KEY (ticket_id) REFERENCES public.tickets(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.ticket_agent
+    ADD CONSTRAINT ticket_agent_ticket_id_foreign FOREIGN KEY (ticket_id) REFERENCES public.tickets(id) ON DELETE CASCADE;
 
 
 --
--- Name: service_ticket_agent service_ticket_agent_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ticket_agent ticket_agent_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.service_ticket_agent
-    ADD CONSTRAINT service_ticket_agent_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.ticket_agent
+    ADD CONSTRAINT ticket_agent_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -2332,7 +2332,7 @@ COPY public.migrations (id, migration, batch) FROM stdin;
 36	2025_08_12_235426_make_password_nullable_in_users_table	1
 37	2025_08_13_141117_make_account_id_required_in_time_entries_table	1
 38	2025_08_13_141221_add_user_type_to_users_table	1
-39	2025_08_13_212959_create_service_ticket_agent_table	1
+39	2025_08_13_212959_create_ticket_agent_table	1
 \.
 
 

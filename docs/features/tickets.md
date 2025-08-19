@@ -30,13 +30,13 @@ Comprehensive service ticket management system with enhanced detail pages, workf
 
 ## Ticket Management
 
-### Creating Service Tickets
+### Creating and Editing Service Tickets
 
-#### CreateTicketModal Component
+#### Unified Ticket Dialog (CreateTicketModalTabbed Component)
 
-**Enhanced Ticket Creation Workflow (August 2025)**
+**Enhanced Ticket Creation and Edit Workflow (August 2025)**
 
-The CreateTicketModal provides a streamlined ticket creation experience with flexible customer user assignment:
+The CreateTicketModalTabbed component provides a unified dialog experience for both creating new tickets and editing existing ones. This streamlined approach ensures consistency across the application and eliminates the need for separate edit interfaces.
 
 **Required Fields:**
 
@@ -53,11 +53,14 @@ The CreateTicketModal provides a streamlined ticket creation experience with fle
 
 **Key Features:**
 
+-   **Unified Create/Edit Mode**: Single component handles both creating new tickets and editing existing ones
+-   **Smart Data Prefilling**: When editing, automatically fills all form fields with current ticket data
 -   **Optional Customer User Assignment**: Customer user selection is no longer required - tickets can be account-level without specific user assignment
 -   **UserSelector Integration**: Built-in "Create New User" functionality with account context preselection
 -   **Smart User Filtering**: Only shows customer users for the selected account
 -   **Account Context Flow**: Account must be selected first, then customer user options appear
 -   **Agent Permission Filtering**: Only users with appropriate permissions can assign agents
+-   **Enhanced Data Handling**: Properly handles dates, categories, tags, and relationships in edit mode
 
 **Workflow Pattern:**
 
@@ -72,13 +75,38 @@ The CreateTicketModal provides a streamlined ticket creation experience with fle
 **Component Integration:**
 
 ```vue
+<!-- Creating New Ticket -->
+<CreateTicketModalTabbed
+    :show="showCreateModal"
+    mode="create"
+    :account-id="preselectedAccountId"
+    :preselected-agent-id="currentUserId"
+    @close="showCreateModal = false"
+    @ticket-created="handleTicketCreated"
+/>
+
+<!-- Editing Existing Ticket -->
+<CreateTicketModalTabbed
+    :show="showEditModal"
+    mode="edit"
+    :ticket="selectedTicket"
+    @close="showEditModal = false"
+    @ticket-updated="handleTicketUpdated"
+/>
+```
+
+**Form Field Mapping:**
+
+```vue
 <!-- Account Selection (required) -->
-<HierarchicalAccountSelector
+<UnifiedSelector
     v-model="form.account_id"
+    type="account"
     label="Account"
     placeholder="Select account for this ticket..."
     required
-    @account-selected="handleAccountSelected"
+    :can-create="true"
+    @item-selected="handleAccountSelected"
 />
 
 <!-- Customer User Selection (optional, conditional on account) -->
@@ -90,6 +118,17 @@ The CreateTicketModal provides a streamlined ticket creation experience with fle
     label="Customer User"
     placeholder="No specific customer user"
     @user-selected="handleCustomerSelected"
+/>
+
+<!-- Agent Assignment (optional, permission-dependent) -->
+<UnifiedSelector
+    v-if="canAssignTickets"
+    v-model="form.agent_id"
+    type="agent"
+    :agent-type="'ticket'"
+    label="Assign Agent"
+    placeholder="Select an agent (optional)..."
+    @item-selected="handleAgentSelected"
 />
 ```
 
@@ -542,10 +581,10 @@ public function getAverageResolutionTime(Account $account = null): float
 public function getCustomerSatisfactionStats(Account $account): array
 {
     return [
-        'total_tickets' => $account->serviceTickets()->count(),
-        'resolved_tickets' => $account->serviceTickets()->where('status', 'closed')->count(),
+        'total_tickets' => $account->tickets()->count(),
+        'resolved_tickets' => $account->tickets()->where('status', 'closed')->count(),
         'average_resolution_time' => $this->getAverageResolutionTime($account),
-        'tickets_reopened' => $account->serviceTickets()
+        'tickets_reopened' => $account->tickets()
             ->whereHas('statusHistory', function($q) {
                 $q->where('new_status', 'in_progress')
                   ->where('old_status', 'resolved');
@@ -752,7 +791,7 @@ public function commitTimerToTicket(Timer $timer): TimeEntry
 {
     $timeEntry = TimeEntry::create([
         'user_id' => $timer->user_id,
-        'service_ticket_id' => $this->id,
+        'ticket_id' => $this->id,
         'account_id' => $this->account_id,
         'description' => $timer->description,
         'duration' => $timer->total_duration,

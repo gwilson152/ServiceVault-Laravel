@@ -173,7 +173,7 @@ class AddonTemplateController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'service_ticket_id' => 'required|exists:tickets,id',
+            'ticket_id' => 'required|exists:tickets,id',
             'quantity' => 'nullable|numeric|min:0.01|max:99999.99',
             'unit_price' => 'nullable|numeric|min:0|max:999999.99',
             'discount_amount' => 'nullable|numeric|min:0|max:999999.99',
@@ -181,7 +181,7 @@ class AddonTemplateController extends Controller
             'metadata' => 'nullable|array'
         ]);
 
-        $ticket = Ticket::findOrFail($validated['service_ticket_id']);
+        $ticket = Ticket::findOrFail($validated['ticket_id']);
         $this->authorize('update', $ticket);
 
         // Prepare overrides

@@ -22,6 +22,10 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 **🎯 Platform Status:** Production-Ready
 
 **Recent Key Improvements:**
+- **Timer System Fixes**: Fixed timer creation and editing issues - ticket_id and account_id now save properly, edit modal displays pre-selected values correctly
+- **Currency System Removal**: Removed all currency specifications from billing rates system for simplified pricing structure
+- **Migration System Stability**: Fixed duplicate migration errors and improved migration resilience with existence checks
+- **Admin Dashboard Enhancement**: Fixed recentActivity data structure to display system activities properly in chronological order
 - **Timer Performance Optimization**: Eliminated N+1 query problem in tickets list by embedding user-specific timer data in ticket API responses
 - **Account Hierarchy Removal**: Simplified account structure by removing complex hierarchy system while maintaining core functionality
 - **Setup Page Streamlining**: Updated setup wizard to remove account hierarchy configuration for cleaner initial setup experience
@@ -424,4 +428,4 @@ This CLAUDE.md file focuses on essential information for AI development assistan
 
 ---
 
-*Last Updated: August 19, 2025 - Timer Performance Optimization & Account Hierarchy Removal: Eliminated N+1 query problem in tickets list by embedding user-specific timer data in ticket API responses, reducing 10+ API calls to 1. Removed account hierarchy system and updated setup wizard for simplified account structure. Fixed Portal project references and optimized navigation query error handling.*
+*Last Updated: August 19, 2025 - Timer System & Currency Fixes: Fixed timer creation/editing issues where ticket_id and account_id weren't saving properly. Removed currency system from billing rates for simplified pricing. Fixed admin dashboard activity display and migration stability issues. Enhanced request validation for timer operations and improved Vue component data flow.*

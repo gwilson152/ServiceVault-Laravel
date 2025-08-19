@@ -503,3 +503,31 @@ If the timer overlay reloads or disappears during navigation:
 - **Eliminated N+1 Queries**: Reduced 10+ API calls to 1 for timer data
 - **User-Scoped Loading**: Only load timers for the authenticated user
 - **Real-Time Compatible**: Maintains WebSocket broadcasting functionality
+
+## Recent Fixes and Improvements
+
+### Timer Creation and Editing Issues (August 2025)
+
+**Problems Resolved:**
+- **Timer Creation**: ticket_id and account_id fields weren't being saved due to missing validation rules
+- **Timer Editing**: Edit modal didn't pre-populate selected values for account, ticket, user, and billing rate
+- **Request Validation**: Both StoreTimerRequest and UpdateTimerRequest were missing critical field validation
+
+**Technical Fixes Applied:**
+```php
+// Fixed validation in StoreTimerRequest and UpdateTimerRequest
+'ticket_id' => 'nullable|exists:tickets,id',
+'account_id' => 'nullable|exists:accounts,id', 
+'user_id' => 'nullable|exists:users,id',
+```
+
+**Component Improvements:**
+- **StartTimerModalTabbed.vue**: Enhanced edit mode initialization to properly load dependent data
+- **TimerConfigurationForm.vue**: Improved form population logic for editing timers
+- **TimerBroadcastOverlay.vue**: Fixed timer settings modal data passing
+
+**Impact:**
+- ✅ Timer creation now properly associates with tickets and accounts
+- ✅ Timer editing displays correct pre-selected values
+- ✅ Enhanced user experience with reliable timer management
+- ✅ Improved data integrity for timer operations
