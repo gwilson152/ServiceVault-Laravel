@@ -315,8 +315,16 @@ class SettingController extends Controller
      */
     public function getTicketConfig(): JsonResponse
     {
-        // Allow access to users with appropriate permissions
-        if (!auth()->user()->hasAnyPermission(['system.configure', 'tickets.admin', 'admin.read'])) {
+        // Allow access to users with ticket viewing permissions or admin access
+        if (!auth()->user()->hasAnyPermission([
+            'system.configure', 
+            'tickets.admin', 
+            'admin.read',
+            'tickets.view.own',
+            'tickets.view.account', 
+            'tickets.view.all',
+            'portal.access'
+        ])) {
             abort(403, 'Unauthorized');
         }
 

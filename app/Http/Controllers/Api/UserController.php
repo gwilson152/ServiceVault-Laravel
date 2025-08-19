@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Account;
 use App\Models\RoleTemplate;
 use App\Http\Resources\UserResource;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -22,43 +23,26 @@ class UserController extends Controller
     {
         $user = $request->user();
         
-        // Check if user has permission to assign work to agents
-        if (!$user->hasAnyPermission(['timers.assign', 'tickets.assign', 'time.assign', 'admin.write'])) {
+        // Get agent type and check if user can view agents
+        $agentType = $request->get('agent_type', 'timer');
+        
+        // Check if user has permission to view agents using centralized service
+        if (!PermissionService::canViewAgents($user, $agentType)) {
             return response()->json([
                 'message' => 'Insufficient permissions to view available agents'
             ], 403);
         }
         
-        // Simple ABAC-based agent determination
-        $agentType = $request->get('agent_type', 'timer');
-        $requiredPermissions = $this->getAgentPermissions($agentType);
-        
-        $query = User::with(['account', 'roleTemplate'])
-            ->where('is_active', true)
-            ->whereHas('roleTemplate', function ($roleQuery) use ($requiredPermissions) {
-                $roleQuery->where(function ($permissionQuery) use ($requiredPermissions) {
-                    foreach ($requiredPermissions as $permission) {
-                        $permissionQuery->orWhere('permissions', 'like', "%{$permission}%");
-                    }
-                });
-            });
-        
-        // Apply filters
+        // Use centralized service to get agents
+        $filters = [];
         if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('name', 'like', "%{$searchTerm}%")
-                  ->orWhere('email', 'like', "%{$searchTerm}%");
-            });
+            $filters['search'] = $request->search;
         }
-        
-        // Filter by account if specified (optional - for organizational purposes)
         if ($request->filled('account_id')) {
-            $query->where('account_id', $request->account_id);
+            $filters['account_id'] = $request->account_id;
         }
         
-        // Simple ordering by name
-        $agents = $query->orderBy('name')->get();
+        $agents = PermissionService::getAgentsForType($agentType, $filters);
         
         return response()->json([
             'data' => UserResource::collection($agents),
@@ -73,41 +57,23 @@ class UserController extends Controller
     {
         $user = $request->user();
         
-        // Check if user has permission to assign tickets
-        if (!$user->hasAnyPermission(['tickets.assign', 'admin.write'])) {
+        // Check if user has permission to view ticket agents using centralized service
+        if (!PermissionService::canViewAgents($user, 'ticket')) {
             return response()->json([
                 'message' => 'Insufficient permissions to view assignable users'
             ], 403);
         }
         
-        // Use the same simplified logic as agents() method for ticket assignments
-        $requiredPermissions = $this->getAgentPermissions('ticket');
-        
-        $query = User::with(['account', 'roleTemplate'])
-            ->where('is_active', true)
-            ->whereHas('roleTemplate', function ($roleQuery) use ($requiredPermissions) {
-                $roleQuery->where(function ($permissionQuery) use ($requiredPermissions) {
-                    foreach ($requiredPermissions as $permission) {
-                        $permissionQuery->orWhere('permissions', 'like', "%{$permission}%");
-                    }
-                });
-            });
-        
-        // Apply filters
+        // Use centralized service to get ticket agents
+        $filters = [];
         if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('name', 'like', "%{$searchTerm}%")
-                  ->orWhere('email', 'like', "%{$searchTerm}%");
-            });
+            $filters['search'] = $request->search;
         }
-        
-        // Filter by account if specified
         if ($request->filled('account_id')) {
-            $query->where('account_id', $request->account_id);
+            $filters['account_id'] = $request->account_id;
         }
         
-        $assignableUsers = $query->orderBy('name')->get();
+        $assignableUsers = PermissionService::getAgentsForType('ticket', $filters);
         
         return response()->json([
             'data' => UserResource::collection($assignableUsers),
@@ -511,42 +477,23 @@ class UserController extends Controller
     {
         $user = $request->user();
         
-        // Check if user has permission to assign billing responsibilities
-        if (!$user->hasAnyPermission(['billing.admin', 'billing.manage', 'admin.write'])) {
+        // Check if user has permission to view billing agents using centralized service
+        if (!PermissionService::canViewAgents($user, 'billing')) {
             return response()->json([
                 'message' => 'Insufficient permissions to view billing agents'
             ], 403);
         }
         
-        // Use simplified logic for billing agents
-        $requiredPermissions = $this->getAgentPermissions('billing');
-        
-        $query = User::with(['account', 'roleTemplate'])
-            ->where('is_active', true)
-            ->whereHas('roleTemplate', function ($roleQuery) use ($requiredPermissions) {
-                $roleQuery->where(function ($permissionQuery) use ($requiredPermissions) {
-                    foreach ($requiredPermissions as $permission) {
-                        $permissionQuery->orWhere('permissions', 'like', "%{$permission}%");
-                    }
-                });
-            });
-        
-        // Apply filters
+        // Use centralized service to get billing agents
+        $filters = [];
         if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('name', 'like', "%{$searchTerm}%")
-                  ->orWhere('email', 'like', "%{$searchTerm}%");
-            });
+            $filters['search'] = $request->search;
         }
-        
-        // Filter by account if specified
         if ($request->filled('account_id')) {
-            $query->where('account_id', $request->account_id);
+            $filters['account_id'] = $request->account_id;
         }
         
-        // Simple ordering by name
-        $billingAgents = $query->orderBy('name')->get();
+        $billingAgents = PermissionService::getAgentsForType('billing', $filters);
         
         return response()->json([
             'data' => UserResource::collection($billingAgents),
@@ -554,18 +501,4 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Get permissions that allow a user to be an agent for the specified type
-     * Multi-layer approach: Feature-specific act_as_agent permissions + management permissions + admin
-     */
-    private function getAgentPermissions(string $agentType): array
-    {
-        return match($agentType) {
-            'timer' => ['timers.act_as_agent', 'timers.assign', 'timers.manage', 'admin.write'],
-            'ticket' => ['tickets.act_as_agent', 'tickets.assign', 'tickets.manage', 'admin.write'],
-            'time' => ['time.act_as_agent', 'time.assign', 'time.manage', 'admin.write'],
-            'billing' => ['billing.act_as_agent', 'billing.manage', 'billing.admin', 'admin.write'],
-            default => ['timers.act_as_agent', 'timers.assign', 'timers.manage', 'admin.write'] // Default for backward compatibility
-        };
-    }
 }

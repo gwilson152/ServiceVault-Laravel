@@ -54,7 +54,11 @@ class CustomerPortalController extends Controller
             'recentActivity' => $recentActivity,
             'billingInfo' => $billingInfo,
             'upcomingItems' => $upcomingItems,
-            'dashboardType' => 'portal'
+            'dashboardType' => 'portal',
+            'permissions' => [
+                'canViewTimeTracking' => $user->hasPermission('time.view'),
+                'canViewBilling' => $user->hasPermission('billing.view'),
+            ]
         ]);
     }
     

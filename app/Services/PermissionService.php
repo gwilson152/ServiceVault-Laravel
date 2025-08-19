@@ -290,4 +290,113 @@ class PermissionService
 
         return in_array($permission, $systemPermissions) || in_array('*', $systemPermissions);
     }
+
+    /**
+     * Filter users who have any of the specified permissions.
+     * This properly handles Super Admin logic and other permission edge cases.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder|\Illuminate\Support\Collection $users
+     * @param array $permissions
+     * @return \Illuminate\Support\Collection
+     */
+    public static function filterUsersByPermissions($users, array $permissions): Collection
+    {
+        // If we have a query builder, execute it first
+        if ($users instanceof \Illuminate\Database\Eloquent\Builder) {
+            $users = $users->get();
+        }
+
+        return $users->filter(function ($user) use ($permissions) {
+            return $user->hasAnyPermission($permissions);
+        });
+    }
+
+    /**
+     * Get users who can act as agents for a specific type.
+     * This is a centralized method that all controllers should use.
+     *
+     * @param string $agentType ('timer', 'ticket', 'time', 'billing')
+     * @param array $filters Additional filters (search, account_id)
+     * @return Collection
+     */
+    public static function getAgentsForType(string $agentType, array $filters = []): Collection
+    {
+        $requiredPermissions = static::getAgentPermissions($agentType);
+        
+        // Start with all active users with role templates
+        $query = User::with(['account', 'roleTemplate'])
+            ->where('is_active', true)
+            ->whereNotNull('role_template_id');
+        
+        // Apply search filter if provided
+        if (!empty($filters['search'])) {
+            $searchTerm = $filters['search'];
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%");
+            });
+        }
+        
+        // Apply account filter if provided
+        if (!empty($filters['account_id'])) {
+            $query->where('account_id', $filters['account_id']);
+        }
+        
+        // Order by name
+        $query->orderBy('name');
+        
+        // Filter by permissions using centralized logic
+        return static::filterUsersByPermissions($query, $requiredPermissions);
+    }
+
+    /**
+     * Get the permissions required to be an agent for a specific type.
+     * This centralizes the agent permission logic.
+     *
+     * @param string $agentType
+     * @return array
+     */
+    public static function getAgentPermissions(string $agentType): array
+    {
+        return match($agentType) {
+            'timer' => ['timers.act_as_agent', 'timers.assign', 'timers.manage', 'admin.write'],
+            'ticket' => ['tickets.act_as_agent', 'tickets.assign', 'tickets.manage', 'admin.write'],
+            'time' => ['time.act_as_agent', 'time.assign', 'time.manage', 'admin.write'],
+            'billing' => ['billing.act_as_agent', 'billing.manage', 'billing.admin', 'admin.write'],
+            default => ['timers.act_as_agent', 'timers.assign', 'timers.manage', 'admin.write']
+        };
+    }
+
+    /**
+     * Check if a user can view agents of a specific type.
+     * This is used to determine if a user should see agent selection dropdowns.
+     *
+     * @param User $user
+     * @param string $agentType
+     * @return bool
+     */
+    public static function canViewAgents(User $user, string $agentType): bool
+    {
+        $viewPermissions = match($agentType) {
+            'timer' => ['timers.assign', 'timers.manage', 'admin.write'],
+            'ticket' => ['tickets.assign', 'tickets.manage', 'admin.write'],
+            'time' => ['time.assign', 'time.manage', 'admin.write'],
+            'billing' => ['billing.manage', 'billing.admin', 'admin.write'],
+            default => ['timers.assign', 'timers.manage', 'admin.write']
+        };
+
+        return $user->hasAnyPermission($viewPermissions);
+    }
+
+    /**
+     * Check if a user can assign work to others (and therefore see assignment dropdowns).
+     *
+     * @param User $user
+     * @param string $workType ('timer', 'ticket', 'time', 'billing')
+     * @return bool
+     */
+    public static function canAssignToOthers(User $user, string $workType = 'time'): bool
+    {
+        return static::canViewAgents($user, $workType);
+    }
 }

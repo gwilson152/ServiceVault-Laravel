@@ -571,9 +571,18 @@ const submitButtonText = computed(() => {
 });
 
 const canAssignToOthers = computed(() => {
+    // Super Admin can always assign to others
+    if (user.value?.is_super_admin || user.value?.roleTemplate?.name === "Super Admin") {
+        return true;
+    }
+    
+    // Check if user has permission to assign time entries to others
     return (
         user.value?.permissions?.includes("time.admin") ||
-        user.value?.permissions?.includes("admin.manage")
+        user.value?.permissions?.includes("time.assign") ||
+        user.value?.permissions?.includes("time.manage") ||
+        user.value?.permissions?.includes("admin.manage") ||
+        user.value?.permissions?.includes("admin.write")
     );
 });
 
@@ -717,10 +726,9 @@ const loadAgentsForAccount = async (accountId) => {
             agent_type: "time", // Specify time entry agent type
         };
 
-        // Only filter by account if one is specified
-        if (accountId) {
-            params.account_id = accountId;
-        }
+        // For time entries, don't filter by account - show all available time agents
+        // Time entries represent completed work and should be assignable to any qualified agent
+        // (Similar to how the timer dialog works)
 
         const response = await axios.get("/api/users/agents", { params });
         availableAgents.value = response.data.data || [];

@@ -37,6 +37,7 @@ When starting a timer, configure:
 **Timer Overlay** (bottom-left of screen):
 - **Play/Pause**: Start/pause individual timers
 - **Stop**: Stop timer and optionally convert to time entry
+- **Commit**: Stop timer and convert to time entry with full dialog
 - **Edit**: Modify timer description, billing rate, etc.
 - **Settings**: Configure timer preferences
 
@@ -50,6 +51,17 @@ Click the "Edit" (⚙️) button on any timer to modify:
 - Billing rate
 
 **Recent Fix**: Timer edit modal now properly displays pre-selected values for all fields.
+
+### Converting Timers to Time Entries
+
+**Timer Commit Process** (Recent Enhancement):
+1. **Commit Option**: Use "Commit to Time Entry" from timer overlay dropdown
+2. **Unified Dialog**: Opens the same time entry dialog used for manual entries
+3. **Pre-Population**: All timer data (description, account, ticket, user) automatically filled
+4. **Agent Assignment**: User who ran the timer is pre-selected as the assignee
+5. **Review & Save**: Modify any details before creating the time entry
+
+**Key Behavior**: Timer commit uses the same agent loading logic as manual time entry creation, showing all available time agents regardless of account association.
 
 ## Time Entry Management
 
@@ -76,10 +88,22 @@ Navigate to `/time-entries` for unified time management:
 
 ### Agent Assignment
 
-Users can act as timer agents if they have:
+**Timer Agent Eligibility** - Users can act as timer agents if they have:
 1. `user_type = 'agent'` (primary agents)
 2. `timers.act_as_agent` permission (extended agents)
 3. Admin permissions (`admin.write`, super admin)
+
+**Time Entry Agent Eligibility** - Users can be assigned time entries if they have:
+1. `time.act_as_agent` permission (feature-specific)
+2. `time.assign`, `time.manage` permissions (management)
+3. Admin permissions (`admin.write`, super admin)
+
+**Agent Loading Behavior**:
+- **Timer Creation**: Shows all available timer agents (no account filtering)
+- **Time Entry Creation**: Shows all available time agents (no account filtering)
+- **Timer Commit**: Uses unified time entry dialog with same agent loading logic
+
+**Permission Service**: All agent filtering uses the centralized `PermissionService` to ensure consistent behavior and proper Super Admin inheritance.
 
 ## API Integration
 

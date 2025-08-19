@@ -133,6 +133,30 @@ Content-Type: application/json
 - `manager`: Team management and approval abilities  
 - `admin`: Administrative access to all resources
 
+### Get Available Token Abilities
+```http
+GET /api/auth/tokens/abilities
+Authorization: Bearer {token}
+```
+
+**Response**:
+```json
+{
+  "abilities": [
+    "tickets:read", "tickets:write", "tickets:delete",
+    "timers:read", "timers:write", "timers:delete",
+    "time-entries:read", "time-entries:write", "time-entries:delete",
+    "users:read", "users:write", "users:delete",
+    "accounts:read", "accounts:write", "accounts:delete",
+    "billing-rates:read", "billing-rates:write", "billing-rates:delete",
+    "invoices:read", "invoices:write", "invoices:delete",
+    "payments:read", "payments:write",
+    "admin:read", "admin:write",
+    "system:configure"
+  ]
+}
+```
+
 ## Domain-Based Assignment
 
 **Automatic User-to-Account Mapping**:
@@ -176,6 +200,28 @@ Content-Type: application/json
   }
 }
 ```
+
+### Domain Validation
+```http
+GET /api/domain-mappings/validate/requirements # System validation
+```
+
+## Real-Time Broadcasting
+
+### WebSocket Channel Authorization
+```http
+GET /broadcasting/auth              # WebSocket channel authorization (session-based)
+```
+
+**Private Channels**:
+- `user.{id}`: Personal notifications and updates
+- `account.{id}`: Account-wide notifications  
+- `ticket.{id}`: Ticket-specific real-time updates
+
+**Events**:
+- `comment.created`: New ticket comments
+- `timer.started`, `timer.stopped`: Timer state changes
+- `ticket.updated`: Status/assignment changes
 
 ## CSRF Protection
 

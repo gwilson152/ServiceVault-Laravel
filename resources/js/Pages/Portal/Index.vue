@@ -185,7 +185,8 @@
             <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
               <Link 
-                :href="route('time-entries')" 
+                v-if="permissions.canViewTimeTracking"
+                :href="route('portal.time-tracking')" 
                 class="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 View Time Reports →
@@ -238,6 +239,7 @@
             </button>
             
             <Link
+              v-if="permissions.canViewBilling"
               :href="route('portal.billing')"
               class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
@@ -253,7 +255,8 @@
             </Link>
             
             <Link
-              :href="route('time-entries')"
+              v-if="permissions.canViewTimeTracking"
+              :href="route('portal.time-tracking')"
               class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -287,6 +290,17 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import CreateTicketModalTabbed from '@/Components/Modals/CreateTicketModalTabbed.vue'
 import axios from 'axios'
 
+// Define props
+const props = defineProps({
+  permissions: {
+    type: Object,
+    default: () => ({
+      canViewTimeTracking: false,
+      canViewBilling: false,
+    })
+  }
+})
+
 // Define persistent layout
 defineOptions({
   layout: AppLayout
@@ -309,21 +323,40 @@ const loadDashboardData = async () => {
   loading.value = true
   
   try {
-    // Load dashboard statistics
+    // Load dashboard statistics with better error handling
     const [statsResponse, ticketsResponse, activityResponse] = await Promise.all([
-      axios.get('/api/portal/stats'),
-      axios.get('/api/portal/recent-tickets'),
-      axios.get('/api/portal/recent-activity')
+      axios.get('/api/portal/stats').catch(error => {
+        console.error('Failed to load stats:', error)
+        return { data: { data: { open_tickets: 0, closed_tickets: 0, hours_this_month: 0, total_spent: 0 } } }
+      }),
+      axios.get('/api/portal/recent-tickets').catch(error => {
+        console.error('Failed to load recent tickets:', error)
+        return { data: { data: [] } }
+      }),
+      axios.get('/api/portal/recent-activity').catch(error => {
+        console.error('Failed to load recent activity:', error)
+        return { data: { data: [] } }
+      })
     ])
     
-    stats.value = statsResponse.data.data || {}
+    stats.value = statsResponse.data.data || {
+      open_tickets: 0,
+      closed_tickets: 0, 
+      hours_this_month: 0,
+      total_spent: 0
+    }
     recentTickets.value = ticketsResponse.data.data || []
     recentActivity.value = activityResponse.data.data || []
     
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
-    // Set empty defaults on error
-    stats.value = {}
+    // Set safe defaults on error
+    stats.value = {
+      open_tickets: 0,
+      closed_tickets: 0,
+      hours_this_month: 0,
+      total_spent: 0
+    }
     recentTickets.value = []
     recentActivity.value = []
   } finally {

@@ -347,6 +347,7 @@
     
     <!-- Addon Modal -->
     <AddAddonModal
+      v-if="selectedTicketForAddon"
       :show="showAddonModal"
       :ticket="selectedTicketForAddon"
       @close="showAddonModal = false"

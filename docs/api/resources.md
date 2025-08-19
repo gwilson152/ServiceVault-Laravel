@@ -192,6 +192,11 @@ GET /api/timers/active/current         # All active timers with totals
 }
 ```
 
+### Cross-Device Synchronization
+```http
+POST /api/timers/sync
+```
+
 ### Bulk Timer Operations
 ```http
 POST /api/timers/bulk
@@ -255,6 +260,12 @@ Content-Type: application/json
   "entry_ids": ["uuid1", "uuid2", "uuid3"],
   "notes": "Batch approval for weekly billing"
 }
+```
+
+### Time Entry Statistics
+```http
+GET /api/time-entries/stats/recent        # Recent statistics for dashboard
+GET /api/time-entries/stats/approvals     # Approval statistics (managers/admins)
 ```
 
 ## Users API
@@ -327,6 +338,77 @@ Content-Type: application/json
   "is_active": true
 }
 ```
+
+## Ticket Configuration API
+
+### Ticket Configuration Overview
+```http
+GET /api/settings/ticket-config     # Get all ticket configuration (statuses, categories, priorities)
+```
+
+### Ticket Statuses
+```http
+GET /api/ticket-statuses            # List ticket statuses with filtering
+POST /api/ticket-statuses           # Create new ticket status
+PUT /api/ticket-statuses/{id}       # Update ticket status
+DELETE /api/ticket-statuses/{id}    # Delete ticket status
+POST /api/ticket-statuses/reorder   # Reorder statuses (optimistic drag-drop)
+```
+
+### Ticket Categories
+```http
+GET /api/ticket-categories          # List ticket categories with SLA info
+POST /api/ticket-categories         # Create new ticket category
+PUT /api/ticket-categories/{id}     # Update ticket category
+DELETE /api/ticket-categories/{id}  # Delete ticket category
+POST /api/ticket-categories/reorder # Reorder categories (optimistic drag-drop)
+```
+
+### Ticket Priorities
+```http
+GET /api/ticket-priorities          # List ticket priorities with escalation
+POST /api/ticket-priorities         # Create new ticket priority
+PUT /api/ticket-priorities/{id}     # Update ticket priority
+DELETE /api/ticket-priorities/{id}  # Delete ticket priority
+POST /api/ticket-priorities/reorder # Reorder priorities (optimistic drag-drop)
+```
+
+### Workflow Transitions
+```http
+PUT /api/settings/workflow-transitions # Update workflow transition rules
+```
+
+## System Settings API
+
+### Advanced Settings (Super Admin only)
+```http
+GET /api/settings/advanced          # Get advanced settings (debug overlays)
+PUT /api/settings/advanced          # Update advanced settings
+```
+
+**Body Example**:
+```json
+{
+  "show_debug_overlay": true,
+  "show_permissions_debug_overlay": false
+}
+```
+
+**Requirements**: Super Admin role + `system.configure` permission
+
+### Nuclear System Reset (Super Admin only - DESTRUCTIVE)
+```http
+POST /api/settings/nuclear-reset    # Complete system reset with password confirmation
+```
+
+**Body Example**:
+```json
+{
+  "password": "current_password_confirmation"
+}
+```
+
+**⚠️ WARNING**: Destroys ALL data permanently. Use with extreme caution.
 
 ## Error Handling
 

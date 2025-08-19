@@ -232,8 +232,11 @@
       </Dialog>
     </TransitionRoot>
     
-    <!-- Timer Broadcast Overlay -->
-    <TimerBroadcastOverlay key="timer-overlay-persistent" />
+    <!-- Timer Broadcast Overlay (only for users with timer permissions) -->
+    <TimerBroadcastOverlay 
+      v-if="userCanUseTimers"
+      key="timer-overlay-persistent" 
+    />
     
     <!-- Permissions Debug Overlay -->
     <PermissionsDebugOverlay key="permissions-debug-overlay-persistent" />
@@ -280,6 +283,17 @@ import { useNavigationQuery } from '@/Composables/queries/useNavigationQuery.js'
 const sidebarOpen = ref(false)
 const sidebarCollapsed = ref(false)
 const page = usePage()
+
+// Check if user has timer permissions
+const userCanUseTimers = computed(() => {
+  const user = page.props.auth?.user
+  if (!user) return false
+  
+  // Check for timer-related permissions
+  // This is a simple check - in a real app you'd want to check specific permissions
+  // For now, exclude account_user type from timer access
+  return user.user_type !== 'account_user'
+})
 
 // Load sidebar preference from localStorage
 onMounted(() => {

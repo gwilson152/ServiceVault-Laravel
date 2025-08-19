@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
+use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TimerController;
@@ -121,7 +122,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('tickets.timers.active');
 
     // Time Entry routes with approval workflow
-    Route::apiResource('time-entries', TimeEntryController::class);
+    Route::apiResource('time-entries', TimeEntryController::class)->names([
+        'index' => 'time-entries.api.index',
+        'store' => 'time-entries.api.store',
+        'show' => 'time-entries.api.show', 
+        'update' => 'time-entries.api.update',
+        'destroy' => 'time-entries.api.destroy'
+    ]);
     
     // Time entry approval workflow endpoints
     Route::post('time-entries/{timeEntry}/approve', [TimeEntryController::class, 'approve'])
@@ -177,7 +184,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('tickets.filter-counts');
     
     // Resource route (creates routes with {ticket} parameter binding)
-    Route::apiResource('tickets', TicketController::class);
+    Route::apiResource('tickets', TicketController::class)->names([
+        'index' => 'tickets.api.index',
+        'store' => 'tickets.api.store', 
+        'show' => 'tickets.api.show',
+        'update' => 'tickets.api.update',
+        'destroy' => 'tickets.api.destroy'
+    ]);
     
     // Ticket workflow and assignment endpoints
     Route::post('tickets/{ticket}/transition', [TicketController::class, 'transitionStatus'])
@@ -441,6 +454,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('billing.reports.outstanding');
         Route::get('reports/payments', [App\Http\Controllers\Api\BillingReportController::class, 'payments'])
             ->name('billing.reports.payments');
+    });
+
+    // Portal API routes (customer portal dashboard data)
+    Route::prefix('portal')->group(function () {
+        Route::get('stats', [PortalController::class, 'stats'])
+            ->name('portal.stats');
+        Route::get('recent-tickets', [PortalController::class, 'recentTickets'])
+            ->name('portal.recent-tickets');
+        Route::get('recent-activity', [PortalController::class, 'recentActivity'])
+            ->name('portal.recent-activity');
     });
 });
 

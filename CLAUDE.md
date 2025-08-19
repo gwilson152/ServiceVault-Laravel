@@ -368,6 +368,8 @@ $user->hasPermission('pages.tickets.manage');      // Page Access
 
 **Permission Storage:** Role templates store three separate arrays (`permissions`, `widget_permissions`, `page_permissions`) with unified checking via `hasPermission()` method.
 
+**Centralized Permission Service:** Use `App\Services\PermissionService` for all agent filtering and permission logic to ensure consistency across the application. See [Permission System Documentation](docs/architecture/permissions.md).
+
 ## Feature-Specific Agent Permission System
 
 Service Vault implements a comprehensive feature-specific agent permission system that provides granular control over which users can act as agents for different system features. See [Feature-Specific Agent Permissions](docs/features/feature-specific-agent-permissions.md) for complete details.
