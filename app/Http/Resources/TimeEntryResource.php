@@ -63,7 +63,6 @@ class TimeEntryResource extends JsonResource
                 return [
                     'id' => $this->billingRate->id,
                     'rate' => $this->billingRate->rate,
-                    'currency' => $this->billingRate->currency ?? 'USD',
                     'type' => $this->billingRate->type
                 ];
             }),

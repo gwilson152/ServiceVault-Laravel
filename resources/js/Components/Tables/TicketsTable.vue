@@ -22,17 +22,19 @@
               'text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200',
               {
                 'cursor-pointer hover:bg-gray-100': header.column.getCanSort(),
-                'text-center': ['timer', 'updated_at'].includes(header.id),
-                'w-20': header.id === 'timer',
-                'w-28': header.id === 'updated_at',
-                'w-48': header.id === 'account'
+                'text-center': ['actions', 'updated_at', 'created_at', 'due_date'].includes(header.id),
+                'w-20': header.id === 'actions',
+                'w-28': ['updated_at', 'created_at', 'due_date'].includes(header.id),
+                'w-48': header.id === 'account',
+                'w-32': header.id === 'category',
+                'w-36': header.id === 'assigned_agent'
               }
             ]"
             @click="header.column.getToggleSortingHandler()?.($event)"
           >
             <div class="flex items-center" :class="{ 
-              'justify-center': ['timer', 'updated_at'].includes(header.id),
-              'justify-start': !['timer', 'updated_at'].includes(header.id)
+              'justify-center': ['actions', 'updated_at', 'created_at', 'due_date'].includes(header.id),
+              'justify-start': !['actions', 'updated_at', 'created_at', 'due_date'].includes(header.id)
             }">
               <FlexRender
                 :render="header.column.columnDef.header"
@@ -58,6 +60,7 @@
           v-for="row in table.getRowModel().rows"
           :key="row.id"
           class="hover:bg-blue-50 transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-blue-300 hover:shadow-sm"
+          @contextmenu="openContextMenu($event, row.original)"
         >
           <td
             v-for="cell in row.getVisibleCells()"
@@ -67,13 +70,15 @@
               density === 'compact' ? 'px-3 py-2' : 'px-6 py-4',
               'border-b border-gray-100',
               {
-                'text-center': ['timer', 'updated_at'].includes(cell.column.id),
-                'text-sm text-gray-900': !['ticket_number', 'status', 'priority', 'timer', 'actions', 'account', 'assigned_to', 'total_time_logged'].includes(cell.column.id),
-                'text-sm text-gray-500': cell.column.id === 'updated_at',
+                'text-center': ['actions', 'updated_at', 'created_at', 'due_date'].includes(cell.column.id),
+                'text-sm text-gray-900': !['ticket_number', 'status', 'priority', 'actions', 'account', 'assigned_to', 'total_time_logged', 'updated_at', 'created_at', 'due_date'].includes(cell.column.id),
+                'text-sm text-gray-500': ['updated_at', 'created_at', 'due_date'].includes(cell.column.id),
                 'whitespace-nowrap': cell.column.id !== 'ticket_number', // Allow ticket details to wrap
-                'w-20': cell.column.id === 'timer',
-                'w-28': cell.column.id === 'updated_at',
-                'w-48': cell.column.id === 'account'
+                'w-20': cell.column.id === 'actions',
+                'w-28': ['updated_at', 'created_at', 'due_date'].includes(cell.column.id),
+                'w-48': cell.column.id === 'account',
+                'w-32': cell.column.id === 'category',
+                'w-36': cell.column.id === 'assigned_agent'
               }
             ]"
           >
@@ -103,16 +108,8 @@
                   density === 'compact' ? 'flex-wrap' : 'flex-row'
                 ]"
               >
-                <!-- Status Dropdown -->
-                <StatusDropdown
-                  v-if="ticketStatuses.length > 0"
-                  :model-value="cell.row.original.status"
-                  :statuses="ticketStatuses"
-                  :workflow-transitions="workflowTransitions"
-                  :loading="statusUpdating === cell.row.original.id"
-                  @change="updateTicketStatus(cell.row.original, $event)"
-                />
-                <span v-else 
+                <!-- Status Badge (Read-only) -->
+                <span 
                   :class="getStatusClasses(cell.row.original.status)" 
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm"
                 >
@@ -123,15 +120,8 @@
                   {{ formatStatus(cell.row.original.status) }}
                 </span>
                 
-                <!-- Priority Dropdown -->
-                <PriorityDropdown
-                  v-if="ticketPriorities.length > 0"
-                  :model-value="cell.row.original.priority"
-                  :priorities="ticketPriorities"
-                  :loading="priorityUpdating === cell.row.original.id"
-                  @change="updateTicketPriority(cell.row.original, $event)"
-                />
-                <span v-else
+                <!-- Priority Badge (Read-only) -->
+                <span
                   :class="getPriorityClasses(cell.row.original.priority)" 
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm"
                 >
@@ -160,8 +150,8 @@
               </div>
             </div>
             
-            <!-- Combined Timer/Time/Actions Column -->
-            <div v-else-if="cell.column.id === 'timer'" class="text-center">
+            <!-- Actions Column -->
+            <div v-else-if="cell.column.id === 'actions'" class="text-center">
               <!-- Action Buttons Row -->
               <div 
                 :class="[
@@ -169,42 +159,28 @@
                   density === 'compact' ? 'space-x-1 mb-1' : 'space-x-2 mb-2'
                 ]"
               >
-                <!-- Timer Controls (Agents Only) -->
-                <TicketTimerControls
-                  v-if="user?.user_type === 'agent'"
-                  :ticket="cell.row.original"
-                  :currentUser="user"
-                  :compact="true"
-                  :initialTimerData="timersByTicket[cell.row.original.id] || []"
-                  :availableBillingRates="[]"
-                  :assignableUsers="[]"
-                  @timer-started="$emit('timer-started', $event)"
-                  @timer-stopped="$emit('timer-stopped', $event)"
-                  @timer-paused="$emit('timer-paused', $event)"
-                  @time-entry-created="$emit('time-entry-created', $event)"
-                />
-                
-                <!-- Manual Time Entry Button (Agents Only) -->
+                <!-- Add Time Entry Button -->
                 <button
-                  v-if="user?.user_type === 'agent'"
                   @click="$emit('open-manual-time-entry', cell.row.original)"
-                  class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                  title="Add Manual Time Entry"
+                  class="group inline-flex items-center px-2 py-1 text-xs font-medium rounded-md border transition-all duration-200 text-gray-600 border-gray-300 bg-white hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 active:bg-blue-100 sm:px-3"
+                  title="Add Time Entry"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
+                  <span class="hidden sm:inline">Add Time</span>
                 </button>
                 
                 <!-- Add Ticket Addon Button -->
                 <button
                   @click="$emit('open-ticket-addon', cell.row.original)"
-                  class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                  class="group inline-flex items-center px-2 py-1 text-xs font-medium rounded-md border transition-all duration-200 text-gray-600 border-gray-300 bg-white hover:bg-green-50 hover:border-green-300 hover:text-green-700 active:bg-green-100 sm:px-3"
                   title="Add Ticket Addon"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
+                  <span class="hidden sm:inline">Add Addon</span>
                 </button>
               </div>
               
@@ -330,6 +306,72 @@
         </div>
       </div>
     </div>
+
+    <!-- Context Menu -->
+    <ContextMenu
+      :show="showContextMenu"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      :target="contextMenuTarget"
+      @close="closeContextMenu"
+    >
+      <template #default="{ item, close }">
+        <div class="py-1">
+          <a
+            :href="route('tickets.show', item.id)"
+            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+            @click="close"
+          >
+            <div class="flex items-center">
+              <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              View Ticket
+            </div>
+          </a>
+
+          <button
+            @click="$emit('open-manual-time-entry', item); close()"
+            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+          >
+            <div class="flex items-center">
+              <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Add Time Entry
+            </div>
+          </button>
+
+          <button
+            @click="$emit('open-ticket-addon', item); close()"
+            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+          >
+            <div class="flex items-center">
+              <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add Addon
+            </div>
+          </button>
+
+          <hr class="my-1 border-gray-100">
+
+          <a
+            :href="route('tickets.show', [item.id, 'activity'])"
+            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+            @click="close"
+          >
+            <div class="flex items-center">
+              <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              View Activity
+            </div>
+          </a>
+        </div>
+      </template>
+    </ContextMenu>
   </div>
 </template>
 
@@ -337,9 +379,9 @@
 import { ref } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { FlexRender } from '@tanstack/vue-table'
-import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
-import StatusDropdown from '@/Components/Form/StatusDropdown.vue'
-import PriorityDropdown from '@/Components/Form/PriorityDropdown.vue'
+import { useContextMenu } from '@/Composables/useContextMenu'
+import ContextMenu from '@/Components/UI/ContextMenu.vue'
+// Removed inline editing and timer components for simplified table view
 
 const props = defineProps({
   table: {
@@ -350,43 +392,29 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  timersByTicket: {
-    type: Object,
-    default: () => ({})
-  },
   density: {
     type: String,
     default: 'compact',
     validator: (value) => ['comfortable', 'compact'].includes(value)
-  },
-  ticketStatuses: {
-    type: Array,
-    default: () => []
-  },
-  ticketPriorities: {
-    type: Array,
-    default: () => []
-  },
-  workflowTransitions: {
-    type: Object,
-    default: () => ({})
   }
 })
 
 const emit = defineEmits([
-  'timer-started',
-  'timer-stopped',
-  'timer-paused',
-  'time-entry-created',
   'open-manual-time-entry',
-  'open-ticket-addon',
-  'status-updated',
-  'priority-updated'
+  'open-ticket-addon'
 ])
 
-// Loading states for inline editing
-const statusUpdating = ref(null)
-const priorityUpdating = ref(null)
+// Context menu functionality
+const {
+  showContextMenu,
+  contextMenuX,
+  contextMenuY,
+  contextMenuTarget,
+  openContextMenu,
+  closeContextMenu
+} = useContextMenu()
+
+// Removed inline editing functionality for simplified table view
 
 // Helper methods
 const getStatusClasses = (status) => {
@@ -483,113 +511,7 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString()
 }
 
-// Update ticket status via API
-const updateTicketStatus = async (ticket, changeEvent) => {
-  if (changeEvent.from === changeEvent.to) return // No change
-  
-  statusUpdating.value = ticket.id
-  
-  try {
-    const response = await fetch(`/api/tickets/${ticket.id}/transition`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        status: changeEvent.to,
-        notes: `Status changed via table from ${changeEvent.from} to ${changeEvent.to}`
-      })
-    })
-    
-    const data = await response.json()
-    
-    if (response.ok) {
-      // Emit success event to parent
-      emit('status-updated', {
-        ticket,
-        oldStatus: changeEvent.from,
-        newStatus: changeEvent.to,
-        updatedTicket: data.data
-      })
-      
-      if (import.meta.env.DEV) {
-        console.log('Status updated successfully:', data.message)
-      }
-    } else {
-      throw new Error(data.error || 'Failed to update status')
-    }
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Failed to update ticket status:', error)
-    }
-    
-    // Could emit error event or show toast notification
-    emit('status-updated', {
-      ticket,
-      error: error.message,
-      oldStatus: changeEvent.from,
-      newStatus: changeEvent.to
-    })
-  } finally {
-    statusUpdating.value = null
-  }
-}
-
-// Update ticket priority via API
-const updateTicketPriority = async (ticket, changeEvent) => {
-  if (changeEvent.from === changeEvent.to) return // No change
-  
-  priorityUpdating.value = ticket.id
-  
-  try {
-    const response = await fetch(`/api/tickets/${ticket.id}/priority`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        priority: changeEvent.to,
-        notes: `Priority changed via table from ${changeEvent.fromPriority?.name || changeEvent.from} to ${changeEvent.toPriority?.name || changeEvent.to}`
-      })
-    })
-    
-    const data = await response.json()
-    
-    if (response.ok) {
-      // Emit success event to parent
-      emit('priority-updated', {
-        ticket,
-        oldPriority: changeEvent.from,
-        newPriority: changeEvent.to,
-        updatedTicket: data.data
-      })
-      
-      if (import.meta.env.DEV) {
-        console.log('Priority updated successfully:', data.message)
-      }
-    } else {
-      throw new Error(data.error || 'Failed to update priority')
-    }
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Failed to update ticket priority:', error)
-    }
-    
-    // Could emit error event or show toast notification
-    emit('priority-updated', {
-      ticket,
-      error: error.message,
-      oldPriority: changeEvent.from,
-      newPriority: changeEvent.to
-    })
-  } finally {
-    priorityUpdating.value = null
-  }
-}
+// Removed inline editing functions for simplified table view
 </script>
 
 <style scoped>

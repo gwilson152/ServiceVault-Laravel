@@ -18,7 +18,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-2">Current Rate</label>
           <div class="space-y-1">
             <p class="text-sm font-medium text-gray-900">{{ currentRate.name }}</p>
-            <p class="text-sm text-gray-600">${{ currentRate.rate }}/hour ({{ currentRate.currency?.toUpperCase() || 'USD' }})</p>
+            <p class="text-sm text-gray-600">${{ currentRate.rate }}/hour</p>
             <p v-if="currentRate.description" class="text-xs text-gray-500">{{ currentRate.description }}</p>
           </div>
         </div>
@@ -103,22 +103,6 @@
             <p v-if="errors.rate" class="text-red-500 text-xs mt-1">{{ errors.rate }}</p>
           </div>
 
-          <!-- Currency -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Currency
-            </label>
-            <select 
-              v-model="customRate.currency" 
-              class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="USD">USD - US Dollar</option>
-              <option value="EUR">EUR - Euro</option>
-              <option value="GBP">GBP - British Pound</option>
-              <option value="CAD">CAD - Canadian Dollar</option>
-              <option value="AUD">AUD - Australian Dollar</option>
-            </select>
-          </div>
 
           <!-- Description -->
           <div>
@@ -246,7 +230,6 @@ const form = ref({
 const customRate = ref({
   name: '',
   rate: 0,
-  currency: 'USD',
   description: '',
   save_as_template: false
 })
@@ -319,7 +302,6 @@ const submitForm = async () => {
       const ratePayload = {
         name: customRate.value.name.trim(),
         rate: customRate.value.rate,
-        currency: customRate.value.currency,
         description: customRate.value.description.trim() || null,
         is_template: customRate.value.save_as_template
       }

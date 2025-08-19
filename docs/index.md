@@ -1,19 +1,19 @@
 # Service Vault Documentation
 
-B2B **ticketing and time management platform** built with Laravel 12. Features account hierarchy, role-based permissions, real-time messaging, and service ticket workflows.
+B2B **ticketing and time management platform** built with Laravel 12. Features role-based permissions, real-time messaging, and service ticket workflows.
 
 ## Quick Overview
 
 **Service Vault** enables service companies to manage customer tickets, track time, and handle billing. Both service providers and customers use the platform with role-based access controls.
 
 **Status**: Production Ready  
-**Last Updated**: August 18, 2025
+**Last Updated**: August 19, 2025
 
 ### Key Features
 
 - **Ticket Management**: Full service ticket workflow with real-time messaging
 - **Time Tracking**: Multi-timer system with cross-device sync and billing integration  
-- **Account Management**: Hierarchical customer accounts with role-based access
+- **Account Management**: Customer accounts with role-based access
 - **Permission System**: Three-dimensional access control (Functional + Widget + Page)
 - **Billing**: Invoice generation, payment tracking, and rate management
 - **Real-Time**: WebSocket messaging with Laravel Reverb
@@ -65,4 +65,4 @@ For complete setup instructions, see [System Documentation](system/index.md).
 ---
 
 **Service Vault** - B2B Service Management Platform  
-_Last Updated: August 18, 2025 - Production Ready with Account Preselection_
+_Last Updated: August 19, 2025 - Production Ready with Timer Performance Optimization_

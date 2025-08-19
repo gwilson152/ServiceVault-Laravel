@@ -53,7 +53,6 @@ Setup wizard only runs when the `system.setup_complete` setting does not exist o
 
 ### 4. Advanced Settings
 ```bash
-• Max Account Depth (1-20)        # Hierarchy levels (default: 10)
 • Timer Sync Interval (1-60s)     # Sync frequency (default: 5)
 • Permission Cache TTL (60-3600s) # Cache lifetime (default: 300)
 • Enable Real-time Features       # WebSocket features toggle
@@ -93,7 +92,6 @@ $systemSettings = [
     'system.language' => $request->language,
     'system.enable_real_time' => $request->enable_real_time,
     'system.enable_notifications' => $request->enable_notifications,
-    'system.max_account_depth' => $request->max_account_depth,
     'system.timer_sync_interval' => $request->timer_sync_interval,
     'system.permission_cache_ttl' => $request->permission_cache_ttl,
     'license.max_users' => $request->max_users,
@@ -172,7 +170,6 @@ $rules = [
     'admin_password' => 'required|string|min:8|confirmed',
     
     // Advanced Settings
-    'max_account_depth' => 'required|integer|min:1|max:20',
     'timer_sync_interval' => 'required|integer|min:1|max:60',
     'permission_cache_ttl' => 'required|integer|min:60|max:3600',
     'max_users' => 'required|integer|min:1|max:10000',
@@ -203,7 +200,6 @@ const form = useForm({
   // Advanced Settings
   enable_real_time: true,
   enable_notifications: true,
-  max_account_depth: 10,
   timer_sync_interval: 5,
   permission_cache_ttl: 300,
   max_users: 250,

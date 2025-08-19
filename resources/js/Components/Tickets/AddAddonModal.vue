@@ -11,6 +11,24 @@
             </p>
 
             <form @submit.prevent="submitForm" class="space-y-4">
+                <!-- Ticket Selection -->
+                <div>
+                    <UnifiedSelector
+                        v-model="form.ticket_id"
+                        type="ticket"
+                        :items="availableTickets"
+                        :loading="ticketsLoading"
+                        label="Ticket"
+                        placeholder="Select ticket for this addon..."
+                        :required="true"
+                        :error="errors.ticket_id"
+                        @item-selected="handleTicketSelected"
+                    />
+                    <p v-if="errors.ticket_id" class="text-red-500 text-xs mt-1">
+                        {{ errors.ticket_id }}
+                    </p>
+                </div>
+                
                 <!-- Add-on Template Selection -->
                 <div v-if="addonTemplates.length > 0">
                     <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -268,9 +286,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
+import { usePage } from "@inertiajs/vue3";
 import axios from "axios";
 import StackedDialog from "@/Components/StackedDialog.vue";
+import UnifiedSelector from "@/Components/UI/UnifiedSelector.vue";
 
 // Props
 const props = defineProps({
@@ -287,9 +307,16 @@ const emit = defineEmits(["saved", "cancelled"]);
 const submitting = ref(false);
 const addonTemplates = ref([]);
 const selectedTemplate = ref("");
+const availableTickets = ref([]);
+const ticketsLoading = ref(false);
+
+// Get current user
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
 
 // Form data
 const form = ref({
+    ticket_id: props.ticket?.id || null,
     name: "",
     category: "",
     description: "",
@@ -311,6 +338,24 @@ const totalPreview = computed(() => {
 });
 
 // Methods
+const loadAvailableTickets = async () => {
+    try {
+        ticketsLoading.value = true;
+        const response = await axios.get("/api/tickets");
+        availableTickets.value = response.data.data || [];
+        
+        // If we have a preselected ticket, make sure it exists in the list
+        if (props.ticket && !availableTickets.value.find(t => t.id === props.ticket.id)) {
+            availableTickets.value.unshift(props.ticket);
+        }
+    } catch (error) {
+        console.error("Failed to load tickets:", error);
+        availableTickets.value = [];
+    } finally {
+        ticketsLoading.value = false;
+    }
+};
+
 const loadAddonTemplates = async () => {
     try {
         const response = await axios.get("/api/addon-templates");
@@ -338,8 +383,17 @@ const applyTemplate = () => {
     };
 };
 
+const handleTicketSelected = (ticket) => {
+    // Ticket selection is handled automatically by v-model
+    console.log("Ticket selected:", ticket);
+};
+
 const validateForm = () => {
     errors.value = {};
+
+    if (!form.value.ticket_id) {
+        errors.value.ticket_id = "Please select a ticket";
+    }
 
     if (!form.value.name.trim()) {
         errors.value.name = "Item name is required";
@@ -363,7 +417,8 @@ const submitForm = async () => {
 
     try {
         const payload = {
-            ticket_id: props.ticket.id,
+            ticket_id: form.value.ticket_id,
+            added_by_user_id: user.value?.id,
             name: form.value.name.trim(),
             category: form.value.category || "other",
             description: form.value.description.trim() || null,
@@ -391,8 +446,18 @@ const submitForm = async () => {
     }
 };
 
+// Watch for props changes to update form
+watch(() => props.ticket, (newTicket) => {
+    if (newTicket) {
+        form.value.ticket_id = newTicket.id;
+    }
+}, { immediate: true });
+
 // Lifecycle
-onMounted(() => {
-    loadAddonTemplates();
+onMounted(async () => {
+    await Promise.all([
+        loadAvailableTickets(),
+        loadAddonTemplates()
+    ]);
 });
 </script>

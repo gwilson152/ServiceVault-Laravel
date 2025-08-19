@@ -97,7 +97,6 @@ class SettingController extends Controller
             // Features & Limits
             'enable_real_time' => 'sometimes|boolean',
             'enable_notifications' => 'sometimes|boolean',
-            'max_account_depth' => 'sometimes|integer|min:1|max:20',
             'timer_sync_interval' => 'sometimes|integer|min:1|max:60',
             'permission_cache_ttl' => 'sometimes|integer|min:60|max:3600',
             'max_users' => 'sometimes|integer|min:1|max:10000',

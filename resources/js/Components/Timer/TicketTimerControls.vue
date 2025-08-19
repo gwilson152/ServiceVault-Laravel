@@ -612,8 +612,9 @@ const generateDeviceId = () => {
 
 // Lifecycle
 onMounted(async () => {
-  // Only fetch timers if no initial data was provided
-  if (!props.initialTimerData || props.initialTimerData.length === 0) {
+  // In compact mode, rely entirely on initialTimerData from parent (no individual fetching)
+  // In full mode, fetch timers if no initial data was provided
+  if (!props.compact && (!props.initialTimerData || props.initialTimerData.length === 0)) {
     await fetchTimersForTicket()
   }
   
@@ -621,10 +622,8 @@ onMounted(async () => {
   if (!props.compact) {
     // Full mode: Refresh every 30 seconds (default)
     refreshIntervalId = setInterval(fetchTimersForTicket, props.refreshInterval)
-  } else {
-    // Compact mode: Only refresh on timer actions, not periodically, to avoid conflicts with bulk loading
-    // The parent page will handle bulk refreshes
   }
+  // Compact mode: No periodic refresh - parent handles bulk data updates
   
   // Set up time update for duration calculations
   timeUpdateIntervalId = setInterval(() => {

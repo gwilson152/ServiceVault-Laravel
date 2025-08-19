@@ -48,19 +48,9 @@
         v-if="table"
         :table="table"
         :user="user"
-        :timersByTicket="timersByTicket"
         :density="density"
-        :ticket-statuses="ticketStatuses"
-        :ticket-priorities="ticketPriorities"
-        :workflow-transitions="workflowTransitions"
-        @timer-started="$emit('timer-started', $event)"
-        @timer-stopped="$emit('timer-stopped', $event)"
-        @timer-paused="$emit('timer-paused', $event)"
-        @time-entry-created="$emit('time-entry-created', $event)"
         @open-manual-time-entry="$emit('open-manual-time-entry', $event)"
         @open-ticket-addon="$emit('open-ticket-addon', $event)"
-        @status-updated="$emit('status-updated', $event)"
-        @priority-updated="$emit('priority-updated', $event)"
       />
       
       <!-- Simple Table (for contexts without TanStack Table) -->
@@ -211,22 +201,6 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  timersByTicket: {
-    type: Object,
-    default: () => ({})
-  },
-  ticketStatuses: {
-    type: Array,
-    default: () => []
-  },
-  ticketPriorities: {
-    type: Array,
-    default: () => []
-  },
-  workflowTransitions: {
-    type: Object,
-    default: () => ({})
-  },
   
   // State
   isLoading: {
@@ -277,14 +251,8 @@ const props = defineProps({
 const emit = defineEmits([
   'retry',
   'create-ticket',
-  'timer-started',
-  'timer-stopped',
-  'timer-paused',
-  'time-entry-created',
   'open-manual-time-entry',
-  'open-ticket-addon',
-  'status-updated',
-  'priority-updated'
+  'open-ticket-addon'
 ])
 
 // Helper functions for simple table

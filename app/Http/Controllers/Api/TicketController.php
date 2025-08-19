@@ -27,7 +27,12 @@ class TicketController extends Controller
             'account:id,name',
             'createdBy:id,name',
             'assignedTo:id,name',
-            'billingRate:id,rate,currency',
+            'billingRate:id,rate',
+            'timers' => function($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->whereIn('status', ['running', 'paused'])
+                  ->with(['user:id,name', 'billingRate:id,rate']);
+            }
         ]);
 
         // Apply user scope based on permissions
@@ -311,7 +316,7 @@ class TicketController extends Controller
             'createdBy:id,name,email',
             'assignedTo:id,name,email',
             'assignedUsers:id,name,email',
-            'billingRate:id,rate,currency',
+            'billingRate:id,rate',
             'timeEntries:id,duration,billable,created_at',
             'timers:id,status,started_at,duration',
             'statusModel',

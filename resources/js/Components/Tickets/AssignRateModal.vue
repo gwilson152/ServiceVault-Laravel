@@ -61,10 +61,6 @@
               <span class="text-blue-700">Rate:</span>
               <span class="font-medium text-blue-900">${{ selectedRate.rate }}/hour</span>
             </div>
-            <div class="flex justify-between">
-              <span class="text-blue-700">Currency:</span>
-              <span class="font-medium text-blue-900">{{ selectedRate.currency?.toUpperCase() || 'USD' }}</span>
-            </div>
             <div v-if="selectedRate.description" class="mt-2">
               <span class="text-blue-700">Description:</span>
               <p class="text-blue-600 text-xs mt-1">{{ selectedRate.description }}</p>

@@ -534,7 +534,7 @@ class TimeEntryController extends Controller
         }
         
         // Get time entries for this ticket
-        $query = TimeEntry::with(['user:id,name,email', 'billingRate:id,rate,currency'])
+        $query = TimeEntry::with(['user:id,name,email', 'billingRate:id,rate'])
             ->where('ticket_id', $ticket->id)
             ->orderBy('started_at', 'desc');
         

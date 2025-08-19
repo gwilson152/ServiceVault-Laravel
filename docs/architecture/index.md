@@ -10,8 +10,9 @@ System architecture, design patterns, and technical specifications for Service V
 - **[Authentication & Authorization](auth-system.md)** - Hybrid session + token auth system ✅ CURRENT
 
 ### Business Systems
-- **[Business Account System](business-account-system.md)** - Hierarchical B2B account management ✅ CURRENT
+- **[Business Account System](business-account-system.md)** - B2B account management ✅ CURRENT
 - **[Timer System](timer-system.md)** - Multi-timer architecture with cross-device sync ✅ CURRENT
+- **[Timer Performance Optimization](timer-performance-optimization.md)** - N+1 query elimination for timer loading ✅ CURRENT
 - **[Widget System](widget-system.md)** - Permission-driven dashboard widgets ✅ CURRENT
 
 ### UI & Component Architecture
@@ -43,12 +44,12 @@ System architecture, design patterns, and technical specifications for Service V
 ### Core Design Patterns
 - **UUID Primary Keys**: All models use UUID for better security and distribution
 - **Soft Deletes**: Audit trail preservation with deleted_at timestamps
-- **Hierarchical Data**: Account parent-child relationships with unlimited nesting
+- **Account Data**: Flexible account management with relationship support
 - **Polymorphic Relations**: Flexible associations (comments, attachments, etc.)
 - **Partial Unique Constraints**: PostgreSQL partial indexes for nullable unique fields
 
 ### Key Database Features
-- **Account Hierarchy**: Parent-child account relationships
+- **Account Management**: Flexible account relationships
 - **Role Templates**: JSON-based permission storage
 - **Timer State**: PostgreSQL + Redis hybrid storage
 - **Audit Logging**: Comprehensive change tracking
@@ -91,7 +92,7 @@ System architecture, design patterns, and technical specifications for Service V
 ### Database Optimization
 - **Strategic Indexing**: Composite indexes for common query patterns
 - **Eager Loading**: Optimized relationship loading
-- **Query Optimization**: N+1 query prevention
+- **Query Optimization**: N+1 query prevention and timer performance optimization
 - **Connection Pooling**: Efficient database connection management
 
 ## Integration Architecture

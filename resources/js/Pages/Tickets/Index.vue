@@ -177,34 +177,48 @@
                   </span>
                 </h3>
                 
-                <!-- Table Density Toggle -->
-                <div class="flex items-center space-x-2">
-                  <span class="text-sm text-gray-500">Density:</span>
-                  <div class="flex items-center space-x-1">
-                    <button
-                      @click="tableDensity = 'comfortable'"
-                      :class="[
-                        'px-2 py-1 rounded text-xs font-medium transition-colors',
-                        tableDensity === 'comfortable' 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
-                      ]"
-                      title="Comfortable spacing"
-                    >
-                      Comfortable
-                    </button>
-                    <button
-                      @click="tableDensity = 'compact'"
-                      :class="[
-                        'px-2 py-1 rounded text-xs font-medium transition-colors',
-                        tableDensity === 'compact' 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
-                      ]"
-                      title="Compact spacing for maximum data density"
-                    >
-                      Compact
-                    </button>
+                <!-- Controls -->
+                <div class="flex items-center space-x-4">
+                  <!-- Sort Dropdown -->
+                  <SortDropdown :table="table" />
+                  
+                  <!-- Column Visibility -->
+                  <ColumnVisibilitySelector
+                    :available-columns="availableColumns.filter(col => !col.required)"
+                    :is-column-visible="isColumnVisible"
+                    @toggle-column="toggleColumn"
+                    @reset-columns="resetVisibility"
+                  />
+                  
+                  <!-- Table Density Toggle -->
+                  <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-500">Density:</span>
+                    <div class="flex items-center space-x-1">
+                      <button
+                        @click="tableDensity = 'comfortable'"
+                        :class="[
+                          'px-2 py-1 rounded text-xs font-medium transition-colors',
+                          tableDensity === 'comfortable' 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                        ]"
+                        title="Comfortable spacing"
+                      >
+                        Comfortable
+                      </button>
+                      <button
+                        @click="tableDensity = 'compact'"
+                        :class="[
+                          'px-2 py-1 rounded text-xs font-medium transition-colors',
+                          tableDensity === 'compact' 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                        ]"
+                        title="Compact spacing for maximum data density"
+                      >
+                        Compact
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -215,10 +229,6 @@
               :tickets="filteredTickets"
               :table="table"
               :user="user"
-              :timers-by-ticket="timersByTicket"
-              :ticket-statuses="ticketStatuses"
-              :ticket-priorities="ticketPriorities"
-              :workflow-transitions="workflowTransitions"
               :is-loading="isLoading"
               :error="error"
               error-message="Failed to load tickets. Please try again."
@@ -230,14 +240,8 @@
               :show-retry-button="true"
               @retry="refetchTickets"
               @create-ticket="showCreateModal = true"
-              @timer-started="handleTimerEvent"
-              @timer-stopped="handleTimerEvent"
-              @timer-paused="handleTimerEvent"
-              @time-entry-created="handleTimeEntryCreated"
               @open-manual-time-entry="openManualTimeEntry"
               @open-ticket-addon="openTicketAddon"
-              @status-updated="handleStatusUpdated"
-              @priority-updated="handlePriorityUpdated"
             />
             
           </div>
@@ -331,6 +335,23 @@
       @close="showCreateModal = false"
       @ticket-created="onTicketCreated"
     />
+    
+    <!-- Time Entry Modal -->
+    <UnifiedTimeEntryDialog
+      :show="showTimeEntryModal"
+      mode="create"
+      :context-ticket="selectedTicketForTimeEntry"
+      @close="showTimeEntryModal = false"
+      @saved="handleTimeEntrySaved"
+    />
+    
+    <!-- Addon Modal -->
+    <AddAddonModal
+      :show="showAddonModal"
+      :ticket="selectedTicketForAddon"
+      @close="showAddonModal = false"
+      @addon-created="handleAddonSaved"
+    />
   </div>
 </template>
 
@@ -338,10 +359,12 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import TicketTimerControls from '@/Components/Timer/TicketTimerControls.vue'
 import CreateTicketModalTabbed from '@/Components/Modals/CreateTicketModalTabbed.vue'
-import TicketsTable from '@/Components/Tables/TicketsTable.vue'
 import TicketList from '@/Components/Tickets/TicketList.vue'
+import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
+import AddAddonModal from '@/Components/Tickets/AddAddonModal.vue'
+import ColumnVisibilitySelector from '@/Components/UI/ColumnVisibilitySelector.vue'
+import SortDropdown from '@/Components/UI/SortDropdown.vue'
 import { useTicketsTable } from '@/Composables/useTicketsTable'
 import { useTicketsQuery } from '@/Composables/queries/useTicketsQuery'
 
@@ -378,6 +401,10 @@ const props = defineProps({
 const activeTimers = ref(props.initialActiveTimers || [])
 const timersByTicket = ref({}) // Store timers grouped by ticket_id
 const showCreateModal = ref(false)
+const showTimeEntryModal = ref(false)
+const showAddonModal = ref(false)
+const selectedTicketForTimeEntry = ref(null)
+const selectedTicketForAddon = ref(null)
 // Load table density preference from localStorage
 const tableDensity = ref(localStorage.getItem('tickets-table-density') || 'compact')
 
@@ -428,6 +455,11 @@ const {
   setAssignmentFilter,
   setAccountFilter,
   clearAllFilters,
+  // Column visibility
+  availableColumns,
+  toggleColumn,
+  resetVisibility,
+  isColumnVisible
 } = useTicketsTable(ticketsForTable, user, props.canViewAllAccounts)
 
 // Computed
@@ -454,6 +486,13 @@ watch(assignmentFilter, (newValue) => {
 watch(accountFilter, (newValue) => {
   setAccountFilter(newValue)
 })
+
+// Watch for changes in tickets data and extract timers
+watch(tickets, (newTickets) => {
+  if (newTickets) {
+    extractTimersFromTickets()
+  }
+}, { deep: true })
 
 // Use TanStack Table's filtered rows
 const filteredTickets = computed(() => {
@@ -506,37 +545,28 @@ const refreshActiveTimers = async () => {
   }
 }
 
-const fetchTimersForTickets = async () => {
+const extractTimersFromTickets = () => {
   const ticketsData = tickets.value?.data || tickets.value || []
   if (!ticketsData.length) return
   
-  try {
-    const ticketIds = ticketsData.map(ticket => ticket.id)
-    
-    const response = await fetch('/api/timers/bulk-active-for-tickets', {
-      method: 'POST',
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.head.querySelector('meta[name="csrf-token"]').content
-      },
-      body: JSON.stringify({
-        ticket_ids: ticketIds
-      })
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      timersByTicket.value = data.data || {}
-    } else if (import.meta.env.DEV) {
-      console.error('Failed to fetch bulk timers - HTTP', response.status)
+  // Extract user-specific timers from ticket data
+  const timersByTicketId = {}
+  
+  ticketsData.forEach(ticket => {
+    if (ticket.timers && ticket.timers.length > 0) {
+      // Only include user's own timers that are active or paused
+      const userTimers = ticket.timers.filter(timer => 
+        timer.user_id === user.value?.id && 
+        ['running', 'paused'].includes(timer.status)
+      )
+      
+      if (userTimers.length > 0) {
+        timersByTicketId[ticket.id] = userTimers
+      }
     }
-  } catch (error) {
-    // Only log errors in development mode
-    if (import.meta.env.DEV) {
-      console.error('Failed to fetch timers for tickets:', error)
-    }
-  }
+  })
+  
+  timersByTicket.value = timersByTicketId
 }
 
 // Load ticket configuration data for dropdowns
@@ -649,27 +679,11 @@ const getMyTicketsCount = () => {
 
 // Unified timer refresh with debouncing
 const refreshTimerData = async () => {
-  await Promise.all([
-    refreshActiveTimers(),
-    fetchTimersForTickets()
-  ])
+  await refreshActiveTimers()
+  extractTimersFromTickets()
 }
 
-const handleTimerEvent = (event) => {
-  // Debounce timer refresh to prevent excessive API calls
-  if (timerRefreshDebounce) {
-    clearTimeout(timerRefreshDebounce)
-  }
-  
-  timerRefreshDebounce = setTimeout(() => {
-    refreshTimerData()
-  }, 100) // 100ms debounce
-  
-  // Only refresh tickets if timer was converted to time entry
-  if (event.type === 'timer_stopped' && event.converted_to_time_entry) {
-    refetchTickets()
-  }
-}
+// Removed timer event handling for simplified table
 
 const onTicketCreated = (newTicket) => {
   // TanStack Query mutation already handled the cache update
@@ -677,49 +691,30 @@ const onTicketCreated = (newTicket) => {
   showCreateModal.value = false
 }
 
-const handleTimeEntryCreated = (timeEntry) => {
-  // Refresh tickets to show updated time data
-  refetchTickets()
-  // Refresh active timers in case timer was committed
-  refreshActiveTimers()
-}
-
-const handleStatusUpdated = (event) => {
-  if (event.error) {
-    // Handle error case - could show toast notification
-    if (import.meta.env.DEV) {
-      console.error('Status update failed:', event.error)
-    }
-  } else {
-    // Refetch tickets data to get latest state
-    refetchTickets()
-  }
-}
-
-const handlePriorityUpdated = (event) => {
-  if (event.error) {
-    // Handle error case - could show toast notification
-    if (import.meta.env.DEV) {
-      console.error('Priority update failed:', event.error)
-    }
-  } else {
-    // Refetch tickets data to get latest state
-    refetchTickets()
-  }
-}
+// Removed timer and inline editing handlers for simplified table
 
 const openManualTimeEntry = (ticket) => {
-  // TODO: Implement manual time entry dialog
-  if (import.meta.env.DEV) {
-    console.log('Manual time entry requested for ticket:', ticket.ticket_number)
-  }
+  selectedTicketForTimeEntry.value = ticket
+  showTimeEntryModal.value = true
 }
 
 const openTicketAddon = (ticket) => {
-  // TODO: Implement ticket addon dialog
-  if (import.meta.env.DEV) {
-    console.log('Ticket addon requested for ticket:', ticket.ticket_number)
-  }
+  selectedTicketForAddon.value = ticket
+  showAddonModal.value = true
+}
+
+const handleTimeEntrySaved = () => {
+  showTimeEntryModal.value = false
+  selectedTicketForTimeEntry.value = null
+  // Refresh tickets to show updated time data
+  refetchTickets()
+}
+
+const handleAddonSaved = () => {
+  showAddonModal.value = false
+  selectedTicketForAddon.value = null
+  // Refresh tickets to show updated addon data
+  refetchTickets()
 }
 
 // Handle window resize

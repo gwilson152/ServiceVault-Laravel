@@ -49,7 +49,6 @@ class SetupController extends Controller
             // Features & Limits
             'enable_real_time' => 'boolean',
             'enable_notifications' => 'boolean',
-            'max_account_depth' => 'required|integer|min:1|max:20',
             'timer_sync_interval' => 'required|integer|min:1|max:60',
             'permission_cache_ttl' => 'required|integer|min:60|max:3600',
             
@@ -175,7 +174,6 @@ class SetupController extends Controller
             'system.language' => $request->language,
             'system.enable_real_time' => $request->boolean('enable_real_time', true),
             'system.enable_notifications' => $request->boolean('enable_notifications', true),
-            'system.max_account_depth' => $request->max_account_depth,
             'system.timer_sync_interval' => $request->timer_sync_interval,
             'system.permission_cache_ttl' => $request->permission_cache_ttl,
         ];

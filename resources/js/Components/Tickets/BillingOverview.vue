@@ -148,14 +148,6 @@
                         ${{ billingRate.rate }}/hour
                     </p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600"
-                        >Currency</label
-                    >
-                    <p class="mt-1 text-sm text-gray-900">
-                        {{ billingRate.currency?.toUpperCase() || "USD" }}
-                    </p>
-                </div>
             </div>
             <div v-else class="py-4 text-gray-500">
                 <p class="text-sm">

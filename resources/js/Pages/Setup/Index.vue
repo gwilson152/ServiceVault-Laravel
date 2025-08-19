@@ -263,21 +263,7 @@
         <!-- Advanced Settings -->
         <div class="bg-gray-50 p-6 rounded-lg">
           <h2 class="text-xl font-semibold text-gray-900 mb-4">Advanced Settings</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <InputLabel for="max_account_depth" value="Max Account Depth" />
-              <TextInput
-                id="max_account_depth"
-                type="number"
-                class="mt-1 block w-full"
-                v-model="form.max_account_depth"
-                min="1"
-                max="20"
-                required
-              />
-              <InputError class="mt-2" :message="form.errors.max_account_depth" />
-            </div>
-
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <InputLabel for="timer_sync_interval" value="Timer Sync Interval (seconds)" />
               <TextInput
@@ -361,7 +347,6 @@ const form = useForm({
   // Features & Limits
   enable_real_time: true,
   enable_notifications: true,
-  max_account_depth: 10,
   timer_sync_interval: 5,
   permission_cache_ttl: 300,
   

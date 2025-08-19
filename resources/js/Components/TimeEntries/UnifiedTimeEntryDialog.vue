@@ -651,7 +651,7 @@ const loadTicketsForAccount = async (accountId, includeTicketId = null) => {
     try {
         const params = {
             account_id: accountId,
-            status: ["open", "in_progress", "assigned", "pending", "new"], // Expanded status list
+            status: ["open", "in_progress", "assigned", "pending", "new", "resolved", "waiting_customer", "on_hold"], // Include more statuses for time entry creation
             per_page: 100,
         };
 
@@ -668,7 +668,9 @@ const loadTicketsForAccount = async (accountId, includeTicketId = null) => {
             ":",
             availableTickets.value.length,
             "tickets",
-            includeTicketId ? `(including ticket ${includeTicketId})` : ""
+            includeTicketId ? `(including ticket ${includeTicketId})` : "",
+            "Params:", params,
+            "Response data:", response.data.data?.slice(0, 3)
         );
     } catch (error) {
         console.error("Failed to load tickets:", error);
@@ -889,7 +891,10 @@ const initializeForm = async () => {
     // Reset form first
     resetForm();
 
-    // Apply context data
+    // Load initial data first
+    await loadAvailableAccounts();
+
+    // Apply context data and load related data
     if (props.contextAccount) {
         form.value.accountId = props.contextAccount.id;
         await Promise.all([
@@ -1018,15 +1023,24 @@ const initializeForm = async () => {
         }
     }
 
-    // Load initial data (only if not already loaded from context)
-    await loadAvailableAccounts();
-    
     // Only load billing rates and tickets if not already loaded from context
     if (!props.contextTicket && !props.contextAccount && !(props.mode === "timer-commit" && props.timerData)) {
-        loadBillingRatesForAccount(form.value.accountId);
+        await loadBillingRatesForAccount(form.value.accountId);
         if (form.value.accountId) {
-            loadTicketsForAccount(form.value.accountId);
+            await loadTicketsForAccount(form.value.accountId);
         }
+    }
+    
+    // Ensure current user is always set for create mode after all data is loaded
+    if (props.mode === "create") {
+        // If user can assign to others and we have an account, load agents first
+        if (canAssignToOthers.value && form.value.accountId) {
+            await loadAgentsForAccount(form.value.accountId);
+        }
+        
+        // Now set the user ID after agents are loaded
+        form.value.userId = user.value?.id;
+        console.log("Set default userId for create mode after data loading:", form.value.userId);
     }
 };
 

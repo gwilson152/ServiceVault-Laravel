@@ -493,3 +493,13 @@ If the timer overlay reloads or disappears during navigation:
 4. **Validate WebSocket connections** - Check console for connection drops
 
 - Cost tracking and project profitability analysis
+
+## Performance Optimization
+
+**Timer List Performance**: For details on the N+1 query optimization implemented for tickets list timer loading, see [Timer Performance Optimization](timer-performance-optimization.md).
+
+**Key Performance Features:**
+- **Embedded Timer Data**: User-specific timers included in ticket API responses
+- **Eliminated N+1 Queries**: Reduced 10+ API calls to 1 for timer data
+- **User-Scoped Loading**: Only load timers for the authenticated user
+- **Real-Time Compatible**: Maintains WebSocket broadcasting functionality

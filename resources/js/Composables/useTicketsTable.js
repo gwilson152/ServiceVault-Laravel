@@ -7,17 +7,49 @@ import {
   createColumnHelper,
 } from '@tanstack/table-core'
 import { useVueTable } from '@tanstack/vue-table'
+import { useColumnVisibility } from './useColumnVisibility'
 
 export function useTicketsTable(tickets, user, canViewAllAccounts) {
   const columnHelper = createColumnHelper()
   
-  // Table state
-  const sorting = ref([])
+  // Table state with default sort by created_at descending
+  const sorting = ref([{ id: 'created_at', desc: true }])
   const globalFilter = ref('')
   const columnFilters = ref([])
   const pagination = ref({
     pageIndex: 0,
     pageSize: 10,
+  })
+
+  // Column visibility management with defaults
+  const defaultVisibility = {
+    updated_at: false  // Hide updated column by default
+  }
+  
+  const { 
+    columnVisibility, 
+    toggleColumn, 
+    resetVisibility, 
+    isColumnVisible 
+  } = useColumnVisibility('tickets', user.value, defaultVisibility)
+
+  // Available columns metadata
+  const availableColumns = computed(() => {
+    const cols = [
+      { id: 'ticket_number', label: 'Ticket Details', required: true },
+      { id: 'actions', label: 'Actions', required: true },
+      { id: 'created_at', label: 'Created Date', required: false },
+      { id: 'due_date', label: 'Due Date', required: false },
+      { id: 'category', label: 'Category', required: false },
+      { id: 'assigned_agent', label: 'Assigned Agent', required: false },
+      { id: 'updated_at', label: 'Updated', required: false, defaultVisible: false }
+    ]
+
+    if (canViewAllAccounts) {
+      cols.splice(1, 0, { id: 'account', label: 'Account/Customer', required: false })
+    }
+
+    return cols
   })
 
   // Define columns
@@ -31,8 +63,8 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
       }),
     ]
 
-    // Add account column if service provider
-    if (canViewAllAccounts) {
+    // Add account column if service provider and visible
+    if (canViewAllAccounts && isColumnVisible.value('account')) {
       cols.push(
         columnHelper.accessor(row => row.account?.name || '', {
           id: 'account',
@@ -45,25 +77,86 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
       )
     }
 
-    // Add remaining columns
+    // Add created date column if visible
+    if (isColumnVisible.value('created_at')) {
+      cols.push(
+        columnHelper.accessor('created_at', {
+          header: 'Created Date',
+          cell: info => info.getValue(),
+          enableSorting: true,
+          size: 110,
+          minSize: 90,
+          maxSize: 130,
+        })
+      )
+    }
+
+    // Add due date column if visible
+    if (isColumnVisible.value('due_date')) {
+      cols.push(
+        columnHelper.accessor('due_date', {
+          header: 'Due Date',
+          cell: info => info.getValue(),
+          enableSorting: true,
+          size: 110,
+          minSize: 90,
+          maxSize: 130,
+        })
+      )
+    }
+
+    // Add category column if visible
+    if (isColumnVisible.value('category')) {
+      cols.push(
+        columnHelper.accessor(row => row.category?.name || 'Uncategorized', {
+          id: 'category',
+          header: 'Category',
+          enableSorting: true,
+          size: 120,
+          minSize: 100,
+          maxSize: 150,
+        })
+      )
+    }
+
+    // Add assigned agent column if visible
+    if (isColumnVisible.value('assigned_agent')) {
+      cols.push(
+        columnHelper.accessor(row => row.assigned_to?.name || 'Unassigned', {
+          id: 'assigned_agent',
+          header: 'Assigned Agent',
+          enableSorting: true,
+          size: 140,
+          minSize: 120,
+          maxSize: 180,
+        })
+      )
+    }
+
+    // Add actions column (always visible)
     cols.push(
       columnHelper.display({
-        id: 'timer',
-        header: 'Timer/Actions',
+        id: 'actions',
+        header: 'Actions',
         size: 120, // Fixed width for actions
         minSize: 100,
         maxSize: 150,
-      }),
-      
-      columnHelper.accessor('updated_at', {
-        header: 'Updated',
-        cell: info => info.getValue(),
-        enableSorting: true,
-        size: 100, // Fixed width for date
-        minSize: 80,
-        maxSize: 120,
       })
     )
+
+    // Add updated column if visible (hidden by default)
+    if (isColumnVisible.value('updated_at')) {
+      cols.push(
+        columnHelper.accessor('updated_at', {
+          header: 'Updated',
+          cell: info => info.getValue(),
+          enableSorting: true,
+          size: 100, // Fixed width for date
+          minSize: 80,
+          maxSize: 120,
+        })
+      )
+    }
 
     return cols
   })
@@ -172,5 +265,11 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
     setAssignmentFilter,
     setAccountFilter,
     clearAllFilters,
+    // Column visibility
+    availableColumns,
+    columnVisibility,
+    toggleColumn,
+    resetVisibility,
+    isColumnVisible
   }
 }

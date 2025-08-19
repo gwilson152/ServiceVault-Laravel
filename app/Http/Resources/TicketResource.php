@@ -116,8 +116,7 @@ class TicketResource extends JsonResource
             'billing_rate' => $this->whenLoaded('billingRate', function () {
                 return $this->billingRate ? [
                     'id' => $this->billingRate->id,
-                    'rate' => $this->billingRate->rate,
-                    'currency' => $this->billingRate->currency ?? 'USD'
+                    'rate' => $this->billingRate->rate
                 ] : null;
             }),
             

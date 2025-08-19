@@ -25,10 +25,13 @@ class StoreTimerRequest extends FormRequest
             // Note: project_id validation removed - projects no longer used
             'task_id' => 'nullable|exists:tasks,id',
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
-            'service_ticket_id' => 'nullable|exists:tickets,id',
+            'ticket_id' => 'nullable|exists:tickets,id',
+            'account_id' => 'nullable|exists:accounts,id',
+            'user_id' => 'nullable|exists:users,id',
             'description' => 'nullable|string|max:1000',
             'device_id' => 'nullable|string|max:255',
             'stop_others' => 'boolean',
+            'auto_start' => 'boolean',
             'metadata' => 'nullable|array',
         ];
     }
@@ -42,7 +45,9 @@ class StoreTimerRequest extends FormRequest
             // Note: project validation messages removed
             'task_id.exists' => 'The selected task does not exist.',
             'billing_rate_id.exists' => 'The selected billing rate does not exist.',
-            'service_ticket_id.exists' => 'The selected service ticket does not exist.',
+            'ticket_id.exists' => 'The selected ticket does not exist.',
+            'account_id.exists' => 'The selected account does not exist.',
+            'user_id.exists' => 'The selected user does not exist.',
             'description.max' => 'The description must not exceed 1000 characters.',
         ];
     }

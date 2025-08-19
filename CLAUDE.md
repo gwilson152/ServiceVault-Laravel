@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring hierarchical customer account management, three-dimensional permission system (functional + widget + page access), account hierarchy permissions, and enterprise-level customization for multi-tenant service delivery.
+Service Vault is a comprehensive B2B service ticket and time management platform built with Laravel 12. It is primarily a **ticketing/service request platform** with sophisticated time tracking capabilities, featuring three-dimensional permission system (functional + widget + page access), and enterprise-level customization for multi-tenant service delivery.
 
 ### Current Status: Production-Ready Platform
 **✅ Core Platform Features:**
@@ -22,6 +22,9 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 **🎯 Platform Status:** Production-Ready
 
 **Recent Key Improvements:**
+- **Timer Performance Optimization**: Eliminated N+1 query problem in tickets list by embedding user-specific timer data in ticket API responses
+- **Account Hierarchy Removal**: Simplified account structure by removing complex hierarchy system while maintaining core functionality
+- **Setup Page Streamlining**: Updated setup wizard to remove account hierarchy configuration for cleaner initial setup experience
 - **Unified Selector System**: Single component handles tickets, accounts, users, agents, and billing rates with consistent interface
 - **StackedDialog Architecture**: All modals converted to use native dialog with proper stacking and z-index management
 - **Streamlined Ticket Creation**: Merged basic info and assignment tabs for improved user experience
@@ -421,4 +424,4 @@ This CLAUDE.md file focuses on essential information for AI development assistan
 
 ---
 
-*Last Updated: August 18, 2025 - Enhanced CSRF Token Management: Implemented comprehensive CSRF token management system with session regeneration handling, Inertia props integration, and centralized token synchronization. Enhanced automatic 419 error handling and proactive 10-minute refresh intervals. Fixed nuclear reset migration warnings and standardized Ticket Addon UUID generation with billable column usage.*
+*Last Updated: August 19, 2025 - Timer Performance Optimization & Account Hierarchy Removal: Eliminated N+1 query problem in tickets list by embedding user-specific timer data in ticket API responses, reducing 10+ API calls to 1. Removed account hierarchy system and updated setup wizard for simplified account structure. Fixed Portal project references and optimized navigation query error handling.*

@@ -25,6 +25,9 @@ class UpdateTimerRequest extends FormRequest
         return [
             // Note: task_id and project_id validation removed - no longer used in this system
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
+            'ticket_id' => 'nullable|exists:tickets,id',
+            'account_id' => 'nullable|exists:accounts,id',
+            'user_id' => 'nullable|exists:users,id',
             'description' => 'nullable|string|max:1000',
             'status' => ['nullable', Rule::in(['running', 'paused', 'stopped'])],
             'device_id' => 'nullable|string|max:255',
@@ -40,6 +43,9 @@ class UpdateTimerRequest extends FormRequest
         return [
             // Note: project and task validation messages removed - no longer used
             'billing_rate_id.exists' => 'The selected billing rate does not exist.',
+            'ticket_id.exists' => 'The selected ticket does not exist.',
+            'account_id.exists' => 'The selected account does not exist.',
+            'user_id.exists' => 'The selected user does not exist.',
             'description.max' => 'The description must not exceed 1000 characters.',
             'status.in' => 'The timer status must be running, paused, or stopped.',
         ];

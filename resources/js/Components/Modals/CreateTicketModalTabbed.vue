@@ -908,25 +908,19 @@ watch(
             
             activeTab.value = "basic";
             
-            // Load accounts first to ensure they're available for selection
-            await loadAccounts();
+            // Load all data first, then set preselections
+            await Promise.all([
+                loadAccounts(),
+                loadCategories(),
+                canAssignTickets.value ? loadAgents() : Promise.resolve()
+            ]);
             
-            // If categories aren't loaded yet, load them first
-            await loadCategories();
-            
-            // Reset form and set preselected values
+            // Reset form and set preselected values after data is loaded
             resetForm();
             
             // Force a fresh key for the account selector after form reset
             await nextTick();
             accountSelectorKey.value = Date.now(); // Use timestamp for unique key
-            
-            // Wait another tick and manually trigger the UnifiedSelector initialization
-            await nextTick();
-            if (accountSelectorRef.value && form.account_id) {
-                console.log('CreateTicketModalTabbed - Manually triggering UnifiedSelector initialization');
-                accountSelectorRef.value.initializeSelectedItem();
-            }
             
             console.log('CreateTicketModalTabbed - Form initialized with account_id:', form.account_id);
         }

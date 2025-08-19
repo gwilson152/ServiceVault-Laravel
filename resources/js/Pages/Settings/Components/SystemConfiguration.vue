@@ -160,18 +160,6 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700">Max Account Depth</label>
-          <input 
-            type="number" 
-            v-model.number="form.max_account_depth"
-            min="1" 
-            max="20"
-            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-          <p class="mt-1 text-xs text-gray-500">Maximum depth for account hierarchy</p>
-        </div>
-
-        <div>
           <label class="block text-sm font-medium text-gray-700">Timer Sync Interval</label>
           <div class="relative">
             <input 
@@ -300,7 +288,6 @@ const form = reactive({
   // Features & Limits
   enable_real_time: true,
   enable_notifications: true,
-  max_account_depth: 10,
   timer_sync_interval: 5,
   permission_cache_ttl: 300,
   max_users: 250,

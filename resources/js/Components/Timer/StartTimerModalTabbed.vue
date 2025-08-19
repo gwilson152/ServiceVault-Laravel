@@ -487,9 +487,15 @@ watch(() => form.value.accountId, () => {
   }
 })
 
-watch(() => props.show, (isOpen) => {
+watch(() => props.show, async (isOpen) => {
   if (isOpen) {
     errors.value = {}
+    
+    // Always load basic data first
+    await Promise.all([
+      loadAccounts(),
+      loadAgents()
+    ])
     
     if (props.mode === 'edit' && props.timer) {
       // Populate form with timer data
@@ -502,17 +508,57 @@ watch(() => props.show, (isOpen) => {
         stopOthers: true,
         autoStart: true
       }
+      
+      // Load dependent data based on timer's account
+      if (props.timer.account_id) {
+        await Promise.all([
+          loadTickets(),
+          loadBillingRates()
+        ])
+      } else {
+        // Load global billing rates for non-account timers
+        await loadBillingRates()
+      }
     } else {
       resetForm()
       
+      // Load billing rates for create mode
+      await loadBillingRates()
       
-      // Always auto-select current user (managers can change it later)
+      // Always auto-select current user after agents are loaded
       if (user.value?.id) {
         form.value.userId = user.value.id
+        console.log('StartTimerModal - Set userId to current user:', user.value.id)
       }
     }
   }
 })
+
+// Watch for timer prop changes (when editing different timers with same modal)
+watch(() => props.timer, async (newTimer) => {
+  if (newTimer && props.show && props.mode === 'edit') {
+    // Update form data when timer changes
+    form.value = {
+      description: newTimer.description || '',
+      accountId: newTimer.account_id,
+      ticketId: newTimer.ticket_id,
+      userId: newTimer.user_id,
+      billingRateId: newTimer.billing_rate_id,
+      stopOthers: true,
+      autoStart: true
+    }
+    
+    // Reload dependent data for the new timer
+    if (newTimer.account_id) {
+      await Promise.all([
+        loadTickets(),
+        loadBillingRates()
+      ])
+    } else {
+      await loadBillingRates()
+    }
+  }
+}, { deep: true })
 
 // Watch for user data availability and ensure proper auto-selection
 watch(() => user.value, (newUser) => {

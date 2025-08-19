@@ -108,7 +108,10 @@ class TimerController extends Controller
 
         DB::beginTransaction();
         try {
-            $userId = $user->id;
+            // Use provided user_id if valid and user has permission, otherwise use current user
+            $userId = $request->input('user_id') && $user->hasPermission('timers.manage') 
+                ? $request->input('user_id') 
+                : $user->id;
             $ticketId = $request->input('ticket_id');
 
             // If ticket_id is provided, enforce per-ticket timer limitation
@@ -132,7 +135,6 @@ class TimerController extends Controller
                 'billing_rate_id' => $request->input('billing_rate_id'),
                 'ticket_id' => $ticketId,
                 'account_id' => $request->input('account_id'),
-                'service_ticket_id' => $request->input('service_ticket_id'),
                 'description' => $request->input('description'),
                 'status' => 'running',
                 'started_at' => now(),
