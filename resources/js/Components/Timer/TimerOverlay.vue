@@ -443,15 +443,26 @@ const closeCommitDialog = () => {
 }
 
 // Handle timer commit from UnifiedTimeEntryDialog
-const handleTimerCommitted = ({ timeEntry, timerData }) => {
-  // Remove the timer from the overlay since it's now committed
-  currentTimer.value = null
-  stopDurationUpdate()
+const handleTimerCommitted = async ({ timeEntry, timerData }) => {
+  try {
+    // Mark the timer as committed in the database
+    await axios.post(`/api/timers/${timerData.id}/mark-committed`, {
+      time_entry_id: timeEntry.id
+    })
 
-  // Close the dialog
-  closeCommitDialog()
+    // Remove the timer from the overlay since it's now committed
+    currentTimer.value = null
+    stopDurationUpdate()
 
-  console.log('Timer committed successfully:', timeEntry)
+    // Close the dialog
+    closeCommitDialog()
+
+    console.log('Timer committed successfully:', timeEntry)
+  } catch (error) {
+    console.error('Failed to commit timer:', error)
+    // Don't remove the timer from UI if the commit failed
+    alert('Failed to commit timer. Please try again.')
+  }
 }
 
 // Update functions

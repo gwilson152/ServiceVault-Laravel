@@ -108,16 +108,16 @@
                     </div>
                 </div>
 
-                <!-- Assignment Section -->
-                <div class="space-y-6">
+                <!-- Assignment Section (only for users with assignment capabilities) -->
+                <div v-if="showAssignmentSection" class="space-y-6">
                     <h4
                         class="text-base font-medium text-gray-900 border-b border-gray-200 pb-2"
                     >
                         Assignment
                     </h4>
 
-                    <!-- Account Selection -->
-                    <div>
+                    <!-- Account Selection (only for non-account users) -->
+                    <div v-if="!isAccountUser">
                         <UnifiedSelector
                             ref="accountSelectorRef"
                             :key="accountSelectorKey"
@@ -134,9 +134,17 @@
                             @item-created="handleAccountCreated"
                         />
                     </div>
+                    
+                    <!-- Account display for account users (read-only) -->
+                    <div v-else-if="user?.account">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Account</label>
+                        <div class="bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900">
+                            {{ user.account?.name || 'Your Account' }}
+                        </div>
+                    </div>
 
-                    <!-- Customer User Selection (optional) -->
-                    <div v-if="form.account_id">
+                    <!-- Customer User Selection (optional) - only for users with assignment permissions -->
+                    <div v-if="form.account_id && canAssignCustomers">
                         <UserSelector
                             v-model="form.customer_id"
                             :users="availableCustomers"
@@ -183,8 +191,8 @@
             <div v-show="activeTab === 'classification'" class="space-y-6">
                 <!-- Form Row: Priority & Category -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Priority -->
-                    <div>
+                    <!-- Priority (only for users with priority setting permissions) -->
+                    <div v-if="canSetPriorityAndDueDate">
                         <label
                             for="priority"
                             class="block text-sm font-medium text-gray-700 mb-2"
@@ -257,8 +265,8 @@
                     </div>
                 </div>
 
-                <!-- Due Date -->
-                <div>
+                <!-- Due Date (only for users with due date setting permissions) -->
+                <div v-if="canSetPriorityAndDueDate">
                     <label
                         for="due_date"
                         class="block text-sm font-medium text-gray-700 mb-2"
@@ -352,7 +360,7 @@
                             <strong>Title:</strong>
                             {{ form.title || "Not specified" }}
                         </p>
-                        <p>
+                        <p v-if="canSetPriorityAndDueDate">
                             <strong>Priority:</strong>
                             {{ form.priority || "Not specified" }}
                         </p>
@@ -363,7 +371,7 @@
                                 "Not specified"
                             }}
                         </p>
-                        <p v-if="form.due_date">
+                        <p v-if="form.due_date && canSetPriorityAndDueDate">
                             <strong>Due:</strong>
                             {{ formatDate(form.due_date) }}
                         </p>
@@ -418,24 +426,32 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(["close", "ticket-created", "ticket-updated"]);
 
-// Tab configuration
-const tabs = [
-    {
-        id: "basic",
-        name: "Basic Info & Assignment",
-        icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-    },
-    {
-        id: "classification",
-        name: "Details",
-        icon: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z",
-    },
-    {
-        id: "options",
-        name: "Options",
-        icon: "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4",
-    },
-];
+// Tab configuration - dynamic based on user context
+const tabs = computed(() => {
+    const baseTabs = [
+        {
+            id: "basic",
+            name: "Basic Info & Assignment",
+            icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+        },
+        {
+            id: "classification",
+            name: "Details",
+            icon: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z",
+        }
+    ];
+
+    // Only show Options tab for non-account users
+    if (!isAccountUser.value) {
+        baseTabs.push({
+            id: "options",
+            name: "Options",
+            icon: "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4",
+        });
+    }
+
+    return baseTabs;
+});
 
 const activeTab = ref("basic");
 
@@ -475,6 +491,26 @@ const errors = ref({});
 // Page data
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
+
+// User context for ABAC
+const isAccountUser = computed(() => user.value?.user_type === 'account_user');
+const canAssignCustomers = computed(() => {
+  // Account users cannot assign customers (they don't have assignment permissions)
+  // Only agents, admins, and other user types with assignment permissions can do this
+  return !isAccountUser.value;
+});
+
+const showAssignmentSection = computed(() => {
+  // Show assignment section only if user can actually make assignments
+  // Account users have no assignment capabilities, so hide the entire section
+  return !isAccountUser.value;
+});
+
+const canSetPriorityAndDueDate = computed(() => {
+  // Account users cannot set priority or due date - these are management functions
+  // Only agents, admins, and other user types with ticket management permissions can do this
+  return !isAccountUser.value;
+});
 
 // TanStack Query
 const createTicketMutation = useCreateTicketMutation();
@@ -569,8 +605,10 @@ const resetForm = () => {
         form.title = "";
         form.description = "";
         
-        // Explicitly set account_id from props
-        if (props.accountId) {
+        // Auto-assign account for account users (ABAC security)
+        if (isAccountUser.value && user.value?.account_id) {
+            form.account_id = user.value.account_id;
+        } else if (props.accountId) {
             form.account_id = props.accountId;
         } else {
             form.account_id = null;

@@ -96,6 +96,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('timers/{timer}/commit', [TimerController::class, 'commit'])
         ->name('timers.commit');
     
+    Route::post('timers/{timer}/mark-committed', [TimerController::class, 'markCommitted'])
+        ->name('timers.mark-committed');
+    
     Route::patch('timers/{timer}/duration', [TimerController::class, 'adjustDuration'])
         ->name('timers.adjust-duration');
     

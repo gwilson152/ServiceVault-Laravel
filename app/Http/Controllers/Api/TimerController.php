@@ -420,6 +420,42 @@ class TimerController extends Controller
     }
 
     /**
+     * Mark timer as committed when time entry already exists
+     * This is used when the time entry is created separately (e.g., via UnifiedTimeEntryDialog)
+     */
+    public function markCommitted(Request $request, Timer $timer): JsonResponse
+    {
+        $this->authorize('update', $timer);
+
+        $validated = $request->validate([
+            'time_entry_id' => 'required|exists:time_entries,id'
+        ]);
+
+        try {
+            // Update timer status to stopped (committed to time entry)
+            $timer->update([
+                'status' => 'stopped',
+                'stopped_at' => now(),
+            ]);
+
+            // Remove timer from Redis cache
+            $this->timerService->removeFromRedis($timer);
+
+            // Broadcast timer committed event
+            broadcast(new TimerStopped($timer))->toOthers();
+
+            return response()->json([
+                'message' => 'Timer marked as committed successfully',
+                'data' => new TimerResource($timer->fresh()),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to mark timer as committed: ' . $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
      * Adjust timer duration manually
      */
     public function adjustDuration(Request $request, Timer $timer): JsonResponse

@@ -57,6 +57,7 @@ class TicketController extends Controller
             $query->where(function ($q) use ($user) {
                 $q->where('created_by_id', $user->id)
                     ->orWhere('agent_id', $user->id)
+                    ->orWhere('customer_id', $user->id)  // Include tickets where user is the customer
                     ->orWhereHas('assignedUsers', function ($assignedQuery) use ($user) {
                         $assignedQuery->where('users.id', $user->id);
                     });
@@ -219,23 +220,33 @@ class TicketController extends Controller
             'settings' => 'nullable|array',
         ]);
 
-        // Determine account_id if not provided
-        if (empty($validated['account_id'])) {
-            // If user is super admin or has system-wide permissions, use their account
-            if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.write', 'accounts.manage', 'tickets.view.all'])) {
-                if (! $user->account_id) {
-                    return response()->json(['error' => 'No account available for ticket creation.'], 422);
-                }
-                $validated['account_id'] = $user->account_id;
-            } else {
-                return response()->json(['error' => 'Account ID is required.'], 422);
+        // ABAC Security: Auto-assign and enforce account for account users
+        if ($user->user_type === 'account_user') {
+            // Account users can ONLY create tickets for their own account
+            if (!$user->account_id) {
+                return response()->json(['error' => 'Account user must be assigned to an account.'], 422);
             }
-        }
+            // Override any provided account_id for security
+            $validated['account_id'] = $user->account_id;
+        } else {
+            // Determine account_id if not provided for other user types
+            if (empty($validated['account_id'])) {
+                // If user is super admin or has system-wide permissions, use their account
+                if ($user->isSuperAdmin() || $user->hasAnyPermission(['admin.write', 'accounts.manage', 'tickets.view.all'])) {
+                    if (! $user->account_id) {
+                        return response()->json(['error' => 'No account available for ticket creation.'], 422);
+                    }
+                    $validated['account_id'] = $user->account_id;
+                } else {
+                    return response()->json(['error' => 'Account ID is required.'], 422);
+                }
+            }
 
-        // Verify user has access to the specified account (unless they have system-wide permissions)
-        if (! $user->isSuperAdmin() && ! $user->hasAnyPermission(['admin.write', 'accounts.manage', 'tickets.view.all'])) {
-            if ($user->account_id !== $validated['account_id']) {
-                return response()->json(['error' => 'You do not have access to this account.'], 403);
+            // Verify user has access to the specified account (unless they have system-wide permissions)
+            if (! $user->isSuperAdmin() && ! $user->hasAnyPermission(['admin.write', 'accounts.manage', 'tickets.view.all'])) {
+                if ($user->account_id !== $validated['account_id']) {
+                    return response()->json(['error' => 'You do not have access to this account.'], 403);
+                }
             }
         }
         

@@ -323,21 +323,20 @@ const loadDashboardData = async () => {
   loading.value = true
   
   try {
-    // Load dashboard statistics with better error handling
-    const [statsResponse, ticketsResponse, activityResponse] = await Promise.all([
-      axios.get('/api/portal/stats').catch(error => {
-        console.error('Failed to load stats:', error)
-        return { data: { data: { open_tickets: 0, closed_tickets: 0, hours_this_month: 0, total_spent: 0 } } }
-      }),
-      axios.get('/api/portal/recent-tickets').catch(error => {
-        console.error('Failed to load recent tickets:', error)
-        return { data: { data: [] } }
-      }),
-      axios.get('/api/portal/recent-activity').catch(error => {
-        console.error('Failed to load recent activity:', error)
-        return { data: { data: [] } }
-      })
-    ])
+    console.log('Loading portal dashboard data...')
+    
+    // Load dashboard statistics - test each individually first
+    console.log('Loading stats...')
+    const statsResponse = await axios.get('/api/portal/stats')
+    console.log('Stats response:', statsResponse)
+    
+    console.log('Loading recent tickets...')
+    const ticketsResponse = await axios.get('/api/portal/recent-tickets')
+    console.log('Tickets response:', ticketsResponse)
+    
+    console.log('Loading recent activity...')
+    const activityResponse = await axios.get('/api/portal/recent-activity')
+    console.log('Activity response:', activityResponse)
     
     stats.value = statsResponse.data.data || {
       open_tickets: 0,

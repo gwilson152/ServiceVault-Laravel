@@ -195,12 +195,17 @@ class User extends Authenticatable
      */
     public function getAccessibleAccountIds(?string $permission = null): array
     {
+        // Super Admin and agents can access all accounts for time logging
+        if ($this->isSuperAdmin() || $this->hasAnyPermission(['admin.write', 'time.admin', 'time.manage', 'time.act_as_agent'])) {
+            // Return all account IDs - agents should be able to log time for any account
+            return \App\Models\Account::pluck('id')->toArray();
+        }
+
+        // Regular users can only access their own account
         if (!$this->account_id) {
             return [];
         }
 
-        // For now, just return the user's primary account ID
-        // This can be expanded later for hierarchical access
         return [$this->account_id];
     }
 

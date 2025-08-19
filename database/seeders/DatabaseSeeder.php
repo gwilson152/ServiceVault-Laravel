@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         // Seed system reference data
         $this->call([
             RoleTemplateSeeder::class,
+            BillingRateSeeder::class,  // Default billing rates
             AddonTemplateSeeder::class,
             TicketStatusSeeder::class,
             TicketCategorySeeder::class,

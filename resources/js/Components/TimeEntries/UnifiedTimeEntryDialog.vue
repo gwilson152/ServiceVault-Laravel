@@ -259,6 +259,7 @@
                                     Billing Rate
                                 </label>
                                 <UnifiedSelector
+                                    ref="billingRateSelector"
                                     v-model="form.billingRateId"
                                     type="billing-rate"
                                     :items="availableBillingRates"
@@ -520,6 +521,8 @@ const availableAgents = ref([]);
 const ticketsLoading = ref(false);
 const billingRatesLoading = ref(false);
 const agentsLoading = ref(false);
+// Template refs
+const billingRateSelector = ref(null);
 
 // Settings flags
 const allowManualTimeOverride = computed(
@@ -696,17 +699,69 @@ const loadBillingRatesForAccount = async (accountId) => {
         const response = await axios.get("/api/billing-rates", { params });
         availableBillingRates.value = response.data.data || [];
 
+        // Force UnifiedSelector to reinitialize with the new rates
+        console.log('loadBillingRatesForAccount - About to force reinitialize:', {
+            currentBillingRateId: form.value.billingRateId,
+            loadedRatesCount: availableBillingRates.value.length,
+            selectorExists: !!billingRateSelector.value
+        });
+        
+        // Give the component more time to render and be available
+        setTimeout(() => {
+            if (billingRateSelector.value) {
+                console.log('Calling billingRateSelector.initializeSelectedItem() with:', {
+                    currentFormBillingRateId: form.value.billingRateId,
+                    availableRatesCount: availableBillingRates.value.length,
+                    firstFewRates: availableBillingRates.value.slice(0, 3).map(r => ({ id: r.id, name: r.name }))
+                });
+                billingRateSelector.value.initializeSelectedItem();
+            } else {
+                console.log('billingRateSelector.value is null - cannot initialize');
+            }
+        }, 100);
+
         // Auto-select default billing rate if no rate is currently selected
+        // Rates are already sorted by priority: account defaults → account rates → global defaults → other global
+        // Skip auto-selection in timer-commit mode if timer has a billing_rate_id (preserve timer's rate)
+        const shouldSkipAutoSelection = 
+            props.mode === "timer-commit" && 
+            props.timerData?.billing_rate_id;
+            
+        console.log("Billing rate auto-selection check:", {
+            currentRateId: form.value.billingRateId,
+            ratesCount: availableBillingRates.value.length,
+            shouldSkip: shouldSkipAutoSelection,
+            mode: props.mode
+        });
+            
         if (
             !form.value.billingRateId &&
-            availableBillingRates.value.length > 0
+            availableBillingRates.value.length > 0 &&
+            !shouldSkipAutoSelection
         ) {
-            const defaultRate = availableBillingRates.value.find(
-                (rate) => rate.is_default
+            // Find the best default rate according to the hierarchy
+            let defaultRate = null;
+            
+            // 1. First priority: Account-specific default rates
+            defaultRate = availableBillingRates.value.find(
+                (rate) => rate.inheritance_source === 'account' && rate.is_default
             );
+            
+            // 2. Second priority: Global default rates (if no account default)
+            if (!defaultRate) {
+                defaultRate = availableBillingRates.value.find(
+                    (rate) => rate.inheritance_source === 'global' && rate.is_default
+                );
+            }
+            
+            // 3. Fallback: First rate in the sorted list (already prioritized by service)
+            if (!defaultRate && availableBillingRates.value.length > 0) {
+                defaultRate = availableBillingRates.value[0];
+            }
+            
             if (defaultRate) {
                 form.value.billingRateId = defaultRate.id;
-                // Recalculate billing amount with the default rate
+                // Recalculate billing amount with the selected rate
                 calculateBillingAmount();
             }
         }
@@ -937,10 +992,21 @@ const initializeForm = async () => {
         console.log("Initializing timer commit with data:", props.timerData);
         form.value.description = props.timerData.description || "";
 
-        // Set account and load related data
+        // Set account and billing rate first (before loading rates)
         if (props.timerData.account_id) {
             form.value.accountId = props.timerData.account_id;
+        }
+        
+        // Pre-set billing rate ID to prevent auto-selection from overriding it
+        if (props.timerData.billing_rate_id) {
+            form.value.billingRateId = props.timerData.billing_rate_id;
+            console.log("Pre-set billing rate ID:", props.timerData.billing_rate_id, "Type:", typeof props.timerData.billing_rate_id);
+        } else {
+            console.log("Timer data has no billing_rate_id:", props.timerData);
+        }
 
+        // Load related data after setting initial values
+        if (props.timerData.account_id) {
             // Load all related data in parallel and wait for completion
             const loadPromises = [
                 loadTicketsForAccount(
@@ -976,10 +1042,7 @@ const initializeForm = async () => {
             await nextTick();
         }
 
-        // Set billing rate ID (now that billing rates are loaded)
-        if (props.timerData.billing_rate_id) {
-            form.value.billingRateId = props.timerData.billing_rate_id;
-        }
+        // Billing rate ID already set before loading rates to prevent race condition
 
         // Set assigned user to timer's user (the person who ran the timer)
         if (props.timerData.user_id) {

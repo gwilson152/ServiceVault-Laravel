@@ -110,6 +110,7 @@ class TimeEntryController extends Controller
             'ended_at' => 'nullable|date|after:started_at',
             'account_id' => 'required|exists:accounts,id',
             'ticket_id' => 'nullable|exists:tickets,id',
+            'user_id' => 'nullable|exists:users,id', // Allow assigning to different users (for agents/admins)
             'billable' => 'boolean',
             'notes' => 'nullable|string|max:2000',
             'billing_rate_id' => 'nullable|exists:billing_rates,id'
@@ -128,9 +129,20 @@ class TimeEntryController extends Controller
             return response()->json(['error' => 'You do not have permission to log time for this account.'], 403);
         }
         
+        // Determine who performed the work - use provided user_id or default to current user
+        $assignedUserId = $validated['user_id'] ?? $user->id;
+        
+        // Verify the assigned user can be a time entry agent (if different from current user)
+        if ($assignedUserId !== $user->id) {
+            $assignedUser = User::find($assignedUserId);
+            if (!$assignedUser || !$assignedUser->hasAnyPermission(['time.act_as_agent', 'time.track', 'time.manage', 'admin.write'])) {
+                return response()->json(['error' => 'The assigned user cannot be a time entry agent.'], 403);
+            }
+        }
+
         // Create time entry with Agent/Customer architecture
         $timeEntry = TimeEntry::create([
-            'user_id' => $user->id, // Agent who performed the work
+            'user_id' => $assignedUserId, // Agent who performed the work
             'description' => $validated['description'],
             'duration' => intval($validated['duration'] / 60), // Convert seconds to minutes for storage
             'started_at' => $validated['started_at'],
