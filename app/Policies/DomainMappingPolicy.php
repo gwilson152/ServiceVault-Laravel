@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\DomainMapping;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class DomainMappingPolicy
 {
@@ -17,7 +16,7 @@ class DomainMappingPolicy
         return $user->hasAnyPermission([
             'manage_system_settings',
             'manage_account_settings',
-            'manage_domain_mappings'
+            'manage_domain_mappings',
         ]);
     }
 
@@ -27,7 +26,7 @@ class DomainMappingPolicy
     public function view(User $user, DomainMapping $domainMapping): bool
     {
         // Can view if they can manage domain mappings or if it's for their account
-        return $this->viewAny($user) || 
+        return $this->viewAny($user) ||
                $user->hasPermissionForAccount('view_account_settings', $domainMapping->account);
     }
 
@@ -39,7 +38,7 @@ class DomainMappingPolicy
         return $user->hasAnyPermission([
             'manage_system_settings',
             'manage_account_settings',
-            'manage_domain_mappings'
+            'manage_domain_mappings',
         ]);
     }
 

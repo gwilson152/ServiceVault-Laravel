@@ -17,7 +17,7 @@ class RoleTemplateFactory extends Factory
     public function definition(): array
     {
         $roleNames = ['Employee', 'Manager', 'Administrator', 'Supervisor', 'Analyst', 'Developer'];
-        
+
         return [
             'name' => fake()->randomElement($roleNames),
             'permissions' => [

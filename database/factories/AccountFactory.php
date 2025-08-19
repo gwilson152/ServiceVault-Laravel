@@ -18,10 +18,10 @@ class AccountFactory extends Factory
     public function definition(): array
     {
         $name = fake()->company();
-        
+
         return [
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . fake()->randomNumber(4),
+            'slug' => Str::slug($name).'-'.fake()->randomNumber(4),
             'description' => fake()->optional(0.7)->paragraph(),
             'parent_id' => null,
             'settings' => [],

@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class Invoice extends Model
 {
@@ -41,7 +40,7 @@ class Invoice extends Model
         parent::boot();
 
         static::creating(function ($invoice) {
-            if (!$invoice->invoice_number) {
+            if (! $invoice->invoice_number) {
                 $invoice->invoice_number = static::generateInvoiceNumber($invoice->account_id);
             }
         });
@@ -81,13 +80,13 @@ class Invoice extends Model
     public function scopeOverdue($query)
     {
         return $query->where('due_date', '<', now())
-                    ->whereNotIn('status', ['paid', 'cancelled']);
+            ->whereNotIn('status', ['paid', 'cancelled']);
     }
 
     public function scopePending($query)
     {
         return $query->where('status', 'sent')
-                    ->where('due_date', '>=', now());
+            ->where('due_date', '>=', now());
     }
 
     public function scopePaid($query)
@@ -98,7 +97,7 @@ class Invoice extends Model
     // Helper methods
     public function isOverdue(): bool
     {
-        return $this->due_date->isPast() && !in_array($this->status, ['paid', 'cancelled']);
+        return $this->due_date->isPast() && ! in_array($this->status, ['paid', 'cancelled']);
     }
 
     public function isPaid(): bool
@@ -109,6 +108,7 @@ class Invoice extends Model
     public function getOutstandingBalance(): float
     {
         $totalPaid = $this->payments()->where('status', 'completed')->sum('amount');
+
         return $this->total - $totalPaid;
     }
 
@@ -123,19 +123,19 @@ class Invoice extends Model
     {
         $settings = BillingSetting::where('account_id', $accountId)->first()
                    ?? BillingSetting::whereNull('account_id')->first();
-        
+
         $prefix = $settings->invoice_prefix ?? 'INV';
         $nextNumber = $settings->next_invoice_number ?? 1001;
-        
+
         // Update the next number
         $settings->increment('next_invoice_number');
-        
-        return $prefix . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
+        return $prefix.'-'.str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'draft' => 'gray',
             'sent' => $this->isOverdue() ? 'red' : 'blue',
             'paid' => 'green',
@@ -147,10 +147,10 @@ class Invoice extends Model
 
     public function getDaysOverdueAttribute(): int
     {
-        if (!$this->isOverdue()) {
+        if (! $this->isOverdue()) {
             return 0;
         }
-        
+
         return $this->due_date->diffInDays(now());
     }
 }

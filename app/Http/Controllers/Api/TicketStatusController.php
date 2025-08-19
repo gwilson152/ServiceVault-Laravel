@@ -18,9 +18,9 @@ class TicketStatusController extends Controller
         $user = $request->user();
 
         // Only admins can view all statuses
-        if (!$user->hasAnyPermission(['admin.read', 'settings.manage', 'tickets.manage'])) {
+        if (! $user->hasAnyPermission(['admin.read', 'settings.manage', 'tickets.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to view ticket statuses'
+                'message' => 'Insufficient permissions to view ticket statuses',
             ], 403);
         }
 
@@ -41,7 +41,7 @@ class TicketStatusController extends Controller
         return response()->json([
             'data' => $statuses,
             'workflow_transitions' => TicketStatus::getWorkflowTransitions(),
-            'message' => 'Ticket statuses retrieved successfully'
+            'message' => 'Ticket statuses retrieved successfully',
         ]);
     }
 
@@ -54,7 +54,7 @@ class TicketStatusController extends Controller
 
         return response()->json([
             'options' => $options,
-            'default_status' => TicketStatus::getDefault()?->key
+            'default_status' => TicketStatus::getDefault()?->key,
         ]);
     }
 
@@ -65,9 +65,9 @@ class TicketStatusController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+        if (! $user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to create ticket statuses'
+                'message' => 'Insufficient permissions to create ticket statuses',
             ], 403);
         }
 
@@ -83,7 +83,7 @@ class TicketStatusController extends Controller
             'is_closed' => 'boolean',
             'billable' => 'boolean',
             'sort_order' => 'integer|min:0',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         // Set defaults
@@ -97,7 +97,7 @@ class TicketStatusController extends Controller
 
         return response()->json([
             'data' => $status,
-            'message' => 'Ticket status created successfully'
+            'message' => 'Ticket status created successfully',
         ], 201);
     }
 
@@ -109,7 +109,7 @@ class TicketStatusController extends Controller
         return response()->json([
             'data' => $ticketStatus,
             'next_statuses' => $ticketStatus->getNextStatuses(),
-            'message' => 'Ticket status retrieved successfully'
+            'message' => 'Ticket status retrieved successfully',
         ]);
     }
 
@@ -120,9 +120,9 @@ class TicketStatusController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+        if (! $user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to update ticket statuses'
+                'message' => 'Insufficient permissions to update ticket statuses',
             ], 403);
         }
 
@@ -132,7 +132,7 @@ class TicketStatusController extends Controller
                 'string',
                 'max:50',
                 'alpha_dash',
-                Rule::unique('ticket_statuses', 'key')->ignore($ticketStatus->id)
+                Rule::unique('ticket_statuses', 'key')->ignore($ticketStatus->id),
             ],
             'name' => 'sometimes|string|max:100',
             'description' => 'nullable|string|max:500',
@@ -144,14 +144,14 @@ class TicketStatusController extends Controller
             'is_closed' => 'boolean',
             'billable' => 'boolean',
             'sort_order' => 'integer|min:0',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         $ticketStatus->update($validated);
 
         return response()->json([
             'data' => $ticketStatus,
-            'message' => 'Ticket status updated successfully'
+            'message' => 'Ticket status updated successfully',
         ]);
     }
 
@@ -162,30 +162,30 @@ class TicketStatusController extends Controller
     {
         $user = request()->user();
 
-        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+        if (! $user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to delete ticket statuses'
+                'message' => 'Insufficient permissions to delete ticket statuses',
             ], 403);
         }
 
         // Check if status is being used
         if ($ticketStatus->tickets()->exists()) {
             return response()->json([
-                'message' => 'Cannot delete status that is being used by existing tickets'
+                'message' => 'Cannot delete status that is being used by existing tickets',
             ], 422);
         }
 
         // Prevent deletion of default status
         if ($ticketStatus->is_default) {
             return response()->json([
-                'message' => 'Cannot delete the default ticket status'
+                'message' => 'Cannot delete the default ticket status',
             ], 422);
         }
 
         $ticketStatus->delete();
 
         return response()->json([
-            'message' => 'Ticket status deleted successfully'
+            'message' => 'Ticket status deleted successfully',
         ]);
     }
 
@@ -200,7 +200,7 @@ class TicketStatusController extends Controller
         return response()->json([
             'current_status' => $ticketStatus,
             'next_statuses' => $nextStatuses,
-            'all_transitions' => $allTransitions
+            'all_transitions' => $allTransitions,
         ]);
     }
 
@@ -211,16 +211,16 @@ class TicketStatusController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+        if (! $user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to reorder ticket statuses'
+                'message' => 'Insufficient permissions to reorder ticket statuses',
             ], 403);
         }
 
         $validated = $request->validate([
             'statuses' => 'required|array',
             'statuses.*.id' => 'required|string|exists:ticket_statuses,id',
-            'statuses.*.sort_order' => 'required|integer|min:0'
+            'statuses.*.sort_order' => 'required|integer|min:0',
         ]);
 
         foreach ($validated['statuses'] as $statusData) {
@@ -233,7 +233,7 @@ class TicketStatusController extends Controller
         return response()->json([
             'success' => true,
             'data' => $statuses,
-            'message' => 'Ticket statuses reordered successfully'
+            'message' => 'Ticket statuses reordered successfully',
         ]);
     }
 }

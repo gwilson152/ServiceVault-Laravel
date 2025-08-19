@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\TicketAddon;
 use App\Models\Ticket;
-use Illuminate\Http\Request;
+use App\Models\TicketAddon;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\Request;
 
 class TicketAddonController extends Controller
 {
@@ -34,7 +33,7 @@ class TicketAddonController extends Controller
             // Get all addons user can access
             $query = TicketAddon::with(['ticket', 'addedBy:id,name', 'approvedBy:id,name'])
                 ->whereHas('ticket', function ($q) use ($user) {
-                    if (!$user->hasAnyPermission(['tickets.view.all', 'admin.read'])) {
+                    if (! $user->hasAnyPermission(['tickets.view.all', 'admin.read'])) {
                         $q->where('assigned_to', $user->id)
                             ->orWhere('created_by', $user->id);
                     }
@@ -55,7 +54,7 @@ class TicketAddonController extends Controller
 
         return response()->json([
             'data' => $addons,
-            'message' => 'Ticket addons retrieved successfully'
+            'message' => 'Ticket addons retrieved successfully',
         ]);
     }
 
@@ -80,7 +79,7 @@ class TicketAddonController extends Controller
             'is_taxable' => 'boolean',
             'billing_category' => 'required|string|in:addon,expense,product,service',
             'addon_template_id' => 'nullable|exists:addon_templates,id',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         // Check permissions on the ticket
@@ -96,17 +95,15 @@ class TicketAddonController extends Controller
         $validated['billable'] = $validated['billable'] ?? true;
         $validated['is_taxable'] = $validated['is_taxable'] ?? true;
 
-        // Auto-approve addons - no approval workflow needed
-        $validated['status'] = 'approved';
-        $validated['approved_by_user_id'] = $user->id;
-        $validated['approved_at'] = now();
+        // Set status as pending for approval workflow
+        $validated['status'] = 'pending';
 
         $addon = TicketAddon::create($validated);
         $addon->load(['addedBy:id,name', 'template:id,name']);
 
         return response()->json([
             'data' => $addon,
-            'message' => 'Addon created successfully'
+            'message' => 'Addon created successfully',
         ], 201);
     }
 
@@ -121,12 +118,12 @@ class TicketAddonController extends Controller
             'ticket:id,ticket_number,title',
             'addedBy:id,name',
             'approvedBy:id,name',
-            'template:id,name,category'
+            'template:id,name,category',
         ]);
 
         return response()->json([
             'data' => $ticketAddon,
-            'message' => 'Addon retrieved successfully'
+            'message' => 'Addon retrieved successfully',
         ]);
     }
 
@@ -138,9 +135,9 @@ class TicketAddonController extends Controller
         $this->authorize('update', $ticketAddon->ticket);
 
         // Can only edit pending or rejected addons
-        if (!$ticketAddon->canBeEdited()) {
+        if (! $ticketAddon->canBeEdited()) {
             return response()->json([
-                'message' => 'This addon cannot be edited in its current status'
+                'message' => 'This addon cannot be edited in its current status',
             ], 422);
         }
 
@@ -156,7 +153,7 @@ class TicketAddonController extends Controller
             'billable' => 'boolean',
             'is_taxable' => 'boolean',
             'billing_category' => 'sometimes|string|in:addon,expense,product,service',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         $ticketAddon->update($validated);
@@ -164,7 +161,7 @@ class TicketAddonController extends Controller
 
         return response()->json([
             'data' => $ticketAddon,
-            'message' => 'Addon updated successfully'
+            'message' => 'Addon updated successfully',
         ]);
     }
 
@@ -176,16 +173,16 @@ class TicketAddonController extends Controller
         $this->authorize('update', $ticketAddon->ticket);
 
         // Can only delete pending or rejected addons
-        if (!$ticketAddon->canBeEdited()) {
+        if (! $ticketAddon->canBeEdited()) {
             return response()->json([
-                'message' => 'This addon cannot be deleted in its current status'
+                'message' => 'This addon cannot be deleted in its current status',
             ], 422);
         }
 
         $ticketAddon->delete();
 
         return response()->json([
-            'message' => 'Addon deleted successfully'
+            'message' => 'Addon deleted successfully',
         ]);
     }
 
@@ -198,20 +195,20 @@ class TicketAddonController extends Controller
         $this->authorize('update', $ticketAddon->ticket);
 
         // Check if user has approval permissions
-        if (!$user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
+        if (! $user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to approve addons'
+                'message' => 'Insufficient permissions to approve addons',
             ], 403);
         }
 
-        if (!$ticketAddon->canBeApproved()) {
+        if (! $ticketAddon->canBeApproved()) {
             return response()->json([
-                'message' => 'This addon cannot be approved in its current status'
+                'message' => 'This addon cannot be approved in its current status',
             ], 422);
         }
 
         $validated = $request->validate([
-            'approval_notes' => 'nullable|string|max:1000'
+            'approval_notes' => 'nullable|string|max:1000',
         ]);
 
         $success = $ticketAddon->approve($user, $validated['approval_notes'] ?? null);
@@ -221,12 +218,12 @@ class TicketAddonController extends Controller
 
             return response()->json([
                 'data' => $ticketAddon,
-                'message' => 'Addon approved successfully'
+                'message' => 'Addon approved successfully',
             ]);
         }
 
         return response()->json([
-            'message' => 'Failed to approve addon'
+            'message' => 'Failed to approve addon',
         ], 422);
     }
 
@@ -239,20 +236,20 @@ class TicketAddonController extends Controller
         $this->authorize('update', $ticketAddon->ticket);
 
         // Check if user has approval permissions
-        if (!$user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
+        if (! $user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to reject addons'
+                'message' => 'Insufficient permissions to reject addons',
             ], 403);
         }
 
-        if (!$ticketAddon->canBeApproved()) {
+        if (! $ticketAddon->canBeApproved()) {
             return response()->json([
-                'message' => 'This addon cannot be rejected in its current status'
+                'message' => 'This addon cannot be rejected in its current status',
             ], 422);
         }
 
         $validated = $request->validate([
-            'approval_notes' => 'required|string|max:1000'
+            'approval_notes' => 'required|string|max:1000',
         ]);
 
         $success = $ticketAddon->reject($user, $validated['approval_notes']);
@@ -262,12 +259,12 @@ class TicketAddonController extends Controller
 
             return response()->json([
                 'data' => $ticketAddon,
-                'message' => 'Addon rejected successfully'
+                'message' => 'Addon rejected successfully',
             ]);
         }
 
         return response()->json([
-            'message' => 'Failed to reject addon'
+            'message' => 'Failed to reject addon',
         ], 422);
     }
 
@@ -278,7 +275,7 @@ class TicketAddonController extends Controller
     {
         $user = $request->user();
 
-        if (!$ticket->canBeViewedBy($user)) {
+        if (! $ticket->canBeViewedBy($user)) {
             return response()->json(['error' => 'Cannot view this ticket.'], 403);
         }
 
@@ -313,20 +310,20 @@ class TicketAddonController extends Controller
     {
         $user = $request->user();
 
-        if (!$ticketAddon->ticket->canBeEditedBy($user)) {
+        if (! $ticketAddon->ticket->canBeEditedBy($user)) {
             return response()->json(['error' => 'Cannot edit this ticket.'], 403);
         }
 
         if ($ticketAddon->status !== 'approved') {
             return response()->json([
-                'error' => 'Only approved add-ons can be marked as complete.'
+                'error' => 'Only approved add-ons can be marked as complete.',
             ], 422);
         }
 
         $validated = $request->validate([
             'completion_notes' => 'nullable|string|max:1000',
             'actual_hours' => 'nullable|numeric|min:0|max:1000',
-            'actual_cost' => 'nullable|numeric|min:0|max:999999.99'
+            'actual_cost' => 'nullable|numeric|min:0|max:999999.99',
         ]);
 
         $ticketAddon->update([
@@ -335,7 +332,7 @@ class TicketAddonController extends Controller
             'completed_by' => $user->id,
             'completion_notes' => $validated['completion_notes'] ?? null,
             'actual_hours' => $validated['actual_hours'] ?? $ticketAddon->actual_hours,
-            'actual_cost' => $validated['actual_cost'] ?? $ticketAddon->actual_cost
+            'actual_cost' => $validated['actual_cost'] ?? $ticketAddon->actual_cost,
         ]);
 
         // Log activity
@@ -349,13 +346,137 @@ class TicketAddonController extends Controller
                 'title' => $ticketAddon->title,
                 'actual_hours' => $ticketAddon->actual_hours,
                 'actual_cost' => $ticketAddon->actual_cost,
-                'notes' => $validated['completion_notes'] ?? null
-            ]
+                'notes' => $validated['completion_notes'] ?? null,
+            ],
         ]);
 
         return response()->json([
             'data' => $ticketAddon->fresh(),
-            'message' => 'Add-on marked as complete.'
+            'message' => 'Add-on marked as complete.',
+        ]);
+    }
+
+    /**
+     * Bulk approve addons
+     */
+    public function bulkApprove(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check if user has approval permissions
+        if (! $user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
+            return response()->json([
+                'message' => 'Insufficient permissions to approve addons',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'ticket_addon_ids' => 'required|array',
+            'ticket_addon_ids.*' => 'exists:ticket_addons,id',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $addonIds = $validated['ticket_addon_ids'];
+        $notes = $validated['notes'] ?? null;
+
+        // Get addons that can be approved
+        $addons = TicketAddon::whereIn('id', $addonIds)
+            ->where('status', 'pending')
+            ->get();
+
+        $approvedCount = 0;
+        $errors = [];
+
+        foreach ($addons as $addon) {
+            try {
+                // Check ticket permissions
+                if (! $addon->ticket->canBeEditedBy($user)) {
+                    $errors[] = "No permission to approve addon: {$addon->name}";
+
+                    continue;
+                }
+
+                if ($addon->approve($user, $notes)) {
+                    $approvedCount++;
+                } else {
+                    $errors[] = "Failed to approve addon: {$addon->name}";
+                }
+            } catch (\Exception $e) {
+                $errors[] = "Error approving addon {$addon->name}: ".$e->getMessage();
+            }
+        }
+
+        $message = "Approved {$approvedCount} addon(s)";
+        if (! empty($errors)) {
+            $message .= '. Errors: '.implode(', ', $errors);
+        }
+
+        return response()->json([
+            'message' => $message,
+            'approved_count' => $approvedCount,
+            'errors' => $errors,
+        ]);
+    }
+
+    /**
+     * Bulk reject addons
+     */
+    public function bulkReject(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check if user has approval permissions
+        if (! $user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
+            return response()->json([
+                'message' => 'Insufficient permissions to reject addons',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'ticket_addon_ids' => 'required|array',
+            'ticket_addon_ids.*' => 'exists:ticket_addons,id',
+            'notes' => 'required|string|max:1000',
+        ]);
+
+        $addonIds = $validated['ticket_addon_ids'];
+        $notes = $validated['notes'];
+
+        // Get addons that can be rejected
+        $addons = TicketAddon::whereIn('id', $addonIds)
+            ->where('status', 'pending')
+            ->get();
+
+        $rejectedCount = 0;
+        $errors = [];
+
+        foreach ($addons as $addon) {
+            try {
+                // Check ticket permissions
+                if (! $addon->ticket->canBeEditedBy($user)) {
+                    $errors[] = "No permission to reject addon: {$addon->name}";
+
+                    continue;
+                }
+
+                if ($addon->reject($user, $notes)) {
+                    $rejectedCount++;
+                } else {
+                    $errors[] = "Failed to reject addon: {$addon->name}";
+                }
+            } catch (\Exception $e) {
+                $errors[] = "Error rejecting addon {$addon->name}: ".$e->getMessage();
+            }
+        }
+
+        $message = "Rejected {$rejectedCount} addon(s)";
+        if (! empty($errors)) {
+            $message .= '. Errors: '.implode(', ', $errors);
+        }
+
+        return response()->json([
+            'message' => $message,
+            'rejected_count' => $rejectedCount,
+            'errors' => $errors,
         ]);
     }
 }

@@ -16,7 +16,7 @@ return new class extends Migration
             // Agents: Internal users who provide services and log time entries
             // Account Users: External customers who submit tickets but don't log time
             $table->enum('user_type', ['agent', 'account_user'])->default('account_user')->after('account_id');
-            
+
             // Add index for efficient filtering
             $table->index(['user_type', 'account_id']);
         });

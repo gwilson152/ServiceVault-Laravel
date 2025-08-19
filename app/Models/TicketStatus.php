@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,7 +24,7 @@ class TicketStatus extends Model
         'is_closed',
         'billable',
         'sort_order',
-        'metadata'
+        'metadata',
     ];
 
     protected $casts = [
@@ -33,7 +32,7 @@ class TicketStatus extends Model
         'is_default' => 'boolean',
         'is_closed' => 'boolean',
         'billable' => 'boolean',
-        'metadata' => 'array'
+        'metadata' => 'array',
     ];
 
     /**
@@ -92,13 +91,13 @@ class TicketStatus extends Model
         return static::active()
             ->ordered()
             ->get()
-            ->map(fn($status) => [
+            ->map(fn ($status) => [
                 'value' => $status->key,
                 'label' => $status->name,
                 'color' => $status->color,
                 'bg_color' => $status->bg_color,
                 'icon' => $status->icon,
-                'is_closed' => $status->is_closed
+                'is_closed' => $status->is_closed,
             ])
             ->toArray();
     }
@@ -115,7 +114,7 @@ class TicketStatus extends Model
             'on_hold' => ['in_progress', 'cancelled'],
             'resolved' => ['closed', 'in_progress'], // Can reopen if customer isn't satisfied
             'closed' => [], // Closed tickets can't be transitioned (except by admin override)
-            'cancelled' => [] // Cancelled tickets are final
+            'cancelled' => [], // Cancelled tickets are final
         ];
     }
 
@@ -125,6 +124,7 @@ class TicketStatus extends Model
     public function canTransitionTo(string $newStatusKey): bool
     {
         $transitions = self::getWorkflowTransitions();
+
         return in_array($newStatusKey, $transitions[$this->key] ?? []);
     }
 

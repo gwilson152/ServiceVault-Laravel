@@ -2,15 +2,13 @@
 
 namespace App\Models;
 
-use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PagePermission extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
         'page_route',
         'page_name',
@@ -21,13 +19,13 @@ class PagePermission extends Model
         'is_menu_item',
         'menu_order',
     ];
-    
+
     protected $casts = [
         'required_permissions' => 'array',
         'is_menu_item' => 'boolean',
         'menu_order' => 'integer',
     ];
-    
+
     /**
      * Get role templates that have access to this page
      */
@@ -35,7 +33,7 @@ class PagePermission extends Model
     {
         return $this->belongsToMany(RoleTemplate::class, 'role_template_pages', 'page_permission_id', 'role_template_id');
     }
-    
+
     /**
      * Scope for menu items
      */
@@ -43,7 +41,7 @@ class PagePermission extends Model
     {
         return $query->where('is_menu_item', true)->orderBy('menu_order');
     }
-    
+
     /**
      * Scope for context filtering
      */
@@ -51,7 +49,7 @@ class PagePermission extends Model
     {
         return $query->where('context', $context)->orWhere('context', 'both');
     }
-    
+
     /**
      * Scope for category filtering
      */
@@ -59,7 +57,7 @@ class PagePermission extends Model
     {
         return $query->where('category', $category);
     }
-    
+
     /**
      * Check if page is available in given context
      */
@@ -67,7 +65,7 @@ class PagePermission extends Model
     {
         return $this->context === 'both' || $this->context === $context;
     }
-    
+
     /**
      * Check if user has required permissions for this page
      */
@@ -76,16 +74,16 @@ class PagePermission extends Model
         if (empty($this->required_permissions)) {
             return true;
         }
-        
+
         foreach ($this->required_permissions as $permission) {
-            if (!$user->hasPermission($permission)) {
+            if (! $user->hasPermission($permission)) {
                 return false;
             }
         }
-        
+
         return true;
     }
-    
+
     /**
      * Get the display name for this page
      */
@@ -93,7 +91,7 @@ class PagePermission extends Model
     {
         return $this->page_name ?: ucwords(str_replace(['-', '_', '.'], ' ', $this->page_route));
     }
-    
+
     /**
      * Get formatted route for frontend routing
      */
@@ -101,7 +99,7 @@ class PagePermission extends Model
     {
         return str_replace('.', '/', $this->page_route);
     }
-    
+
     /**
      * Get breadcrumb path for this page
      */
@@ -109,7 +107,7 @@ class PagePermission extends Model
     {
         $parts = explode('.', $this->page_route);
         $breadcrumb = [];
-        
+
         foreach ($parts as $index => $part) {
             $breadcrumb[] = [
                 'name' => ucwords(str_replace(['-', '_'], ' ', $part)),
@@ -117,7 +115,7 @@ class PagePermission extends Model
                 'active' => $index === count($parts) - 1,
             ];
         }
-        
+
         return $breadcrumb;
     }
 }

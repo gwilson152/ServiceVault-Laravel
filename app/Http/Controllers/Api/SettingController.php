@@ -3,24 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Account;
+use App\Models\AddonTemplate;
+use App\Models\BillingRate;
+use App\Models\RoleTemplate;
 use App\Models\Setting;
-use App\Models\TicketStatus;
 use App\Models\TicketCategory;
 use App\Models\TicketPriority;
-use App\Models\BillingRate;
-use App\Models\AddonTemplate;
-use App\Models\Account;
-use App\Models\RoleTemplate;
-use Illuminate\Http\Request;
+use App\Models\TicketStatus;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 
 class SettingController extends Controller
 {
@@ -86,14 +85,14 @@ class SettingController extends Controller
             'company_website' => 'sometimes|nullable|url|max:255',
             'company_address' => 'sometimes|nullable|string|max:500',
             'company_phone' => 'sometimes|nullable|string|max:50',
-            
+
             // System Configuration
             'timezone' => 'sometimes|string|max:100',
             'currency' => 'sometimes|string|size:3',
             'date_format' => 'sometimes|string|max:50',
             'time_format' => 'sometimes|string|max:20',
             'language' => 'sometimes|string|max:10',
-            
+
             // Features & Limits
             'enable_real_time' => 'sometimes|boolean',
             'enable_notifications' => 'sometimes|boolean',
@@ -110,22 +109,24 @@ class SettingController extends Controller
         }
 
         $validated = $validator->validated();
-        
+
         // Update company information in the Account record
         $companyFields = ['company_name', 'company_email', 'company_website', 'company_address', 'company_phone'];
         $companyAccount = Account::where('account_type', 'internal')->first();
-        
+
         if ($companyAccount) {
             $companyUpdates = [];
             foreach ($companyFields as $field) {
                 if (isset($validated[$field])) {
                     $accountField = str_replace('company_', '', $field);
-                    if ($field === 'company_name') $accountField = 'name';
+                    if ($field === 'company_name') {
+                        $accountField = 'name';
+                    }
                     $companyUpdates[$accountField] = $validated[$field];
                     unset($validated[$field]); // Remove from system settings
                 }
             }
-            if (!empty($companyUpdates)) {
+            if (! empty($companyUpdates)) {
                 $companyAccount->update($companyUpdates);
             }
         }
@@ -157,7 +158,7 @@ class SettingController extends Controller
             'from_address' => $request->input('from_address'),
             'from_name' => $request->input('from_name'),
             'reply_to_address' => $request->input('reply_to_address'),
-            
+
             // Inbound Email
             'imap_host' => $request->input('imap_host'),
             'imap_port' => $request->input('imap_port'),
@@ -165,7 +166,7 @@ class SettingController extends Controller
             'imap_password' => $request->input('imap_password'),
             'imap_encryption' => $request->input('imap_encryption'),
             'imap_folder' => $request->input('imap_folder', 'INBOX'),
-            
+
             // Email Processing
             'enable_email_to_ticket' => $request->boolean('enable_email_to_ticket', false),
             'auto_create_users' => $request->boolean('auto_create_users', false),
@@ -220,7 +221,7 @@ class SettingController extends Controller
             Config::set('mail.mailers.smtp.encryption', $request->smtp_encryption ?: null);
             Config::set('mail.from.address', $request->from_address);
             Config::set('mail.from.name', $request->from_name ?: 'Service Vault');
-            
+
             // Configure authentication method based on whether credentials are provided
             if (empty($request->smtp_username) && empty($request->smtp_password)) {
                 Config::set('mail.mailers.smtp.auth_mode', null);
@@ -228,7 +229,7 @@ class SettingController extends Controller
 
             Mail::raw('This is a test email from Service Vault. SMTP configuration is working correctly.', function ($message) use ($request) {
                 $message->to($request->test_email)
-                        ->subject('Service Vault - SMTP Configuration Test');
+                    ->subject('Service Vault - SMTP Configuration Test');
             });
 
             return response()->json([
@@ -239,7 +240,7 @@ class SettingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'SMTP test failed: ' . $e->getMessage(),
+                'message' => 'SMTP test failed: '.$e->getMessage(),
             ], 400);
         }
     }
@@ -277,17 +278,17 @@ class SettingController extends Controller
             $folder = $request->input('imap_folder', 'INBOX');
 
             // Build connection string
-            $connectionString = '{' . $host . ':' . $port;
+            $connectionString = '{'.$host.':'.$port;
             if ($encryption) {
-                $connectionString .= '/' . $encryption;
+                $connectionString .= '/'.$encryption;
             }
-            $connectionString .= '}' . $folder;
+            $connectionString .= '}'.$folder;
 
             // Attempt IMAP connection
             $connection = imap_open($connectionString, $username, $password);
 
-            if (!$connection) {
-                throw new \Exception('Failed to connect: ' . imap_last_error());
+            if (! $connection) {
+                throw new \Exception('Failed to connect: '.imap_last_error());
             }
 
             $status = imap_status($connection, $connectionString, SA_ALL);
@@ -299,13 +300,13 @@ class SettingController extends Controller
                 'details' => [
                     'total_messages' => $status->messages ?? 0,
                     'unread_messages' => $status->unseen ?? 0,
-                ]
+                ],
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'IMAP test failed: ' . $e->getMessage(),
+                'message' => 'IMAP test failed: '.$e->getMessage(),
             ], 400);
         }
     }
@@ -316,14 +317,14 @@ class SettingController extends Controller
     public function getTicketConfig(): JsonResponse
     {
         // Allow access to users with ticket viewing permissions or admin access
-        if (!auth()->user()->hasAnyPermission([
-            'system.configure', 
-            'tickets.admin', 
+        if (! auth()->user()->hasAnyPermission([
+            'system.configure',
+            'tickets.admin',
             'admin.read',
             'tickets.view.own',
-            'tickets.view.account', 
+            'tickets.view.account',
             'tickets.view.all',
-            'portal.access'
+            'portal.access',
         ])) {
             abort(403, 'Unauthorized');
         }
@@ -338,8 +339,8 @@ class SettingController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error loading ticket config: ' . $e->getMessage());
-            
+            \Log::error('Error loading ticket config: '.$e->getMessage());
+
             return response()->json([
                 'data' => [
                     'statuses' => [],
@@ -357,7 +358,7 @@ class SettingController extends Controller
     public function getBillingConfig(): JsonResponse
     {
         // Allow access to users with either system.configure or billing.manage permissions
-        if (!auth()->user()->hasAnyPermission(['system.configure', 'billing.manage', 'admin.read'])) {
+        if (! auth()->user()->hasAnyPermission(['system.configure', 'billing.manage', 'admin.read'])) {
             abort(403, 'Unauthorized');
         }
 
@@ -370,8 +371,8 @@ class SettingController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error loading billing config: ' . $e->getMessage());
-            
+            \Log::error('Error loading billing config: '.$e->getMessage());
+
             // Return empty data structure to prevent frontend errors
             return response()->json([
                 'data' => [
@@ -389,7 +390,7 @@ class SettingController extends Controller
     public function getTimerSettings(): JsonResponse
     {
         // Allow access to users with timer permissions or general read access
-        if (!auth()->user()->hasAnyPermission(['timers.read', 'timers.write', 'admin.read', 'system.configure'])) {
+        if (! auth()->user()->hasAnyPermission(['timers.read', 'timers.write', 'admin.read', 'system.configure'])) {
             abort(403, 'Unauthorized');
         }
 
@@ -397,7 +398,7 @@ class SettingController extends Controller
             // Get timer settings with timer.* prefix
             $timerSettings = Setting::where('key', 'like', 'timer.%')->pluck('value', 'key');
             $timerData = [];
-            
+
             foreach ($timerSettings as $key => $value) {
                 // Remove 'timer.' prefix from key
                 $shortKey = str_replace('timer.', '', $key);
@@ -422,15 +423,15 @@ class SettingController extends Controller
             ];
 
             foreach ($defaults as $key => $defaultValue) {
-                if (!isset($timerData[$key])) {
+                if (! isset($timerData[$key])) {
                     $timerData[$key] = $defaultValue;
                 }
-                
+
                 // Convert string boolean values to actual booleans
                 if (in_array($key, ['default_auto_stop', 'allow_concurrent_timers', 'auto_commit_on_stop', 'require_description', 'default_billable', 'auto_stop_long_timers', 'show_timer_overlay', 'play_timer_sounds', 'allow_manual_time_override'])) {
                     $timerData[$key] = filter_var($timerData[$key], FILTER_VALIDATE_BOOLEAN);
                 }
-                
+
                 // Convert string numeric values to numbers
                 if (in_array($key, ['sync_interval_seconds', 'min_timer_duration_minutes', 'max_timer_duration_hours'])) {
                     $timerData[$key] = (int) $timerData[$key];
@@ -443,7 +444,7 @@ class SettingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load timer settings: ' . $e->getMessage(),
+                'message' => 'Failed to load timer settings: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -494,7 +495,7 @@ class SettingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update timer settings: ' . $e->getMessage(),
+                'message' => 'Failed to update timer settings: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -568,7 +569,7 @@ class SettingController extends Controller
 
         return response()->json([
             'message' => 'Advanced settings retrieved successfully',
-            'data' => $advancedData
+            'data' => $advancedData,
         ]);
     }
 
@@ -609,7 +610,7 @@ class SettingController extends Controller
         $this->authorize('system.configure');
 
         $validated = $request->validate([
-            'workflow_transitions' => 'required|array'
+            'workflow_transitions' => 'required|array',
         ]);
 
         // Store workflow transitions in settings
@@ -617,7 +618,7 @@ class SettingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Workflow transitions updated successfully'
+            'message' => 'Workflow transitions updated successfully',
         ]);
     }
 
@@ -628,31 +629,31 @@ class SettingController extends Controller
     public function nuclearReset(Request $request): JsonResponse
     {
         // First check: Must be authenticated
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return response()->json([
-                'message' => 'Authentication required'
+                'message' => 'Authentication required',
             ], 401);
         }
 
         $user = Auth::user();
 
         // Second check: Must be Super Admin
-        if (!$user->isSuperAdmin()) {
+        if (! $user->isSuperAdmin()) {
             Log::warning('Non-super-admin attempted nuclear reset', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'ip' => $request->ip(),
-                'timestamp' => now()
+                'timestamp' => now(),
             ]);
 
             return response()->json([
-                'message' => 'Access denied. Only Super Administrators can perform system reset.'
+                'message' => 'Access denied. Only Super Administrators can perform system reset.',
             ], 403);
         }
 
         // Third check: Password confirmation is required
         $validator = Validator::make($request->all(), [
-            'password' => 'required|string'
+            'password' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -663,16 +664,16 @@ class SettingController extends Controller
         }
 
         // Fourth check: Verify password
-        if (!Hash::check($request->password, $user->password)) {
+        if (! Hash::check($request->password, $user->password)) {
             Log::warning('Nuclear reset attempted with invalid password', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'ip' => $request->ip(),
-                'timestamp' => now()
+                'timestamp' => now(),
             ]);
 
             return response()->json([
-                'message' => 'Invalid password. Nuclear reset cancelled.'
+                'message' => 'Invalid password. Nuclear reset cancelled.',
             ], 422);
         }
 
@@ -683,29 +684,29 @@ class SettingController extends Controller
             'user_name' => $user->name,
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
-            'timestamp' => now()
+            'timestamp' => now(),
         ]);
 
         try {
             // Execute nuclear reset via artisan command for safety and logging
             $exitCode = Artisan::call('system:nuclear-reset', [
-                '--user-id' => $user->id
+                '--user-id' => $user->id,
             ]);
 
             if ($exitCode === 0) {
                 Log::info('Nuclear system reset completed successfully', [
                     'user_id' => $user->id,
                     'ip' => $request->ip(),
-                    'timestamp' => now()
+                    'timestamp' => now(),
                 ]);
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Nuclear reset completed successfully. System has been reset to initial state. You will be redirected to setup.',
-                    'redirect_to' => '/setup'
+                    'redirect_to' => '/setup',
                 ]);
             } else {
-                throw new \Exception('Nuclear reset command failed with exit code: ' . $exitCode);
+                throw new \Exception('Nuclear reset command failed with exit code: '.$exitCode);
             }
 
         } catch (\Exception $e) {
@@ -714,14 +715,13 @@ class SettingController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'ip' => $request->ip(),
-                'timestamp' => now()
+                'timestamp' => now(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Nuclear reset failed: ' . $e->getMessage()
+                'message' => 'Nuclear reset failed: '.$e->getMessage(),
             ], 500);
         }
     }
-
 }

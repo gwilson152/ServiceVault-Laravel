@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\RoleTemplate;
-use App\Services\WidgetRegistryService;
-use App\Services\NavigationService;
 use App\Services\MockUserService;
-use Illuminate\Http\Request;
+use App\Services\NavigationService;
+use App\Services\WidgetRegistryService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DashboardPreviewController extends Controller
 {
@@ -24,22 +24,22 @@ class DashboardPreviewController extends Controller
     public function previewDashboard(RoleTemplate $roleTemplate, Request $request): JsonResponse
     {
         $context = $request->input('context', $roleTemplate->context);
-        
+
         // Create mock user with this role template
         $mockUser = $this->mockUserService->createMockUser($roleTemplate, $context);
-        
+
         // Get widgets available to this role
         $availableWidgets = $this->widgetService->getWidgetsForRolePreview($roleTemplate, $context);
-        
+
         // Get default dashboard layout
         $dashboardLayout = $this->widgetService->getDefaultLayoutForRole($roleTemplate);
-        
+
         // Get mock widget data
         $widgetData = $this->generateMockWidgetData($availableWidgets, $roleTemplate, $context);
-        
+
         // Get navigation items for this role
         $navigation = $this->navigationService->getNavigationForUser($mockUser);
-        
+
         return response()->json([
             'data' => [
                 'role_template' => [
@@ -76,10 +76,10 @@ class DashboardPreviewController extends Controller
     public function previewWidgets(RoleTemplate $roleTemplate, Request $request): JsonResponse
     {
         $context = $request->input('context', $roleTemplate->context);
-        
+
         $availableWidgets = $this->widgetService->getWidgetsForRolePreview($roleTemplate, $context);
         $mockWidgetData = $this->generateMockWidgetData($availableWidgets, $roleTemplate, $context);
-        
+
         return response()->json([
             'data' => [
                 'widgets' => $availableWidgets,
@@ -96,16 +96,16 @@ class DashboardPreviewController extends Controller
     public function previewNavigation(RoleTemplate $roleTemplate, Request $request): JsonResponse
     {
         $context = $request->input('context', $roleTemplate->context);
-        
+
         // Create mock user with this role template
         $mockUser = $this->mockUserService->createMockUser($roleTemplate, $context);
-        
+
         // Get navigation items for this role
         $navigation = $this->navigationService->getNavigationForUser($mockUser);
-        
+
         // Get grouped navigation for better organization
         $groupedNavigation = $this->navigationService->getGroupedNavigationForUser($mockUser);
-        
+
         return response()->json([
             'data' => [
                 'navigation' => $navigation,
@@ -126,10 +126,10 @@ class DashboardPreviewController extends Controller
     public function previewLayout(RoleTemplate $roleTemplate, Request $request): JsonResponse
     {
         $context = $request->input('context', $roleTemplate->context);
-        
+
         $layout = $this->widgetService->getDefaultLayoutForRole($roleTemplate);
         $availableWidgets = $this->widgetService->getWidgetsForRolePreview($roleTemplate, $context);
-        
+
         return response()->json([
             'data' => [
                 'layout' => $layout,
@@ -150,12 +150,12 @@ class DashboardPreviewController extends Controller
     private function generateMockWidgetData(array $widgets, RoleTemplate $roleTemplate, string $context): array
     {
         $data = [];
-        
+
         foreach ($widgets as $widget) {
             $widgetId = $widget['id'];
             $data[$widgetId] = $this->getMockDataForWidget($widgetId, $roleTemplate, $context);
         }
-        
+
         return $data;
     }
 
@@ -244,11 +244,11 @@ class DashboardPreviewController extends Controller
         $tickets = [];
         $statuses = ['open', 'in_progress', 'pending', 'resolved'];
         $priorities = ['low', 'normal', 'high', 'urgent'];
-        
+
         for ($i = 0; $i < $count; $i++) {
             $tickets[] = [
                 'id' => 1000 + $i,
-                'title' => "Sample Ticket #" . (1000 + $i),
+                'title' => 'Sample Ticket #'.(1000 + $i),
                 'description' => 'This is a mock ticket for preview purposes.',
                 'status' => $statuses[array_rand($statuses)],
                 'priority' => $priorities[array_rand($priorities)],
@@ -257,7 +257,7 @@ class DashboardPreviewController extends Controller
                 'created_at' => now()->subDays(rand(0, 30))->toISOString(),
             ];
         }
-        
+
         return $tickets;
     }
 
@@ -318,19 +318,19 @@ class DashboardPreviewController extends Controller
     {
         $actions = [];
         $permissions = $roleTemplate->getAllPermissions();
-        
+
         if (in_array('tickets.create', $permissions)) {
             $actions[] = ['name' => 'Create Ticket', 'route' => 'tickets.create', 'icon' => 'plus'];
         }
-        
+
         if (in_array('time.track', $permissions)) {
             $actions[] = ['name' => 'Start Timer', 'action' => 'start-timer', 'icon' => 'play'];
         }
-        
+
         if (in_array('users.manage', $permissions)) {
             $actions[] = ['name' => 'Invite User', 'route' => 'users.invite', 'icon' => 'user-plus'];
         }
-        
+
         return $actions;
     }
 
@@ -340,6 +340,7 @@ class DashboardPreviewController extends Controller
     private function generateDashboardTitle(RoleTemplate $roleTemplate, string $context): string
     {
         $contextName = $context === 'service_provider' ? 'Service Provider' : 'Account User';
+
         return "Dashboard Preview - {$roleTemplate->name} ({$contextName})";
     }
 }

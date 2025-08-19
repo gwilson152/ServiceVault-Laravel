@@ -13,54 +13,54 @@ class TokenAbilityService
         'timers:write' => 'Create and update timers',
         'timers:delete' => 'Delete timers',
         'timers:sync' => 'Cross-device timer synchronization',
-        
+
         // Time Entries
         'time-entries:read' => 'View time entries',
         'time-entries:write' => 'Create and update time entries',
         'time-entries:delete' => 'Delete time entries',
-        
+
         // Projects & Tasks
         'projects:read' => 'View projects',
         'projects:write' => 'Create and update projects',
         'tasks:read' => 'View tasks',
         'tasks:write' => 'Create and update tasks',
-        
+
         // Accounts & Users
         'accounts:read' => 'View account data',
         'accounts:write' => 'Manage account settings',
         'users:read' => 'View user data',
         'users:write' => 'Manage users',
-        
+
         // Client Monitoring (Future External API)
         // Note: These abilities are prepared for future client monitoring features
         // 'client:read' => 'View client data',
-        // 'endpoints:read' => 'View endpoint status', 
+        // 'endpoints:read' => 'View endpoint status',
         // 'endpoints:monitor' => 'Monitor endpoint health',
         // 'metrics:read' => 'Access monitoring metrics',
         // 'alerts:write' => 'Create monitoring alerts',
-        
+
         // Billing & Financial Management
         'billing:read' => 'View billing data and reports',
         'billing:write' => 'Manage billing settings and configuration',
         'billing:admin' => 'Full billing administrative access',
-        
+
         // Invoice Management
         'invoices:read' => 'View invoices',
         'invoices:write' => 'Create and modify invoices',
         'invoices:send' => 'Send invoices to customers',
         'invoices:void' => 'Void and cancel invoices',
-        
+
         // Payment Management
         'payments:read' => 'View payment records',
         'payments:write' => 'Process and manage payments',
         'payments:refund' => 'Process payment refunds',
-        
+
         // Billing Rates & Addons
         'rates:read' => 'View billing rates',
         'rates:write' => 'Manage billing rates',
         'addons:read' => 'View billing addons and templates',
         'addons:write' => 'Manage billing addons and templates',
-        
+
         // Administration
         'admin:read' => 'Administrative read access',
         'admin:write' => 'Administrative write access',
@@ -86,7 +86,7 @@ class TokenAbilityService
             'invoices:read',
             'rates:read',
         ],
-        
+
         'manager' => [
             'timers:read',
             'timers:write',
@@ -109,7 +109,7 @@ class TokenAbilityService
             'rates:write',
             'addons:read',
         ],
-        
+
         'billing-admin' => [
             'billing:read',
             'billing:write',
@@ -127,11 +127,11 @@ class TokenAbilityService
             'addons:write',
             'accounts:read',
         ],
-        
+
         // Future scopes for external client monitoring
         // 'client-monitoring' => [...],
         // 'external-api' => [...],
-        
+
         'mobile-app' => [
             'timers:read',
             'timers:write',
@@ -142,7 +142,7 @@ class TokenAbilityService
             'tasks:read',
             'accounts:read',
         ],
-        
+
         'admin' => [
             'admin:read',
             'admin:write',

@@ -20,11 +20,11 @@ return new class extends Migration
             $table->boolean('is_configurable')->default(true);
             $table->integer('sort_order')->default(0);
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('role_template_id')->references('id')->on('role_templates')->onDelete('cascade');
             $table->foreign('widget_permission_id')->references('id')->on('widget_permissions')->onDelete('cascade');
-            
+
             // Indexes
             $table->unique(['role_template_id', 'widget_permission_id'], 'role_widget_unique');
         });

@@ -2,10 +2,10 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Http\Request;
-use Inertia\Middleware;
 use App\Http\Resources\UserResource;
 use App\Models\Setting;
+use Illuminate\Http\Request;
+use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -40,7 +40,7 @@ class HandleInertiaRequests extends Middleware
             'csrf_token' => csrf_token(),
         ];
     }
-    
+
     /**
      * Get system settings for frontend consumption
      */
@@ -50,12 +50,12 @@ class HandleInertiaRequests extends Middleware
             // Get essential system settings for formatting
             $essentialSettings = [
                 'date_format',
-                'time_format', 
+                'time_format',
                 'currency',
                 'language',
-                'timezone'
+                'timezone',
             ];
-            
+
             $settings = [];
             foreach ($essentialSettings as $key) {
                 $value = Setting::getValue($key);
@@ -63,16 +63,16 @@ class HandleInertiaRequests extends Middleware
                     $settings[$key] = $value;
                 }
             }
-            
+
             // Set defaults if not configured
             return array_merge([
                 'date_format' => 'Y-m-d',
                 'time_format' => 'H:i',
                 'currency' => 'USD',
                 'language' => 'en',
-                'timezone' => 'UTC'
+                'timezone' => 'UTC',
             ], $settings);
-            
+
         } catch (\Exception $e) {
             // Return defaults if database is not available (during setup)
             return [
@@ -80,7 +80,7 @@ class HandleInertiaRequests extends Middleware
                 'time_format' => 'H:i',
                 'currency' => 'USD',
                 'language' => 'en',
-                'timezone' => 'UTC'
+                'timezone' => 'UTC',
             ];
         }
     }

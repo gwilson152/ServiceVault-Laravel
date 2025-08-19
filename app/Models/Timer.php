@@ -3,11 +3,9 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 class Timer extends Model
 {
@@ -83,7 +81,6 @@ class Timer extends Model
         return $this->belongsTo(User::class);
     }
 
-
     /**
      * Get the task associated with the timer.
      */
@@ -126,56 +123,50 @@ class Timer extends Model
 
     /**
      * Calculate the duration of the timer in seconds.
-     *
-     * @return int
      */
     public function getDurationAttribute(): int
     {
-        if (!$this->started_at) {
+        if (! $this->started_at) {
             return 0;
         }
 
         $endTime = $this->stopped_at ?? now();
         $totalDurationSeconds = $this->started_at->diffInSeconds($endTime);
-        
+
         // Subtract paused duration (stored in seconds)
         $pausedDurationSeconds = $this->total_paused_duration ?? 0;
-        
+
         // If currently paused, add the current pause duration
         if ($this->status === 'paused' && $this->paused_at) {
             $pausedDurationSeconds += now()->diffInSeconds($this->paused_at);
         }
-        
+
         // Calculate net duration in seconds
         return (int) max(0, $totalDurationSeconds - $pausedDurationSeconds);
     }
 
     /**
      * Get the formatted duration.
-     *
-     * @return string
      */
     public function getDurationFormattedAttribute(): string
     {
         $durationSeconds = $this->duration;
-        
+
         $hours = floor($durationSeconds / 3600);
         $minutes = floor(($durationSeconds % 3600) / 60);
         $seconds = $durationSeconds % 60;
-        
+
         if ($hours > 0) {
             return sprintf('%d:%02d:%02d', $hours, $minutes, $seconds);
         } elseif ($minutes > 0) {
             return sprintf('%d:%02d', $minutes, $seconds);
         }
-        
+
         return sprintf('%ds', $seconds);
     }
 
     /**
      * Check if the timer is running.
-     *
-     * @return bool
      */
     public function getIsRunningAttribute(): bool
     {
@@ -184,8 +175,6 @@ class Timer extends Model
 
     /**
      * Check if the timer is paused.
-     *
-     * @return bool
      */
     public function getIsPausedAttribute(): bool
     {
@@ -194,17 +183,15 @@ class Timer extends Model
 
     /**
      * Calculate the billed amount based on duration and rate.
-     *
-     * @return float|null
      */
     public function getCalculatedAmountAttribute(): ?float
     {
-        if (!$this->billingRate) {
+        if (! $this->billingRate) {
             return null;
         }
 
         $hours = $this->duration / 3600; // Convert seconds to hours
-        
+
         return round($hours * $this->billingRate->rate, 2);
     }
 
@@ -239,7 +226,6 @@ class Timer extends Model
     {
         return $query->where('user_id', $userId);
     }
-
 
     /**
      * Scope a query to only include timers for a specific ticket.
@@ -279,8 +265,10 @@ class Timer extends Model
         $timer = self::getUserActiveTimerForTicket($userId, $ticketId);
         if ($timer) {
             $timer->stop();
+
             return $timer;
         }
+
         return null;
     }
 
@@ -294,8 +282,6 @@ class Timer extends Model
 
     /**
      * Stop the timer.
-     *
-     * @return void
      */
     public function stop(): void
     {
@@ -313,8 +299,6 @@ class Timer extends Model
 
     /**
      * Cancel the timer (mark as abandoned without creating time entry).
-     *
-     * @return void
      */
     public function cancel(): void
     {
@@ -331,8 +315,6 @@ class Timer extends Model
 
     /**
      * Mark timer as committed (should only be called after successful time entry creation).
-     *
-     * @return void
      */
     public function commit(): void
     {
@@ -349,8 +331,6 @@ class Timer extends Model
 
     /**
      * Pause the timer.
-     *
-     * @return void
      */
     public function pause(): void
     {
@@ -363,8 +343,6 @@ class Timer extends Model
 
     /**
      * Resume the timer.
-     *
-     * @return void
      */
     public function resume(): void
     {
@@ -381,8 +359,6 @@ class Timer extends Model
     /**
      * Check if timer can be converted to a time entry.
      * Requires either ticket_id or account_id to be set for billing context.
-     *
-     * @return bool
      */
     public function canConvertToTimeEntry(): bool
     {
@@ -393,23 +369,19 @@ class Timer extends Model
      * Get the account ID for billing purposes.
      * If timer is assigned to a ticket, use ticket's account.
      * Otherwise use timer's direct account assignment.
-     *
-     * @return string|null
      */
     public function getBillingAccountId(): ?string
     {
         if ($this->ticket_id && $this->ticket) {
             return $this->ticket->account_id;
         }
-        
+
         return $this->account_id;
     }
 
     /**
      * Convert the timer to a time entry.
      *
-     * @param array $additionalData
-     * @return TimeEntry|null
      * @throws \Exception
      */
     public function convertToTimeEntry(array $additionalData = []): ?TimeEntry
@@ -419,7 +391,7 @@ class Timer extends Model
         }
 
         // Validate that timer can be converted (needs ticket OR account assignment)
-        if (!$this->canConvertToTimeEntry()) {
+        if (! $this->canConvertToTimeEntry()) {
             throw new \Exception('Timer must be assigned to either a ticket or account before converting to time entry');
         }
 
@@ -429,14 +401,14 @@ class Timer extends Model
 
         // Get the account ID for billing (from ticket or direct assignment)
         $billingAccountId = $this->getBillingAccountId();
-        
-        if (!$billingAccountId) {
+
+        if (! $billingAccountId) {
             throw new \Exception('Cannot determine billing account for time entry');
         }
 
         // Capture the current billing rate for historical accuracy
         $currentRate = $this->billingRate?->rate;
-        
+
         $timeEntry = TimeEntry::create(array_merge([
             'user_id' => $this->user_id,
             'account_id' => $billingAccountId, // Always required for billing

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Services\PermissionService;
 use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -13,7 +12,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, HasUuid;
+    use HasApiTokens, HasFactory, HasUuid, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -68,6 +67,7 @@ class User extends Authenticatable
      * User Type Constants - Service Vault Architecture
      */
     public const USER_TYPE_AGENT = 'agent';
+
     public const USER_TYPE_ACCOUNT_USER = 'account_user';
 
     /**
@@ -126,7 +126,7 @@ class User extends Authenticatable
     /**
      * Legacy compatibility methods (deprecated - use permission-based methods above)
      */
-    
+
     /**
      * @deprecated Use canBeTicketAgent() or canAssignTickets() instead
      */
@@ -202,7 +202,7 @@ class User extends Authenticatable
         }
 
         // Regular users can only access their own account
-        if (!$this->account_id) {
+        if (! $this->account_id) {
             return [];
         }
 
@@ -217,13 +217,12 @@ class User extends Authenticatable
         return $this->belongsTo(RoleTemplate::class);
     }
 
-    
     /**
      * Check if user has a specific permission through their role template
      */
     public function hasPermission(string $permission): bool
     {
-        if (!$this->roleTemplate) {
+        if (! $this->roleTemplate) {
             return false;
         }
 
@@ -231,10 +230,10 @@ class User extends Authenticatable
         if ($this->roleTemplate->isSuperAdmin()) {
             return true;
         }
-        
+
         return in_array($permission, $this->roleTemplate->getAllPermissions());
     }
-    
+
     /**
      * Check if user is Super Admin
      */
@@ -242,7 +241,7 @@ class User extends Authenticatable
     {
         return $this->roleTemplate && $this->roleTemplate->isSuperAdmin();
     }
-    
+
     /**
      * Check if user has any of the specified permissions
      */
@@ -253,6 +252,7 @@ class User extends Authenticatable
                 return true;
             }
         }
+
         return false;
     }
 
@@ -271,7 +271,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(TimeEntry::class);
     }
-    
+
     /**
      * Tickets assigned to this user (as agent).
      */
@@ -279,7 +279,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(Ticket::class, 'agent_id');
     }
-    
+
     /**
      * Tickets created by this user.
      */
@@ -287,7 +287,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(Ticket::class, 'created_by_id');
     }
-    
+
     /**
      * Tickets where this user is the customer.
      */
@@ -295,7 +295,6 @@ class User extends Authenticatable
     {
         return $this->hasMany(Ticket::class, 'customer_id');
     }
-
 
     /**
      * ABAC Permission Methods
@@ -307,7 +306,7 @@ class User extends Authenticatable
     public function hasPermissionForAccount(string $permission, Account $account): bool
     {
         // Users can only access their own account
-        if (!$this->account || $this->account->id !== $account->id) {
+        if (! $this->account || $this->account->id !== $account->id) {
             return false;
         }
 
@@ -327,7 +326,7 @@ class User extends Authenticatable
      */
     public function getAllPermissions(): array
     {
-        if (!$this->roleTemplate) {
+        if (! $this->roleTemplate) {
             return [];
         }
 
@@ -340,9 +339,9 @@ class User extends Authenticatable
     public function getCurrentTimer()
     {
         return $this->timers()
-                   ->whereIn('status', ['running', 'paused'])
-                   ->orderBy('updated_at', 'desc')
-                   ->first();
+            ->whereIn('status', ['running', 'paused'])
+            ->orderBy('updated_at', 'desc')
+            ->first();
     }
 
     /**

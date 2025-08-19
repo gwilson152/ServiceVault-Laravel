@@ -7,7 +7,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\URL;
 
 class UserInvitationNotification extends Notification implements ShouldQueue
 {
@@ -39,23 +38,23 @@ class UserInvitationNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $acceptUrl = url("/invitations/accept/{$this->invitation->token}");
-        
+
         $mail = (new MailMessage)
-            ->subject('Invitation to Join ' . $this->invitation->account->name . ' on Service Vault')
-            ->greeting('Hello' . ($this->invitation->invited_name ? ' ' . $this->invitation->invited_name : '') . '!')
-            ->line('You have been invited by ' . $this->invitation->invitedBy->name . ' to join ' . $this->invitation->account->name . ' on Service Vault.')
-            ->line('Your role will be: ' . $this->invitation->roleTemplate->name);
-        
+            ->subject('Invitation to Join '.$this->invitation->account->name.' on Service Vault')
+            ->greeting('Hello'.($this->invitation->invited_name ? ' '.$this->invitation->invited_name : '').'!')
+            ->line('You have been invited by '.$this->invitation->invitedBy->name.' to join '.$this->invitation->account->name.' on Service Vault.')
+            ->line('Your role will be: '.$this->invitation->roleTemplate->name);
+
         // Add custom message if provided
         if ($this->invitation->message) {
-            $mail->line('Message from ' . $this->invitation->invitedBy->name . ':')
-                 ->line('"' . $this->invitation->message . '"');
+            $mail->line('Message from '.$this->invitation->invitedBy->name.':')
+                ->line('"'.$this->invitation->message.'"');
         }
-        
+
         $mail->action('Accept Invitation', $acceptUrl)
-             ->line('This invitation will expire on ' . $this->invitation->expires_at->format('M j, Y \a\t g:i A'))
-             ->line('If you did not expect this invitation, you can safely ignore this email.');
-        
+            ->line('This invitation will expire on '.$this->invitation->expires_at->format('M j, Y \a\t g:i A'))
+            ->line('If you did not expect this invitation, you can safely ignore this email.');
+
         return $mail;
     }
 

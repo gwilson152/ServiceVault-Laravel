@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Account;
-use App\Models\RoleTemplate;
-use Illuminate\Support\Facades\Cache;
+use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class PermissionService
 {
@@ -36,6 +35,7 @@ class PermissionService
         // Check if any role template has the required permission
         return $roleTemplates->contains(function ($roleTemplate) use ($permission) {
             $permissions = $roleTemplate->permissions ?? [];
+
             return in_array($permission, $permissions) || in_array('*', $permissions);
         });
     }
@@ -82,15 +82,15 @@ class PermissionService
     /**
      * Get accounts accessible to user with specific permission.
      */
-    public function getAccessibleAccounts(User $user, string $permission = null): Collection
+    public function getAccessibleAccounts(User $user, ?string $permission = null): Collection
     {
-        $cacheKey = "user_accessible_accounts:{$user->id}:" . ($permission ?? 'any');
+        $cacheKey = "user_accessible_accounts:{$user->id}:".($permission ?? 'any');
 
         return Cache::remember($cacheKey, 300, function () use ($user, $permission) {
             // Get user's accessible accounts (for now, just their primary account)
             $userAccounts = $user->accounts();
 
-            if (!$permission) {
+            if (! $permission) {
                 return $userAccounts;
             }
 
@@ -110,13 +110,13 @@ class PermissionService
                 'system.manage_roles',
                 'system.manage_licenses',
                 'system.full_access',
-                '*'
+                '*',
             ],
             'system_administrator' => [
                 'system.manage_users',
                 'system.manage_settings',
                 'accounts.create',
-                'accounts.manage_all'
+                'accounts.manage_all',
             ],
             'account_manager' => [
                 'accounts.manage',
@@ -127,19 +127,19 @@ class PermissionService
                 'billing.view.account',
                 'invoices.view.account',
                 'payments.view.account',
-                'widgets.billing.overview'
+                'widgets.billing.overview',
             ],
             'team_lead' => [
                 'team.oversight',
                 'timeentries.approve',
                 'projects.manage',
-                'reports.view_team'
+                'reports.view_team',
             ],
             'employee' => [
                 'timers.manage_own',
                 'timeentries.create',
                 'tickets.manage_assigned',
-                'reports.view_own'
+                'reports.view_own',
             ],
             'customer' => [
                 'portal.access',
@@ -149,7 +149,7 @@ class PermissionService
                 'billing.view.own',
                 'invoices.view.own',
                 'payments.view.own',
-                'pages.billing.own'
+                'pages.billing.own',
             ],
             'billing_administrator' => [
                 // Full billing management access
@@ -159,7 +159,7 @@ class PermissionService
                 'billing.manage',
                 'billing.view.all',
                 'billing.reports',
-                
+
                 // Invoice management
                 'invoices.create',
                 'invoices.edit',
@@ -169,7 +169,7 @@ class PermissionService
                 'invoices.generate',
                 'invoices.void',
                 'invoices.duplicate',
-                
+
                 // Payment management
                 'payments.create',
                 'payments.edit',
@@ -178,90 +178,90 @@ class PermissionService
                 'payments.track',
                 'payments.refund',
                 'payments.process',
-                
+
                 // Billing rates
                 'billing.rates.create',
                 'billing.rates.edit',
                 'billing.rates.delete',
                 'billing.rates.view',
                 'billing.rates.manage',
-                
+
                 // Addons and templates
                 'billing.addons.create',
                 'billing.addons.edit',
                 'billing.addons.delete',
                 'billing.addons.view',
                 'billing.addons.manage',
-                
+
                 // Widget permissions
                 'widgets.billing.overview',
                 'widgets.billing.invoices',
                 'widgets.billing.payments',
                 'widgets.billing.rates',
-                
+
                 // Page permissions
                 'pages.billing.overview',
                 'pages.billing.invoices',
                 'pages.billing.payments',
                 'pages.billing.rates',
-                'pages.billing.reports'
+                'pages.billing.reports',
             ],
-            
+
             'billing_manager' => [
                 // Billing management (account-scoped)
                 'billing.manage',
                 'billing.view.account',
                 'billing.reports',
-                
+
                 // Invoice management (account-scoped)
                 'invoices.create',
                 'invoices.edit.account',
                 'invoices.view.account',
                 'invoices.send',
                 'invoices.generate',
-                
+
                 // Payment management (account-scoped)
                 'payments.create',
                 'payments.edit.account',
                 'payments.view.account',
                 'payments.track',
-                
+
                 // Billing rates (account-scoped)
                 'billing.rates.view',
                 'billing.rates.manage.account',
-                
+
                 // Widget permissions
                 'widgets.billing.overview',
                 'widgets.billing.invoices',
                 'widgets.billing.payments',
-                
+
                 // Page permissions
                 'pages.billing.overview',
                 'pages.billing.invoices',
-                'pages.billing.payments'
+                'pages.billing.payments',
             ],
-            
+
             'billing_clerk' => [
                 // Basic billing operations
                 'billing.view.account',
-                
+
                 // Invoice operations
                 'invoices.create',
                 'invoices.view.account',
                 'invoices.send',
-                
+
                 // Payment operations
                 'payments.create',
                 'payments.view.account',
-                
+
                 // Widget permissions
                 'widgets.billing.overview',
                 'widgets.billing.invoices',
                 'widgets.billing.payments',
-                
+
                 // Page permissions
-                'pages.billing.overview'
-            ]
+                'pages.billing.overview',
+            ],
         ];
     }
 
@@ -282,7 +282,7 @@ class PermissionService
             return $user->roleTemplates()
                 ->where('is_system_role', true)
                 ->get()
-                ->flatMap(fn($role) => $role->permissions ?? [])
+                ->flatMap(fn ($role) => $role->permissions ?? [])
                 ->unique()
                 ->values()
                 ->toArray();
@@ -295,9 +295,7 @@ class PermissionService
      * Filter users who have any of the specified permissions.
      * This properly handles Super Admin logic and other permission edge cases.
      *
-     * @param \Illuminate\Database\Eloquent\Builder|\Illuminate\Support\Collection $users
-     * @param array $permissions
-     * @return \Illuminate\Support\Collection
+     * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Support\Collection  $users
      */
     public static function filterUsersByPermissions($users, array $permissions): Collection
     {
@@ -315,36 +313,35 @@ class PermissionService
      * Get users who can act as agents for a specific type.
      * This is a centralized method that all controllers should use.
      *
-     * @param string $agentType ('timer', 'ticket', 'time', 'billing')
-     * @param array $filters Additional filters (search, account_id)
-     * @return Collection
+     * @param  string  $agentType  ('timer', 'ticket', 'time', 'billing')
+     * @param  array  $filters  Additional filters (search, account_id)
      */
     public static function getAgentsForType(string $agentType, array $filters = []): Collection
     {
         $requiredPermissions = static::getAgentPermissions($agentType);
-        
+
         // Start with all active users with role templates
         $query = User::with(['account', 'roleTemplate'])
             ->where('is_active', true)
             ->whereNotNull('role_template_id');
-        
+
         // Apply search filter if provided
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $searchTerm = $filters['search'];
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('name', 'like', "%{$searchTerm}%")
-                  ->orWhere('email', 'like', "%{$searchTerm}%");
+                    ->orWhere('email', 'like', "%{$searchTerm}%");
             });
         }
-        
+
         // Apply account filter if provided
-        if (!empty($filters['account_id'])) {
+        if (! empty($filters['account_id'])) {
             $query->where('account_id', $filters['account_id']);
         }
-        
+
         // Order by name
         $query->orderBy('name');
-        
+
         // Filter by permissions using centralized logic
         return static::filterUsersByPermissions($query, $requiredPermissions);
     }
@@ -352,13 +349,10 @@ class PermissionService
     /**
      * Get the permissions required to be an agent for a specific type.
      * This centralizes the agent permission logic.
-     *
-     * @param string $agentType
-     * @return array
      */
     public static function getAgentPermissions(string $agentType): array
     {
-        return match($agentType) {
+        return match ($agentType) {
             'timer' => ['timers.act_as_agent', 'timers.assign', 'timers.manage', 'admin.write'],
             'ticket' => ['tickets.act_as_agent', 'tickets.assign', 'tickets.manage', 'admin.write'],
             'time' => ['time.act_as_agent', 'time.assign', 'time.manage', 'admin.write'],
@@ -370,14 +364,10 @@ class PermissionService
     /**
      * Check if a user can view agents of a specific type.
      * This is used to determine if a user should see agent selection dropdowns.
-     *
-     * @param User $user
-     * @param string $agentType
-     * @return bool
      */
     public static function canViewAgents(User $user, string $agentType): bool
     {
-        $viewPermissions = match($agentType) {
+        $viewPermissions = match ($agentType) {
             'timer' => ['timers.assign', 'timers.manage', 'admin.write'],
             'ticket' => ['tickets.assign', 'tickets.manage', 'admin.write'],
             'time' => ['time.assign', 'time.manage', 'admin.write'],
@@ -391,9 +381,7 @@ class PermissionService
     /**
      * Check if a user can assign work to others (and therefore see assignment dropdowns).
      *
-     * @param User $user
-     * @param string $workType ('timer', 'ticket', 'time', 'billing')
-     * @return bool
+     * @param  string  $workType  ('timer', 'ticket', 'time', 'billing')
      */
     public static function canAssignToOthers(User $user, string $workType = 'time'): bool
     {

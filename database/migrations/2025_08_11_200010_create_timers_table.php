@@ -25,11 +25,11 @@ return new class extends Migration
             $table->decimal('billing_rate', 8, 2)->nullable();
             $table->boolean('billable')->default(true);
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('set null');
-            
+
             // Indexes
             $table->index(['user_id', 'status']);
             $table->index(['account_id', 'status']);

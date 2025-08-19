@@ -36,7 +36,7 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
-        
+
         // Define custom gates for system permissions
         Gate::define('system.configure', function ($user) {
             return $user->hasPermission('system.configure');

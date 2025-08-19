@@ -27,15 +27,15 @@ return new class extends Migration
             $table->boolean('is_modifiable')->default(true);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['context', 'is_active']);
             $table->index('account_id');
         });
-        
+
         // Add foreign key for users table role_template_id after role_templates table is created
         Schema::table('users', function (Blueprint $table) {
             $table->foreign('role_template_id')->references('id')->on('role_templates')->onDelete('set null');

@@ -27,7 +27,7 @@ class CheckSetupStatus
         });
 
         // If system is not set up, redirect to setup page
-        if (!$isSetup) {
+        if (! $isSetup) {
             return redirect()->route('setup.index');
         }
 
@@ -40,6 +40,7 @@ class CheckSetupStatus
     private function isSystemSetup(): bool
     {
         $setting = \App\Models\Setting::where('key', 'system.setup_complete')->first();
+
         return $setting && ($setting->value === true || $setting->value === 'true' || $setting->value === 1 || $setting->value === '1');
     }
 }

@@ -12,7 +12,7 @@ class NavigationService
     public function getNavigationForUser(User $user): array
     {
         $navigationItems = $this->getNavigationItems();
-        
+
         $filteredItems = array_filter($navigationItems, function ($item) use ($user) {
             return $this->userCanAccessNavigationItem($user, $item);
         });
@@ -49,7 +49,7 @@ class NavigationService
      */
     protected function getFilteredSubitems(User $user, array $item): array
     {
-        if (!isset($item['subitems']) || !is_array($item['subitems'])) {
+        if (! isset($item['subitems']) || ! is_array($item['subitems'])) {
             return [];
         }
 
@@ -72,7 +72,7 @@ class NavigationService
                 'active_patterns' => ['dashboard'],
                 'permissions' => [], // Everyone can access dashboard
                 'sort_order' => 1,
-                'group' => 'main'
+                'group' => 'main',
             ],
             [
                 'key' => 'tickets',
@@ -82,7 +82,7 @@ class NavigationService
                 'active_patterns' => ['tickets.*'],
                 'permissions' => ['tickets.view.all', 'tickets.view.assigned', 'tickets.view.account', 'tickets.view.own'],
                 'sort_order' => 2,
-                'group' => 'service_delivery'
+                'group' => 'service_delivery',
             ],
             [
                 'key' => 'time-entries',
@@ -92,7 +92,7 @@ class NavigationService
                 'active_patterns' => ['time-entries.*'],
                 'permissions' => ['time_entries.view', 'time_entries.view.own', 'time_entries.approve'],
                 'sort_order' => 4,
-                'group' => 'time_management'
+                'group' => 'time_management',
             ],
             [
                 'key' => 'accounts',
@@ -102,7 +102,7 @@ class NavigationService
                 'active_patterns' => ['accounts.*'],
                 'permissions' => ['accounts.manage', 'accounts.view', 'accounts.create'],
                 'sort_order' => 6,
-                'group' => 'administration'
+                'group' => 'administration',
             ],
             [
                 'key' => 'users',
@@ -112,7 +112,7 @@ class NavigationService
                 'active_patterns' => ['users.*'],
                 'permissions' => ['users.manage', 'users.create', 'users.view.all'],
                 'sort_order' => 7,
-                'group' => 'administration'
+                'group' => 'administration',
             ],
             [
                 'key' => 'billing',
@@ -124,7 +124,7 @@ class NavigationService
                     'billing.manage', 'billing.view.account', 'billing.view.all', 'billing.admin',
                     'invoices.create', 'invoices.view.account', 'invoices.view.all',
                     'payments.create', 'payments.view.account', 'payments.view.all',
-                    'billing.rates.view', 'billing.addons.view'
+                    'billing.rates.view', 'billing.addons.view',
                 ],
                 'sort_order' => 5,
                 'group' => 'financial',
@@ -133,30 +133,30 @@ class NavigationService
                         'key' => 'billing-overview',
                         'label' => 'Overview',
                         'route' => 'billing.index',
-                        'permissions' => ['billing.view.account', 'billing.view.all']
+                        'permissions' => ['billing.view.account', 'billing.view.all'],
                     ],
                     [
                         'key' => 'billing-invoices',
                         'label' => 'Invoices',
                         'route' => 'billing.index',
                         'params' => ['tab' => 'invoices'],
-                        'permissions' => ['invoices.view.account', 'invoices.view.all', 'invoices.create']
+                        'permissions' => ['invoices.view.account', 'invoices.view.all', 'invoices.create'],
                     ],
                     [
                         'key' => 'billing-payments',
                         'label' => 'Payments',
                         'route' => 'billing.index',
                         'params' => ['tab' => 'payments'],
-                        'permissions' => ['payments.view.account', 'payments.view.all', 'payments.create']
+                        'permissions' => ['payments.view.account', 'payments.view.all', 'payments.create'],
                     ],
                     [
                         'key' => 'billing-rates',
                         'label' => 'Billing Rates',
                         'route' => 'settings.index',
                         'params' => ['tab' => 'billing'],
-                        'permissions' => ['billing.rates.view', 'billing.rates.manage']
-                    ]
-                ]
+                        'permissions' => ['billing.rates.view', 'billing.rates.manage'],
+                    ],
+                ],
             ],
             [
                 'key' => 'my-billing',
@@ -173,16 +173,16 @@ class NavigationService
                         'label' => 'My Invoices',
                         'route' => 'portal.billing',
                         'params' => ['tab' => 'invoices'],
-                        'permissions' => ['invoices.view.own']
+                        'permissions' => ['invoices.view.own'],
                     ],
                     [
                         'key' => 'my-payments',
                         'label' => 'Payment History',
                         'route' => 'portal.billing',
                         'params' => ['tab' => 'payments'],
-                        'permissions' => ['payments.view.own']
-                    ]
-                ]
+                        'permissions' => ['payments.view.own'],
+                    ],
+                ],
             ],
             [
                 'key' => 'reports',
@@ -192,7 +192,7 @@ class NavigationService
                 'active_patterns' => ['reports.*'],
                 'permissions' => ['reports.view', 'reports.create', 'admin.read'],
                 'sort_order' => 11,
-                'group' => 'analytics'
+                'group' => 'analytics',
             ],
             [
                 'key' => 'roles',
@@ -202,7 +202,7 @@ class NavigationService
                 'active_patterns' => ['roles.*'],
                 'permissions' => ['admin.manage', 'roles.manage', 'role_templates.manage'],
                 'sort_order' => 8,
-                'group' => 'administration'
+                'group' => 'administration',
             ],
             [
                 'key' => 'settings',
@@ -212,8 +212,8 @@ class NavigationService
                 'active_patterns' => ['settings.*'],
                 'permissions' => ['admin.manage', 'system.manage', 'settings.manage'],
                 'sort_order' => 12,
-                'group' => 'administration'
-            ]
+                'group' => 'administration',
+            ],
         ];
     }
 
@@ -223,11 +223,11 @@ class NavigationService
     public function getGroupedNavigationForUser(User $user): array
     {
         $items = $this->getNavigationForUser($user);
-        
+
         $grouped = [];
         foreach ($items as $item) {
             $group = $item['group'] ?? 'other';
-            if (!isset($grouped[$group])) {
+            if (! isset($grouped[$group])) {
                 $grouped[$group] = [];
             }
             $grouped[$group][] = $item;
@@ -235,7 +235,7 @@ class NavigationService
 
         // Sort each group by sort_order
         foreach ($grouped as &$group) {
-            usort($group, fn($a, $b) => ($a['sort_order'] ?? 999) <=> ($b['sort_order'] ?? 999));
+            usort($group, fn ($a, $b) => ($a['sort_order'] ?? 999) <=> ($b['sort_order'] ?? 999));
         }
 
         return $grouped;
@@ -254,7 +254,7 @@ class NavigationService
             'financial' => 'Financial',
             'customer_portal' => 'Customer Portal',
             'analytics' => 'Analytics',
-            'administration' => 'Administration'
+            'administration' => 'Administration',
         ];
     }
 
@@ -264,7 +264,7 @@ class NavigationService
     public function userCanAccessRoute(User $user, string $route): bool
     {
         $items = $this->getNavigationForUser($user);
-        
+
         foreach ($items as $item) {
             if ($item['route'] === $route) {
                 return true;
@@ -281,21 +281,21 @@ class NavigationService
     {
         $items = $this->getNavigationForUser($user);
         $breadcrumbs = [['label' => 'Dashboard', 'route' => 'dashboard']];
-        
+
         foreach ($items as $item) {
             foreach ($item['active_patterns'] as $pattern) {
                 if (fnmatch($pattern, $currentRoute)) {
                     if ($item['route'] !== 'dashboard') {
                         $breadcrumbs[] = [
-                            'label' => $item['label'], 
-                            'route' => $item['route']
+                            'label' => $item['label'],
+                            'route' => $item['route'],
                         ];
                     }
                     break 2;
                 }
             }
         }
-        
+
         return $breadcrumbs;
     }
 
@@ -306,11 +306,11 @@ class NavigationService
     {
         $route = $item['route'];
         $params = $item['params'] ?? [];
-        
+
         if (empty($params)) {
             return route($route);
         }
-        
+
         return route($route, $params);
     }
 
@@ -320,18 +320,18 @@ class NavigationService
     public function getNavigationWithUrls(User $user): array
     {
         $items = $this->getNavigationForUser($user);
-        
+
         foreach ($items as &$item) {
             $item['url'] = $this->getNavigationItemUrl($item);
-            
+
             // Generate URLs for subitems
-            if (!empty($item['subitems'])) {
+            if (! empty($item['subitems'])) {
                 foreach ($item['subitems'] as &$subitem) {
                     $subitem['url'] = $this->getNavigationItemUrl($subitem);
                 }
             }
         }
-        
+
         return $items;
     }
 }

@@ -25,10 +25,10 @@ return new class extends Migration
             $table->boolean('is_system')->default(true);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['category', 'is_active']);
             $table->index('account_id');

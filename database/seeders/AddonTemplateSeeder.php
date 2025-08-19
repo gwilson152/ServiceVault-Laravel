@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\AddonTemplate;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class AddonTemplateSeeder extends Seeder
@@ -24,7 +23,7 @@ class AddonTemplateSeeder extends Seeder
                 'default_quantity' => 1,
                 'is_taxable' => true,
                 'requires_approval' => false,
-                'is_active' => true
+                'is_active' => true,
             ],
             [
                 'name' => 'Network Switch (24-Port)',
@@ -35,9 +34,9 @@ class AddonTemplateSeeder extends Seeder
                 'default_quantity' => 1,
                 'is_taxable' => true,
                 'requires_approval' => true,
-                'is_active' => true
+                'is_active' => true,
             ],
-            
+
             // Software Licenses
             [
                 'name' => 'Microsoft Office 365 Business',
@@ -48,9 +47,9 @@ class AddonTemplateSeeder extends Seeder
                 'default_quantity' => 1,
                 'is_taxable' => false,
                 'requires_approval' => false,
-                'is_active' => true
+                'is_active' => true,
             ],
-            
+
             // Services
             [
                 'name' => 'On-Site Technical Support',
@@ -61,7 +60,7 @@ class AddonTemplateSeeder extends Seeder
                 'default_quantity' => 1,
                 'is_taxable' => false,
                 'requires_approval' => false,
-                'is_active' => true
+                'is_active' => true,
             ],
             [
                 'name' => 'Remote Support Session',
@@ -72,7 +71,7 @@ class AddonTemplateSeeder extends Seeder
                 'default_quantity' => 1,
                 'is_taxable' => false,
                 'requires_approval' => false,
-                'is_active' => true
+                'is_active' => true,
             ],
             [
                 'name' => 'System Backup Service',
@@ -83,8 +82,8 @@ class AddonTemplateSeeder extends Seeder
                 'default_quantity' => 1,
                 'is_taxable' => false,
                 'requires_approval' => true,
-                'is_active' => true
-            ]
+                'is_active' => true,
+            ],
         ];
 
         foreach ($templates as $template) {

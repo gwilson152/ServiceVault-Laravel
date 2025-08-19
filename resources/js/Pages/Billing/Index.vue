@@ -40,7 +40,7 @@
                     <dt class="text-sm font-medium text-gray-500 truncate">Total Revenue</dt>
                     <dd class="flex items-baseline">
                       <div class="text-2xl font-semibold text-gray-900">
-                        ${{ formatCurrency(billingStats.total_revenue) }}
+                        ${{ formatCurrency(billingStats?.total_revenue || 0) }}
                       </div>
                       <div class="ml-2 flex items-baseline text-sm font-semibold text-green-600">
                         <ArrowUpIcon class="self-center flex-shrink-0 h-3 w-3" aria-hidden="true" />
@@ -65,7 +65,7 @@
                     <dt class="text-sm font-medium text-gray-500 truncate">Outstanding</dt>
                     <dd class="flex items-baseline">
                       <div class="text-2xl font-semibold text-gray-900">
-                        ${{ formatCurrency(billingStats.outstanding_amount) }}
+                        ${{ formatCurrency(billingStats?.outstanding_amount || 0) }}
                       </div>
                     </dd>
                   </dl>
@@ -85,7 +85,7 @@
                     <dt class="text-sm font-medium text-gray-500 truncate">Invoices This Month</dt>
                     <dd class="flex items-baseline">
                       <div class="text-2xl font-semibold text-gray-900">
-                        {{ billingStats.invoices_this_month }}
+                        {{ billingStats?.invoices_this_month || 0 }}
                       </div>
                     </dd>
                   </dl>
@@ -105,7 +105,7 @@
                     <dt class="text-sm font-medium text-gray-500 truncate">Collection Rate</dt>
                     <dd class="flex items-baseline">
                       <div class="text-2xl font-semibold text-gray-900">
-                        {{ Math.round(billingStats.collection_rate) }}%
+                        {{ Math.round(billingStats?.collection_rate || 0) }}%
                       </div>
                     </dd>
                   </dl>
@@ -142,7 +142,7 @@
             <InvoicesTable 
               :invoices="invoices" 
               :loading="loading"
-              @refresh="loadInvoices"
+              @refresh="() => {}"
               @view-invoice="viewInvoice"
               @send-invoice="sendInvoice"
               @mark-paid="markInvoicePaid"
@@ -154,7 +154,7 @@
             <PaymentsTable 
               :payments="payments" 
               :loading="loading"
-              @refresh="loadPayments"
+              @refresh="() => {}"
             />
           </div>
 
@@ -162,7 +162,7 @@
           <div v-if="activeTab === 'reports'">
             <BillingReports 
               :stats="billingStats"
-              @refresh="loadBillingStats"
+              @refresh="() => {}"
             />
           </div>
 
@@ -182,6 +182,7 @@
       :show="showCreateInvoiceModal"
       @close="showCreateInvoiceModal = false"
       @created="handleInvoiceCreated"
+      @launchApprovalWizard="handleLaunchApprovalWizard"
     />
 
     <!-- View Invoice Modal -->
@@ -190,6 +191,16 @@
       :invoice="selectedInvoice"
       @close="showViewInvoiceModal = false"
     />
+    
+    <!-- Approval Wizard Modal -->
+    <ApprovalWizardModal
+      :show="showApprovalWizard"
+      :account-id="approvalWizardData.accountId"
+      :account-name="approvalWizardData.accountName"
+      @close="closeApprovalWizard"
+      @completed="onApprovalWizardCompleted"
+      @createInvoice="onCreateInvoiceFromApproval"
+    />
   </div>
 </template>
 
@@ -197,6 +208,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import {
+  useBillingDashboardStatsQuery,
+  useBillingSettingsQuery,
+  useInvoicesQuery
+} from '@/Composables/queries/useBillingQuery.js'
 
 // Define persistent layout
 defineOptions({
@@ -209,6 +225,7 @@ import BillingReports from '@/Components/Billing/BillingReports.vue'
 import BillingSettings from '@/Components/Billing/BillingSettings.vue'
 import CreateInvoiceModal from '@/Components/Billing/CreateInvoiceModal.vue'
 import ViewInvoiceModal from '@/Components/Billing/ViewInvoiceModal.vue'
+import ApprovalWizardModal from '@/Components/Billing/ApprovalWizardModal.vue'
 import {
   PlusIcon,
   CurrencyDollarIcon,
@@ -222,16 +239,24 @@ import {
   CogIcon
 } from '@heroicons/vue/24/outline'
 
+// TanStack Query hooks
+const { data: billingStats, isLoading: statsLoading, error: statsError } = useBillingDashboardStatsQuery()
+const { data: billingSettings, isLoading: settingsLoading, error: settingsError } = useBillingSettingsQuery()
+const { data: invoices, isLoading: invoicesLoading, error: invoicesError } = useInvoicesQuery()
+
 // Reactive data
 const activeTab = ref('invoices')
-const loading = ref(false)
-const invoices = ref([])
 const payments = ref([])
-const billingStats = ref({})
-const billingSettings = ref({})
 const showCreateInvoiceModal = ref(false)
 const showViewInvoiceModal = ref(false)
 const selectedInvoice = ref(null)
+const showApprovalWizard = ref(false)
+const approvalWizardData = ref({ accountId: '', accountName: '' })
+
+// Computed properties for loading states
+const loading = computed(() => {
+  return statsLoading.value || settingsLoading.value || invoicesLoading.value
+})
 
 // Tab configuration
 const tabs = [
@@ -242,49 +267,14 @@ const tabs = [
 ]
 
 // Methods
-const loadInvoices = async () => {
-  loading.value = true
-  try {
-    const response = await fetch('/api/billing/invoices')
-    const data = await response.json()
-    invoices.value = data.data
-  } catch (error) {
-    console.error('Error loading invoices:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
 const loadPayments = async () => {
-  loading.value = true
+  // TODO: Convert to TanStack Query
   try {
     const response = await fetch('/api/billing/payments')
     const data = await response.json()
     payments.value = data.data
   } catch (error) {
     console.error('Error loading payments:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadBillingStats = async () => {
-  try {
-    const response = await fetch('/api/billing/reports/dashboard')
-    const data = await response.json()
-    billingStats.value = data.data
-  } catch (error) {
-    console.error('Error loading billing stats:', error)
-  }
-}
-
-const loadBillingSettings = async () => {
-  try {
-    const response = await fetch('/api/billing/billing-settings')
-    const data = await response.json()
-    billingSettings.value = data.data?.[0] || {}
-  } catch (error) {
-    console.error('Error loading billing settings:', error)
   }
 }
 
@@ -296,7 +286,7 @@ const viewInvoice = (invoice) => {
 const sendInvoice = async (invoice) => {
   try {
     await fetch(`/api/billing/invoices/${invoice.id}/send`, { method: 'POST' })
-    loadInvoices()
+    // TanStack Query will automatically refetch
   } catch (error) {
     console.error('Error sending invoice:', error)
   }
@@ -305,8 +295,7 @@ const sendInvoice = async (invoice) => {
 const markInvoicePaid = async (invoice) => {
   try {
     await fetch(`/api/billing/invoices/${invoice.id}/mark-paid`, { method: 'POST' })
-    loadInvoices()
-    loadBillingStats()
+    // TanStack Query will automatically refetch
   } catch (error) {
     console.error('Error marking invoice as paid:', error)
   }
@@ -314,8 +303,7 @@ const markInvoicePaid = async (invoice) => {
 
 const handleInvoiceCreated = (invoice) => {
   showCreateInvoiceModal.value = false
-  loadInvoices()
-  loadBillingStats()
+  // TanStack Query will automatically refetch due to invalidation in the mutation
 }
 
 const updateBillingSettings = async (settings) => {
@@ -330,11 +318,45 @@ const updateBillingSettings = async (settings) => {
     })
     
     if (response.ok) {
-      loadBillingSettings()
+      // TanStack Query will automatically refetch
     }
   } catch (error) {
     console.error('Error updating billing settings:', error)
   }
+}
+
+// Approval wizard methods
+const handleLaunchApprovalWizard = (data) => {
+  approvalWizardData.value = {
+    accountId: data.accountId,
+    accountName: data.accountName
+  }
+  showCreateInvoiceModal.value = false
+  showApprovalWizard.value = true
+}
+
+const closeApprovalWizard = () => {
+  showApprovalWizard.value = false
+  approvalWizardData.value = { accountId: '', accountName: '' }
+}
+
+const onApprovalWizardCompleted = () => {
+  // Wizard completed but user chose not to create invoice immediately
+  closeApprovalWizard()
+}
+
+const onCreateInvoiceFromApproval = (data) => {
+  // User completed approvals and wants to create invoice
+  closeApprovalWizard()
+  
+  // Reopen create invoice modal with pre-populated account
+  setTimeout(() => {
+    approvalWizardData.value = {
+      accountId: data.accountId,
+      accountName: data.accountName
+    }
+    showCreateInvoiceModal.value = true
+  }, 100)
 }
 
 const formatCurrency = (amount) => {
@@ -344,10 +366,5 @@ const formatCurrency = (amount) => {
   }).format(amount || 0)
 }
 
-// Initialize data
-onMounted(() => {
-  loadInvoices()
-  loadBillingStats()
-  loadBillingSettings()
-})
+// Initialize data - TanStack Query handles this automatically
 </script>

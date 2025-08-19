@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -16,12 +16,12 @@ return new class extends Migration
             // Drop existing unique constraint
             $table->dropUnique(['email']);
         });
-        
+
         Schema::table('users', function (Blueprint $table) {
             // Make email column nullable
             $table->string('email')->nullable()->change();
         });
-        
+
         // Create partial unique constraint in PostgreSQL (unique only when not null)
         DB::statement('CREATE UNIQUE INDEX users_email_unique ON users (email) WHERE email IS NOT NULL');
     }
@@ -33,7 +33,7 @@ return new class extends Migration
     {
         // Drop the partial unique index
         DB::statement('DROP INDEX IF EXISTS users_email_unique');
-        
+
         Schema::table('users', function (Blueprint $table) {
             // Make email not nullable
             $table->string('email')->nullable(false)->change();

@@ -43,6 +43,34 @@
         <template #default="{ activeTab }">
             <!-- Basic Information & Assignment Tab -->
             <div v-show="activeTab === 'basic'" class="space-y-6">
+                <!-- Edit Context Display -->
+                <div v-if="isEditMode && ticket" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h5 class="text-sm font-medium text-blue-900 mb-2">Editing Ticket</h5>
+                    <div class="space-y-2">
+                        <div class="flex items-center text-sm">
+                            <svg class="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            <span class="font-medium text-blue-700">Ticket:</span>
+                            <span class="text-blue-900 ml-1">#{{ ticket.ticket_number }} - {{ ticket.title }}</span>
+                        </div>
+                        <div v-if="ticket.account" class="flex items-center text-sm">
+                            <svg class="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-6 0H3m2 0h4m6 0v-3.87a3.37 3.37 0 00-.94-2.61c-.26-.26-.70-.26-.96 0L9.47 16.1a3.37 3.37 0 00-.94 2.61V21" />
+                            </svg>
+                            <span class="font-medium text-blue-700">Account:</span>
+                            <span class="text-blue-900 ml-1">{{ ticket.account.name }}</span>
+                        </div>
+                        <div v-if="ticket.assigned_to" class="flex items-center text-sm">
+                            <svg class="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span class="font-medium text-blue-700">Assigned to:</span>
+                            <span class="text-blue-900 ml-1">{{ ticket.assigned_to.name }}</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Basic Information Section -->
                 <div class="space-y-6">
                     <h4
@@ -128,6 +156,7 @@
                             required
                             :can-create="true"
                             :nested="true"
+                            :clearable="true"
                             :error="errors.account_id"
                             @item-selected="handleAccountSelected"
                             @item-created="handleAccountCreated"
@@ -174,6 +203,7 @@
                             placeholder="Select an agent (optional)..."
                             :can-create="true"
                             :nested="true"
+                            :clearable="true"
                             :error="errors.agent_id"
                             @item-selected="handleAgentSelected"
                             @item-created="handleAgentCreated"

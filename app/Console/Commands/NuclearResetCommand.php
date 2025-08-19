@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Setting;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Artisan;
-use App\Models\Setting;
 
 class NuclearResetCommand extends Command
 {
@@ -30,14 +30,14 @@ class NuclearResetCommand extends Command
     public function handle()
     {
         $userId = $this->option('user-id');
-        
+
         $this->warn('🚨 NUCLEAR SYSTEM RESET INITIATED 🚨');
         $this->info('This will completely wipe all data and reset the system to initial state.');
-        
+
         Log::warning('Nuclear system reset initiated', [
             'user_id' => $userId,
             'timestamp' => now(),
-            'ip' => request()->ip() ?? 'console'
+            'ip' => request()->ip() ?? 'console',
         ]);
 
         try {
@@ -70,20 +70,20 @@ class NuclearResetCommand extends Command
             Log::info('Nuclear system reset completed successfully', [
                 'user_id' => $userId,
                 'timestamp' => now(),
-                'ip' => request()->ip() ?? 'console'
+                'ip' => request()->ip() ?? 'console',
             ]);
 
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error('❌ Nuclear reset failed: ' . $e->getMessage());
-            
+            $this->error('❌ Nuclear reset failed: '.$e->getMessage());
+
             Log::error('Nuclear system reset failed', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'timestamp' => now(),
-                'ip' => request()->ip() ?? 'console'
+                'ip' => request()->ip() ?? 'console',
             ]);
 
             return Command::FAILURE;

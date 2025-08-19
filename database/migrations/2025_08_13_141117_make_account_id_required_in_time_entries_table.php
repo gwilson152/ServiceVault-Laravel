@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -17,7 +17,7 @@ return new class extends Migration
             // This aligns with the Agent/Customer architecture where all billable work is for accounts
             $table->uuid('account_id')->nullable(false)->change();
         });
-        
+
         // Create a database trigger to ensure ticket/account consistency
         // PostgreSQL doesn't support subqueries in CHECK constraints, so we use a trigger instead
         DB::unprepared(<<<'SQL'
@@ -39,7 +39,7 @@ return new class extends Migration
             $$ LANGUAGE plpgsql;
 SQL
         );
-        
+
         DB::unprepared(<<<'SQL'
             CREATE TRIGGER time_entry_ticket_account_consistency_trigger
             BEFORE INSERT OR UPDATE ON time_entries
@@ -57,7 +57,7 @@ SQL
         // Drop the trigger and function
         DB::unprepared('DROP TRIGGER IF EXISTS time_entry_ticket_account_consistency_trigger ON time_entries;');
         DB::unprepared('DROP FUNCTION IF EXISTS check_time_entry_ticket_account_consistency();');
-        
+
         Schema::table('time_entries', function (Blueprint $table) {
             // Make account_id nullable again
             $table->uuid('account_id')->nullable()->change();

@@ -3,15 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
-use App\Models\BillingRate;
-use App\Models\Project;
 use App\Models\RoleTemplate;
 use App\Models\Timer;
 use App\Models\User;
 use App\Services\TimerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
@@ -20,20 +17,21 @@ class MultipleTimersTest extends TestCase
     use RefreshDatabase, WithFaker;
 
     protected User $user;
+
     protected TimerService $timerService;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Create test user with account
         $account = Account::factory()->active()->create();
         $roleTemplate = RoleTemplate::factory()->employee()->default()->create();
-        
+
         $this->user = User::factory()->create([
             'current_account_id' => $account->id,
         ]);
-        
+
         $this->timerService = app(TimerService::class);
     }
 
@@ -73,7 +71,7 @@ class MultipleTimersTest extends TestCase
         // Verify all three timers are running
         $response = $this->getJson('/api/timers/active/current');
         $response->assertStatus(200);
-        
+
         $data = $response->json();
         $this->assertEquals(3, $data['totals']['count']);
         $this->assertCount(3, $data['data']);
@@ -145,7 +143,7 @@ class MultipleTimersTest extends TestCase
 
         // Retrieve state from Redis
         $redisStates = $this->timerService->getRedisState($this->user->id);
-        
+
         $this->assertCount(2, $redisStates);
         $timerIds = collect($redisStates)->pluck('timer_id')->toArray();
         $this->assertContains($timer1->id, $timerIds);
@@ -181,7 +179,7 @@ class MultipleTimersTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json('data');
-        
+
         $this->assertEquals(2, count($data['timers']));
         $this->assertEquals('laptop', $data['device_id']);
         $this->assertNotNull($data['synced_at']);
@@ -215,7 +213,7 @@ class MultipleTimersTest extends TestCase
 
         $response->assertStatus(200);
         $results = $response->json('results');
-        
+
         $this->assertCount(3, $results);
         foreach ($results as $result) {
             $this->assertEquals('paused', $result['status']);
@@ -225,7 +223,7 @@ class MultipleTimersTest extends TestCase
         $timer1->refresh();
         $timer2->refresh();
         $timer3->refresh();
-        
+
         $this->assertEquals('paused', $timer1->status);
         $this->assertEquals('paused', $timer2->status);
         $this->assertEquals('paused', $timer3->status);
@@ -256,10 +254,10 @@ class MultipleTimersTest extends TestCase
         ]);
 
         $response = $this->getJson('/api/timers/user/statistics');
-        
+
         $response->assertStatus(200);
         $data = $response->json('data');
-        
+
         $this->assertEquals(2, $data['active_timers']['count']);
         $this->assertGreaterThan(0, $data['active_timers']['total_running_amount']);
         $this->assertCount(2, $data['active_timers']['timers']);
@@ -276,7 +274,7 @@ class MultipleTimersTest extends TestCase
 
         // Add to Redis
         $this->timerService->updateRedisState($timer);
-        
+
         // Verify it's in Redis
         $states = $this->timerService->getRedisState($this->user->id);
         $this->assertCount(1, $states);

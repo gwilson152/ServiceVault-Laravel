@@ -24,9 +24,10 @@
             leave-from="opacity-100 translate-y-0 sm:scale-100"
             leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
           >
-            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
-              <div>
-                <div class="flex items-center justify-between mb-4">
+            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-6xl">
+              <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
                   <DialogTitle as="h3" class="text-lg font-medium leading-6 text-gray-900">
                     Create Invoice
                   </DialogTitle>
@@ -38,100 +39,167 @@
                   </button>
                 </div>
 
-                <form @submit.prevent="handleSubmit" class="space-y-6">
-                  <!-- Account Selection -->
-                  <div>
-                    <label for="account_id" class="block text-sm font-medium text-gray-700">
-                      Account
-                    </label>
-                    <select
-                      id="account_id"
-                      v-model="form.account_id"
-                      required
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    >
-                      <option value="">Select an account</option>
-                      <option value="account-1">Sample Account 1</option>
-                      <option value="account-2">Sample Account 2</option>
-                    </select>
+                <!-- Multi-step Form -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <!-- Left Column: Invoice Details -->
+                  <div class="space-y-6">
+                    <div>
+                      <h4 class="text-sm font-medium text-gray-900 mb-4">Invoice Details</h4>
+                      
+                      <!-- Account Selection -->
+                      <div class="mb-4">
+                        <UnifiedSelector
+                          v-model="form.account_id"
+                          type="account"
+                          label="Account"
+                          placeholder="Select an account..."
+                          :clearable="false"
+                          required
+                          @item-selected="onAccountSelected"
+                        />
+                      </div>
+
+                      <!-- Invoice Dates -->
+                      <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label for="invoice_date" class="block text-sm font-medium text-gray-700">
+                            Invoice Date
+                          </label>
+                          <input
+                            id="invoice_date"
+                            v-model="form.invoice_date"
+                            type="date"
+                            required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label for="due_date" class="block text-sm font-medium text-gray-700">
+                            Due Date
+                          </label>
+                          <input
+                            id="due_date"
+                            v-model="form.due_date"
+                            type="date"
+                            required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <!-- Tax Rate -->
+                      <div class="mb-4">
+                        <label for="tax_rate" class="block text-sm font-medium text-gray-700">
+                          Tax Rate (%)
+                        </label>
+                        <input
+                          id="tax_rate"
+                          v-model="form.tax_rate"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      <!-- Notes -->
+                      <div>
+                        <label for="notes" class="block text-sm font-medium text-gray-700">
+                          Notes
+                        </label>
+                        <textarea
+                          id="notes"
+                          v-model="form.notes"
+                          rows="3"
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          placeholder="Optional invoice notes..."
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Invoice Summary -->
+                    <div v-if="selectedItems.time_entries.length > 0 || selectedItems.ticket_addons.length > 0" class="bg-gray-50 p-4 rounded-lg">
+                      <h4 class="text-sm font-medium text-gray-900 mb-3">Invoice Summary</h4>
+                      <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                          <span class="text-gray-600">Time Entries:</span>
+                          <span class="font-medium">{{ selectedItems.time_entries.length }} items</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-600">Add-ons:</span>
+                          <span class="font-medium">{{ selectedItems.ticket_addons.length }} items</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="flex justify-between">
+                          <span class="text-gray-600">Subtotal:</span>
+                          <span class="font-medium">${{ formatCurrency(invoiceSubtotal) }}</span>
+                        </div>
+                        <div v-if="form.tax_rate > 0" class="flex justify-between">
+                          <span class="text-gray-600">Tax ({{ form.tax_rate }}%):</span>
+                          <span class="font-medium">${{ formatCurrency(invoiceTax) }}</span>
+                        </div>
+                        <div class="flex justify-between text-lg font-semibold text-gray-900 pt-2 border-t">
+                          <span>Total:</span>
+                          <span>${{ formatCurrency(invoiceTotal) }}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <!-- Invoice Details -->
-                  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
-                      <label for="invoice_date" class="block text-sm font-medium text-gray-700">
-                        Invoice Date
-                      </label>
-                      <input
-                        id="invoice_date"
-                        v-model="form.invoice_date"
-                        type="date"
-                        required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label for="due_date" class="block text-sm font-medium text-gray-700">
-                        Due Date
-                      </label>
-                      <input
-                        id="due_date"
-                        v-model="form.due_date"
-                        type="date"
-                        required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Description -->
+                  <!-- Right Column: Unbilled Items -->
                   <div>
-                    <label for="description" class="block text-sm font-medium text-gray-700">
-                      Description
-                    </label>
-                    <textarea
-                      id="description"
-                      v-model="form.description"
-                      rows="3"
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="Invoice description..."
+                    <h4 class="text-sm font-medium text-gray-900 mb-4">Select Items to Invoice</h4>
+                    
+                    <div v-if="!form.account_id" class="text-center py-8 text-gray-500">
+                      <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
+                      <p class="mt-2 text-sm">Select an account to view unbilled items</p>
+                    </div>
+                    
+                    <UnbilledItemsSelector
+                      v-else
+                      :account-id="form.account_id"
+                      :account-name="selectedAccountName"
+                      :data="unbilledData"
+                      :loading="loadingUnbilled"
+                      @update:selectedItems="selectedItems = $event"
+                      @launchApprovalWizard="handleLaunchApprovalWizard"
                     />
                   </div>
+                </div>
 
-                  <!-- Time Entries Option -->
-                  <div class="flex items-center">
-                    <input
-                      id="include_time_entries"
-                      v-model="form.include_time_entries"
-                      type="checkbox"
-                      class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                    <label for="include_time_entries" class="ml-2 block text-sm text-gray-900">
-                      Include unbilled time entries
-                    </label>
+                <!-- Footer Actions -->
+                <div class="mt-8 flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-200">
+                  <div class="flex items-center text-sm text-gray-600">
+                    <span v-if="hasSelectedItems">
+                      {{ totalSelectedItems }} item(s) selected • Total: ${{ formatCurrency(invoiceTotal) }}
+                    </span>
+                    <span v-else class="text-gray-400">
+                      No items selected
+                    </span>
                   </div>
-
-                  <!-- Submit Buttons -->
-                  <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
-                    <button
-                      type="submit"
-                      :disabled="creating"
-                      class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 sm:col-start-2 sm:text-sm"
-                    >
-                      <span v-if="creating" class="mr-2">
-                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      </span>
-                      {{ creating ? 'Creating...' : 'Create Invoice' }}
-                    </button>
+                  
+                  <div class="flex gap-3">
                     <button
                       type="button"
                       @click="$emit('close')"
-                      class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm"
+                      class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       Cancel
                     </button>
+                    <button
+                      @click="handleCreateInvoice"
+                      :disabled="!canCreateInvoice || createInvoiceMutation.isPending.value"
+                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span v-if="createInvoiceMutation.isPending.value" class="mr-2">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      </span>
+                      {{ createInvoiceMutation.isPending.value ? 'Creating Invoice...' : 'Create Invoice' }}
+                    </button>
                   </div>
-                </form>
+                </div>
               </div>
             </DialogPanel>
           </TransitionChild>
@@ -142,7 +210,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import {
   Dialog,
   DialogPanel,
@@ -150,7 +218,10 @@ import {
   TransitionChild,
   TransitionRoot,
 } from '@headlessui/vue'
-import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, DocumentIcon } from '@heroicons/vue/24/outline'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
+import UnbilledItemsSelector from '@/Components/Billing/UnbilledItemsSelector.vue'
+import { useUnbilledItemsQuery, useCreateInvoiceMutation } from '@/Composables/queries/useBillingQuery.js'
 
 const props = defineProps({
   show: {
@@ -159,16 +230,66 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'created'])
+const emit = defineEmits(['close', 'created', 'launchApprovalWizard'])
 
-const creating = ref(false)
+// Reactive state
+const selectedAccountName = ref('')
 
 const form = reactive({
   account_id: '',
   invoice_date: new Date().toISOString().split('T')[0],
   due_date: '',
-  description: '',
-  include_time_entries: true
+  tax_rate: 0,
+  notes: ''
+})
+
+// TanStack Query hooks
+const createInvoiceMutation = useCreateInvoiceMutation()
+const { data: unbilledData, isLoading: loadingUnbilled, refetch: refetchUnbilled } = useUnbilledItemsQuery(
+  computed(() => form.account_id), 
+  { enabled: computed(() => !!form.account_id) }
+)
+
+const selectedItems = ref({
+  time_entries: [],
+  ticket_addons: []
+})
+
+// Computed properties
+const totalSelectedItems = computed(() => {
+  return selectedItems.value.time_entries.length + selectedItems.value.ticket_addons.length
+})
+
+const hasSelectedItems = computed(() => {
+  return totalSelectedItems.value > 0
+})
+
+const invoiceSubtotal = computed(() => {
+  const timeEntryTotal = selectedItems.value.time_entries.reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+  const addonTotal = selectedItems.value.ticket_addons.reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+  return timeEntryTotal + addonTotal
+})
+
+const invoiceTax = computed(() => {
+  return invoiceSubtotal.value * (parseFloat(form.tax_rate) / 100)
+})
+
+const invoiceTotal = computed(() => {
+  return invoiceSubtotal.value + invoiceTax.value
+})
+
+const canCreateInvoice = computed(() => {
+  return form.account_id && 
+         form.invoice_date && 
+         form.due_date && 
+         hasSelectedItems.value
+})
+
+// Watch for account changes to clear selected items
+watch(() => form.account_id, (newAccountId) => {
+  if (!newAccountId) {
+    selectedItems.value = { time_entries: [], ticket_addons: [] }
+  }
 })
 
 // Calculate due date (30 days from invoice date)
@@ -180,36 +301,70 @@ watch(() => form.invoice_date, (newDate) => {
   }
 })
 
-const handleSubmit = async () => {
-  creating.value = true
-  try {
-    const response = await fetch('/api/billing/invoices', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      },
-      body: JSON.stringify(form)
-    })
+// Methods
+const onAccountSelected = (account) => {
+  selectedAccountName.value = account?.name || ''
+}
 
-    if (response.ok) {
-      const data = await response.json()
-      emit('created', data.data)
-      // Reset form
-      Object.assign(form, {
-        account_id: '',
-        invoice_date: new Date().toISOString().split('T')[0],
-        due_date: '',
-        description: '',
-        include_time_entries: true
-      })
-    } else {
-      console.error('Error creating invoice')
-    }
+
+const handleLaunchApprovalWizard = () => {
+  // Emit to parent component to handle approval wizard launch
+  emit('launchApprovalWizard', {
+    accountId: form.account_id,
+    accountName: selectedAccountName.value
+  })
+}
+
+const handleCreateInvoice = async () => {
+  if (!canCreateInvoice.value) return
+  
+  // Prepare line items
+  const timeEntryIds = selectedItems.value.time_entries.map(item => item.id)
+  const addonIds = selectedItems.value.ticket_addons.map(item => item.id)
+  
+  const payload = {
+    account_id: form.account_id,
+    invoice_date: form.invoice_date,
+    due_date: form.due_date,
+    tax_rate: form.tax_rate || 0,
+    notes: form.notes || null,
+    time_entry_ids: timeEntryIds,
+    ticket_addon_ids: addonIds
+  }
+
+  try {
+    const result = await createInvoiceMutation.mutateAsync(payload)
+    emit('created', result)
+    resetForm()
   } catch (error) {
     console.error('Error creating invoice:', error)
-  } finally {
-    creating.value = false
+    alert('Error creating invoice: ' + (error.message || 'Unknown error'))
   }
 }
+
+const resetForm = () => {
+  Object.assign(form, {
+    account_id: '',
+    invoice_date: new Date().toISOString().split('T')[0],
+    due_date: '',
+    tax_rate: 0,
+    notes: ''
+  })
+  selectedItems.value = { time_entries: [], ticket_addons: [] }
+  selectedAccountName.value = ''
+}
+
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount || 0)
+}
+
+// Reset form when modal is closed
+watch(() => props.show, (isShowing) => {
+  if (!isShowing) {
+    resetForm()
+  }
+})
 </script>

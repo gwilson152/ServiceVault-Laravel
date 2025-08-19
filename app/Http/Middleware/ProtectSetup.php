@@ -23,25 +23,26 @@ class ProtectSetup
         });
 
         // If system is not set up, allow access to setup routes
-        if (!$isSetup) {
+        if (! $isSetup) {
             return $next($request);
         }
 
         // System is set up - require authentication and Super Admin role
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login')->with('error', 'You must be logged in to access system setup.');
         }
 
         $user = Auth::user();
 
         // Handle case where user was authenticated before database reset
-        if (!$user || !$user->exists) {
+        if (! $user || ! $user->exists) {
             Auth::logout();
+
             return redirect()->route('login')->with('error', 'Your session has expired. Please log in again.');
         }
 
         // Only Super Admin can access setup after system is configured
-        if (!$user->isSuperAdmin()) {
+        if (! $user->isSuperAdmin()) {
             return redirect()->route('dashboard')->with('error', 'Access denied. Only Super Administrators can access system setup.');
         }
 
@@ -54,6 +55,7 @@ class ProtectSetup
     private function isSystemSetup(): bool
     {
         $setting = \App\Models\Setting::where('key', 'system.setup_complete')->first();
+
         return $setting && ($setting->value === true || $setting->value === 'true' || $setting->value === 1 || $setting->value === '1');
     }
 }

@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\RoleTemplate;
 use App\Services\WidgetRegistryService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class RoleTemplateController extends Controller
@@ -21,24 +21,24 @@ class RoleTemplateController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = RoleTemplate::query()->with(['roles']);
-        
+
         // Filter by context if provided
         if ($request->has('context')) {
             $query->where('context', $request->context);
         }
-        
+
         // Filter by modifiable status
         if ($request->has('modifiable')) {
             $query->where('is_modifiable', $request->boolean('modifiable'));
         }
-        
+
         // Search by name
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%'.$request->search.'%');
         }
-        
+
         $roleTemplates = $query->orderBy('name')->get();
-        
+
         return response()->json([
             'data' => $roleTemplates->map(function ($template) {
                 return [
@@ -49,7 +49,7 @@ class RoleTemplateController extends Controller
                     'is_system_role' => $template->is_system_role,
                     'is_default' => $template->is_default,
                     'is_modifiable' => $template->isModifiable(),
-                    'users_count' => $template->roles->sum(function($role) {
+                    'users_count' => $template->roles->sum(function ($role) {
                         return $role->users()->count();
                     }),
                     'permission_counts' => [
@@ -80,8 +80,8 @@ class RoleTemplateController extends Controller
                     'permissions' => [],
                     'widget_permissions' => [],
                     'page_permissions' => [],
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 
@@ -91,7 +91,7 @@ class RoleTemplateController extends Controller
     public function previewWidgetsForCreate(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         // Return empty/default widget preview for create scenario
         return response()->json([
             'data' => [
@@ -99,9 +99,9 @@ class RoleTemplateController extends Controller
                 'assigned_widgets' => [],
                 'layout' => [
                     'columns' => 12,
-                    'widgets' => []
-                ]
-            ]
+                    'widgets' => [],
+                ],
+            ],
         ]);
     }
 
@@ -118,24 +118,24 @@ class RoleTemplateController extends Controller
             'permissions.*' => 'string',
             'widget_permissions' => 'array',
             'widget_permissions.*' => 'string',
-            'page_permissions' => 'array', 
+            'page_permissions' => 'array',
             'page_permissions.*' => 'string',
             'is_default' => 'boolean',
         ]);
-        
+
         // Validate permissions against available permissions
         $validated['permissions'] = $this->validateFunctionalPermissions($validated['permissions'] ?? []);
         $validated['widget_permissions'] = $this->widgetService->validateWidgetPermissions(
-            $validated['widget_permissions'] ?? [], 
+            $validated['widget_permissions'] ?? [],
             $validated['context']
         );
         $validated['page_permissions'] = $this->validatePagePermissions($validated['page_permissions'] ?? []);
-        
+
         $validated['is_system_role'] = false;
         $validated['is_modifiable'] = true;
-        
+
         $roleTemplate = RoleTemplate::create($validated);
-        
+
         return response()->json([
             'message' => 'Role template created successfully',
             'data' => $this->formatRoleTemplate($roleTemplate),
@@ -148,7 +148,7 @@ class RoleTemplateController extends Controller
     public function show(RoleTemplate $roleTemplate): JsonResponse
     {
         $roleTemplate->load(['roles.users', 'widgets']);
-        
+
         return response()->json([
             'data' => $this->formatRoleTemplate($roleTemplate, true),
         ]);
@@ -160,12 +160,12 @@ class RoleTemplateController extends Controller
     public function update(Request $request, RoleTemplate $roleTemplate): JsonResponse
     {
         // Check if role template is modifiable
-        if (!$roleTemplate->isModifiable()) {
+        if (! $roleTemplate->isModifiable()) {
             return response()->json([
                 'message' => 'This role template cannot be modified',
             ], 403);
         }
-        
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('role_templates', 'name')->ignore($roleTemplate->id)],
             'description' => 'nullable|string',
@@ -178,17 +178,17 @@ class RoleTemplateController extends Controller
             'page_permissions.*' => 'string',
             'is_default' => 'boolean',
         ]);
-        
+
         // Validate permissions against available permissions
         $validated['permissions'] = $this->validateFunctionalPermissions($validated['permissions'] ?? []);
         $validated['widget_permissions'] = $this->widgetService->validateWidgetPermissions(
-            $validated['widget_permissions'] ?? [], 
+            $validated['widget_permissions'] ?? [],
             $validated['context']
         );
         $validated['page_permissions'] = $this->validatePagePermissions($validated['page_permissions'] ?? []);
-        
+
         $roleTemplate->update($validated);
-        
+
         return response()->json([
             'message' => 'Role template updated successfully',
             'data' => $this->formatRoleTemplate($roleTemplate->fresh()),
@@ -201,33 +201,33 @@ class RoleTemplateController extends Controller
     public function destroy(RoleTemplate $roleTemplate): JsonResponse
     {
         // Check if role template is modifiable
-        if (!$roleTemplate->isModifiable()) {
+        if (! $roleTemplate->isModifiable()) {
             return response()->json([
                 'message' => 'This role template cannot be deleted',
             ], 403);
         }
-        
+
         // Check if role template is in use
         if ($roleTemplate->roles()->exists()) {
             return response()->json([
                 'message' => 'Cannot delete role template that is currently in use',
             ], 422);
         }
-        
+
         $roleTemplate->delete();
-        
+
         return response()->json([
             'message' => 'Role template deleted successfully',
         ]);
     }
-    
+
     /**
      * Get available permissions for role template creation/editing
      */
     public function permissions(): JsonResponse
     {
-        $template = new RoleTemplate();
-        
+        $template = new RoleTemplate;
+
         return response()->json([
             'data' => [
                 'functional_permissions' => $this->getFunctionalPermissions(),
@@ -236,14 +236,14 @@ class RoleTemplateController extends Controller
             ],
         ]);
     }
-    
+
     /**
      * Preview widgets for role template
      */
     public function previewWidgets(RoleTemplate $roleTemplate): JsonResponse
     {
         $widgets = $this->widgetService->getWidgetsForRoleTemplate($roleTemplate);
-        
+
         return response()->json([
             'data' => [
                 'available_widgets' => $widgets,
@@ -252,7 +252,7 @@ class RoleTemplateController extends Controller
             ],
         ]);
     }
-    
+
     /**
      * Clone an existing role template
      */
@@ -262,7 +262,7 @@ class RoleTemplateController extends Controller
             'name' => 'required|string|max:255|unique:role_templates,name',
             'description' => 'nullable|string',
         ]);
-        
+
         $cloned = RoleTemplate::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? "Copy of {$roleTemplate->name}",
@@ -274,7 +274,7 @@ class RoleTemplateController extends Controller
             'is_default' => false,
             'is_modifiable' => true,
         ]);
-        
+
         return response()->json([
             'message' => 'Role template cloned successfully',
             'data' => $this->formatRoleTemplate($cloned),
@@ -287,12 +287,12 @@ class RoleTemplateController extends Controller
     public function updateWidgets(RoleTemplate $roleTemplate, Request $request): JsonResponse
     {
         // Check if role template is modifiable
-        if (!$roleTemplate->isModifiable()) {
+        if (! $roleTemplate->isModifiable()) {
             return response()->json([
                 'message' => 'This role template cannot be modified',
             ], 403);
         }
-        
+
         $validated = $request->validate([
             'widgets' => 'required|array',
             'widgets.*.widget_id' => 'required|string',
@@ -308,13 +308,13 @@ class RoleTemplateController extends Controller
             'layout.*.h' => 'required|integer|min:1|max:10',
             'layout.*.widget_config' => 'array',
         ]);
-        
+
         try {
             \DB::beginTransaction();
-            
+
             // Clear existing widget assignments
             $roleTemplate->widgets()->delete();
-            
+
             // Create new widget assignments
             foreach ($validated['widgets'] as $index => $widgetData) {
                 $roleTemplate->widgets()->create([
@@ -326,24 +326,24 @@ class RoleTemplateController extends Controller
                     'widget_config' => $widgetData['widget_config'] ?? [],
                 ]);
             }
-            
+
             // Update widget permissions
             $widgetPermissions = collect($validated['widgets'])->pluck('widget_id')->map(function ($widgetId) {
                 return "widgets.dashboard.{$widgetId}";
             })->toArray();
-            
+
             // Merge with existing widget permissions (keep global ones like widgets.configure)
             $existingGlobalPermissions = array_filter($roleTemplate->getAllWidgetPermissions(), function ($permission) {
-                return !str_starts_with($permission, 'widgets.dashboard.');
+                return ! str_starts_with($permission, 'widgets.dashboard.');
             });
-            
+
             $roleTemplate->update([
                 'widget_permissions' => array_merge($existingGlobalPermissions, $widgetPermissions),
                 'dashboard_layout' => $validated['layout'] ?? [],
             ]);
-            
+
             \DB::commit();
-            
+
             return response()->json([
                 'message' => 'Widget assignments updated successfully',
                 'data' => [
@@ -351,10 +351,10 @@ class RoleTemplateController extends Controller
                     'layout_items' => count($validated['layout'] ?? []),
                 ],
             ]);
-            
+
         } catch (\Exception $e) {
             \DB::rollBack();
-            
+
             return response()->json([
                 'message' => 'Failed to update widget assignments',
                 'error' => $e->getMessage(),
@@ -369,7 +369,7 @@ class RoleTemplateController extends Controller
     {
         $widgets = $roleTemplate->widgets()->orderBy('display_order')->get();
         $layout = $roleTemplate->dashboard_layout ?? [];
-        
+
         return response()->json([
             'data' => [
                 'widgets' => $widgets->map(function ($widget) {
@@ -407,9 +407,9 @@ class RoleTemplateController extends Controller
             'created_at' => $roleTemplate->created_at,
             'updated_at' => $roleTemplate->updated_at,
         ];
-        
+
         if ($includeDetails) {
-            $data['users_count'] = $roleTemplate->roles->sum(function($role) {
+            $data['users_count'] = $roleTemplate->roles->sum(function ($role) {
                 return $role->users()->count();
             });
             $data['roles'] = $roleTemplate->roles->map(function ($role) {
@@ -428,7 +428,7 @@ class RoleTemplateController extends Controller
                 ];
             });
         }
-        
+
         return $data;
     }
 
@@ -437,37 +437,37 @@ class RoleTemplateController extends Controller
      */
     private function validateFunctionalPermissions(array $permissions): array
     {
-        $template = new RoleTemplate();
+        $template = new RoleTemplate;
         $availablePermissions = $template->getAllPossiblePermissions();
-        
+
         return array_values(array_intersect($permissions, $availablePermissions));
     }
-    
+
     /**
      * Validate page permissions
      */
     private function validatePagePermissions(array $permissions): array
     {
-        $template = new RoleTemplate();
+        $template = new RoleTemplate;
         $availablePermissions = $template->getAllPossiblePagePermissions();
-        
+
         return array_values(array_intersect($permissions, $availablePermissions));
     }
-    
+
     /**
      * Get formatted functional permissions for UI
      */
     private function getFunctionalPermissions(): array
     {
-        $template = new RoleTemplate();
+        $template = new RoleTemplate;
         $permissions = $template->getAllPossiblePermissions();
-        
+
         return collect($permissions)->map(function ($permission) {
             $parts = explode('.', $permission);
             $category = $parts[0] ?? 'general';
             $action = $parts[1] ?? 'access';
             $scope = $parts[2] ?? null;
-            
+
             return [
                 'key' => $permission,
                 'name' => ucwords(str_replace(['.', '_'], [' ', ' '], $permission)),
@@ -478,20 +478,20 @@ class RoleTemplateController extends Controller
             ];
         })->groupBy('category')->toArray();
     }
-    
+
     /**
      * Get formatted page permissions for UI
      */
     private function getPagePermissions(): array
     {
-        $template = new RoleTemplate();
+        $template = new RoleTemplate;
         $permissions = $template->getAllPossiblePagePermissions();
-        
+
         return collect($permissions)->map(function ($permission) {
             $parts = explode('.', $permission);
             $category = $parts[1] ?? 'general';
             $page = $parts[2] ?? 'access';
-            
+
             return [
                 'key' => $permission,
                 'name' => ucwords(str_replace(['.', '_'], [' ', ' '], $permission)),
@@ -501,7 +501,7 @@ class RoleTemplateController extends Controller
             ];
         })->groupBy('category')->toArray();
     }
-    
+
     /**
      * Generate description for permission
      */
@@ -514,7 +514,7 @@ class RoleTemplateController extends Controller
             'admin.read' => 'View administrative information and system statistics',
             'system.configure' => 'Configure system-wide settings, preferences, and global options',
             'system.manage' => 'Manage system operations, maintenance, and core functionality',
-            
+
             // Account Management
             'accounts.create' => 'Create new customer accounts and set up account hierarchies',
             'accounts.manage' => 'Manage existing customer accounts, settings, and configurations',
@@ -522,7 +522,7 @@ class RoleTemplateController extends Controller
             'accounts.view' => 'View account information and basic details',
             'accounts.edit' => 'Edit account information and update account settings',
             'accounts.delete' => 'Delete customer accounts (with proper safeguards)',
-            
+
             // User Management
             'users.manage' => 'Manage user accounts, roles, and permissions across the system',
             'users.manage.account' => 'Manage users within accessible accounts only',
@@ -532,11 +532,11 @@ class RoleTemplateController extends Controller
             'users.create' => 'Create new user accounts with appropriate role assignments',
             'users.edit' => 'Edit user information, preferences, and account assignments',
             'users.delete' => 'Deactivate or remove user accounts from the system',
-            
+
             // Role Management
             'roles.manage' => 'Create, modify, and delete role templates and permission sets',
             'role_templates.manage' => 'Manage role templates and permission configurations',
-            
+
             // Service Tickets
             'tickets.admin' => 'Full administrative control over all ticket operations',
             'tickets.create' => 'Create new service tickets for customer requests',
@@ -556,7 +556,7 @@ class RoleTemplateController extends Controller
             'tickets.delete' => 'Delete tickets from the system (with proper safeguards)',
             'tickets.comment' => 'Add comments and updates to service tickets',
             'tickets.manage' => 'General ticket management including assignment and status changes',
-            
+
             // Time Management
             'time.admin' => 'Full administrative control over time tracking and entries',
             'time.track' => 'Track time spent on service tickets and projects',
@@ -572,7 +572,7 @@ class RoleTemplateController extends Controller
             'time.reports.account' => 'Access time reports for accessible accounts only',
             'time.reports.own' => 'Access personal time tracking reports',
             'time.assign' => 'Assign time entries to team members and manage time allocation',
-            
+
             // Timer System
             'timers.admin' => 'Full administrative control over timer operations',
             'timers.read' => 'View timer information and status across the system',
@@ -582,7 +582,7 @@ class RoleTemplateController extends Controller
             'timers.manage.team' => 'Manage timers for team members and view team timer status',
             'timers.sync' => 'Synchronize timer data across devices and sessions',
             'timers.assign' => 'Assign timers to team members and manage timer allocation',
-            
+
             // Billing & Financial
             'billing.manage' => 'Manage billing operations, rates, and invoicing processes',
             'billing.configure' => 'Configure billing settings, rates, and financial parameters',
@@ -591,16 +591,16 @@ class RoleTemplateController extends Controller
             'billing.reports' => 'Access billing reports and financial analytics',
             'billing.view.account' => 'View billing information for accessible accounts only',
             'billing.admin' => 'Full administrative control over billing and financial operations',
-            
+
             // Customer Portal
             'portal.access' => 'Access customer portal interface and customer-facing features',
             'portal.dashboard' => 'View customer portal dashboard and account overview',
             'portal.tickets' => 'Access ticket interface within customer portal',
             'portal.billing' => 'View billing information and invoices in customer portal',
-            
+
             // Settings Management
             'settings.manage' => 'Manage system settings and configuration options',
-            
+
             // Page Access Permissions
             'pages.admin.dashboard' => 'Access administrative dashboard and system overview',
             'pages.admin.users' => 'Access user management pages and interfaces',
@@ -617,10 +617,10 @@ class RoleTemplateController extends Controller
             'pages.portal.tickets' => 'Access customer portal ticket interface',
             'pages.portal.billing' => 'Access customer portal billing interface',
         ];
-        
+
         return $descriptions[$permission] ?? $this->generateFallbackDescription($permission);
     }
-    
+
     /**
      * Generate fallback description for unknown permissions
      */
@@ -630,7 +630,7 @@ class RoleTemplateController extends Controller
         $category = $parts[0] ?? 'system';
         $action = $parts[1] ?? 'access';
         $scope = $parts[2] ?? null;
-        
+
         $categoryNames = [
             'admin' => 'Administrative',
             'system' => 'System',
@@ -643,9 +643,9 @@ class RoleTemplateController extends Controller
             'portal' => 'Portal',
             'pages' => 'Page',
             'widgets' => 'Widget',
-            'settings' => 'Settings'
+            'settings' => 'Settings',
         ];
-        
+
         $actionNames = [
             'manage' => 'management',
             'admin' => 'administration',
@@ -654,13 +654,13 @@ class RoleTemplateController extends Controller
             'edit' => 'editing',
             'delete' => 'deletion',
             'assign' => 'assignment',
-            'access' => 'access'
+            'access' => 'access',
         ];
-        
+
         $categoryName = $categoryNames[$category] ?? ucfirst($category);
         $actionName = $actionNames[$action] ?? $action;
         $scopeText = $scope ? " for {$scope}" : '';
-        
+
         return "{$categoryName} {$actionName}{$scopeText}";
     }
 }

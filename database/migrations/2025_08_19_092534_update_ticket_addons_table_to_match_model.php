@@ -25,7 +25,7 @@ return new class extends Migration
             $table->timestamp('approved_at')->nullable()->after('approved_by_user_id');
             $table->text('approval_notes')->nullable()->after('approved_at');
             $table->json('metadata')->nullable()->after('approval_notes');
-            
+
             // Add foreign key constraints
             $table->foreign('added_by_user_id')->references('id')->on('users')->onDelete('set null');
             $table->foreign('approved_by_user_id')->references('id')->on('users')->onDelete('set null');
@@ -43,7 +43,7 @@ return new class extends Migration
             $table->dropForeign(['added_by_user_id']);
             $table->dropForeign(['approved_by_user_id']);
             $table->dropForeign(['addon_template_id']);
-            
+
             // Drop added columns
             $table->dropColumn([
                 'added_by_user_id',
@@ -57,7 +57,7 @@ return new class extends Migration
                 'approved_by_user_id',
                 'approved_at',
                 'approval_notes',
-                'metadata'
+                'metadata',
             ]);
         });
     }

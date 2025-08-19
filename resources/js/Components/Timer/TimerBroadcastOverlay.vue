@@ -355,6 +355,15 @@
           >
             <span>{{ timer.ticket.ticket_number }} - {{ timer.ticket.title }}</span>
           </div>
+          
+          <!-- Committed Status -->
+          <div
+            v-if="timer.status === 'committed'"
+            class="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium"
+            :title="`Committed as time entry #${timer.time_entry_id}`"
+          >
+            ✓ Committed
+          </div>
         </div>
       </div>
         </div>
@@ -538,6 +547,15 @@
             :title="`Associated ticket: ${timer.ticket.ticket_number}`"
           >
             <span>{{ timer.ticket.ticket_number }} - {{ timer.ticket.title }}</span>
+          </div>
+          
+          <!-- Committed Status -->
+          <div
+            v-if="timer.status === 'committed'"
+            class="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium"
+            :title="`Committed as time entry #${timer.time_entry_id}`"
+          >
+            ✓ Committed
           </div>
         </div>
       </div>
@@ -871,14 +889,24 @@ const calculateDuration = (timer) => {
   if (!timer) return 0
   if (timer.status !== 'running') {
     // Timer is stopped/paused - duration is in seconds from backend
-    return timer.duration || 0
+    return Number(timer.duration) || 0
   }
 
-  const startedAt = new Date(timer.started_at)
-  const now = currentTime.value
-  const totalPausedSeconds = timer.total_paused_duration || 0
+  try {
+    const startedAt = new Date(timer.started_at)
+    if (isNaN(startedAt.getTime())) {
+      console.warn('Invalid started_at date for timer:', timer.started_at)
+      return 0
+    }
+    
+    const now = currentTime.value
+    const totalPausedSeconds = Number(timer.total_paused_duration) || 0
 
-  return Math.max(0, Math.floor((now - startedAt) / 1000) - totalPausedSeconds)
+    return Math.max(0, Math.floor((now - startedAt) / 1000) - totalPausedSeconds)
+  } catch (error) {
+    console.warn('Error calculating timer duration:', error, timer)
+    return 0
+  }
 }
 
 const calculateAmount = (timer) => {
@@ -1015,7 +1043,8 @@ const stopDrag = () => {
 const timerStatusClasses = (status) => ({
   'bg-green-500 animate-pulse': status === 'running',
   'bg-yellow-500': status === 'paused',
-  'bg-red-500': status === 'stopped'
+  'bg-red-500': status === 'stopped',
+  'bg-blue-500': status === 'committed'
 })
 
 // Handle account selection
@@ -1125,18 +1154,18 @@ const getBillingRateValue = (billingRateId) => {
 
 // Permission helper functions
 const canControlOwnTimer = (timer) => {
-  // Users can control their own timers if they have write permissions
-  return timer.user_id === user.value?.id && canControlTimers.value
+  // Users can control their own timers if they have write permissions (but not committed timers)
+  return timer.user_id === user.value?.id && canControlTimers.value && timer.status !== 'committed'
 }
 
 const canManageAllTimers = (timer) => {
-  // Admins can manage any timer
-  return canManageTimers.value
+  // Admins can manage any timer (but not committed timers)
+  return canManageTimers.value && timer.status !== 'committed'
 }
 
 const canCommitOwnTimer = (timer) => {
-  // Users can commit their own timers
-  return timer.user_id === user.value?.id && canCommitTimers.value
+  // Users can commit their own timers (but not if already committed)
+  return timer.user_id === user.value?.id && canCommitTimers.value && timer.status !== 'committed'
 }
 
 // Timer commit workflow functions
@@ -1168,13 +1197,21 @@ const closeCommitDialog = () => {
 
 // Handle timer commit from UnifiedTimeEntryDialog
 const handleTimerCommitted = ({ timeEntry, timerData }) => {
-  // Remove the timer from the overlay since it's now committed
-  removeTimer(timerData.id)
+  // Update the timer's status to committed and set time entry ID
+  const updatedTimer = {
+    ...timerData,
+    status: 'committed',
+    time_entry_id: timeEntry.id,
+    committed_at: new Date().toISOString()
+  }
+  
+  // Update the timer in the overlay
+  addOrUpdateTimer(updatedTimer)
 
   // Close the dialog
   closeCommitDialog()
 
-  console.log('Timer committed successfully:', timeEntry)
+  console.log('Timer committed successfully:', { timeEntry, updatedTimer })
 }
 
 // Handle new timer started from StartTimerModal
@@ -1201,16 +1238,23 @@ const handleTimerUpdated = (updatedTimer) => {
 
 // Format duration function with compact mode and expanded HH:MM:SS support
 const formatDuration = (seconds, compact = false, expanded = false) => {
-  if (!seconds || seconds < 0) return compact ? '0:00' : (expanded ? '0:00:00' : '0s')
+  // Ensure seconds is a valid number
+  const numSeconds = Number(seconds) || 0
+  if (numSeconds < 0) return compact ? '0:00' : (expanded ? '0:00:00' : '0s')
 
   // Use settings-based formatting for non-compact/expanded modes
-  if (!compact && !expanded && formatDurationFromSettings) {
-    return formatDurationFromSettings(seconds)
+  if (!compact && !expanded && formatDurationFromSettings && typeof formatDurationFromSettings === 'function') {
+    try {
+      return formatDurationFromSettings(numSeconds)
+    } catch (error) {
+      console.warn('Error in formatDurationFromSettings:', error)
+      // Fall through to default formatting
+    }
   }
 
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
+  const hours = Math.floor(numSeconds / 3600)
+  const minutes = Math.floor((numSeconds % 3600) / 60)
+  const secs = numSeconds % 60
 
   if (expanded) {
     // Expanded format: always show HH:MM:SS

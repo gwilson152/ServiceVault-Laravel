@@ -14,6 +14,43 @@
                     </p>
                 </div>
                 <div class="flex space-x-3">
+                    <!-- Billing Review Mode Toggle -->
+                    <div v-if="activeTab === 'time-entries'" class="flex items-center">
+                        <label class="flex items-center cursor-pointer">
+                            <input
+                                v-model="billingReviewMode"
+                                type="checkbox"
+                                class="sr-only"
+                            />
+                            <div class="relative">
+                                <div :class="[
+                                    'block w-10 h-6 rounded-full transition-colors duration-200',
+                                    billingReviewMode ? 'bg-indigo-600' : 'bg-gray-300'
+                                ]"></div>
+                                <div :class="[
+                                    'dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200',
+                                    billingReviewMode ? 'transform translate-x-4' : ''
+                                ]"></div>
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <span class="font-medium text-gray-700">Billing Review Mode</span>
+                                <p class="text-gray-500">Focus on items for billing</p>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <!-- Launch Approval Wizard Button -->
+                    <button
+                        v-if="activeTab === 'time-entries' && billingReviewMode && pendingApprovalStats.total > 0"
+                        @click="showApprovalWizard = true"
+                        class="inline-flex items-center px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                    >
+                        <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Review {{ pendingApprovalStats.total }} Pending Item(s)
+                    </button>
+                    
                     <button
                         v-if="activeTab === 'time-entries'"
                         @click="showCreateModal = true"
@@ -237,9 +274,48 @@
                     <h3 class="text-lg font-medium text-gray-900">Filters</h3>
                 </div>
                 <div class="p-6">
+                    <!-- Billing Review Mode Notice -->
+                    <div v-if="billingReviewMode" class="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-md">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-indigo-800">
+                                    Billing Review Mode Active
+                                </h3>
+                                <p class="mt-1 text-sm text-indigo-700">
+                                    Viewing {{ billingReviewMode ? 'billable items only' : 'all items' }} to prepare for invoice generation.
+                                    {{ selectedAccountForBilling ? `Filtered to account: ${selectedAccountForBilling.name}` : 'Select an account to focus your review.' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div
-                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+                        :class="[
+                            'grid gap-4',
+                            billingReviewMode 
+                                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-5' 
+                                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+                        ]"
                     >
+                        <!-- Account Filter (Billing Review Mode Only) -->
+                        <div v-if="billingReviewMode">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Account
+                            </label>
+                            <UnifiedSelector
+                                v-model="billingAccountId"
+                                type="account"
+                                placeholder="Select account..."
+                                :clearable="true"
+                                @item-selected="onBillingAccountSelected"
+                            />
+                        </div>
+                        
                         <div>
                             <label
                                 class="block text-sm font-medium text-gray-700 mb-2"
@@ -636,6 +712,16 @@
             </div>
         </div>
     </div>
+    
+    <!-- Approval Wizard Modal -->
+    <ApprovalWizardModal
+        :show="showApprovalWizard"
+        :account-id="billingAccountId || ''"
+        :account-name="selectedAccountForBilling?.name || ''"
+        @close="closeApprovalWizard"
+        @completed="onApprovalWizardCompleted"
+        @createInvoice="onCreateInvoiceFromWizard"
+    />
 </template>
 
 <script setup>
@@ -644,6 +730,8 @@ import AppLayout from "@/Layouts/AppLayout.vue";
 import { usePage, Link, router } from "@inertiajs/vue3";
 import TimersTab from "@/Components/TimeEntries/TimersTab.vue";
 import UnifiedTimeEntryDialog from "@/Components/TimeEntries/UnifiedTimeEntryDialog.vue";
+import ApprovalWizardModal from "@/Components/Billing/ApprovalWizardModal.vue";
+import UnifiedSelector from "@/Components/UI/UnifiedSelector.vue";
 import { useTimeEntriesQuery } from "@/Composables/queries/useTimeEntriesQuery.js";
 
 // Props
@@ -685,6 +773,13 @@ const showBulkApprovalModal = ref(false);
 const editingEntry = ref(null);
 const bulkApprovalNotes = ref("");
 const currentPage = ref(1);
+
+// Billing review mode state
+const billingReviewMode = ref(false);
+const showApprovalWizard = ref(false);
+const billingAccountId = ref('');
+const selectedAccountForBilling = ref(null);
+const pendingApprovalStats = ref({ total: 0, time_entries: 0, addons: 0 });
 
 const filters = reactive({
     status: "",
@@ -811,6 +906,88 @@ const onTimerCommitted = () => {
     // Navigate to time entries tab to show the new entry
     router.visit(route("time-entries.index", "time-entries"));
 };
+
+// Billing review mode methods
+const onBillingAccountSelected = (account) => {
+    selectedAccountForBilling.value = account;
+    if (account) {
+        loadPendingApprovalStats(account.id);
+    } else {
+        pendingApprovalStats.value = { total: 0, time_entries: 0, addons: 0 };
+    }
+};
+
+const loadPendingApprovalStats = async (accountId) => {
+    try {
+        const response = await fetch(`/api/billing/unbilled-items?account_id=${accountId}&include_unapproved=true`, {
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const unapproved = data.data.unapproved || {};
+            pendingApprovalStats.value = {
+                total: (unapproved.time_entries?.length || 0) + (unapproved.ticket_addons?.length || 0),
+                time_entries: unapproved.time_entries?.length || 0,
+                addons: unapproved.ticket_addons?.length || 0
+            };
+        }
+    } catch (error) {
+        console.error('Error loading pending approval stats:', error);
+    }
+};
+
+const closeApprovalWizard = () => {
+    showApprovalWizard.value = false;
+};
+
+const onApprovalWizardCompleted = () => {
+    // Refresh pending stats
+    if (billingAccountId.value) {
+        loadPendingApprovalStats(billingAccountId.value);
+    }
+    // Refresh time entries list
+    refetchTimeEntries();
+};
+
+const onCreateInvoiceFromWizard = (data) => {
+    closeApprovalWizard();
+    // Navigate to billing page to create invoice
+    router.visit('/billing', { 
+        state: { 
+            accountId: data.accountId,
+            accountName: data.accountName,
+            openCreateInvoice: true 
+        } 
+    });
+};
+
+// Watch billing review mode to apply filters
+watch(billingReviewMode, (isEnabled) => {
+    if (isEnabled) {
+        // Set filters for billing review
+        filters.billable = 'true';
+        filters.status = ''; // Show all statuses to see both pending and approved
+    } else {
+        // Reset billing-specific filters
+        billingAccountId.value = '';
+        selectedAccountForBilling.value = null;
+        pendingApprovalStats.value = { total: 0, time_entries: 0, addons: 0 };
+    }
+});
+
+// Watch account changes in billing review mode to filter entries
+watch(billingAccountId, (newAccountId) => {
+    if (billingReviewMode.value && newAccountId) {
+        // Add account filter to the query options
+        queryOptions.account_id = newAccountId;
+    } else {
+        // Remove account filter
+        delete queryOptions.account_id;
+    }
+});
 
 // Utility functions
 const formatHours = (minutes) => {

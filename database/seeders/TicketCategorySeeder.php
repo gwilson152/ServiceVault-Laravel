@@ -28,7 +28,7 @@ class TicketCategorySeeder extends Seeder
                 'default_priority_multiplier' => 1.00,
                 'default_estimated_hours' => 2,
                 'sla_hours' => 24, // 1 day SLA
-                'sort_order' => 1
+                'sort_order' => 1,
             ],
             [
                 'key' => 'maintenance',
@@ -45,7 +45,7 @@ class TicketCategorySeeder extends Seeder
                 'default_priority_multiplier' => 0.75,
                 'default_estimated_hours' => 4,
                 'sla_hours' => 72, // 3 days SLA
-                'sort_order' => 2
+                'sort_order' => 2,
             ],
             [
                 'key' => 'development',
@@ -62,7 +62,7 @@ class TicketCategorySeeder extends Seeder
                 'default_priority_multiplier' => 1.25,
                 'default_estimated_hours' => 8,
                 'sla_hours' => 168, // 1 week SLA
-                'sort_order' => 3
+                'sort_order' => 3,
             ],
             [
                 'key' => 'consulting',
@@ -79,7 +79,7 @@ class TicketCategorySeeder extends Seeder
                 'default_priority_multiplier' => 1.50,
                 'default_estimated_hours' => 6,
                 'sla_hours' => 120, // 5 days SLA
-                'sort_order' => 4
+                'sort_order' => 4,
             ],
             [
                 'key' => 'emergency',
@@ -96,7 +96,7 @@ class TicketCategorySeeder extends Seeder
                 'default_priority_multiplier' => 2.00,
                 'default_estimated_hours' => 1,
                 'sla_hours' => 4, // 4 hours SLA
-                'sort_order' => 5
+                'sort_order' => 5,
             ],
             [
                 'key' => 'training',
@@ -113,7 +113,7 @@ class TicketCategorySeeder extends Seeder
                 'default_priority_multiplier' => 0.50,
                 'default_estimated_hours' => 3,
                 'sla_hours' => 96, // 4 days SLA
-                'sort_order' => 6
+                'sort_order' => 6,
             ],
             [
                 'key' => 'documentation',
@@ -130,13 +130,13 @@ class TicketCategorySeeder extends Seeder
                 'default_priority_multiplier' => 0.75,
                 'default_estimated_hours' => 2,
                 'sla_hours' => 120, // 5 days SLA
-                'sort_order' => 7
-            ]
+                'sort_order' => 7,
+            ],
         ];
 
         foreach ($categories as $categoryData) {
             TicketCategory::updateOrCreate(
-                ['key' => $categoryData['key']], 
+                ['key' => $categoryData['key']],
                 $categoryData
             );
         }

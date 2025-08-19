@@ -110,7 +110,7 @@
                     {{ timer.status }}
                   </span>
                   <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                    {{ timer.formatted_duration }}
+                    {{ formatDuration(timer.duration_seconds) }}
                   </span>
                 </div>
                 <div class="mt-1 flex items-center text-sm text-gray-500">
@@ -119,6 +119,8 @@
                   <p v-if="timer.ticket">Ticket: #{{ timer.ticket.ticket_number }}</p>
                   <span v-if="timer.user_name && canViewAllTimers" class="mx-2">•</span>
                   <p v-if="timer.user_name && canViewAllTimers">{{ timer.user_name }}</p>
+                  <span v-if="timer.account" class="mx-2">•</span>
+                  <p v-if="timer.account">{{ timer.account.name }}</p>
                   <span v-if="timer.running_amount > 0" class="mx-2">•</span>
                   <p v-if="timer.running_amount > 0" class="font-medium text-green-600">${{ formatCurrency(timer.running_amount) }}</p>
                 </div>
@@ -126,21 +128,28 @@
             </div>
             <div class="flex items-center space-x-2">
               <button
-                v-if="timer.status === 'running' && (timer.can_control || isAdmin)"
+                v-if="timer.can_pause"
                 @click="pauseTimer(timer.id)"
                 class="text-yellow-600 hover:text-yellow-900 text-sm font-medium"
               >
                 Pause
               </button>
               <button
-                v-if="timer.status === 'paused' && (timer.can_control || isAdmin)"
+                v-if="timer.can_resume"
                 @click="resumeTimer(timer.id)"
                 class="text-green-600 hover:text-green-900 text-sm font-medium"
               >
                 Resume
               </button>
               <button
-                v-if="timer.can_control || isAdmin"
+                v-if="timer.can_cancel"
+                @click="cancelTimer(timer.id)"
+                class="text-orange-600 hover:text-orange-900 text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                v-if="timer.can_control"
                 @click="stopTimer(timer.id)"
                 class="text-red-600 hover:text-red-900 text-sm font-medium"
               >
@@ -272,61 +281,40 @@ const formatDate = (dateString) => {
 const loadTimers = async () => {
   loading.value = true
   try {
-    let endpoint = '/api/timers/user/active'
-    
-    // If user can view all timers, use the admin endpoint
-    if (canViewAllTimers.value) {
-      endpoint = '/api/admin/timers/all-active'
-    }
+    // Use the new enhanced endpoint with permission-based controls
+    const endpoint = '/api/timers/active-with-controls'
     
     const response = await axios.get(endpoint)
     
-    // Handle different response formats
+    // Handle the new enhanced response format
     if (response.data.data) {
-      if (Array.isArray(response.data.data)) {
-        // User's own timers format
-        timers.value = response.data.data.map(timer => ({
-          ...timer,
-          formatted_duration: formatDuration(timer.duration_seconds || 0),
-          running_amount: timer.running_amount || 0,
-          can_control: true,
-          can_commit: true
-        }))
-      } else if (response.data.data.length !== undefined) {
-        // All timers admin format
-        timers.value = response.data.data.map(timerData => {
-          const timer = timerData.timer || timerData
-          const timerUser = timerData.user
-          const calculations = timerData.calculations || {}
-          
-          return {
-            ...timer,
-            user_name: timerUser?.name || 'Unknown User',
-            user_id: timerUser?.id,
-            formatted_duration: formatDuration(calculations.duration_seconds || timer.duration_seconds || 0),
-            running_amount: calculations.running_amount || timer.running_amount || 0,
-            can_control: canManageTimers.value || timer.user_id === user.value.id,
-            can_commit: timer.user_id === user.value.id
-          }
-        })
-        
-        // Set stats from totals if available
-        if (response.data.totals) {
-          stats.value = response.data.totals
+      timers.value = response.data.data.map(timer => ({
+        ...timer,
+        // Map permissions to old format for compatibility
+        can_control: timer.permissions?.can_control || false,
+        can_pause: timer.permissions?.can_pause || false,
+        can_resume: timer.permissions?.can_resume || false,
+        can_cancel: timer.permissions?.can_cancel || false,
+        can_commit: timer.permissions?.can_commit || false,
+        can_edit: timer.permissions?.can_edit || false
+      }))
+      
+      // Set stats from the new stats format
+      if (response.data.stats) {
+        stats.value = {
+          active_timers: response.data.stats.active_timers || 0,
+          total_amount: response.data.stats.total_amount || 0,
+          total_duration: response.data.stats.total_duration || 0
         }
+      }
+      
+      // Store user permissions for UI display
+      if (response.data.user_permissions) {
+        canViewAllTimers.value = response.data.user_permissions.can_view_all_timers
+        canManageTimers.value = response.data.user_permissions.can_manage_timers
       }
     } else {
       timers.value = []
-    }
-    
-    // Calculate stats if not provided and we have timer data
-    if (!stats.value && timers.value.length > 0) {
-      stats.value = {
-        active_timers: timers.value.length,
-        total_amount: timers.value.reduce((sum, timer) => sum + (timer.running_amount || 0), 0),
-        total_duration: timers.value.reduce((sum, timer) => sum + (timer.duration_seconds || 0), 0)
-      }
-    } else if (!stats.value) {
       stats.value = {
         active_timers: 0,
         total_amount: 0,
@@ -349,7 +337,14 @@ const refreshTimers = () => {
 
 const pauseTimer = async (timerId) => {
   try {
-    const endpoint = canManageTimers.value ? `/api/admin/timers/${timerId}/pause` : `/api/timers/${timerId}/pause`
+    // Find the timer to check permissions
+    const timer = timers.value.find(t => t.id === timerId)
+    const isOwn = timer?.user_id === user.value?.id
+    
+    const endpoint = isOwn ? 
+      `/api/timers/${timerId}/pause` : 
+      `/api/admin/timers/${timerId}/pause`
+      
     await axios.post(endpoint)
     await loadTimers() // Refresh data
   } catch (error) {
@@ -360,7 +355,14 @@ const pauseTimer = async (timerId) => {
 
 const resumeTimer = async (timerId) => {
   try {
-    const endpoint = canManageTimers.value ? `/api/admin/timers/${timerId}/resume` : `/api/timers/${timerId}/resume`
+    // Find the timer to check permissions
+    const timer = timers.value.find(t => t.id === timerId)
+    const isOwn = timer?.user_id === user.value?.id
+    
+    const endpoint = isOwn ? 
+      `/api/timers/${timerId}/resume` : 
+      `/api/admin/timers/${timerId}/resume`
+      
     await axios.post(endpoint)
     await loadTimers() // Refresh data
   } catch (error) {
@@ -373,12 +375,39 @@ const stopTimer = async (timerId) => {
   if (!confirm('Are you sure you want to stop this timer?')) return
   
   try {
-    const endpoint = canManageTimers.value ? `/api/admin/timers/${timerId}/stop` : `/api/timers/${timerId}/stop`
+    // Find the timer to check permissions
+    const timer = timers.value.find(t => t.id === timerId)
+    const isOwn = timer?.user_id === user.value?.id
+    
+    const endpoint = isOwn ? 
+      `/api/timers/${timerId}/stop` : 
+      `/api/admin/timers/${timerId}/stop`
+      
     await axios.post(endpoint)
     await loadTimers() // Refresh data
   } catch (error) {
     console.error('Error stopping timer:', error)
     alert('Failed to stop timer: ' + (error.response?.data?.message || error.message))
+  }
+}
+
+const cancelTimer = async (timerId) => {
+  if (!confirm('Are you sure you want to cancel this timer? This will mark it as canceled without creating a time entry.')) return
+  
+  try {
+    // Find the timer to check permissions
+    const timer = timers.value.find(t => t.id === timerId)
+    const isOwn = timer?.user_id === user.value?.id
+    
+    const endpoint = isOwn ? 
+      `/api/timers/${timerId}/cancel` : 
+      `/api/admin/timers/${timerId}/cancel`
+      
+    await axios.post(endpoint)
+    await loadTimers() // Refresh data
+  } catch (error) {
+    console.error('Error canceling timer:', error)
+    alert('Failed to cancel timer: ' + (error.response?.data?.message || error.message))
   }
 }
 

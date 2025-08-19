@@ -28,7 +28,7 @@ class UserResource extends JsonResource
             'last_login_at' => $this->last_login_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
+
             // Account information (single relationship)
             'account_id' => $this->account_id,
             'account' => $this->whenLoaded('account', function () {
@@ -41,7 +41,7 @@ class UserResource extends JsonResource
                     'hierarchy_level' => $this->account->hierarchy_level,
                 ];
             }),
-            
+
             // Role template information (single relationship)
             'role_template_id' => $this->role_template_id,
             'role_template' => $this->whenLoaded('roleTemplate', function () {
@@ -56,13 +56,13 @@ class UserResource extends JsonResource
                     'permissions' => $this->roleTemplate->getAllPermissions(),
                 ];
             }),
-            
+
             // Permission information
             'is_super_admin' => $this->isSuperAdmin(),
             'permissions' => $this->when($request->user()->isSuperAdmin() || $request->user()->hasAnyPermission(['admin.read', 'admin.manage']), function () {
                 return $this->getAllPermissions();
             }),
-            
+
             // Activity statistics
             'statistics' => $this->when($this->relationLoaded('timers') || $this->relationLoaded('timeEntries'), function () {
                 return [
@@ -74,7 +74,7 @@ class UserResource extends JsonResource
                     'total_timers_created' => $this->timers()->count(),
                 ];
             }),
-            
+
             // Recent activity (limited when loaded)
             'recent_timers' => $this->whenLoaded('timers', function () {
                 return $this->timers->take(5)->map(function ($timer) {
@@ -88,7 +88,7 @@ class UserResource extends JsonResource
                     ];
                 });
             }),
-            
+
             'recent_time_entries' => $this->whenLoaded('timeEntries', function () {
                 return $this->timeEntries->take(10)->map(function ($timeEntry) {
                     return [
@@ -104,7 +104,7 @@ class UserResource extends JsonResource
                     ];
                 });
             }),
-            
+
         ];
     }
 }

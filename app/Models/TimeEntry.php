@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TimeEntry extends Model
 {
-    use HasFactory, SoftDeletes, HasUuid;
+    use HasFactory, HasUuid, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -71,7 +70,6 @@ class TimeEntry extends Model
         return $this->belongsTo(User::class);
     }
 
-
     /**
      * Get the account associated with the time entry.
      */
@@ -120,7 +118,6 @@ class TimeEntry extends Model
         return $query->where('ticket_id', $ticketId);
     }
 
-
     /**
      * Scope a query to only include entries within a date range.
      */
@@ -155,60 +152,52 @@ class TimeEntry extends Model
 
     /**
      * Get the formatted duration (duration stored in minutes).
-     *
-     * @return string
      */
     public function getDurationFormattedAttribute(): string
     {
         $totalMinutes = $this->duration; // Duration is stored in minutes
         $hours = floor($totalMinutes / 60);
         $minutes = $totalMinutes % 60;
-        
+
         if ($hours > 0) {
             return sprintf('%d:%02d', $hours, $minutes);
         }
-        
+
         return sprintf('%d min', $minutes);
     }
 
     /**
      * Calculate the cost based on duration and rate (duration stored in minutes).
-     *
-     * @return float|null
      */
     public function getCalculatedCostAttribute(): ?float
     {
-        if (!$this->billable || !$this->rate_at_time) {
+        if (! $this->billable || ! $this->rate_at_time) {
             return null;
         }
 
         $hours = $this->duration / 60; // Convert minutes to hours
-        
+
         return round($hours * $this->rate_at_time, 2);
     }
 
     /**
      * Validate that a user can create time entries.
      * Only Agents (service providers) can create time entries.
-     * 
-     * @param User $user
-     * @return bool
+     *
      * @throws \Exception
      */
     public static function validateUserCanCreateTimeEntry(User $user): bool
     {
-        if (!$user->canCreateTimeEntries()) {
+        if (! $user->canCreateTimeEntries()) {
             throw new \Exception('Only Agents can create time entries. Account Users (customers) cannot log time.');
         }
-        
+
         return true;
     }
 
     /**
      * Validate time entry data before creation.
-     * 
-     * @param array $data
-     * @return bool
+     *
      * @throws \Exception
      */
     public static function validateTimeEntryData(array $data): bool
@@ -217,22 +206,20 @@ class TimeEntry extends Model
         if (empty($data['account_id'])) {
             throw new \Exception('Time entries must be associated with a customer account for billing purposes.');
         }
-        
+
         // If ticket_id is provided, ensure consistency with account_id
-        if (!empty($data['ticket_id']) && !empty($data['account_id'])) {
+        if (! empty($data['ticket_id']) && ! empty($data['account_id'])) {
             $ticket = Ticket::find($data['ticket_id']);
             if ($ticket && $ticket->account_id !== $data['account_id']) {
                 throw new \Exception('Time entry account must match the ticket\'s account.');
             }
         }
-        
+
         return true;
     }
 
     /**
      * Check if the time entry can be edited.
-     *
-     * @return bool
      */
     public function canEdit(): bool
     {
@@ -241,8 +228,6 @@ class TimeEntry extends Model
 
     /**
      * Check if the time entry is pending approval.
-     *
-     * @return bool
      */
     public function isPending(): bool
     {
@@ -251,8 +236,6 @@ class TimeEntry extends Model
 
     /**
      * Check if the time entry is approved.
-     *
-     * @return bool
      */
     public function isApproved(): bool
     {
@@ -261,10 +244,6 @@ class TimeEntry extends Model
 
     /**
      * Approve the time entry.
-     *
-     * @param int $approvedBy
-     * @param string|null $notes
-     * @return bool
      */
     public function approve(int $approvedBy, ?string $notes = null): bool
     {
@@ -272,16 +251,12 @@ class TimeEntry extends Model
         $this->approved_by = $approvedBy;
         $this->approved_at = now();
         $this->approval_notes = $notes;
-        
+
         return $this->save();
     }
 
     /**
      * Reject the time entry.
-     *
-     * @param int $rejectedBy
-     * @param string|null $notes
-     * @return bool
      */
     public function reject(int $rejectedBy, ?string $notes = null): bool
     {
@@ -289,7 +264,7 @@ class TimeEntry extends Model
         $this->approved_by = $rejectedBy;
         $this->approved_at = now();
         $this->approval_notes = $notes;
-        
+
         return $this->save();
     }
 }

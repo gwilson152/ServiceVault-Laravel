@@ -29,11 +29,11 @@ return new class extends Migration
             $table->json('billing_items')->nullable(); // Predefined items/rates
             $table->json('metadata')->nullable();
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
             $table->foreign('created_by_user_id')->references('id')->on('users')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['account_id', 'is_active']);
             $table->index('next_billing_date');

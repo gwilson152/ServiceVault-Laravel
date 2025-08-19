@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Ticket;
 
 class TicketResource extends JsonResource
 {
@@ -20,36 +20,36 @@ class TicketResource extends JsonResource
             'ticket_number' => $this->ticket_number,
             'title' => $this->title,
             'description' => $this->description,
-            
+
             // Status and priority
             'status' => $this->status,
             'priority' => $this->priority,
             'category' => $this->category,
-            
+
             // Assignment and billing
             'estimated_hours' => $this->estimated_hours,
             'estimated_amount' => $this->estimated_amount,
             'actual_amount' => $this->actual_amount,
-            
+
             // Dates and time tracking
             'due_date' => $this->due_date,
             'started_at' => $this->started_at,
             'completed_at' => $this->completed_at,
             'resolved_at' => $this->resolved_at,
             'closed_at' => $this->closed_at,
-            
+
             // Timestamps
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
+
             // Relationships
             'account' => $this->whenLoaded('account', function () {
                 return [
                     'id' => $this->account->id,
-                    'name' => $this->account->name
+                    'name' => $this->account->name,
                 ];
             }),
-            
+
             'created_by' => $this->whenLoaded('createdBy', function () {
                 return [
                     'id' => $this->createdBy->id,
@@ -57,10 +57,10 @@ class TicketResource extends JsonResource
                     'email' => $this->when(
                         isset($this->createdBy->email),
                         $this->createdBy->email
-                    )
+                    ),
                 ];
             }),
-            
+
             'agent' => $this->whenLoaded('agent', function () {
                 return $this->agent ? [
                     'id' => $this->agent->id,
@@ -68,10 +68,10 @@ class TicketResource extends JsonResource
                     'email' => $this->when(
                         isset($this->agent->email),
                         $this->agent->email
-                    )
+                    ),
                 ] : null;
             }),
-            
+
             'customer' => $this->when($this->customer_id || $this->customer_name, function () {
                 if ($this->customer) {
                     return $this->whenLoaded('customer', function () {
@@ -88,7 +88,7 @@ class TicketResource extends JsonResource
                     ];
                 }
             }),
-            
+
             // Legacy field for backward compatibility
             'assigned_to' => $this->whenLoaded('assignedTo', function () {
                 return $this->assignedTo ? [
@@ -97,10 +97,10 @@ class TicketResource extends JsonResource
                     'email' => $this->when(
                         isset($this->assignedTo->email),
                         $this->assignedTo->email
-                    )
+                    ),
                 ] : null;
             }),
-            
+
             'assigned_users' => $this->whenLoaded('assignedUsers', function () {
                 return $this->assignedUsers->map(function ($user) {
                     return [
@@ -108,18 +108,18 @@ class TicketResource extends JsonResource
                         'name' => $user->name,
                         'email' => $user->email,
                         'role' => $user->pivot->role ?? 'assignee',
-                        'assigned_at' => $user->pivot->assigned_at
+                        'assigned_at' => $user->pivot->assigned_at,
                     ];
                 });
             }),
-            
+
             'billing_rate' => $this->whenLoaded('billingRate', function () {
                 return $this->billingRate ? [
                     'id' => $this->billingRate->id,
-                    'rate' => $this->billingRate->rate
+                    'rate' => $this->billingRate->rate,
                 ] : null;
             }),
-            
+
             // Status and category models
             'status_model' => $this->whenLoaded('statusModel', function () {
                 return $this->statusModel ? [
@@ -128,10 +128,10 @@ class TicketResource extends JsonResource
                     'color' => $this->statusModel->color,
                     'bg_color' => $this->statusModel->bg_color,
                     'icon' => $this->statusModel->icon,
-                    'is_closed' => $this->statusModel->is_closed
+                    'is_closed' => $this->statusModel->is_closed,
                 ] : null;
             }),
-            
+
             'category_model' => $this->whenLoaded('categoryModel', function () {
                 return $this->categoryModel ? [
                     'key' => $this->categoryModel->key,
@@ -140,10 +140,10 @@ class TicketResource extends JsonResource
                     'bg_color' => $this->categoryModel->bg_color,
                     'icon' => $this->categoryModel->icon,
                     'sla_hours' => $this->categoryModel->sla_hours,
-                    'formatted_sla' => $this->categoryModel->formatted_sla
+                    'formatted_sla' => $this->categoryModel->formatted_sla,
                 ] : null;
             }),
-            
+
             // Time tracking data
             'time_entries' => $this->whenLoaded('timeEntries', function () {
                 return $this->timeEntries->map(function ($entry) {
@@ -151,22 +151,22 @@ class TicketResource extends JsonResource
                         'id' => $entry->id,
                         'duration' => $entry->duration,
                         'billable' => $entry->billable,
-                        'created_at' => $entry->created_at
+                        'created_at' => $entry->created_at,
                     ];
                 });
             }),
-            
+
             'timers' => $this->whenLoaded('timers', function () {
                 return $this->timers->map(function ($timer) {
                     return [
                         'id' => $timer->id,
                         'status' => $timer->status,
                         'started_at' => $timer->started_at,
-                        'duration' => $timer->duration
+                        'duration' => $timer->duration,
                     ];
                 });
             }),
-            
+
             'addons' => $this->whenLoaded('addons', function () {
                 return $this->addons->map(function ($addon) {
                     return [
@@ -174,11 +174,11 @@ class TicketResource extends JsonResource
                         'name' => $addon->name,
                         'status' => $addon->status,
                         'total' => $addon->total,
-                        'created_at' => $addon->created_at
+                        'created_at' => $addon->created_at,
                     ];
                 });
             }),
-            
+
             // Calculated fields
             'is_overdue' => $this->isOverdue(),
             'total_time_logged' => $this->getTotalTimeLogged(),
@@ -191,25 +191,25 @@ class TicketResource extends JsonResource
             'pending_addon_cost' => $this->getPendingAddonCost(),
             'hours_logged' => round($this->getTotalTimeLogged() / 3600, 2),
             'billable_hours' => round($this->getTotalBillableTime() / 3600, 2),
-            
+
             // Status indicators for frontend
             'status_color' => $this->getStatusColor(),
             'priority_color' => $this->getPriorityColor(),
             'status_label' => $this->getStatusLabel(),
             'priority_label' => $this->getPriorityLabel(),
-            
+
             // Permission flags for frontend
             'can_edit' => $this->canBeEditedBy($request->user()),
             'can_view' => $this->canBeViewedBy($request->user()),
             'can_assign' => $this->canAssign($request->user()),
             'can_transition' => $this->getAvailableTransitions(),
-            
+
             // Metadata
             'metadata' => $this->metadata,
             'settings' => $this->settings,
         ];
     }
-    
+
     /**
      * Get status color for frontend display
      */
@@ -226,7 +226,7 @@ class TicketResource extends JsonResource
             default => 'gray'
         };
     }
-    
+
     /**
      * Get priority color for frontend display
      */
@@ -240,7 +240,7 @@ class TicketResource extends JsonResource
             default => 'gray'
         };
     }
-    
+
     /**
      * Get human-readable status label
      */
@@ -257,7 +257,7 @@ class TicketResource extends JsonResource
             default => ucfirst($this->status)
         };
     }
-    
+
     /**
      * Get human-readable priority label
      */
@@ -271,7 +271,7 @@ class TicketResource extends JsonResource
             default => ucfirst($this->priority)
         };
     }
-    
+
     /**
      * Check if user can assign this ticket
      */
@@ -280,7 +280,7 @@ class TicketResource extends JsonResource
         return $user->isSuperAdmin() ||
                $user->hasAnyPermission(['admin.write', 'tickets.assign', 'teams.manage']);
     }
-    
+
     /**
      * Get available status transitions for this user
      */
@@ -295,7 +295,7 @@ class TicketResource extends JsonResource
             Ticket::STATUS_CLOSED => [],
             Ticket::STATUS_CANCELLED => [],
         ];
-        
+
         return $allTransitions[$this->status] ?? [];
     }
 }

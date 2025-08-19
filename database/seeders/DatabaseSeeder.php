@@ -8,7 +8,7 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
-     * 
+     *
      * Note: User creation is handled by the setup page (/setup)
      * This seeder only contains system reference data.
      */

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,27 +10,28 @@ class Setting extends Model
 {
     /** @use HasFactory<\Database\Factories\SettingFactory> */
     use HasFactory, HasUuid;
-    
+
     protected $fillable = [
         'key',
         'value',
         'type',
         'description',
     ];
-    
+
     protected $casts = [
         'value' => 'json',
     ];
-    
+
     /**
      * Get a setting value by key.
      */
     public static function getValue(string $key, $default = null)
     {
         $setting = static::where('key', $key)->first();
+
         return $setting ? $setting->value : $default;
     }
-    
+
     /**
      * Set a setting value by key.
      */
@@ -42,7 +42,7 @@ class Setting extends Model
             ['value' => $value, 'type' => $type]
         );
     }
-    
+
     /**
      * Get all settings of a specific type.
      */

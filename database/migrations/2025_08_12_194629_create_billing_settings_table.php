@@ -34,10 +34,10 @@ return new class extends Migration
             $table->text('payment_instructions')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
-            
+
             // Foreign key
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
-            
+
             // Indexes
             $table->index('account_id');
         });

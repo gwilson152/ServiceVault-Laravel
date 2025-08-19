@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\TicketStatus;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class TicketStatusSeeder extends Seeder
@@ -25,7 +24,7 @@ class TicketStatusSeeder extends Seeder
                 'is_default' => true,
                 'is_closed' => false,
                 'billable' => true,
-                'sort_order' => 1
+                'sort_order' => 1,
             ],
             [
                 'key' => 'in_progress',
@@ -38,7 +37,7 @@ class TicketStatusSeeder extends Seeder
                 'is_default' => false,
                 'is_closed' => false,
                 'billable' => true,
-                'sort_order' => 2
+                'sort_order' => 2,
             ],
             [
                 'key' => 'waiting_customer',
@@ -51,7 +50,7 @@ class TicketStatusSeeder extends Seeder
                 'is_default' => false,
                 'is_closed' => false,
                 'billable' => false,
-                'sort_order' => 3
+                'sort_order' => 3,
             ],
             [
                 'key' => 'on_hold',
@@ -64,7 +63,7 @@ class TicketStatusSeeder extends Seeder
                 'is_default' => false,
                 'is_closed' => false,
                 'billable' => false,
-                'sort_order' => 4
+                'sort_order' => 4,
             ],
             [
                 'key' => 'resolved',
@@ -77,7 +76,7 @@ class TicketStatusSeeder extends Seeder
                 'is_default' => false,
                 'is_closed' => false,
                 'billable' => true,
-                'sort_order' => 5
+                'sort_order' => 5,
             ],
             [
                 'key' => 'closed',
@@ -90,7 +89,7 @@ class TicketStatusSeeder extends Seeder
                 'is_default' => false,
                 'is_closed' => true,
                 'billable' => false,
-                'sort_order' => 6
+                'sort_order' => 6,
             ],
             [
                 'key' => 'cancelled',
@@ -103,8 +102,8 @@ class TicketStatusSeeder extends Seeder
                 'is_default' => false,
                 'is_closed' => true,
                 'billable' => false,
-                'sort_order' => 7
-            ]
+                'sort_order' => 7,
+            ],
         ];
 
         foreach ($statuses as $statusData) {
@@ -115,7 +114,7 @@ class TicketStatusSeeder extends Seeder
         }
 
         if ($this->command) {
-            $this->command->info('Created ' . count($statuses) . ' ticket statuses');
+            $this->command->info('Created '.count($statuses).' ticket statuses');
         }
     }
 }

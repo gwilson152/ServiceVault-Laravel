@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('category')->nullable();
             $table->timestamps();
-            
+
             // Indexes
             $table->index('category');
         });

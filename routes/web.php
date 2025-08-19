@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\DynamicDashboardController;
 use App\Http\Controllers\Dashboard\AdminDashboardController;
 use App\Http\Controllers\Dashboard\EmployeeDashboardController;
 use App\Http\Controllers\Dashboard\ManagerDashboardController;
+use App\Http\Controllers\DynamicDashboardController;
 use App\Http\Controllers\Portal\CustomerPortalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SetupController;
@@ -23,10 +23,10 @@ Route::prefix('invitations')->name('invitations.')->group(function () {
     Route::get('accept/{token}', function ($token) {
         return Inertia::render('Invitations/Accept', ['token' => $token]);
     })->name('accept.form');
-    
+
     Route::get('api/{token}', [App\Http\Controllers\UserInvitationController::class, 'showByToken'])
         ->name('api.show');
-    
+
     Route::post('api/{token}/accept', [App\Http\Controllers\UserInvitationController::class, 'accept'])
         ->name('api.accept');
 });
@@ -55,7 +55,7 @@ Route::middleware(['auth', 'verified', 'dashboard.role:admin'])->prefix('dashboa
     Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');
 });
 
-// Manager Dashboard Routes  
+// Manager Dashboard Routes
 Route::middleware(['auth', 'verified', 'dashboard.role:manager'])->prefix('dashboard/manager')->name('dashboard.manager.')->group(function () {
     Route::get('/', [ManagerDashboardController::class, 'index'])->name('index');
     Route::get('/team', [ManagerDashboardController::class, 'team'])->name('team');
@@ -85,62 +85,61 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tickets', [App\Http\Controllers\Api\TicketController::class, 'indexView'])->name('tickets.index');
     Route::get('/tickets/create', [App\Http\Controllers\Api\TicketController::class, 'create'])->name('tickets.create');
     Route::get('/tickets/{ticket}/{tab?}', [App\Http\Controllers\Api\TicketController::class, 'showView'])->name('tickets.show')
-         ->where('tab', '(messages|time|addons|activity|billing)');
-    
-    
+        ->where('tab', '(messages|time|addons|activity|billing)');
+
     // Placeholder routes for navigation (to be implemented later)
     Route::get('/time-entries/{tab?}', function ($tab = null) {
         return Inertia::render('TimeEntries/Index', [
-            'activeTab' => $tab ?: 'time-entries'
+            'activeTab' => $tab ?: 'time-entries',
         ]);
     })->name('time-entries.index')->where('tab', '(time-entries|timers)');
-    
+
     Route::get('/reports', function () {
         return Inertia::render('Reports/Index');
     })->name('reports.index');
-    
+
     Route::get('/settings/{tab?}', function ($tab = null) {
         return Inertia::render('Settings/Index', [
-            'activeTab' => $tab
+            'activeTab' => $tab,
         ]);
     })->name('settings.index')->where('tab', '(system|email|tickets|billing|timer|users|advanced|reset)');
-    
+
     // User Management
     Route::get('/users', function () {
         return Inertia::render('Users/Index');
     })->name('users.index');
-    
+
     Route::get('/users/{user}', function ($user) {
         return Inertia::render('Users/Show', ['userId' => $user]);
     })->name('users.show');
-    
+
     // Billing Management
     Route::get('/billing', function () {
         return Inertia::render('Billing/Index');
     })->name('billing.index');
-    
+
     // Account Management
     Route::get('/accounts', function () {
         return Inertia::render('Accounts/Index');
     })->name('accounts.index');
-    
+
     Route::get('/accounts/{account}', function ($account) {
         return Inertia::render('Accounts/Show', ['accountId' => $account]);
     })->name('accounts.show');
-    
+
     // Roles & Permissions Management
     Route::get('/roles', function () {
         return Inertia::render('Roles/Index');
     })->name('roles.index');
-    
+
     Route::get('/roles/{roleTemplate}', function ($roleTemplate) {
         return Inertia::render('Roles/Show', ['roleTemplateId' => $roleTemplate]);
     })->name('roles.show');
-    
+
     Route::get('/roles/{roleTemplate}/edit', function ($roleTemplate) {
         return Inertia::render('Roles/Edit', ['roleTemplateId' => $roleTemplate]);
     })->name('roles.edit');
-    
+
     Route::get('/roles/create', function () {
         return Inertia::render('Roles/Create');
     })->name('roles.create');

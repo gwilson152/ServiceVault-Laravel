@@ -22,6 +22,10 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 **🎯 Platform Status:** Production-Ready
 
 **Recent Key Improvements:**
+- **Enhanced Edit Ticket Dialog Preselection**: Edit ticket dialog now properly preselects account, customer, and agent with visual context indicators and activeSelection support
+- **Enhanced Time Entry Creation from Tickets**: Time entry creation from `/tickets/id` page now automatically preselects account, ticket, and proper billing rate hierarchy (account default → global default)
+- **Fixed Selector Dropdown Issues**: Resolved issue where searched selectors wouldn't close after item selection, improving user experience across all selector components
+- **Enhanced Unified Selector System**: Self-managing selectors with automatic data loading, debounced case-insensitive search, recent items tracking, focus preservation, and proper dropdown dismissal
 - **Enhanced Billing Rate System**: Complete overhaul of billing rate selection and display across timer creation, editing, and commit workflows
 - **Timer Billing Rate Preservation**: Timer commit now preserves original billing rates even when accounts have overriding rates with same names
 - **Improved Rate Auto-Selection**: Both timer creation and time entry dialogs properly auto-select account default → global default rates
@@ -33,7 +37,6 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Timer Performance Optimization**: Eliminated N+1 query problem in tickets list by embedding user-specific timer data in ticket API responses
 - **Account Hierarchy Removal**: Simplified account structure by removing complex hierarchy system while maintaining core functionality
 - **Setup Page Streamlining**: Updated setup wizard to remove account hierarchy configuration for cleaner initial setup experience
-- **Enhanced Unified Selector System**: Self-managing selectors with automatic data loading, debounced case-insensitive search, recent items tracking, and focus preservation
 - **StackedDialog Architecture**: All modals converted to use native dialog with proper stacking and z-index management
 - **Streamlined Ticket Creation**: Merged basic info and assignment tabs for improved user experience
 - **Enhanced Modal System**: Vertical expansion to fit content, proper modal stacking, and consistent UI
@@ -159,6 +162,7 @@ npm run dev             # Development with hot reload
 # GET    /api/search/users               # Search users with permission-aware filtering
 # GET    /api/search/agents              # Search agents with permission-aware filtering
 # GET    /api/search/billing-rates       # Search billing rates with permission-aware filtering
+# GET    /api/search/role-templates      # Search role templates with permission-aware filtering
 # Parameters: q (search term), limit, permission_level, sort_field, sort_direction, agent_type
 # Features: Case-insensitive search (ILIKE), debounced queries, intelligent ranking
 
@@ -251,6 +255,14 @@ Unified time management at `/time-entries` with tabbed interface (Time Entries +
 - **Permission-Based API Access**: `/api/timers/user/active` vs `/api/admin/timers/all-active`
 - **Auto-Refresh**: 30-second intervals for live updates
 - **Timer Commit Integration**: Automatic tab switching on commit
+- **Enhanced Ticket Context**: Time entry creation from `/tickets/id` automatically preselects account, ticket, and billing rate hierarchy
+
+**Ticket-Based Time Entry Creation:**
+When creating time entries from ticket pages (`/tickets/{id}`), the system now provides enhanced preselection:
+- **Account**: Automatically selected from the ticket's account
+- **Ticket**: Current ticket is preselected and displayed in context box
+- **Billing Rate**: Intelligent hierarchy selection (Account default → Global default → First available)
+- **Context Display**: Visual indicators showing preselected account and ticket information
 
 ## Multi-Timer System Architecture
 
@@ -278,6 +290,7 @@ Service Vault uses a **self-managing** `UnifiedSelector` component for consisten
 - `user` - User selection (customer users)
 - `agent` - Agent selection with feature-specific types (timer, ticket, time, billing)
 - `billing-rate` - Billing rate selection with hierarchy display
+- `role-template` - Role template selection for user assignment
 
 **Key Features:**
 - **Self-Managing Data**: Automatic data loading, search, and caching via TanStack Query
@@ -286,6 +299,7 @@ Service Vault uses a **self-managing** `UnifiedSelector` component for consisten
 - **Recent Items Tracking**: localStorage-based recent selections with API fallback
 - **Custom Sorting**: Configurable sort field and direction per selector
 - **Focus Preservation**: Input maintains focus during search operations
+- **Proper Dropdown Dismissal**: Fixed issue where dropdowns wouldn't close after selecting searched items
 - **Creation Support**: Built-in "Create New" options with proper modal stacking
 - **Type-Specific Configurations**: Icons, colors, badges, and behaviors per type
 - **Modal Stacking**: `nested` prop for proper z-index management
@@ -489,4 +503,4 @@ This CLAUDE.md file focuses on essential development context. For detailed imple
 
 ---
 
-*Last Updated: August 19, 2025 - Enhanced Unified Selector System: Complete overhaul of selector architecture to self-managing components. Selectors now automatically handle data loading, debounced case-insensitive search (PostgreSQL ILIKE), recent items tracking with localStorage, and focus preservation during search operations. Added new /api/search/* endpoints with permission-aware filtering and customizable sorting. Fixed query reactivity issues and dropdown state management for smooth search UX. Updated CreateTicketModalTabbed to use new selector architecture. All selectors now support sort-field, sort-direction, and filter-set props for enhanced customization.*
+*Last Updated: August 19, 2025 - Enhanced Edit Ticket Dialog & Context Improvements: Fixed edit ticket dialog preselection by adding activeSelection props and clearable functionality to UnifiedSelectors. Added comprehensive context display showing ticket #, account, and assigned agent information in edit mode. Enhanced time entry creation from ticket pages with automatic preselection and visual context indicators. Fixed critical dropdown dismissal issue in all selectors. Improved user experience with proper preselection logic and visual feedback across both time entry and ticket editing workflows.*

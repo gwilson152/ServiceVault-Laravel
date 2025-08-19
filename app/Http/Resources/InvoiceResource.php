@@ -55,7 +55,7 @@ class InvoiceResource extends JsonResource
             'payments_count' => $this->whenCounted('payments'),
             'total_paid' => $this->when(
                 $this->relationLoaded('payments'),
-                fn() => number_format($this->payments->where('status', 'completed')->sum('amount'), 2)
+                fn () => number_format($this->payments->where('status', 'completed')->sum('amount'), 2)
             ),
         ];
 

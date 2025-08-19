@@ -3,14 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Account;
-use App\Http\Requests\StoreAccountRequest;
-use App\Http\Requests\UpdateAccountRequest;
 use App\Http\Resources\AccountResource;
 use App\Http\Resources\UserResource;
+use App\Models\Account;
 use App\Services\PermissionService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AccountController extends Controller
 {
@@ -34,8 +32,8 @@ class AccountController extends Controller
         return response()->json([
             'data' => AccountResource::collection($accounts),
             'meta' => [
-                'total' => $accounts->count()
-            ]
+                'total' => $accounts->count(),
+            ],
         ]);
     }
 
@@ -45,33 +43,33 @@ class AccountController extends Controller
     public function users(Request $request, Account $account): JsonResponse
     {
         $user = $request->user();
-        
+
         // Check if user has permission to view this account's users
-        if (!$user->hasAnyPermission(['admin.read', 'admin.write', 'accounts.manage', 'users.manage.account'])) {
+        if (! $user->hasAnyPermission(['admin.read', 'admin.write', 'accounts.manage', 'users.manage.account'])) {
             // If not admin, only allow if it's their own account
             if ($account->id !== $user->account_id) {
                 return response()->json(['error' => 'Unauthorized access.'], 403);
             }
         }
-        
+
         $roleContext = $request->input('role_context'); // 'account_user' for customers, 'service_provider' for agents
-        
+
         $query = $account->users()->with(['roleTemplate']);
-        
+
         // Filter by role context if specified
         if ($roleContext) {
             $query->whereHas('roleTemplate', function ($roleQuery) use ($roleContext) {
                 $roleQuery->where('context', $roleContext);
             });
         }
-        
+
         // Apply pagination
         $perPage = min($request->input('per_page', 15), 100);
         $users = $query->paginate($perPage);
-        
+
         return response()->json([
             'data' => UserResource::collection($users),
-            'meta' => $users->toArray()
+            'meta' => $users->toArray(),
         ]);
     }
 
@@ -86,8 +84,8 @@ class AccountController extends Controller
             'data' => $accounts,
             'meta' => [
                 'count' => $accounts->count(),
-                'for_selector' => true
-            ]
+                'for_selector' => true,
+            ],
         ]);
     }
 
@@ -97,7 +95,7 @@ class AccountController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'account_type' => 'required|in:customer,prospect,partner,internal',
@@ -118,14 +116,14 @@ class AccountController extends Controller
             'billing_country' => 'nullable|string|max:100',
             'tax_id' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
-        
+
         $account = Account::create($validated);
-        
+
         return response()->json([
             'message' => 'Account created successfully',
-            'data' => new AccountResource($account)
+            'data' => new AccountResource($account),
         ], 201);
     }
 
@@ -135,9 +133,9 @@ class AccountController extends Controller
     public function show(Account $account): JsonResponse
     {
         $account->load(['users']);
-        
+
         return response()->json([
-            'data' => new AccountResource($account)
+            'data' => new AccountResource($account),
         ]);
     }
 
@@ -166,14 +164,14 @@ class AccountController extends Controller
             'billing_country' => 'nullable|string|max:100',
             'tax_id' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
-        
+
         $account->update($validated);
-        
+
         return response()->json([
             'message' => 'Account updated successfully',
-            'data' => new AccountResource($account)
+            'data' => new AccountResource($account),
         ]);
     }
 
@@ -181,18 +179,17 @@ class AccountController extends Controller
      * Remove the specified resource from storage.
      */
     public function destroy(Account $account): JsonResponse
-    {        
+    {
         if ($account->users()->exists()) {
             return response()->json([
-                'message' => 'Cannot delete account that has assigned users'
+                'message' => 'Cannot delete account that has assigned users',
             ], 422);
         }
-        
+
         $account->delete();
-        
+
         return response()->json([
-            'message' => 'Account deleted successfully'
+            'message' => 'Account deleted successfully',
         ]);
     }
-
 }

@@ -29,10 +29,10 @@ return new class extends Migration
             $table->integer('sla_hours')->nullable(); // SLA in hours
             $table->integer('sort_order')->default(0);
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['account_id', 'is_active']);
         });

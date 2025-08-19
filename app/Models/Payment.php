@@ -6,7 +6,6 @@ use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 
 class Payment extends Model
 {
@@ -44,7 +43,7 @@ class Payment extends Model
         parent::boot();
 
         static::creating(function ($payment) {
-            if (!$payment->net_amount) {
+            if (! $payment->net_amount) {
                 $payment->net_amount = $payment->amount - $payment->fees;
             }
         });
@@ -101,9 +100,9 @@ class Payment extends Model
     {
         $this->status = 'completed';
         $this->processed_at = now();
-        
+
         $result = $this->save();
-        
+
         // Update invoice status if fully paid
         if ($result && $this->invoice) {
             $totalPaid = $this->invoice->payments()->completed()->sum('amount');
@@ -111,23 +110,23 @@ class Payment extends Model
                 $this->invoice->update(['status' => 'paid']);
             }
         }
-        
+
         return $result;
     }
 
     public function getFormattedAmountAttribute(): string
     {
-        return '$' . number_format($this->amount, 2);
+        return '$'.number_format($this->amount, 2);
     }
 
     public function getFormattedNetAmountAttribute(): string
     {
-        return '$' . number_format($this->net_amount, 2);
+        return '$'.number_format($this->net_amount, 2);
     }
 
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'yellow',
             'completed' => 'green',
             'failed' => 'red',
@@ -139,7 +138,7 @@ class Payment extends Model
 
     public function getPaymentMethodLabelAttribute(): string
     {
-        return match($this->payment_method) {
+        return match ($this->payment_method) {
             'stripe' => 'Stripe',
             'paypal' => 'PayPal',
             'bank_transfer' => 'Bank Transfer',

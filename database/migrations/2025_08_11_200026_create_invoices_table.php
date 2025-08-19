@@ -25,11 +25,11 @@ return new class extends Migration
             $table->decimal('total', 10, 2)->default(0);
             $table->text('notes')->nullable();
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['account_id', 'status']);
             $table->index('invoice_number');

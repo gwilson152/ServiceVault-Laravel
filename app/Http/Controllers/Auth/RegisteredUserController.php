@@ -48,9 +48,9 @@ class RegisteredUserController extends Controller
         ]);
 
         // Assign user to account and role based on domain mapping
-        $assignmentService = new DomainAssignmentService();
+        $assignmentService = new DomainAssignmentService;
         $assignmentResult = $assignmentService->assignUserBasedOnDomain($user);
-        
+
         // Log assignment result
         Log::info('User registration assignment', [
             'user_id' => $user->id,
@@ -66,5 +66,4 @@ class RegisteredUserController extends Controller
 
         return redirect(route('dashboard', absolute: false));
     }
-
 }

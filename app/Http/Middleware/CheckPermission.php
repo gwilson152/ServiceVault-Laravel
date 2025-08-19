@@ -2,11 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Account;
+use App\Services\PermissionService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Services\PermissionService;
-use App\Models\Account;
 
 class CheckPermission
 {
@@ -28,30 +28,31 @@ class CheckPermission
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Authentication required');
         }
 
         // Check system-level permission if no account specified
-        if (!$accountParam) {
-            if (!$this->permissionService->hasSystemPermission($user, $permission)) {
+        if (! $accountParam) {
+            if (! $this->permissionService->hasSystemPermission($user, $permission)) {
                 abort(403, 'Insufficient permissions');
             }
+
             return $next($request);
         }
 
         // Check account-specific permission
         $accountId = $request->route($accountParam);
-        if (!$accountId) {
+        if (! $accountId) {
             abort(400, "Account parameter '{$accountParam}' not found in route");
         }
 
         $account = Account::find($accountId);
-        if (!$account) {
+        if (! $account) {
             abort(404, 'Account not found');
         }
 
-        if (!$this->permissionService->hasPermissionForAccount($user, $permission, $account)) {
+        if (! $this->permissionService->hasPermissionForAccount($user, $permission, $account)) {
             abort(403, 'Insufficient permissions for this account');
         }
 

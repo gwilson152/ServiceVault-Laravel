@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Account;
-use App\Models\Timer;
-use App\Models\TimeEntry;
-use App\Models\RoleTemplate;
 use App\Models\DomainMapping;
+use App\Models\RoleTemplate;
+use App\Models\TimeEntry;
+use App\Models\Timer;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class AdminDashboardController extends Controller
 {
@@ -21,18 +21,18 @@ class AdminDashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         // Verify admin access
-        if (!$user->hasPermission('admin.manage')) {
+        if (! $user->hasPermission('admin.manage')) {
             abort(403, 'Access denied. Admin permissions required.');
         }
 
         // Get system-wide statistics
         $stats = $this->getSystemStatistics();
-        
+
         // Get recent system activity
         $recentActivity = $this->getRecentSystemActivity();
-        
+
         // Get system health metrics
         $systemHealth = $this->getSystemHealthMetrics();
 
@@ -41,10 +41,10 @@ class AdminDashboardController extends Controller
             'stats' => $stats,
             'recentActivity' => $recentActivity,
             'systemHealth' => $systemHealth,
-            'dashboardType' => 'admin'
+            'dashboardType' => 'admin',
         ]);
     }
-    
+
     /**
      * User management interface
      */
@@ -54,17 +54,17 @@ class AdminDashboardController extends Controller
             ->withCount(['timers', 'timeEntries'])
             ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             })
             ->paginate(20);
 
         return Inertia::render('Dashboard/Admin/Users', [
             'title' => 'User Management',
             'users' => $users,
-            'dashboardType' => 'admin'
+            'dashboardType' => 'admin',
         ]);
     }
-    
+
     /**
      * Account hierarchy management
      */
@@ -80,10 +80,10 @@ class AdminDashboardController extends Controller
         return Inertia::render('Dashboard/Admin/Accounts', [
             'title' => 'Account Management',
             'accounts' => $accounts,
-            'dashboardType' => 'admin'
+            'dashboardType' => 'admin',
         ]);
     }
-    
+
     /**
      * Role template administration
      */
@@ -98,10 +98,10 @@ class AdminDashboardController extends Controller
         return Inertia::render('Dashboard/Admin/RoleTemplates', [
             'title' => 'Role Template Management',
             'roleTemplates' => $roleTemplates,
-            'dashboardType' => 'admin'
+            'dashboardType' => 'admin',
         ]);
     }
-    
+
     /**
      * Domain mapping configuration
      */
@@ -117,10 +117,10 @@ class AdminDashboardController extends Controller
         return Inertia::render('Dashboard/Admin/DomainMappings', [
             'title' => 'Domain Mapping Configuration',
             'domainMappings' => $domainMappings,
-            'dashboardType' => 'admin'
+            'dashboardType' => 'admin',
         ]);
     }
-    
+
     /**
      * System settings interface
      */
@@ -134,16 +134,16 @@ class AdminDashboardController extends Controller
             'sanctum_expiration' => config('sanctum.expiration'),
             'broadcast_connection' => config('broadcasting.default'),
             'cache_store' => config('cache.default'),
-            'queue_connection' => config('queue.default')
+            'queue_connection' => config('queue.default'),
         ];
 
         return Inertia::render('Dashboard/Admin/Settings', [
             'title' => 'System Settings',
             'settings' => $settings,
-            'dashboardType' => 'admin'
+            'dashboardType' => 'admin',
         ]);
     }
-    
+
     /**
      * Get system-wide statistics
      */
@@ -151,7 +151,7 @@ class AdminDashboardController extends Controller
     {
         $now = Carbon::now();
         $lastMonth = $now->copy()->subMonth();
-        
+
         return [
             'total_users' => User::count(),
             'total_accounts' => Account::count(),
@@ -161,67 +161,67 @@ class AdminDashboardController extends Controller
             'time_tracked_today' => TimeEntry::whereDate('started_at', $now->toDateString())
                 ->sum('duration'),
             'pending_approvals' => TimeEntry::where('status', 'pending')->count(),
-            'domain_mappings' => DomainMapping::where('is_active', true)->count()
+            'domain_mappings' => DomainMapping::where('is_active', true)->count(),
         ];
     }
-    
+
     /**
      * Get recent system activity
      */
     private function getRecentSystemActivity(): array
     {
         $activities = collect();
-        
+
         // Recent user registrations
         $recentUsers = User::latest()->limit(5)->get(['id', 'name', 'email', 'created_at']);
         foreach ($recentUsers as $user) {
             $activities->push([
-                'id' => 'user_' . $user->id,
+                'id' => 'user_'.$user->id,
                 'type' => 'user_created',
                 'title' => 'New user registered',
-                'description' => $user->name . ' (' . $user->email . ')',
+                'description' => $user->name.' ('.$user->email.')',
                 'created_at' => $user->created_at,
-                'user' => $user
+                'user' => $user,
             ]);
         }
-        
+
         // Recent timers
         $recentTimers = Timer::with(['user:id,name', 'account:id,name'])
             ->latest()->limit(5)->get();
         foreach ($recentTimers as $timer) {
             $activities->push([
-                'id' => 'timer_' . $timer->id,
+                'id' => 'timer_'.$timer->id,
                 'type' => 'timer_created',
                 'title' => 'Timer started',
-                'description' => ($timer->user ? $timer->user->name : 'Unknown user') . 
-                               ($timer->account ? ' for ' . $timer->account->name : ''),
+                'description' => ($timer->user ? $timer->user->name : 'Unknown user').
+                               ($timer->account ? ' for '.$timer->account->name : ''),
                 'created_at' => $timer->started_at ?? $timer->created_at,
                 'user' => $timer->user,
-                'account' => $timer->account
+                'account' => $timer->account,
             ]);
         }
-        
+
         // Recent time entries
         $recentTimeEntries = TimeEntry::with(['user:id,name', 'account:id,name'])
             ->latest()->limit(5)->get();
         foreach ($recentTimeEntries as $entry) {
             $activities->push([
-                'id' => 'time_entry_' . $entry->id,
+                'id' => 'time_entry_'.$entry->id,
                 'type' => 'time_entry_created',
                 'title' => 'Time entry logged',
-                'description' => ($entry->user ? $entry->user->name : 'Unknown user') . 
-                               ' logged ' . gmdate('H:i:s', $entry->duration) . 
-                               ($entry->account ? ' for ' . $entry->account->name : ''),
+                'description' => ($entry->user ? $entry->user->name : 'Unknown user').
+                               ' logged '.gmdate('H:i:s', $entry->duration).
+                               ($entry->account ? ' for '.$entry->account->name : ''),
                 'created_at' => $entry->started_at ?? $entry->created_at,
                 'user' => $entry->user,
-                'account' => $entry->account
+                'account' => $entry->account,
             ]);
         }
-        
+
         // Sort by created_at and return most recent 15 items
         return $activities->sortByDesc('created_at')->take(15)->values()->toArray();
     }
-    
+
     /**
      * Get system health metrics
      */
@@ -233,7 +233,7 @@ class AdminDashboardController extends Controller
         } catch (\Exception $e) {
             $dbStatus = 'error';
         }
-        
+
         try {
             // Check Redis connection using Laravel's Redis facade
             \Illuminate\Support\Facades\Redis::ping();
@@ -241,13 +241,13 @@ class AdminDashboardController extends Controller
         } catch (\Exception $e) {
             $redisStatus = 'error';
         }
-        
+
         return [
             'database' => $dbStatus,
             'redis' => $redisStatus,
             'storage_disk' => disk_free_space(storage_path()) > 1000000000 ? 'healthy' : 'warning',
             'queue_jobs' => \DB::table('jobs')->count(),
-            'failed_jobs' => \DB::table('failed_jobs')->count()
+            'failed_jobs' => \DB::table('failed_jobs')->count(),
         ];
     }
 }

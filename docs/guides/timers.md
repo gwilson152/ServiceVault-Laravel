@@ -78,9 +78,11 @@ Navigate to `/time-entries` for unified time management:
 - Export time data
 
 ### Active Timers Tab  
-- View all active timers (based on your permissions)
-- Control timers you have access to
-- Monitor team timer activity (managers/admins)
+- **Permission-Based Access**: View your own timers or all timers based on ABAC permissions
+- **Enhanced Timer Controls**: Pause, Resume, Cancel, Stop, and Commit actions with granular permission checks
+- **Real-Time Updates**: Auto-refresh every 30 seconds with live timer calculations
+- **Comprehensive Information**: Shows timer description, status, duration, account, ticket, billing rate, and calculated cost
+- **Multi-Level Management**: Own timers vs administrative control with proper endpoint selection
 
 ## Permissions & Access
 
@@ -145,12 +147,21 @@ Navigate to `/time-entries` for unified time management:
 GET    /api/timers                     # List user timers (paginated)
 POST   /api/timers                     # Start new timer
 GET    /api/timers/active/current      # Get all active timers with totals
+GET    /api/timers/active-with-controls # Enhanced active timers with ABAC permissions
 POST   /api/timers/{timer}/stop        # Stop timer
 POST   /api/timers/{timer}/pause       # Pause running timer
 POST   /api/timers/{timer}/resume      # Resume paused timer
+POST   /api/timers/{timer}/cancel      # Cancel timer (marks as canceled)
 POST   /api/timers/{timer}/commit      # Stop and convert to time entry
 PUT    /api/timers/{timer}             # Update timer details
 DELETE /api/timers/{timer}?force=true  # Force delete timer
+
+# Administrative Timer Management (Requires admin permissions)
+GET    /api/admin/timers/all-active    # Get all active timers system-wide
+POST   /api/admin/timers/{timer}/pause # Admin pause any timer
+POST   /api/admin/timers/{timer}/resume # Admin resume any timer
+POST   /api/admin/timers/{timer}/stop  # Admin stop any timer
+POST   /api/admin/timers/{timer}/cancel # Admin cancel any timer
 
 # Bulk Operations
 POST   /api/timers/sync                # Cross-device timer synchronization

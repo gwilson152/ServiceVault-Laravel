@@ -22,11 +22,11 @@ return new class extends Migration
             $table->boolean('is_default')->default(false);
             $table->json('metadata')->nullable();
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['account_id', 'is_active']);
             $table->index(['user_id', 'is_active']);

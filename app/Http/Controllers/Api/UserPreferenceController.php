@@ -4,9 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserPreference;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\Request;
 
 class UserPreferenceController extends Controller
 {
@@ -42,8 +41,8 @@ class UserPreferenceController extends Controller
             'message' => 'Preference saved successfully',
             'data' => [
                 'key' => $request->input('key'),
-                'value' => $request->input('value')
-            ]
+                'value' => $request->input('value'),
+            ],
         ]);
     }
 
@@ -69,8 +68,8 @@ class UserPreferenceController extends Controller
         return response()->json([
             'data' => [
                 'key' => $key,
-                'value' => $value
-            ]
+                'value' => $value,
+            ],
         ]);
     }
 
@@ -89,8 +88,8 @@ class UserPreferenceController extends Controller
             'message' => 'Preference updated successfully',
             'data' => [
                 'key' => $key,
-                'value' => $request->input('value')
-            ]
+                'value' => $request->input('value'),
+            ],
         ]);
     }
 
@@ -102,7 +101,7 @@ class UserPreferenceController extends Controller
         UserPreference::remove($request->user()->id, $key);
 
         return response()->json([
-            'message' => 'Preference deleted successfully'
+            'message' => 'Preference deleted successfully',
         ]);
     }
 
@@ -127,7 +126,7 @@ class UserPreferenceController extends Controller
 
         return response()->json([
             'message' => 'Preferences updated successfully',
-            'data' => $savedPreferences
+            'data' => $savedPreferences,
         ]);
     }
 }

@@ -72,12 +72,12 @@ class InvoiceLineItem extends Model
 
     public function getFormattedTotalAttribute(): string
     {
-        return '$' . number_format($this->total_amount, 2);
+        return '$'.number_format($this->total_amount, 2);
     }
 
     public function getFormattedUnitPriceAttribute(): string
     {
-        return '$' . number_format($this->unit_price, 2);
+        return '$'.number_format($this->unit_price, 2);
     }
 
     // Scopes

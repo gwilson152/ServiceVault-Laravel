@@ -27,7 +27,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->rememberToken();
             $table->timestamps();
-            
+
             // Foreign key constraints will be added after related tables are created
             // $table->foreign('account_id')->references('id')->on('accounts')->onDelete('set null');
             // $table->foreign('role_template_id')->references('id')->on('role_templates')->onDelete('set null');

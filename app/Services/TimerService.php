@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Timer;
-use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -43,7 +42,7 @@ class TimerService
 
         // Get timer duration in seconds
         $timerDurationSeconds = $timer->duration;
-        
+
         // If manual duration provided (in minutes), use that for time entry
         if ($manualDuration) {
             $timeEntryDurationMinutes = $manualDuration;
@@ -69,7 +68,7 @@ class TimerService
                 $timeEntry = $timer->convertToTimeEntry([
                     'duration' => $timeEntryDurationMinutes, // Store duration in minutes for time entry
                     'notes' => $notes,
-                    'rounded' => $roundTo > 0 && !$manualDuration,
+                    'rounded' => $roundTo > 0 && ! $manualDuration,
                     'round_to' => $roundTo,
                     'manual_override' => $manualDuration ? true : false,
                     'original_timer_duration' => $timerDurationSeconds, // Track original timer duration
@@ -81,7 +80,7 @@ class TimerService
                 $result['error'] = $e->getMessage();
                 $result['conversion_failed'] = true;
             }
-            
+
             // Calculate billed amount (convert time entry minutes to hours)
             if ($timer->billingRate) {
                 $hours = $timeEntryDurationMinutes / 60;
@@ -102,7 +101,7 @@ class TimerService
     {
         $userKey = "timer:user:{$timer->user_id}:active";
         $timerKey = "timer:user:{$timer->user_id}:timer:{$timer->id}";
-        
+
         $data = [
             'timer_id' => $timer->id,
             'status' => $timer->status,
@@ -147,7 +146,7 @@ class TimerService
         // Get active timer IDs from Redis
         $userKey = "timer:user:{$userId}:active";
         $timerIds = Redis::smembers($userKey);
-        
+
         $timers = [];
         // Handle case where Redis returns false (empty set)
         if ($timerIds && is_array($timerIds)) {
@@ -161,7 +160,7 @@ class TimerService
         }
 
         // Cache the result
-        if (!empty($timers)) {
+        if (! empty($timers)) {
             Cache::put("user.{$userId}.active_timers", $timers, now()->addHours(24));
         }
 
@@ -176,7 +175,7 @@ class TimerService
         // Clear existing cache
         Cache::forget("user.{$userId}.active_timers");
         Cache::forget("user.{$userId}.current_timer");
-        
+
         // Rebuild cache with fresh data
         $this->getRedisState($userId);
     }
@@ -188,13 +187,13 @@ class TimerService
     {
         $userKey = "timer:user:{$timer->user_id}:active";
         $timerKey = "timer:user:{$timer->user_id}:timer:{$timer->id}";
-        
+
         // Remove timer from active list
         Redis::srem($userKey, $timer->id);
-        
+
         // Delete individual timer data
         Redis::del($timerKey);
-        
+
         // Refresh cache
         $this->refreshActiveTimersCache($timer->user_id);
     }
@@ -215,12 +214,12 @@ class TimerService
         foreach ($activeTimers as $timer) {
             // Check if this timer exists in Redis
             $redisTimer = collect($redisStates)->firstWhere('timer_id', $timer->id);
-            
+
             if ($redisTimer) {
                 // Compare timestamps to see which is more recent
                 $redisUpdated = new \DateTime($redisTimer['updated_at']);
                 $dbUpdated = $timer->updated_at;
-                
+
                 if ($redisUpdated > $dbUpdated) {
                     // Redis state is newer, sync from Redis
                     $timer->status = $redisTimer['status'];
@@ -231,13 +230,13 @@ class TimerService
                     $timer->save();
                 }
             }
-            
+
             $reconciledTimers->push($timer);
         }
 
         // Add any Redis timers that aren't in the active collection
         foreach ($redisStates as $redisState) {
-            if (!$activeTimers->contains('id', $redisState['timer_id'])) {
+            if (! $activeTimers->contains('id', $redisState['timer_id'])) {
                 $redisTimer = Timer::find($redisState['timer_id']);
                 if ($redisTimer && ($redisTimer->status === 'running' || $redisTimer->status === 'paused')) {
                     $reconciledTimers->push($redisTimer);
@@ -271,7 +270,7 @@ class TimerService
         foreach ($timers as $timer) {
             $duration = $timer->duration;
             $totalDuration += $duration;
-            
+
             // Calculate billed amount (duration is in seconds from Timer model)
             if ($timer->billingRate) {
                 $hours = $duration / 3600; // Convert seconds to hours
@@ -279,12 +278,11 @@ class TimerService
                 $totalBilled += $amount;
             }
 
-
             // Note: Task breakdown code removed - tasks no longer used
 
             // Daily breakdown
             $day = $timer->started_at->format('Y-m-d');
-            if (!isset($dailyBreakdown[$day])) {
+            if (! isset($dailyBreakdown[$day])) {
                 $dailyBreakdown[$day] = [
                     'date' => $day,
                     'duration' => 0,
@@ -381,7 +379,7 @@ class TimerService
      */
     public function calculateBudgetEstimates(Timer $timer, float $budgetAmount): array
     {
-        if (!$timer->billingRate) {
+        if (! $timer->billingRate) {
             return [
                 'hours_remaining' => null,
                 'estimated_completion' => null,
@@ -391,7 +389,7 @@ class TimerService
         $currentAmount = $timer->calculated_amount ?? 0;
         $remainingBudget = max(0, $budgetAmount - $currentAmount);
         $hoursRemaining = $remainingBudget / $timer->billingRate->rate;
-        
+
         // Calculate estimated completion based on current pace
         $currentDurationSeconds = $timer->duration;
         if ($currentDurationSeconds > 0 && $currentAmount > 0) {

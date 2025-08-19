@@ -111,6 +111,14 @@ export const queryKeys = {
     settings: ['billing', 'settings'],
     rates: ['billing', 'rates'],
     rateById: (id) => ['billing', 'rates', id],
+    // New billing query keys
+    invoices: ['billing', 'invoices'],
+    invoiceById: (id) => ['billing', 'invoices', id],
+    dashboardStats: ['billing', 'dashboardStats'],
+    unbilledItems: (accountId) => ['billing', 'unbilled-items', accountId],
+    revenueReport: (params) => ['billing', 'reports', 'revenue', params],
+    outstandingReport: ['billing', 'reports', 'outstanding'],
+    paymentsReport: (params) => ['billing', 'reports', 'payments', params],
   },
   
   // Addon Templates

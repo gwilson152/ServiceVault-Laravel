@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\RoleTemplate;
+use Illuminate\Database\Seeder;
 
 class RoleTemplateSeeder extends Seeder
 {
@@ -22,26 +21,26 @@ class RoleTemplateSeeder extends Seeder
             'is_modifiable' => false,
             'context' => 'service_provider',
             'permissions' => [
-                // System Administration  
+                // System Administration
                 'admin.manage',
                 'admin.write',
                 'system.configure',
                 'system.manage',
-                
+
                 // Account Management
                 'accounts.create',
                 'accounts.manage',
                 'accounts.hierarchy.access',
-                
+
                 // User Management
                 'users.manage',
                 'users.invite',
                 'users.assign',
-                
+
                 // Role Management
                 'roles.manage',
                 'role_templates.manage',
-                
+
                 // Service Tickets - All Permissions
                 'tickets.admin',
                 'tickets.create',
@@ -55,7 +54,7 @@ class RoleTemplateSeeder extends Seeder
                 'tickets.transition',
                 'tickets.close',
                 'tickets.delete',
-                
+
                 // Time Tracking - All Permissions
                 'time.admin',
                 'time.track',
@@ -66,19 +65,19 @@ class RoleTemplateSeeder extends Seeder
                 'time.edit.account',
                 'time.approve',
                 'time.reports',
-                
+
                 // Timer Management - All Permissions
                 'timers.admin',
                 'timers.read',
                 'timers.write',
-                
+
                 // Billing & Financial
                 'billing.manage',
                 'billing.configure',
                 'billing.rates',
                 'billing.invoices',
                 'billing.reports',
-                
+
                 // Settings Management
                 'settings.manage',
             ],
@@ -108,7 +107,7 @@ class RoleTemplateSeeder extends Seeder
                 'pages.reports.account',
                 'pages.billing.overview',
                 'pages.reports.billing',
-            ]
+            ],
         ]);
 
         // Admin - Full service provider administration (MODIFIABLE)
@@ -167,9 +166,8 @@ class RoleTemplateSeeder extends Seeder
                 'pages.tickets.manage',
                 'pages.reports.account',
                 'pages.billing.overview',
-            ]
+            ],
         ]);
-
 
         // Service Provider - Comprehensive time management and client access (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Service Provider'], [
@@ -183,11 +181,11 @@ class RoleTemplateSeeder extends Seeder
                 // Account Management
                 'accounts.view',
                 'accounts.manage',
-                
+
                 // User Management
                 'users.view',
                 'users.manage.account',
-                
+
                 // Service Tickets - Comprehensive Access
                 'tickets.create',
                 'tickets.create.account',
@@ -201,7 +199,7 @@ class RoleTemplateSeeder extends Seeder
                 'tickets.close',
                 'tickets.comment',
                 'tickets.act_as_agent',
-                
+
                 // Time Tracking - Full Management Access
                 'time.track',
                 'time.manage',         // Key permission for service providers
@@ -211,7 +209,7 @@ class RoleTemplateSeeder extends Seeder
                 'time.edit.team',      // Can edit team member entries
                 'time.approve',        // Can approve time entries
                 'time.reports',
-                
+
                 // Timer Management
                 'timers.create',
                 'timers.read',
@@ -219,12 +217,12 @@ class RoleTemplateSeeder extends Seeder
                 'timers.manage',
                 'timers.sync',
                 'timers.act_as_agent',
-                
+
                 // Billing - View and manage client billing
                 'billing.view.account',
                 'billing.manage.account',
                 'billing.rates.view',
-                
+
                 // Reports
                 'reports.account',
                 'reports.time',
@@ -245,7 +243,7 @@ class RoleTemplateSeeder extends Seeder
                 'pages.reports.account',
                 'pages.billing.overview',
                 'pages.time-entries.manage',
-            ]
+            ],
         ]);
 
         // Agent - Service delivery and time tracking (MODIFIABLE)
@@ -288,7 +286,7 @@ class RoleTemplateSeeder extends Seeder
             'page_permissions' => [
                 'pages.tickets.create',
                 'pages.reports.own',
-            ]
+            ],
         ]);
 
         // Account Manager - Primary account + all subsidiaries access (MODIFIABLE)
@@ -320,7 +318,7 @@ class RoleTemplateSeeder extends Seeder
                 'pages.reports.account',
                 'pages.billing.overview',
                 'pages.portal.dashboard',
-            ]
+            ],
         ]);
 
         // Account User - Basic customer account access (MODIFIABLE)
@@ -347,7 +345,7 @@ class RoleTemplateSeeder extends Seeder
                 'pages.portal.dashboard',
                 'pages.portal.tickets',
                 'pages.billing.own',
-            ]
+            ],
         ]);
     }
 }

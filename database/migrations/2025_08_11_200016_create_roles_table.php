@@ -19,11 +19,11 @@ return new class extends Migration
             $table->json('custom_permissions')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
             $table->foreign('role_template_id')->references('id')->on('role_templates')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['account_id', 'is_active']);
             $table->unique(['account_id', 'role_template_id']);

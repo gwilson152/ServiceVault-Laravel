@@ -3,16 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
-use App\Models\Timer;
-use App\Models\TimeEntry;
-use App\Models\User;
-use App\Models\Ticket;
 use App\Models\DomainMapping;
+use App\Models\Ticket;
+use App\Models\TimeEntry;
+use App\Models\Timer;
+use App\Models\User;
 use App\Services\WidgetRegistryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -66,7 +65,7 @@ class DynamicDashboardController extends Controller
     {
         // Try to get user's saved layout from database/cache
         $savedLayout = Cache::get("user.{$user->id}.dashboard_layout");
-        
+
         if ($savedLayout) {
             return $savedLayout;
         }
@@ -118,7 +117,7 @@ class DynamicDashboardController extends Controller
     {
         $data = [];
         $selectedAccount = null;
-        
+
         // Convert selectedAccount array back to model if needed
         if (isset($accountContext['selectedAccount']) && is_array($accountContext['selectedAccount'])) {
             $accountId = $accountContext['selectedAccount']['id'] ?? null;
@@ -131,13 +130,13 @@ class DynamicDashboardController extends Controller
 
         foreach ($availableWidgets as $widget) {
             $widgetId = $widget['id'];
-            
+
             // Get widget-specific data
             switch ($widgetId) {
                 case 'system-health':
                     $data[$widgetId] = $this->getSystemHealthData();
                     break;
-                
+
                 case 'system-stats':
                     $data[$widgetId] = $this->getSystemStatsData();
                     break;
@@ -200,7 +199,7 @@ class DynamicDashboardController extends Controller
     private function getDashboardMetadata(User $user, array $accountContext): array
     {
         $title = 'Dashboard';
-        
+
         if ($user->isSuperAdmin()) {
             $title = 'System Administration';
         } elseif ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
@@ -212,7 +211,7 @@ class DynamicDashboardController extends Controller
         }
 
         if ($accountContext['selectedAccount']) {
-            $title .= ' - ' . $accountContext['selectedAccount']['name'];
+            $title .= ' - '.$accountContext['selectedAccount']['name'];
         }
 
         return [
@@ -232,7 +231,7 @@ class DynamicDashboardController extends Controller
         if ($user->hasAnyPermission(['admin.manage', 'system.manage', 'users.manage', 'time.track', 'teams.manage'])) {
             return 'service_provider';
         }
-        
+
         return 'account_user';
     }
 
@@ -263,20 +262,20 @@ class DynamicDashboardController extends Controller
         } catch (\Exception $e) {
             $dbStatus = 'error';
         }
-        
+
         try {
             \Illuminate\Support\Facades\Redis::ping();
             $redisStatus = 'healthy';
         } catch (\Exception $e) {
             $redisStatus = 'error';
         }
-        
+
         return [
             'database' => $dbStatus,
             'redis' => $redisStatus,
             'storage_disk' => disk_free_space(storage_path()) > 1000000000 ? 'healthy' : 'warning',
             'queue_jobs' => DB::table('jobs')->count(),
-            'failed_jobs' => DB::table('failed_jobs')->count()
+            'failed_jobs' => DB::table('failed_jobs')->count(),
         ];
     }
 
@@ -293,7 +292,7 @@ class DynamicDashboardController extends Controller
             'users_this_month' => User::where('created_at', '>=', $lastMonth)->count(),
             'time_tracked_today' => TimeEntry::whereDate('started_at', $now->toDateString())->sum('duration'),
             'pending_approvals' => TimeEntry::where('status', 'pending')->count(),
-            'domain_mappings' => DomainMapping::where('is_active', true)->count()
+            'domain_mappings' => DomainMapping::where('is_active', true)->count(),
         ];
     }
 
@@ -304,7 +303,7 @@ class DynamicDashboardController extends Controller
         // Filter by account if specified
         if ($account) {
             $query->where('account_id', $account->id);
-        } elseif (!$user->isSuperAdmin()) {
+        } elseif (! $user->isSuperAdmin()) {
             // Non-admin users see only tickets from their account
             if ($user->account) {
                 $query->where('account_id', $user->account->id);
@@ -320,7 +319,7 @@ class DynamicDashboardController extends Controller
                 'open' => $query->where('status', 'open')->count(),
                 'in_progress' => $query->where('status', 'in_progress')->count(),
                 'resolved' => $query->where('status', 'resolved')->count(),
-            ]
+            ],
         ];
     }
 
@@ -395,7 +394,7 @@ class DynamicDashboardController extends Controller
 
     private function getAccountActivityData(User $user, ?Account $account): array
     {
-        if (!$account) {
+        if (! $account) {
             return ['recent_activity' => []];
         }
 
@@ -413,7 +412,7 @@ class DynamicDashboardController extends Controller
 
     private function getAccountUsersData(User $user, ?Account $account): array
     {
-        if (!$account) {
+        if (! $account) {
             return ['users' => [], 'count' => 0];
         }
 

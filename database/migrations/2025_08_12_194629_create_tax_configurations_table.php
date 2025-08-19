@@ -25,10 +25,10 @@ return new class extends Migration
             $table->date('effective_date');
             $table->date('expiry_date')->nullable();
             $table->timestamps();
-            
+
             // Foreign key
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['account_id', 'is_active']);
             $table->index('jurisdiction');

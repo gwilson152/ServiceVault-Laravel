@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\TimeEntry;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class TimeEntryPolicy
 {
@@ -16,12 +15,12 @@ class TimeEntryPolicy
         // Users can view time entries if they have any time viewing permissions
         return $user->hasAnyPermission([
             'time.view.own',
-            'time.view.all', 
+            'time.view.all',
             'time.view.account',
             'time.view.team',
             'time.manage',
             'admin.manage',
-            'admin.write'
+            'admin.write',
         ]);
     }
 
@@ -36,7 +35,7 @@ class TimeEntryPolicy
         }
 
         // Service providers and managers can view time entries for accounts they manage
-        if ($user->user_type === 'service_provider' || 
+        if ($user->user_type === 'service_provider' ||
             $user->hasAnyPermission(['time.manage', 'time.view.all', 'teams.manage', 'admin.manage', 'admin.write'])) {
             return true;
         }
@@ -60,7 +59,7 @@ class TimeEntryPolicy
             'time.manage',
             'timers.create',
             'admin.manage',
-            'admin.write'
+            'admin.write',
         ]);
     }
 
@@ -73,23 +72,23 @@ class TimeEntryPolicy
         if ($timeEntry->status !== 'pending') {
             return false;
         }
-        
+
         // Original creator can always edit their own pending entries
         if ($timeEntry->user_id === $user->id) {
             return true;
         }
-        
+
         // Service providers and users with time management permissions can edit time entries
-        if ($user->user_type === 'service_provider' || 
+        if ($user->user_type === 'service_provider' ||
             $user->hasAnyPermission(['time.manage', 'time.edit.all', 'admin.manage', 'admin.write'])) {
             return true;
         }
-        
+
         // Team managers can edit entries from their team members
         if ($user->hasPermission('time.edit.team') || $user->hasPermission('teams.manage')) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -102,23 +101,23 @@ class TimeEntryPolicy
         if ($timeEntry->status !== 'pending') {
             return false;
         }
-        
+
         // Original creator can always delete their own pending entries
         if ($timeEntry->user_id === $user->id) {
             return true;
         }
-        
+
         // Service providers and managers can delete time entries
-        if ($user->user_type === 'service_provider' || 
+        if ($user->user_type === 'service_provider' ||
             $user->hasAnyPermission(['time.manage', 'time.delete.all', 'admin.manage', 'admin.write'])) {
             return true;
         }
-        
+
         // Team managers can delete entries from their team members
         if ($user->hasPermission('time.edit.team') || $user->hasPermission('teams.manage')) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -131,18 +130,18 @@ class TimeEntryPolicy
         if ($timeEntry->status !== 'pending') {
             return false;
         }
-        
+
         // Can't approve your own entries
         if ($timeEntry->user_id === $user->id) {
             return false;
         }
-        
+
         // Service providers, managers, and admins can approve
-        if ($user->user_type === 'service_provider' || 
+        if ($user->user_type === 'service_provider' ||
             $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write'])) {
             return true;
         }
-        
+
         return false;
     }
 

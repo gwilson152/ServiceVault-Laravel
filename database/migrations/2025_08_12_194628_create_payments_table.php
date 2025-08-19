@@ -29,11 +29,11 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->json('gateway_response')->nullable();
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('invoice_id')->references('id')->on('invoices')->onDelete('cascade');
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['invoice_id', 'status']);
             $table->index('account_id');

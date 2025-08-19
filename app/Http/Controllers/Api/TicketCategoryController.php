@@ -16,11 +16,11 @@ class TicketCategoryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         // Only admins can view all categories
-        if (!$user->hasAnyPermission(['admin.read', 'settings.manage', 'tickets.manage'])) {
+        if (! $user->hasAnyPermission(['admin.read', 'settings.manage', 'tickets.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to view ticket categories'
+                'message' => 'Insufficient permissions to view ticket categories',
             ], 403);
         }
 
@@ -41,7 +41,7 @@ class TicketCategoryController extends Controller
         return response()->json([
             'data' => $categories,
             'statistics' => TicketCategory::getStatistics(),
-            'message' => 'Ticket categories retrieved successfully'
+            'message' => 'Ticket categories retrieved successfully',
         ]);
     }
 
@@ -52,16 +52,16 @@ class TicketCategoryController extends Controller
     {
         try {
             $options = TicketCategory::getOptions();
-            
+
             return response()->json([
                 'options' => $options,
-                'default_category' => TicketCategory::getDefault()?->key
+                'default_category' => TicketCategory::getDefault()?->key,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'options' => [],
                 'default_category' => null,
-                'error' => 'Failed to load categories'
+                'error' => 'Failed to load categories',
             ], 500);
         }
     }
@@ -72,10 +72,10 @@ class TicketCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        
-        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+
+        if (! $user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to create ticket categories'
+                'message' => 'Insufficient permissions to create ticket categories',
             ], 403);
         }
 
@@ -93,7 +93,7 @@ class TicketCategoryController extends Controller
             'default_estimated_hours' => 'nullable|integer|min:0',
             'sla_hours' => 'nullable|integer|min:1',
             'sort_order' => 'integer|min:0',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         // Set defaults
@@ -107,7 +107,7 @@ class TicketCategoryController extends Controller
 
         return response()->json([
             'data' => $category,
-            'message' => 'Ticket category created successfully'
+            'message' => 'Ticket category created successfully',
         ], 201);
     }
 
@@ -117,13 +117,13 @@ class TicketCategoryController extends Controller
     public function show(TicketCategory $ticketCategory): JsonResponse
     {
         $category = $ticketCategory->load('tickets');
-        
+
         // Get category statistics
         $ticketCount = $category->tickets()->count();
         $openTicketCount = $category->tickets()
             ->whereNotIn('status', ['closed', 'cancelled'])
             ->count();
-        
+
         $recentTickets = $category->tickets()
             ->with(['assignedUsers', 'account'])
             ->orderBy('created_at', 'desc')
@@ -137,9 +137,9 @@ class TicketCategoryController extends Controller
                 'open_tickets' => $openTicketCount,
                 'recent_tickets' => $recentTickets,
                 'suggested_priority' => $category->getSuggestedPriority('medium'),
-                'formatted_sla' => $category->formatted_sla
+                'formatted_sla' => $category->formatted_sla,
             ],
-            'message' => 'Ticket category retrieved successfully'
+            'message' => 'Ticket category retrieved successfully',
         ]);
     }
 
@@ -149,10 +149,10 @@ class TicketCategoryController extends Controller
     public function update(Request $request, TicketCategory $ticketCategory): JsonResponse
     {
         $user = $request->user();
-        
-        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+
+        if (! $user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to update ticket categories'
+                'message' => 'Insufficient permissions to update ticket categories',
             ], 403);
         }
 
@@ -162,7 +162,7 @@ class TicketCategoryController extends Controller
                 'string',
                 'max:50',
                 'alpha_dash',
-                Rule::unique('ticket_categories', 'key')->ignore($ticketCategory->id)
+                Rule::unique('ticket_categories', 'key')->ignore($ticketCategory->id),
             ],
             'name' => 'sometimes|string|max:100',
             'description' => 'nullable|string|max:500',
@@ -176,14 +176,14 @@ class TicketCategoryController extends Controller
             'default_estimated_hours' => 'nullable|integer|min:0',
             'sla_hours' => 'nullable|integer|min:1',
             'sort_order' => 'integer|min:0',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         $ticketCategory->update($validated);
 
         return response()->json([
             'data' => $ticketCategory,
-            'message' => 'Ticket category updated successfully'
+            'message' => 'Ticket category updated successfully',
         ]);
     }
 
@@ -193,31 +193,31 @@ class TicketCategoryController extends Controller
     public function destroy(TicketCategory $ticketCategory): JsonResponse
     {
         $user = request()->user();
-        
-        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+
+        if (! $user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to delete ticket categories'
+                'message' => 'Insufficient permissions to delete ticket categories',
             ], 403);
         }
 
         // Check if category is being used
         if ($ticketCategory->tickets()->exists()) {
             return response()->json([
-                'message' => 'Cannot delete category that is being used by existing tickets'
+                'message' => 'Cannot delete category that is being used by existing tickets',
             ], 422);
         }
 
         // Prevent deletion of default category
         if ($ticketCategory->is_default) {
             return response()->json([
-                'message' => 'Cannot delete the default ticket category'
+                'message' => 'Cannot delete the default ticket category',
             ], 422);
         }
 
         $ticketCategory->delete();
 
         return response()->json([
-            'message' => 'Ticket category deleted successfully'
+            'message' => 'Ticket category deleted successfully',
         ]);
     }
 
@@ -227,18 +227,18 @@ class TicketCategoryController extends Controller
     public function statistics(): JsonResponse
     {
         $user = request()->user();
-        
-        if (!$user->hasAnyPermission(['admin.read', 'tickets.view', 'reports.view'])) {
+
+        if (! $user->hasAnyPermission(['admin.read', 'tickets.view', 'reports.view'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to view category statistics'
+                'message' => 'Insufficient permissions to view category statistics',
             ], 403);
         }
 
         $statistics = TicketCategory::getStatistics();
-        
+
         return response()->json([
             'data' => $statistics,
-            'message' => 'Category statistics retrieved successfully'
+            'message' => 'Category statistics retrieved successfully',
         ]);
     }
 
@@ -248,10 +248,10 @@ class TicketCategoryController extends Controller
     public function slaStatus(): JsonResponse
     {
         $user = request()->user();
-        
-        if (!$user->hasAnyPermission(['admin.read', 'tickets.view', 'reports.view'])) {
+
+        if (! $user->hasAnyPermission(['admin.read', 'tickets.view', 'reports.view'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to view SLA status'
+                'message' => 'Insufficient permissions to view SLA status',
             ], 403);
         }
 
@@ -274,23 +274,24 @@ class TicketCategoryController extends Controller
                     'key' => $category->key,
                     'name' => $category->name,
                     'sla_hours' => $category->sla_hours,
-                    'formatted_sla' => $category->formatted_sla
+                    'formatted_sla' => $category->formatted_sla,
                 ],
                 'total_tickets' => $tickets->count(),
                 'breached_tickets' => $breachedTickets->count(),
-                'breach_percentage' => $tickets->count() > 0 
-                    ? round(($breachedTickets->count() / $tickets->count()) * 100, 1) 
+                'breach_percentage' => $tickets->count() > 0
+                    ? round(($breachedTickets->count() / $tickets->count()) * 100, 1)
                     : 0,
                 'upcoming_breaches' => $tickets->filter(function ($ticket) use ($category) {
                     $deadline = $category->getSlaDeadline($ticket->created_at);
+
                     return $deadline && $deadline->diffInHours(now()) <= 4;
-                })->count()
+                })->count(),
             ];
         });
 
         return response()->json([
             'data' => $slaStatus,
-            'message' => 'SLA status retrieved successfully'
+            'message' => 'SLA status retrieved successfully',
         ]);
     }
 
@@ -300,17 +301,17 @@ class TicketCategoryController extends Controller
     public function reorder(Request $request): JsonResponse
     {
         $user = $request->user();
-        
-        if (!$user->hasAnyPermission(['admin.write', 'settings.manage'])) {
+
+        if (! $user->hasAnyPermission(['admin.write', 'settings.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to reorder ticket categories'
+                'message' => 'Insufficient permissions to reorder ticket categories',
             ], 403);
         }
 
         $validated = $request->validate([
             'categories' => 'required|array',
             'categories.*.id' => 'required|string|exists:ticket_categories,id',
-            'categories.*.sort_order' => 'required|integer|min:0'
+            'categories.*.sort_order' => 'required|integer|min:0',
         ]);
 
         foreach ($validated['categories'] as $categoryData) {
@@ -323,7 +324,7 @@ class TicketCategoryController extends Controller
         return response()->json([
             'success' => true,
             'data' => $categories,
-            'message' => 'Ticket categories reordered successfully'
+            'message' => 'Ticket categories reordered successfully',
         ]);
     }
 }

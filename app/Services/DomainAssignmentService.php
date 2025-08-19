@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Account;
+use App\Models\DomainMapping;
 use App\Models\Role;
 use App\Models\RoleTemplate;
-use App\Models\DomainMapping;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 class DomainAssignmentService
@@ -14,42 +14,39 @@ class DomainAssignmentService
     /**
      * Assign user to account and role based on email domain.
      *
-     * @param User $user
      * @return array Returns assignment details
+     *
      * @throws \RuntimeException
      */
     public function assignUserBasedOnDomain(User $user): array
     {
         $domainMapping = DomainMapping::findMatchingDomain($user->email);
-        
+
         if ($domainMapping) {
             return $this->assignUserFromDomainMapping($user, $domainMapping);
         }
-        
+
         return $this->assignUserToDefaultAccount($user);
     }
 
     /**
      * Assign user based on domain mapping.
      *
-     * @param User $user
-     * @param DomainMapping $domainMapping
-     * @return array
      * @throws \RuntimeException
      */
     private function assignUserFromDomainMapping(User $user, DomainMapping $domainMapping): array
     {
         $account = $domainMapping->account;
         $roleTemplate = $domainMapping->roleTemplate;
-        
+
         // If no specific role template is set, use the default employee template
-        if (!$roleTemplate) {
+        if (! $roleTemplate) {
             $roleTemplate = RoleTemplate::where('name', 'Employee')
-                                       ->where('is_default', true)
-                                       ->first();
+                ->where('is_default', true)
+                ->first();
         }
-        
-        if (!$roleTemplate) {
+
+        if (! $roleTemplate) {
             throw new \RuntimeException('No suitable role template found for domain assignment.');
         }
 
@@ -79,25 +76,23 @@ class DomainAssignmentService
     /**
      * Assign user to default account when no domain mapping matches.
      *
-     * @param User $user
-     * @return array
      * @throws \RuntimeException
      */
     private function assignUserToDefaultAccount(User $user): array
     {
         // Get the primary account (first account created during setup)
         $defaultAccount = Account::orderBy('id')->first();
-        
-        if (!$defaultAccount) {
+
+        if (! $defaultAccount) {
             throw new \RuntimeException('No accounts available. Please run system setup first.');
         }
 
         // Get the default employee role template
         $employeeTemplate = RoleTemplate::where('name', 'Employee')
-                                       ->where('is_default', true)
-                                       ->first();
+            ->where('is_default', true)
+            ->first();
 
-        if (!$employeeTemplate) {
+        if (! $employeeTemplate) {
             throw new \RuntimeException('Default employee role template not found.');
         }
 
@@ -125,14 +120,11 @@ class DomainAssignmentService
 
     /**
      * Preview what assignment would happen for an email without actually assigning.
-     *
-     * @param string $email
-     * @return array
      */
     public function previewAssignmentForEmail(string $email): array
     {
         $domainMapping = DomainMapping::findMatchingDomain($email);
-        
+
         if ($domainMapping) {
             return [
                 'method' => 'domain_mapping',
@@ -154,14 +146,12 @@ class DomainAssignmentService
 
     /**
      * Get the default employee role template.
-     *
-     * @return RoleTemplate|null
      */
     private function getDefaultEmployeeTemplate(): ?RoleTemplate
     {
         return RoleTemplate::where('name', 'Employee')
-                          ->where('is_default', true)
-                          ->first();
+            ->where('is_default', true)
+            ->first();
     }
 
     /**
@@ -172,21 +162,21 @@ class DomainAssignmentService
     public function validateAssignmentRequirements(): array
     {
         $issues = [];
-        
+
         // Check if accounts exist
         if (Account::count() === 0) {
             $issues[] = 'No accounts exist in the system. Run setup first.';
         }
-        
+
         // Check if default employee role template exists
         $defaultEmployee = $this->getDefaultEmployeeTemplate();
-        if (!$defaultEmployee) {
+        if (! $defaultEmployee) {
             $issues[] = 'Default Employee role template not found.';
         }
-        
+
         // Check active domain mappings
         $activeMappings = DomainMapping::active()->count();
-        
+
         return [
             'valid' => empty($issues),
             'issues' => $issues,

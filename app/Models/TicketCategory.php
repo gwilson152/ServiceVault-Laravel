@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,7 +27,7 @@ class TicketCategory extends Model
         'default_priority_multiplier',
         'default_estimated_hours',
         'sla_hours',
-        'sort_order'
+        'sort_order',
     ];
 
     protected $casts = [
@@ -36,7 +35,7 @@ class TicketCategory extends Model
         'is_active' => 'boolean',
         'is_default' => 'boolean',
         'requires_approval' => 'boolean',
-        'default_priority_multiplier' => 'decimal:2'
+        'default_priority_multiplier' => 'decimal:2',
     ];
 
     /**
@@ -87,7 +86,7 @@ class TicketCategory extends Model
         return static::active()
             ->ordered()
             ->get()
-            ->map(fn($category) => [
+            ->map(fn ($category) => [
                 'key' => $category->key,
                 'name' => $category->name,
                 'description' => $category->description,
@@ -97,7 +96,7 @@ class TicketCategory extends Model
                 'requires_approval' => $category->requires_approval,
                 'default_estimated_hours' => $category->default_estimated_hours,
                 'sla_hours' => $category->sla_hours,
-                'default_priority_multiplier' => $category->default_priority_multiplier
+                'default_priority_multiplier' => $category->default_priority_multiplier,
             ])
             ->toArray();
     }
@@ -122,7 +121,7 @@ class TicketCategory extends Model
      */
     public function isSlaBreached(\Carbon\Carbon $createdAt): bool
     {
-        if (!$this->sla_hours) {
+        if (! $this->sla_hours) {
             return false;
         }
 
@@ -134,7 +133,7 @@ class TicketCategory extends Model
      */
     public function getSlaDeadline(\Carbon\Carbon $createdAt): ?\Carbon\Carbon
     {
-        if (!$this->sla_hours) {
+        if (! $this->sla_hours) {
             return null;
         }
 
@@ -146,7 +145,7 @@ class TicketCategory extends Model
      */
     public function getFormattedSlaAttribute(): ?string
     {
-        if (!$this->sla_hours) {
+        if (! $this->sla_hours) {
             return null;
         }
 
@@ -158,7 +157,7 @@ class TicketCategory extends Model
         $hours = $this->sla_hours % 24;
 
         if ($hours === 0) {
-            return $days === 1 ? "1 day" : "{$days} days";
+            return $days === 1 ? '1 day' : "{$days} days";
         }
 
         return $days === 1 ? "1 day {$hours}h" : "{$days} days {$hours}h";
@@ -172,7 +171,7 @@ class TicketCategory extends Model
         $categories = static::active()->with([
             'tickets' => function ($query) {
                 $query->where('created_at', '>=', now()->subDays(30));
-            }
+            },
         ])->get();
 
         return $categories->map(function ($category) {
@@ -189,7 +188,7 @@ class TicketCategory extends Model
                 'total_tickets' => $tickets->count(),
                 'open_tickets' => $openTickets->count(),
                 'sla_breached' => $slaBreached->count(),
-                'average_resolution_hours' => self::calculateAverageResolutionTime($tickets)
+                'average_resolution_hours' => self::calculateAverageResolutionTime($tickets),
             ];
         })->toArray();
     }

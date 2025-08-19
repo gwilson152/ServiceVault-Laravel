@@ -15,6 +15,7 @@ const recentItems = ref({
   users: JSON.parse(localStorage.getItem('selector_recent_users') || '[]'),
   agents: JSON.parse(localStorage.getItem('selector_recent_agents') || '[]'),
   'billing-rates': JSON.parse(localStorage.getItem('selector_recent_billing_rates') || '[]'),
+  'role-templates': JSON.parse(localStorage.getItem('selector_recent_role_templates') || '[]'),
 })
 
 // Helper to update recent items
@@ -57,6 +58,10 @@ const getUserPermissionLevel = (user, type) => {
       
     case 'billing-rates':
       if (user.permissions?.includes('billing.rates.view') || user.permissions?.includes('admin.manage')) return 'all'
+      return 'none'
+      
+    case 'role-templates':
+      if (user.permissions?.includes('users.manage') || user.permissions?.includes('admin.manage')) return 'all'
       return 'none'
       
     default:
@@ -292,16 +297,85 @@ export function useSelectorBillingRatesQuery(options = {}) {
 export function useActiveSelectorItem(type, itemId, options = {}) {
   const { enabled = ref(true) } = options
   
+  // Map selector types to API endpoints
+  const getApiEndpoint = (type, id) => {
+    const endpoints = {
+      'ticket': `/api/tickets/${id}`,
+      'account': `/api/accounts/${id}`,
+      'user': `/api/users/${id}`,
+      'agent': `/api/users/${id}`,
+      'billing-rate': `/api/billing-rates/${id}`,
+      'role-template': `/api/role-templates/${id}`,
+    }
+    
+    return endpoints[type] || `/api/${type}s/${id}`
+  }
+  
   return useQuery({
     queryKey: computed(() => ['selector', 'active-item', type, itemId.value]),
     queryFn: async () => {
       if (!itemId.value) return null
       
-      const response = await axios.get(`/api/${type}/${itemId.value}`)
+      const endpoint = getApiEndpoint(type, itemId.value)
+      const response = await axios.get(endpoint)
       return response.data.data || response.data
     },
     enabled: computed(() => enabled.value && !!itemId.value),
     staleTime: 1000 * 60 * 5,
+  })
+}
+
+// Role templates selector query
+export function useSelectorRoleTemplatesQuery(options = {}) {
+  const {
+    searchTerm = ref(''),
+    filterSet = ref({}),
+    sortField = ref(null),
+    sortDirection = ref('desc'),
+    recentLimit = 10,
+    enabled = ref(true)
+  } = options
+  
+  const page = usePage()
+  const user = computed(() => page.props.auth?.user)
+  
+  return useQuery({
+    queryKey: computed(() => ['selector', 'role-templates', searchTerm.value, filterSet.value, sortField.value, sortDirection.value]),
+    queryFn: async () => {
+      const permissionLevel = getUserPermissionLevel(user.value, 'role-templates')
+      if (permissionLevel === 'none') return { data: [], recent: [] }
+      
+      const params = {
+        q: searchTerm.value,
+        limit: searchTerm.value ? 30 : recentLimit, // Role templates typically have fewer items
+        ...(sortField.value && { sort_field: sortField.value }),
+        ...(sortDirection.value && { sort_direction: sortDirection.value }),
+        ...filterSet.value
+      }
+      
+      const response = await axios.get('/api/search/role-templates', { params })
+      
+      return {
+        data: response.data.data || [],
+        recent: recentItems.value['role-templates'] || []
+      }
+    },
+    enabled: computed(() => enabled.value),
+    staleTime: 1000 * 60 * 10, // 10 minutes - role templates change less frequently
+    select: (data) => {
+      if (searchTerm.value) {
+        const searchIds = new Set(data.data.map(item => item.id))
+        const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
+        return [...data.data, ...uniqueRecent.slice(0, 3)]
+      }
+      // If no search term, return recent items first, then API data if no recent items
+      const recentData = data.recent.slice(0, recentLimit)
+      if (recentData.length > 0) {
+        return recentData
+      }
+      // Fallback to API data if no recent items
+      return data.data.slice(0, recentLimit)
+    }
   })
 }
 

@@ -2,15 +2,13 @@
 
 namespace App\Models;
 
-use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class RoleTemplateWidget extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
         'role_template_id',
         'widget_id',
@@ -18,13 +16,13 @@ class RoleTemplateWidget extends Model
         'widget_config',
         'display_order',
     ];
-    
+
     protected $casts = [
         'enabled' => 'boolean',
         'widget_config' => 'array',
         'display_order' => 'integer',
     ];
-    
+
     /**
      * Get the role template that owns this widget configuration
      */
@@ -32,7 +30,7 @@ class RoleTemplateWidget extends Model
     {
         return $this->belongsTo(RoleTemplate::class);
     }
-    
+
     /**
      * Get the widget permission this configuration is for
      */
@@ -40,7 +38,7 @@ class RoleTemplateWidget extends Model
     {
         return $this->belongsTo(WidgetPermission::class, 'widget_id', 'widget_id');
     }
-    
+
     /**
      * Scope for enabled widgets
      */
@@ -48,7 +46,7 @@ class RoleTemplateWidget extends Model
     {
         return $query->where('enabled', true);
     }
-    
+
     /**
      * Scope for disabled widgets
      */
@@ -56,7 +54,7 @@ class RoleTemplateWidget extends Model
     {
         return $query->where('enabled', false);
     }
-    
+
     /**
      * Scope for ordered display
      */
@@ -64,7 +62,7 @@ class RoleTemplateWidget extends Model
     {
         return $query->orderBy('display_order');
     }
-    
+
     /**
      * Get widget configuration with defaults
      */
@@ -76,10 +74,10 @@ class RoleTemplateWidget extends Model
             'customizable' => true,
             'size' => ['w' => 4, 'h' => 3],
         ];
-        
+
         return array_merge($defaults, $this->widget_config ?? []);
     }
-    
+
     /**
      * Update widget configuration
      */
@@ -87,12 +85,12 @@ class RoleTemplateWidget extends Model
     {
         return $this->update(['widget_config' => array_merge($this->widget_config ?? [], $config)]);
     }
-    
+
     /**
      * Toggle widget enabled status
      */
     public function toggle(): bool
     {
-        return $this->update(['enabled' => !$this->enabled]);
+        return $this->update(['enabled' => ! $this->enabled]);
     }
 }

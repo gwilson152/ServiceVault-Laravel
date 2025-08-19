@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\TicketPriority;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class TicketPriorityController extends Controller
@@ -16,10 +16,10 @@ class TicketPriorityController extends Controller
     public function index(): JsonResponse
     {
         $priorities = TicketPriority::ordered()->get();
-        
+
         return response()->json([
             'success' => true,
-            'data' => $priorities
+            'data' => $priorities,
         ]);
     }
 
@@ -40,11 +40,11 @@ class TicketPriorityController extends Controller
             'severity_level' => 'required|integer|min:1|max:10',
             'escalation_multiplier' => 'required|numeric|min:0.1|max:10',
             'sort_order' => 'nullable|integer|min:0',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         // Auto-assign sort order if not provided
-        if (!isset($validated['sort_order'])) {
+        if (! isset($validated['sort_order'])) {
             $validated['sort_order'] = TicketPriority::max('sort_order') + 1;
         }
 
@@ -53,7 +53,7 @@ class TicketPriorityController extends Controller
         return response()->json([
             'success' => true,
             'data' => $priority,
-            'message' => 'Priority created successfully'
+            'message' => 'Priority created successfully',
         ], 201);
     }
 
@@ -64,7 +64,7 @@ class TicketPriorityController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => $ticketPriority
+            'data' => $ticketPriority,
         ]);
     }
 
@@ -85,7 +85,7 @@ class TicketPriorityController extends Controller
             'severity_level' => 'required|integer|min:1|max:10',
             'escalation_multiplier' => 'required|numeric|min:0.1|max:10',
             'sort_order' => 'nullable|integer|min:0',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         $ticketPriority->update($validated);
@@ -93,7 +93,7 @@ class TicketPriorityController extends Controller
         return response()->json([
             'success' => true,
             'data' => $ticketPriority->fresh(),
-            'message' => 'Priority updated successfully'
+            'message' => 'Priority updated successfully',
         ]);
     }
 
@@ -104,15 +104,15 @@ class TicketPriorityController extends Controller
     {
         try {
             $ticketPriority->delete();
-            
+
             return response()->json([
                 'success' => true,
-                'message' => 'Priority deleted successfully'
+                'message' => 'Priority deleted successfully',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 422);
         }
     }
@@ -125,7 +125,7 @@ class TicketPriorityController extends Controller
         $validated = $request->validate([
             'priorities' => 'required|array',
             'priorities.*.id' => 'required|string|exists:ticket_priorities,id',
-            'priorities.*.sort_order' => 'required|integer|min:0'
+            'priorities.*.sort_order' => 'required|integer|min:0',
         ]);
 
         foreach ($validated['priorities'] as $priorityData) {
@@ -138,7 +138,7 @@ class TicketPriorityController extends Controller
         return response()->json([
             'success' => true,
             'data' => $priorities,
-            'message' => 'Priorities reordered successfully'
+            'message' => 'Priorities reordered successfully',
         ]);
     }
 
@@ -148,10 +148,10 @@ class TicketPriorityController extends Controller
     public function options(): JsonResponse
     {
         $options = TicketPriority::getOptions();
-        
+
         return response()->json([
             'success' => true,
-            'data' => $options
+            'data' => $options,
         ]);
     }
 }

@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Timer;
-use App\Models\TimeEntry;
-use App\Models\Project;
 use App\Models\Account;
+use App\Models\Project;
+use App\Models\TimeEntry;
+use App\Models\Timer;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class EmployeeDashboardController extends Controller
 {
@@ -19,26 +19,26 @@ class EmployeeDashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         // Get user's accessible accounts
         $accessibleAccounts = $user->accounts()->with(['projects'])->get();
-        
+
         // Get active timers for multi-timer display
         $activeTimers = Timer::where('user_id', $user->id)
             ->whereIn('status', ['running', 'paused'])
             ->with(['account:id,name', 'project:id,name', 'billingRate'])
             ->get();
-            
+
         // Get user statistics
         $stats = $this->getUserStatistics($user);
-        
+
         // Get recent time entries
         $recentTimeEntries = TimeEntry::where('user_id', $user->id)
             ->with(['account:id,name', 'project:id,name'])
             ->latest()
             ->limit(10)
             ->get();
-            
+
         // Get quick start options (projects and billing rates)
         $quickStartOptions = $this->getQuickStartOptions($user, $accessibleAccounts);
 
@@ -49,17 +49,17 @@ class EmployeeDashboardController extends Controller
             'recentTimeEntries' => $recentTimeEntries,
             'quickStartOptions' => $quickStartOptions,
             'accessibleAccounts' => $accessibleAccounts,
-            'dashboardType' => 'employee'
+            'dashboardType' => 'employee',
         ]);
     }
-    
+
     /**
      * Timer management interface with multi-timer support
      */
     public function timers(Request $request)
     {
         $user = $request->user();
-        
+
         $timers = Timer::where('user_id', $user->id)
             ->with(['account:id,name', 'project:id,name', 'billingRate'])
             ->when($request->status, function ($query, $status) {
@@ -70,7 +70,7 @@ class EmployeeDashboardController extends Controller
             })
             ->latest()
             ->paginate(20);
-            
+
         // Get timer statistics
         $timerStats = [
             'active_count' => Timer::where('user_id', $user->id)
@@ -81,7 +81,7 @@ class EmployeeDashboardController extends Controller
                 ->where('status', 'paused')->count(),
             'today_duration' => Timer::where('user_id', $user->id)
                 ->whereDate('started_at', Carbon::today())
-                ->sum('total_duration')
+                ->sum('total_duration'),
         ];
 
         return Inertia::render('Dashboard/Employee/Timers', [
@@ -89,17 +89,17 @@ class EmployeeDashboardController extends Controller
             'timers' => $timers,
             'timerStats' => $timerStats,
             'accessibleAccounts' => $user->accounts()->get(['id', 'name']),
-            'dashboardType' => 'employee'
+            'dashboardType' => 'employee',
         ]);
     }
-    
+
     /**
      * Time entries interface
      */
     public function timeEntries(Request $request)
     {
         $user = $request->user();
-        
+
         $timeEntries = TimeEntry::where('user_id', $user->id)
             ->with(['account:id,name', 'project:id,name'])
             ->when($request->status, function ($query, $status) {
@@ -116,7 +116,7 @@ class EmployeeDashboardController extends Controller
             })
             ->latest()
             ->paginate(20);
-            
+
         // Get time entry statistics
         $entryStats = [
             'pending_count' => TimeEntry::where('user_id', $user->id)
@@ -126,7 +126,7 @@ class EmployeeDashboardController extends Controller
             'total_hours' => TimeEntry::where('user_id', $user->id)
                 ->sum('duration') / 3600,
             'billable_hours' => TimeEntry::where('user_id', $user->id)
-                ->where('billable', true)->sum('duration') / 3600
+                ->where('billable', true)->sum('duration') / 3600,
         ];
 
         return Inertia::render('Dashboard/Employee/TimeEntries', [
@@ -134,10 +134,10 @@ class EmployeeDashboardController extends Controller
             'timeEntries' => $timeEntries,
             'entryStats' => $entryStats,
             'accessibleAccounts' => $user->accounts()->get(['id', 'name']),
-            'dashboardType' => 'employee'
+            'dashboardType' => 'employee',
         ]);
     }
-    
+
     /**
      * Personal analytics and reports
      */
@@ -146,15 +146,15 @@ class EmployeeDashboardController extends Controller
         $user = $request->user();
         $period = $request->input('period', '30'); // days
         $startDate = Carbon::now()->subDays($period);
-        
+
         // Time tracking analytics
         $timeAnalytics = [
             'daily_hours' => $this->getDailyHours($user, $startDate),
             'project_breakdown' => $this->getProjectBreakdown($user, $startDate),
             'account_breakdown' => $this->getAccountBreakdown($user, $startDate),
-            'productivity_trends' => $this->getProductivityTrends($user, $startDate)
+            'productivity_trends' => $this->getProductivityTrends($user, $startDate),
         ];
-        
+
         // Personal metrics
         $personalMetrics = [
             'average_daily_hours' => TimeEntry::where('user_id', $user->id)
@@ -163,7 +163,7 @@ class EmployeeDashboardController extends Controller
             'total_projects' => TimeEntry::where('user_id', $user->id)
                 ->where('created_at', '>=', $startDate)
                 ->distinct('project_id')->count('project_id'),
-            'completion_rate' => $this->getTaskCompletionRate($user, $startDate)
+            'completion_rate' => $this->getTaskCompletionRate($user, $startDate),
         ];
 
         return Inertia::render('Dashboard/Employee/Analytics', [
@@ -171,10 +171,10 @@ class EmployeeDashboardController extends Controller
             'timeAnalytics' => $timeAnalytics,
             'personalMetrics' => $personalMetrics,
             'period' => $period,
-            'dashboardType' => 'employee'
+            'dashboardType' => 'employee',
         ]);
     }
-    
+
     /**
      * Get user statistics for dashboard overview
      */
@@ -183,7 +183,7 @@ class EmployeeDashboardController extends Controller
         $today = Carbon::today();
         $thisWeek = Carbon::now()->startOfWeek();
         $thisMonth = Carbon::now()->startOfMonth();
-        
+
         return [
             'active_timers' => Timer::where('user_id', $user->id)
                 ->whereIn('status', ['running', 'paused'])->count(),
@@ -199,10 +199,10 @@ class EmployeeDashboardController extends Controller
             'pending_entries' => TimeEntry::where('user_id', $user->id)
                 ->where('status', 'pending')->count(),
             'approved_entries' => TimeEntry::where('user_id', $user->id)
-                ->where('status', 'approved')->count()
+                ->where('status', 'approved')->count(),
         ];
     }
-    
+
     /**
      * Get quick start options for new timers
      */
@@ -216,21 +216,21 @@ class EmployeeDashboardController extends Controller
             ->distinct()
             ->limit(10)
             ->get(['id', 'name', 'account_id']);
-            
+
         $recentDescriptions = Timer::where('user_id', $user->id)
             ->whereNotNull('description')
             ->distinct('description')
             ->latest()
             ->limit(10)
             ->pluck('description');
-            
+
         return [
             'recent_projects' => $recentProjects,
             'recent_descriptions' => $recentDescriptions,
-            'favorite_accounts' => $accessibleAccounts->take(5)
+            'favorite_accounts' => $accessibleAccounts->take(5),
         ];
     }
-    
+
     /**
      * Get daily hours for analytics
      */
@@ -244,7 +244,7 @@ class EmployeeDashboardController extends Controller
             ->get()
             ->toArray();
     }
-    
+
     /**
      * Get project breakdown for analytics
      */
@@ -259,7 +259,7 @@ class EmployeeDashboardController extends Controller
             ->get()
             ->toArray();
     }
-    
+
     /**
      * Get account breakdown for analytics
      */
@@ -274,7 +274,7 @@ class EmployeeDashboardController extends Controller
             ->get()
             ->toArray();
     }
-    
+
     /**
      * Get productivity trends
      */
@@ -289,11 +289,12 @@ class EmployeeDashboardController extends Controller
             ->get()
             ->map(function ($item) {
                 $item['productivity_score'] = ($item['entries'] * 0.3) + ($item['hours'] * 0.7);
+
                 return $item;
             })
             ->toArray();
     }
-    
+
     /**
      * Get task completion rate (placeholder for future implementation)
      */

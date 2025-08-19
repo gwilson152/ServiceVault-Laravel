@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Account;
 use App\Models\RoleTemplate;
-use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -38,20 +38,20 @@ class SetupController extends Controller
             'company_website' => 'nullable|url|max:255',
             'company_address' => 'nullable|string|max:500',
             'company_phone' => 'nullable|string|max:50',
-            
+
             // System Configuration
             'timezone' => 'required|string|max:100',
             'currency' => 'required|string|size:3',
             'date_format' => 'required|string|max:50',
             'time_format' => 'required|string|max:20',
             'language' => 'required|string|max:10',
-            
+
             // Features & Limits
             'enable_real_time' => 'boolean',
             'enable_notifications' => 'boolean',
             'timer_sync_interval' => 'required|integer|min:1|max:60',
             'permission_cache_ttl' => 'required|integer|min:60|max:3600',
-            
+
             // User Limits (optional for now - licensing will be implemented later)
             'max_users' => 'required|integer|min:1|max:10000',
 
@@ -93,35 +93,38 @@ class SetupController extends Controller
 
         // Ensure role templates are seeded
         try {
-            (new \Database\Seeders\RoleTemplateSeeder())->run();
+            (new \Database\Seeders\RoleTemplateSeeder)->run();
         } catch (\Exception $e) {
-            \Log::error('RoleTemplateSeeder failed during setup: ' . $e->getMessage());
-            return back()->withErrors(['general' => 'Failed to seed role templates: ' . $e->getMessage()]);
+            \Log::error('RoleTemplateSeeder failed during setup: '.$e->getMessage());
+
+            return back()->withErrors(['general' => 'Failed to seed role templates: '.$e->getMessage()]);
         }
-        
+
         // Seed essential ticket configuration data
         try {
-            (new \Database\Seeders\TicketStatusSeeder())->run();
-            (new \Database\Seeders\TicketCategorySeeder())->run();
-            (new \Database\Seeders\TicketPrioritySeeder())->run();
+            (new \Database\Seeders\TicketStatusSeeder)->run();
+            (new \Database\Seeders\TicketCategorySeeder)->run();
+            (new \Database\Seeders\TicketPrioritySeeder)->run();
         } catch (\Exception $e) {
-            \Log::error('Ticket configuration seeders failed during setup: ' . $e->getMessage());
-            return back()->withErrors(['general' => 'Failed to seed ticket configuration: ' . $e->getMessage()]);
+            \Log::error('Ticket configuration seeders failed during setup: '.$e->getMessage());
+
+            return back()->withErrors(['general' => 'Failed to seed ticket configuration: '.$e->getMessage()]);
         }
-        
+
         // Seed billing configuration data
         try {
-            (new \Database\Seeders\BillingRateSeeder())->run();
-            (new \Database\Seeders\AddonTemplateSeeder())->run();
+            (new \Database\Seeders\BillingRateSeeder)->run();
+            (new \Database\Seeders\AddonTemplateSeeder)->run();
         } catch (\Exception $e) {
-            \Log::error('Billing seeders failed during setup: ' . $e->getMessage());
-            return back()->withErrors(['general' => 'Failed to seed billing configuration: ' . $e->getMessage()]);
+            \Log::error('Billing seeders failed during setup: '.$e->getMessage());
+
+            return back()->withErrors(['general' => 'Failed to seed billing configuration: '.$e->getMessage()]);
         }
 
         // Get the super admin role template
         $superAdminTemplate = RoleTemplate::where('name', 'Super Admin')->first();
-        
-        if (!$superAdminTemplate) {
+
+        if (! $superAdminTemplate) {
             return back()->withErrors(['general' => 'Super Admin role template not found. Please contact support.']);
         }
 
@@ -152,10 +155,9 @@ class SetupController extends Controller
             ->withHeaders([
                 'Cache-Control' => 'no-cache, no-store, must-revalidate, max-age=0',
                 'Pragma' => 'no-cache',
-                'Expires' => 'Thu, 01 Jan 1970 00:00:00 GMT'
+                'Expires' => 'Thu, 01 Jan 1970 00:00:00 GMT',
             ]);
     }
-
 
     /**
      * Store system configuration settings.
@@ -164,7 +166,7 @@ class SetupController extends Controller
     {
         // Update application timezone
         config(['app.timezone' => $request->timezone]);
-        
+
         // Store system settings in the settings table
         $systemSettings = [
             'system.timezone' => $request->timezone,
@@ -219,8 +221,8 @@ class SetupController extends Controller
      */
     private function isSystemSetup(): bool
     {
-        return User::count() > 0 
-            && Account::count() > 0 
+        return User::count() > 0
+            && Account::count() > 0
             && RoleTemplate::where('is_system_role', true)->count() > 0
             && \App\Models\Setting::where('key', 'license.status')->exists();
     }

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\TokenAbilityService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -46,7 +46,7 @@ class TokenController extends Controller
         ]);
 
         // Verify password for security
-        if (!Hash::check($request->password, $request->user()->password)) {
+        if (! Hash::check($request->password, $request->user()->password)) {
             throw ValidationException::withMessages([
                 'password' => ['The provided password is incorrect.'],
             ]);
@@ -54,7 +54,7 @@ class TokenController extends Controller
 
         // Validate abilities
         $abilities = TokenAbilityService::validateAbilities($request->abilities ?? []);
-        
+
         $token = $request->user()->createToken(
             $request->name,
             $abilities,
@@ -169,21 +169,21 @@ class TokenController extends Controller
         ]);
 
         // Verify password for security
-        if (!Hash::check($request->password, $request->user()->password)) {
+        if (! Hash::check($request->password, $request->user()->password)) {
             throw ValidationException::withMessages([
                 'password' => ['The provided password is incorrect.'],
             ]);
         }
 
         // Validate scope
-        if (!TokenAbilityService::scopeExists($request->scope)) {
+        if (! TokenAbilityService::scopeExists($request->scope)) {
             throw ValidationException::withMessages([
                 'scope' => ['The selected scope is invalid.'],
             ]);
         }
 
         $abilities = TokenAbilityService::getAbilitiesForScope($request->scope);
-        
+
         $token = $request->user()->createToken(
             $request->name,
             $abilities,
@@ -211,7 +211,7 @@ class TokenController extends Controller
         ]);
 
         // Verify password for security
-        if (!Hash::check($request->password, $request->user()->password)) {
+        if (! Hash::check($request->password, $request->user()->password)) {
             throw ValidationException::withMessages([
                 'password' => ['The provided password is incorrect.'],
             ]);

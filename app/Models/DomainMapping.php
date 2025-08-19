@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -71,14 +69,11 @@ class DomainMapping extends Model
 
     /**
      * Check if a domain pattern matches a given email domain.
-     *
-     * @param string $emailDomain
-     * @return bool
      */
     public function matchesDomain(string $emailDomain): bool
     {
         $pattern = $this->domain_pattern;
-        
+
         // Convert wildcard pattern to regex
         if (str_contains($pattern, '*')) {
             // Escape special regex characters except *
@@ -86,26 +81,23 @@ class DomainMapping extends Model
             // Convert * to regex equivalent
             $regexPattern = str_replace('\*', '[^.]*', $regexPattern);
             // Add anchors
-            $regexPattern = '/^' . $regexPattern . '$/i';
-            
+            $regexPattern = '/^'.$regexPattern.'$/i';
+
             return preg_match($regexPattern, $emailDomain) === 1;
         }
-        
+
         // Exact match (case insensitive)
         return strcasecmp($pattern, $emailDomain) === 0;
     }
 
     /**
      * Find the best matching domain mapping for an email address.
-     *
-     * @param string $email
-     * @return DomainMapping|null
      */
     public static function findMatchingDomain(string $email): ?DomainMapping
     {
         $emailDomain = strtolower(substr(strrchr($email, '@'), 1));
-        
-        if (!$emailDomain) {
+
+        if (! $emailDomain) {
             return null;
         }
 
@@ -127,16 +119,15 @@ class DomainMapping extends Model
 
     /**
      * Get all domains that would match this pattern (for display purposes).
-     *
-     * @return array
      */
     public function getExampleDomains(): array
     {
         $pattern = $this->domain_pattern;
-        
+
         if (str_contains($pattern, '*')) {
             // For wildcard patterns, show some examples
             $base = str_replace('*.', '', $pattern);
+
             return [
                 "subdomain.{$base}",
                 "mail.{$base}",
@@ -144,7 +135,7 @@ class DomainMapping extends Model
                 "dev.{$base}",
             ];
         }
-        
+
         return [$pattern];
     }
 }

@@ -28,11 +28,11 @@ class TicketController extends Controller
             'createdBy:id,name',
             'assignedTo:id,name',
             'billingRate:id,rate',
-            'timers' => function($q) use ($user) {
+            'timers' => function ($q) use ($user) {
                 $q->where('user_id', $user->id)
-                  ->whereIn('status', ['running', 'paused'])
-                  ->with(['user:id,name', 'billingRate:id,rate']);
-            }
+                    ->whereIn('status', ['running', 'paused'])
+                    ->with(['user:id,name', 'billingRate:id,rate']);
+            },
         ]);
 
         // Apply user scope based on permissions
@@ -71,7 +71,7 @@ class TicketController extends Controller
                     // Include specific ticket even if it doesn't match status filter
                     $q->where(function ($subQuery) use ($status, $request) {
                         $subQuery->whereIn('status', $status)
-                                 ->orWhere('id', $request->include_ticket_id);
+                            ->orWhere('id', $request->include_ticket_id);
                     });
                 } else {
                     $q->whereIn('status', $status);
@@ -81,7 +81,7 @@ class TicketController extends Controller
                     // Include specific ticket even if it doesn't match status filter
                     $q->where(function ($subQuery) use ($status, $request) {
                         $subQuery->where('status', $status)
-                                 ->orWhere('id', $request->include_ticket_id);
+                            ->orWhere('id', $request->include_ticket_id);
                     });
                 } else {
                     $q->where('status', $status);
@@ -199,11 +199,11 @@ class TicketController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         // Get available categories for validation
         $availableCategories = TicketCategory::getOptions();
         $categoryKeys = collect($availableCategories)->pluck('key')->toArray();
-        
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string|max:10000',
@@ -223,7 +223,7 @@ class TicketController extends Controller
         // ABAC Security: Auto-assign and enforce account for account users
         if ($user->user_type === 'account_user') {
             // Account users can ONLY create tickets for their own account
-            if (!$user->account_id) {
+            if (! $user->account_id) {
                 return response()->json(['error' => 'Account user must be assigned to an account.'], 422);
             }
             // Override any provided account_id for security
@@ -249,13 +249,13 @@ class TicketController extends Controller
                 }
             }
         }
-        
+
         // Set default category if not provided
         if (empty($validated['category'])) {
             $defaultCategory = TicketCategory::getDefault();
             if ($defaultCategory) {
                 $validated['category'] = $defaultCategory->key;
-            } else if (count($categoryKeys) > 0) {
+            } elseif (count($categoryKeys) > 0) {
                 // Fallback to first available category if no default is set
                 $validated['category'] = $categoryKeys[0];
             } else {
@@ -276,8 +276,8 @@ class TicketController extends Controller
                            $assignedUser->isSuperAdmin() ||
                            $assignedUser->hasPermission('tickets.act_as_agent') ||
                            $assignedUser->hasPermission('admin.write');
-                           
-                if (!$canAssign) {
+
+                if (! $canAssign) {
                     return response()->json(['error' => 'Assigned user does not have access to this account.'], 422);
                 }
             }
@@ -381,27 +381,27 @@ class TicketController extends Controller
             // Timer permissions (for Time Tracking tab)
             'canViewTimers' => $user->hasAnyPermission(['timers.read', 'timers.write', 'time.track']),
             'canCreateTimers' => $user->hasAnyPermission(['timers.create', 'timers.write']),
-            
+
             // Time entry permissions (for Time Tracking tab)
             'canViewTimeEntries' => $user->hasAnyPermission(['time.view.own', 'time.view.account', 'time.view.all', 'time.track']),
             'canCreateTimeEntries' => $user->hasAnyPermission(['time.create', 'time.track']),
-            
+
             // Comment permissions (for Messages tab)
             'canViewComments' => $ticket->canBeViewedBy($user), // If can view ticket, can view comments
             'canAddComments' => $user->hasAnyPermission(['tickets.comment', 'tickets.edit.account', 'tickets.view.account']),
             'canViewInternalComments' => $user->hasAnyPermission(['admin.read', 'tickets.manage', 'tickets.view.internal']),
-            
+
             // Add-on permissions (for Add-ons tab)
             'canViewAddons' => $ticket->canBeViewedBy($user), // If can view ticket, can view add-ons
             'canManageAddons' => $user->hasAnyPermission(['admin.write', 'tickets.manage']) || ($user->user_type === 'agent' && $user->hasPermission('tickets.edit.account')),
-            
+
             // Activity permissions (for Activity tab)
             'canViewActivity' => $ticket->canBeViewedBy($user), // If can view ticket, can view activity
-            
+
             // Billing permissions (for Billing tab)
             'canViewBilling' => $user->hasAnyPermission(['billing.view.account', 'billing.view.all', 'admin.read']),
             'canManageBilling' => $user->hasAnyPermission(['billing.manage', 'admin.write']),
-            
+
             // General ticket permissions
             'canEditTicket' => $ticket->canBeEditedBy($user),
             'canAssignTicket' => $user->hasAnyPermission(['tickets.assign', 'tickets.assign.account', 'admin.write']),
@@ -410,7 +410,7 @@ class TicketController extends Controller
         // Validate tab parameter against available tabs
         $validTabs = ['messages', 'time', 'addons', 'activity', 'billing'];
         $activeTab = null;
-        
+
         if ($tab && in_array($tab, $validTabs)) {
             $activeTab = $tab;
         }
@@ -490,8 +490,8 @@ class TicketController extends Controller
                            $assignedUser->isSuperAdmin() ||
                            $assignedUser->hasPermission('tickets.act_as_agent') ||
                            $assignedUser->hasPermission('admin.write');
-                           
-                if (!$canAssign) {
+
+                if (! $canAssign) {
                     return response()->json(['error' => 'Assigned user does not have access to this account.'], 422);
                 }
             }
@@ -651,8 +651,8 @@ class TicketController extends Controller
                    $assignedUser->isSuperAdmin() ||
                    $assignedUser->hasPermission('tickets.act_as_agent') ||
                    $assignedUser->hasPermission('admin.write');
-                   
-        if (!$canAssign) {
+
+        if (! $canAssign) {
             return response()->json(['error' => 'User does not have access to this account.'], 422);
         }
 
@@ -782,8 +782,8 @@ class TicketController extends Controller
                    $teamMember->isSuperAdmin() ||
                    $teamMember->hasPermission('tickets.act_as_agent') ||
                    $teamMember->hasPermission('admin.write');
-                   
-        if (!$canAssign) {
+
+        if (! $canAssign) {
             return response()->json(['error' => 'User does not have access to this account.'], 422);
         }
 

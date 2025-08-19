@@ -1,9 +1,7 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use App\Models\RoleTemplate;
+use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
@@ -24,11 +22,11 @@ return new class extends Migration
                 // Account Management
                 'accounts.view',
                 'accounts.manage',
-                
+
                 // User Management
                 'users.view',
                 'users.manage.account',
-                
+
                 // Service Tickets - Comprehensive Access
                 'tickets.create',
                 'tickets.create.account',
@@ -42,7 +40,7 @@ return new class extends Migration
                 'tickets.close',
                 'tickets.comment',
                 'tickets.act_as_agent',
-                
+
                 // Time Tracking - Full Management Access
                 'time.track',
                 'time.manage',         // Key permission for service providers
@@ -52,7 +50,7 @@ return new class extends Migration
                 'time.edit.team',      // Can edit team member entries
                 'time.approve',        // Can approve time entries
                 'time.reports',
-                
+
                 // Timer Management
                 'timers.create',
                 'timers.read',
@@ -60,12 +58,12 @@ return new class extends Migration
                 'timers.manage',
                 'timers.sync',
                 'timers.act_as_agent',
-                
+
                 // Billing - View and manage client billing
                 'billing.view.account',
                 'billing.manage.account',
                 'billing.rates.view',
-                
+
                 // Reports
                 'reports.account',
                 'reports.time',
@@ -86,14 +84,14 @@ return new class extends Migration
                 'pages.reports.account',
                 'pages.billing.overview',
                 'pages.time-entries.manage',
-            ]
+            ],
         ]);
 
         // Update Manager role to include enhanced time permissions
         $managerRole = RoleTemplate::where('name', 'Manager')->first();
         if ($managerRole) {
             $permissions = $managerRole->permissions ?? [];
-            
+
             // Add new time management permissions if not already present
             $newTimePermissions = [
                 'time.manage',
@@ -101,34 +99,34 @@ return new class extends Migration
                 'time.edit.team',
                 'time.approve',
             ];
-            
+
             foreach ($newTimePermissions as $permission) {
-                if (!in_array($permission, $permissions)) {
+                if (! in_array($permission, $permissions)) {
                     $permissions[] = $permission;
                 }
             }
-            
+
             $managerRole->update(['permissions' => $permissions]);
         }
-        
+
         // Update Agent role to include team time permissions
         $agentRole = RoleTemplate::where('name', 'Agent')->first();
         if ($agentRole) {
             $permissions = $agentRole->permissions ?? [];
-            
+
             // Add agent-specific time permissions
             $newAgentPermissions = [
                 'time.edit.team',     // Agents can edit team entries if they lead a team
                 'timers.act_as_agent',
                 'tickets.act_as_agent',
             ];
-            
+
             foreach ($newAgentPermissions as $permission) {
-                if (!in_array($permission, $permissions)) {
+                if (! in_array($permission, $permissions)) {
                     $permissions[] = $permission;
                 }
             }
-            
+
             $agentRole->update(['permissions' => $permissions]);
         }
     }
@@ -140,30 +138,30 @@ return new class extends Migration
     {
         // Remove Service Provider role
         RoleTemplate::where('name', 'Service Provider')->delete();
-        
+
         // Remove added permissions from Manager role
         $managerRole = RoleTemplate::where('name', 'Manager')->first();
         if ($managerRole) {
             $permissions = $managerRole->permissions ?? [];
             $permissionsToRemove = ['time.manage', 'time.edit.all', 'time.edit.team', 'time.approve'];
-            
-            $permissions = array_filter($permissions, function($permission) use ($permissionsToRemove) {
-                return !in_array($permission, $permissionsToRemove);
+
+            $permissions = array_filter($permissions, function ($permission) use ($permissionsToRemove) {
+                return ! in_array($permission, $permissionsToRemove);
             });
-            
+
             $managerRole->update(['permissions' => array_values($permissions)]);
         }
-        
+
         // Remove added permissions from Agent role
         $agentRole = RoleTemplate::where('name', 'Agent')->first();
         if ($agentRole) {
             $permissions = $agentRole->permissions ?? [];
             $permissionsToRemove = ['time.edit.team', 'timers.act_as_agent', 'tickets.act_as_agent'];
-            
-            $permissions = array_filter($permissions, function($permission) use ($permissionsToRemove) {
-                return !in_array($permission, $permissionsToRemove);
+
+            $permissions = array_filter($permissions, function ($permission) use ($permissionsToRemove) {
+                return ! in_array($permission, $permissionsToRemove);
             });
-            
+
             $agentRole->update(['permissions' => array_values($permissions)]);
         }
     }

@@ -57,7 +57,7 @@
                             </h4>
 
                             <!-- Account Selection (if not pre-selected) -->
-                            <div v-if="!contextAccount">
+                            <div v-if="!contextAccount && !contextTicket">
                                 <UnifiedSelector
                                     v-model="form.accountId"
                                     type="account"
@@ -67,6 +67,38 @@
                                     :error="errors.accountId"
                                     @item-selected="handleAccountSelected"
                                 />
+                            </div>
+                            
+                            <!-- Preselected Context Display -->
+                            <div v-if="contextTicket" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h5 class="text-sm font-medium text-blue-900 mb-2">Context</h5>
+                                <div class="space-y-2">
+                                    <div class="flex items-center text-sm">
+                                        <svg class="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-6 0H3m2 0h4m6 0v-3.87a3.37 3.37 0 00-.94-2.61c-.26-.26-.70-.26-.96 0L9.47 16.1a3.37 3.37 0 00-.94 2.61V21" />
+                                        </svg>
+                                        <span class="font-medium text-blue-700">Account:</span>
+                                        <span class="text-blue-900 ml-1">{{ contextTicket.account?.name || 'Loading...' }}</span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <svg class="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                        <span class="font-medium text-blue-700">Ticket:</span>
+                                        <span class="text-blue-900 ml-1">#{{ contextTicket.ticket_number }} - {{ contextTicket.title }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-else-if="contextAccount" class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <h5 class="text-sm font-medium text-green-900 mb-2">Account Context</h5>
+                                <div class="flex items-center text-sm">
+                                    <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-6 0H3m2 0h4m6 0v-3.87a3.37 3.37 0 00-.94-2.61c-.26-.26-.70-.26-.96 0L9.47 16.1a3.37 3.37 0 00-.94 2.61V21" />
+                                    </svg>
+                                    <span class="font-medium text-green-700">Account:</span>
+                                    <span class="text-green-900 ml-1">{{ contextAccount.name }}</span>
+                                </div>
                             </div>
 
                             <!-- Ticket Selection (if not pre-selected) -->
@@ -256,13 +288,11 @@
                                     Billing Rate
                                 </label>
                                 <UnifiedSelector
-                                    ref="billingRateSelector"
                                     v-model="form.billingRateId"
                                     type="billing-rate"
-                                    :items="availableBillingRates"
-                                    :loading="billingRatesLoading"
                                     :show-rate-hierarchy="true"
                                     placeholder="No billing rate"
+                                    :filter-set="form.accountId ? { account_id: form.accountId } : {}"
                                     :error="errors.billingRateId"
                                     @item-selected="handleRateSelected"
                                 />
@@ -334,39 +364,6 @@
                             ></textarea>
                         </div>
 
-                        <!-- Manual Time Override (Timer Commit Mode) -->
-                        <div
-                            v-if="
-                                mode === 'timer-commit' &&
-                                allowManualTimeOverride
-                            "
-                        >
-                            <div class="border-t border-gray-200 pt-4">
-                                <div class="flex items-center">
-                                    <input
-                                        id="manual-override"
-                                        v-model="form.useManualOverride"
-                                        type="checkbox"
-                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                    />
-                                    <label
-                                        for="manual-override"
-                                        class="ml-2 text-sm text-gray-700"
-                                    >
-                                        Override timer duration with manual
-                                        entry above
-                                    </label>
-                                </div>
-                                <div
-                                    v-if="form.useManualOverride"
-                                    class="mt-2 text-sm text-yellow-600"
-                                >
-                                    The timer will be marked as committed, but
-                                    the duration from your manual entry above
-                                    will be used instead.
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -503,7 +500,6 @@ const form = ref({
     durationMinutes: 0,
     billingAmount: 0,
     notes: "",
-    useManualOverride: false,
     estimatedValue: 0,
 });
 
@@ -513,13 +509,10 @@ const isSubmitting = ref(false);
 // Data loading states
 const availableAccounts = ref([]);
 const availableTickets = ref([]);
-const availableBillingRates = ref([]);
 const availableAgents = ref([]);
 const ticketsLoading = ref(false);
-const billingRatesLoading = ref(false);
 const agentsLoading = ref(false);
 // Template refs
-const billingRateSelector = ref(null);
 
 // Settings flags
 const allowManualTimeOverride = computed(
@@ -590,11 +583,22 @@ const totalDurationSeconds = computed(() => {
     return form.value.durationHours * 3600 + form.value.durationMinutes * 60;
 });
 
-const selectedBillingRate = computed(() => {
-    return availableBillingRates.value.find(
-        (rate) => rate.id == form.value.billingRateId
-    );
-});
+const selectedBillingRate = ref(null);
+
+// Watch for billing rate changes and fetch the rate data
+watch(() => form.value.billingRateId, async (rateId) => {
+    if (rateId) {
+        try {
+            const response = await axios.get(`/api/billing-rates/${rateId}`);
+            selectedBillingRate.value = response.data.data || response.data;
+        } catch (error) {
+            console.error('Failed to fetch billing rate:', error);
+            selectedBillingRate.value = null;
+        }
+    } else {
+        selectedBillingRate.value = null;
+    }
+}, { immediate: true });
 
 const totalBillingAmount = computed(() => {
     return form.value.billable ? form.value.billingAmount : 0;
@@ -689,93 +693,6 @@ const loadTicketsForAccount = async (accountId, includeTicketId = null) => {
     }
 };
 
-const loadBillingRatesForAccount = async (accountId) => {
-    billingRatesLoading.value = true;
-    try {
-        const params = accountId ? { account_id: accountId } : {};
-        
-        // In timer-commit mode, include the specific billing rate ID if it exists
-        if (props.mode === "timer-commit" && props.timerData?.billing_rate_id) {
-            params.include_rate_id = props.timerData.billing_rate_id;
-        }
-        
-        const response = await axios.get("/api/billing-rates", { params });
-        availableBillingRates.value = response.data.data || [];
-
-        // Force UnifiedSelector to reinitialize with the new rates
-        // if (props.mode === "timer-commit") {
-        //     console.log('Timer commit - loaded billing rates:', {
-        //         currentBillingRateId: form.value.billingRateId,
-        //         loadedRatesCount: availableBillingRates.value.length,
-        //         ratesIncludeTimer: !!availableBillingRates.value.find(r => r.id === form.value.billingRateId)
-        //     });
-        // }
-        
-        // Give the component more time to render and be available
-        setTimeout(() => {
-            if (billingRateSelector.value) {
-                // if (props.mode === "timer-commit") {
-                //     console.log('Timer commit - forcing selector initialization');
-                // }
-                billingRateSelector.value.initializeSelectedItem();
-            } else {
-                console.log('billingRateSelector.value is null - cannot initialize');
-            }
-        }, 100);
-
-        // Auto-select default billing rate if no rate is currently selected
-        // Rates are already sorted by priority: account defaults → account rates → global defaults → other global
-        // Skip auto-selection in timer-commit mode if timer has a billing_rate_id (preserve timer's rate)
-        const shouldSkipAutoSelection = 
-            props.mode === "timer-commit" && 
-            props.timerData?.billing_rate_id;
-            
-        // console.log("Billing rate auto-selection check:", {
-        //     currentRateId: form.value.billingRateId,
-        //     ratesCount: availableBillingRates.value.length,
-        //     shouldSkip: shouldSkipAutoSelection,
-        //     mode: props.mode,
-        //     timerHasBillingRate: !!props.timerData?.billing_rate_id
-        // });
-            
-        if (
-            !form.value.billingRateId &&
-            availableBillingRates.value.length > 0 &&
-            !shouldSkipAutoSelection
-        ) {
-            // Find the best default rate according to the hierarchy
-            let defaultRate = null;
-            
-            // 1. First priority: Account-specific default rates
-            defaultRate = availableBillingRates.value.find(
-                (rate) => rate.inheritance_source === 'account' && rate.is_default
-            );
-            
-            // 2. Second priority: Global default rates (if no account default)
-            if (!defaultRate) {
-                defaultRate = availableBillingRates.value.find(
-                    (rate) => rate.inheritance_source === 'global' && rate.is_default
-                );
-            }
-            
-            // 3. Fallback: First rate in the sorted list (already prioritized by service)
-            if (!defaultRate && availableBillingRates.value.length > 0) {
-                defaultRate = availableBillingRates.value[0];
-            }
-            
-            if (defaultRate) {
-                form.value.billingRateId = defaultRate.id;
-                // Recalculate billing amount with the selected rate
-                calculateBillingAmount();
-            }
-        }
-    } catch (error) {
-        console.error("Failed to load billing rates:", error);
-        availableBillingRates.value = [];
-    } finally {
-        billingRatesLoading.value = false;
-    }
-};
 
 const loadAgentsForAccount = async (accountId) => {
     agentsLoading.value = true;
@@ -807,13 +724,11 @@ const handleAccountSelected = (account) => {
     // Load dependent data
     if (account) {
         loadTicketsForAccount(account.id);
-        loadBillingRatesForAccount(account.id);
         if (canAssignToOthers.value) {
             loadAgentsForAccount(account.id);
         }
     } else {
         availableTickets.value = [];
-        loadBillingRatesForAccount(null);
         availableAgents.value = [];
     }
 };
@@ -823,7 +738,6 @@ const handleTicketSelected = (ticket) => {
     if (ticket?.account_id && !form.value.accountId) {
         form.value.accountId = ticket.account_id;
         // Load dependent data for the new account
-        loadBillingRatesForAccount(ticket.account_id);
         if (canAssignToOthers.value) {
             loadAgentsForAccount(ticket.account_id);
         }
@@ -865,12 +779,9 @@ const submitTimeEntry = async () => {
     isSubmitting.value = true;
 
     try {
-        let duration = totalDurationSeconds.value;
+        let duration = Math.round(totalDurationSeconds.value / 60); // Convert seconds to minutes
 
-        // Use timer duration for timer commit mode (unless manual override)
-        if (props.mode === "timer-commit" && !form.value.useManualOverride) {
-            duration = calculateTimerDuration();
-        }
+        // Use the duration from the form fields (which are pre-filled from timer in timer-commit mode)
 
         const payload = {
             description: form.value.description.trim(),
@@ -948,8 +859,7 @@ const resetForm = () => {
         durationMinutes: 0,
         billingAmount: 0,
         notes: "",
-        useManualOverride: false,
-        estimatedValue: 0,
+            estimatedValue: 0,
     };
     errors.value = {};
 };
@@ -964,29 +874,27 @@ const initializeForm = async () => {
     // Apply context data and load related data
     if (props.contextAccount) {
         form.value.accountId = props.contextAccount.id;
-        await Promise.all([
-            loadTicketsForAccount(props.contextAccount.id),
-            loadBillingRatesForAccount(props.contextAccount.id),
-        ]);
+        await loadTicketsForAccount(props.contextAccount.id);
     }
 
     if (props.contextTicket) {
-        form.value.accountId = props.contextTicket.account_id;
+        form.value.accountId = props.contextTicket.account_id || props.contextTicket.account?.id;
         form.value.ticketId = props.contextTicket.id;
+        
+        // Preselect billing rate with proper hierarchy:
+        // 1. If ticket has a specific billing rate, use it
+        // 2. Otherwise, the UnifiedSelector will auto-select the default rate based on form.accountId
         if (props.contextTicket.billing_rate_id) {
             form.value.billingRateId = props.contextTicket.billing_rate_id;
         }
         
         // Load related data for the ticket's account
-        if (props.contextTicket.account_id) {
-            await Promise.all([
-                loadTicketsForAccount(props.contextTicket.account_id, props.contextTicket.id),
-                loadBillingRatesForAccount(props.contextTicket.account_id),
-            ]);
+        if (form.value.accountId) {
+            await loadTicketsForAccount(form.value.accountId, props.contextTicket.id);
             
             // Load agents if user can assign to others
             if (canAssignToOthers.value) {
-                await loadAgentsForAccount(props.contextTicket.account_id);
+                await loadAgentsForAccount(form.value.accountId);
             }
         }
     }
@@ -1011,13 +919,12 @@ const initializeForm = async () => {
 
         // Load related data after setting initial values
         if (props.timerData.account_id) {
-            // Load all related data in parallel and wait for completion
+            // Load tickets and agents
             const loadPromises = [
                 loadTicketsForAccount(
                     props.timerData.account_id,
                     props.timerData.ticket_id
-                ),
-                loadBillingRatesForAccount(props.timerData.account_id),
+                )
             ];
 
             // If user can assign to others, load users too
@@ -1088,10 +995,10 @@ const initializeForm = async () => {
         form.value.billingAmount = props.timeEntry.billed_amount || 0;
         form.value.notes = props.timeEntry.notes || "";
 
-        // Parse duration
-        const duration = props.timeEntry.duration || 0;
-        form.value.durationHours = Math.floor(duration / 3600);
-        form.value.durationMinutes = Math.floor((duration % 3600) / 60);
+        // Parse duration (stored in minutes in database)
+        const durationMinutes = props.timeEntry.duration || 0;
+        form.value.durationHours = Math.floor(durationMinutes / 60);
+        form.value.durationMinutes = durationMinutes % 60;
 
         // Parse started_at for date and time
         if (props.timeEntry.started_at) {
@@ -1101,9 +1008,8 @@ const initializeForm = async () => {
         }
     }
 
-    // Only load billing rates and tickets if not already loaded from context
+    // Only load tickets if not already loaded from context
     if (!props.contextTicket && !props.contextAccount && !(props.mode === "timer-commit" && props.timerData)) {
-        await loadBillingRatesForAccount(form.value.accountId);
         if (form.value.accountId) {
             await loadTicketsForAccount(form.value.accountId);
         }

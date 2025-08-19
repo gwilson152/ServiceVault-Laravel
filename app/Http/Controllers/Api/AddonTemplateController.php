@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AddonTemplate;
 use App\Models\Ticket;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AddonTemplateController extends Controller
 {
@@ -18,9 +18,9 @@ class AddonTemplateController extends Controller
         $user = $request->user();
 
         // Only users who can create addons should see templates
-        if (!$user->hasAnyPermission(['tickets.create', 'tickets.edit', 'admin.write'])) {
+        if (! $user->hasAnyPermission(['tickets.create', 'tickets.edit', 'admin.write'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to view addon templates'
+                'message' => 'Insufficient permissions to view addon templates',
             ], 403);
         }
 
@@ -36,7 +36,7 @@ class AddonTemplateController extends Controller
         return response()->json([
             'data' => $templates,
             'categories' => AddonTemplate::getCategories(),
-            'message' => 'Addon templates retrieved successfully'
+            'message' => 'Addon templates retrieved successfully',
         ]);
     }
 
@@ -47,9 +47,9 @@ class AddonTemplateController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasAnyPermission(['admin.write', 'system.manage'])) {
+        if (! $user->hasAnyPermission(['admin.write', 'system.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to create addon templates'
+                'message' => 'Insufficient permissions to create addon templates',
             ], 403);
         }
 
@@ -68,7 +68,7 @@ class AddonTemplateController extends Controller
             'default_tax_rate' => 'nullable|numeric|min:0|max:1',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         // Set defaults
@@ -84,7 +84,7 @@ class AddonTemplateController extends Controller
 
         return response()->json([
             'data' => $template,
-            'message' => 'Addon template created successfully'
+            'message' => 'Addon template created successfully',
         ], 201);
     }
 
@@ -95,7 +95,7 @@ class AddonTemplateController extends Controller
     {
         return response()->json([
             'data' => $addonTemplate,
-            'message' => 'Addon template retrieved successfully'
+            'message' => 'Addon template retrieved successfully',
         ]);
     }
 
@@ -106,9 +106,9 @@ class AddonTemplateController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasAnyPermission(['admin.write', 'system.manage'])) {
+        if (! $user->hasAnyPermission(['admin.write', 'system.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to update addon templates'
+                'message' => 'Insufficient permissions to update addon templates',
             ], 403);
         }
 
@@ -116,7 +116,7 @@ class AddonTemplateController extends Controller
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'category' => 'sometimes|string|in:product,service,license,hardware,software,expense,other',
-            'sku' => 'nullable|string|max:100|unique:addon_templates,sku,' . $addonTemplate->id,
+            'sku' => 'nullable|string|max:100|unique:addon_templates,sku,'.$addonTemplate->id,
             'default_unit_price' => 'sometimes|numeric|min:0|max:999999.99',
             'default_quantity' => 'sometimes|numeric|min:0.01|max:99999.99',
             'allow_quantity_override' => 'boolean',
@@ -127,14 +127,14 @@ class AddonTemplateController extends Controller
             'default_tax_rate' => 'nullable|numeric|min:0|max:1',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         $addonTemplate->update($validated);
 
         return response()->json([
             'data' => $addonTemplate,
-            'message' => 'Addon template updated successfully'
+            'message' => 'Addon template updated successfully',
         ]);
     }
 
@@ -145,23 +145,23 @@ class AddonTemplateController extends Controller
     {
         $user = request()->user();
 
-        if (!$user->hasAnyPermission(['admin.write', 'system.manage'])) {
+        if (! $user->hasAnyPermission(['admin.write', 'system.manage'])) {
             return response()->json([
-                'message' => 'Insufficient permissions to delete addon templates'
+                'message' => 'Insufficient permissions to delete addon templates',
             ], 403);
         }
 
         // Check if template is being used
         if ($addonTemplate->ticketAddons()->exists()) {
             return response()->json([
-                'message' => 'Cannot delete template that is being used by existing addons'
+                'message' => 'Cannot delete template that is being used by existing addons',
             ], 422);
         }
 
         $addonTemplate->delete();
 
         return response()->json([
-            'message' => 'Addon template deleted successfully'
+            'message' => 'Addon template deleted successfully',
         ]);
     }
 
@@ -178,7 +178,7 @@ class AddonTemplateController extends Controller
             'unit_price' => 'nullable|numeric|min:0|max:999999.99',
             'discount_amount' => 'nullable|numeric|min:0|max:999999.99',
             'description' => 'nullable|string',
-            'metadata' => 'nullable|array'
+            'metadata' => 'nullable|array',
         ]);
 
         $ticket = Ticket::findOrFail($validated['ticket_id']);
@@ -212,7 +212,7 @@ class AddonTemplateController extends Controller
 
         return response()->json([
             'data' => $addon,
-            'message' => 'Addon created from template successfully'
+            'message' => 'Addon created from template successfully',
         ], 201);
     }
 }

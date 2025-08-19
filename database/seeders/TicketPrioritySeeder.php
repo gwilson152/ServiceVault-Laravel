@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\TicketPriority;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class TicketPrioritySeeder extends Seeder
@@ -25,7 +24,7 @@ class TicketPrioritySeeder extends Seeder
                 'is_default' => false,
                 'severity_level' => 1,
                 'escalation_multiplier' => 1.50, // 50% longer SLA
-                'sort_order' => 1
+                'sort_order' => 1,
             ],
             [
                 'key' => 'normal',
@@ -38,7 +37,7 @@ class TicketPrioritySeeder extends Seeder
                 'is_default' => true,
                 'severity_level' => 2,
                 'escalation_multiplier' => 1.00, // Normal SLA
-                'sort_order' => 2
+                'sort_order' => 2,
             ],
             [
                 'key' => 'medium',
@@ -51,7 +50,7 @@ class TicketPrioritySeeder extends Seeder
                 'is_default' => false,
                 'severity_level' => 3,
                 'escalation_multiplier' => 0.75, // 25% faster SLA
-                'sort_order' => 3
+                'sort_order' => 3,
             ],
             [
                 'key' => 'high',
@@ -64,7 +63,7 @@ class TicketPrioritySeeder extends Seeder
                 'is_default' => false,
                 'severity_level' => 4,
                 'escalation_multiplier' => 0.50, // 50% faster SLA
-                'sort_order' => 4
+                'sort_order' => 4,
             ],
             [
                 'key' => 'urgent',
@@ -77,19 +76,19 @@ class TicketPrioritySeeder extends Seeder
                 'is_default' => false,
                 'severity_level' => 5,
                 'escalation_multiplier' => 0.25, // 75% faster SLA
-                'sort_order' => 5
-            ]
+                'sort_order' => 5,
+            ],
         ];
 
         foreach ($priorities as $priorityData) {
             TicketPriority::updateOrCreate(
-                ['key' => $priorityData['key']], 
+                ['key' => $priorityData['key']],
                 $priorityData
             );
         }
 
         if ($this->command) {
-            $this->command->info('Created ' . count($priorities) . ' ticket priorities');
+            $this->command->info('Created '.count($priorities).' ticket priorities');
         }
     }
 }

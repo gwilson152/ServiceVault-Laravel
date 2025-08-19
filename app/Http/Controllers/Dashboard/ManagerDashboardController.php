@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Timer;
-use App\Models\TimeEntry;
 use App\Models\Project;
-use App\Models\Account;
+use App\Models\TimeEntry;
+use App\Models\Timer;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class ManagerDashboardController extends Controller
 {
@@ -20,24 +19,24 @@ class ManagerDashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         // Verify manager access
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        if (! $user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
             abort(403, 'Access denied. Manager permissions required.');
         }
 
         // Get accounts the manager oversees
         $managedAccounts = $this->getManagedAccounts($user);
-        
+
         // Get team overview statistics
         $teamStats = $this->getTeamStatistics($user, $managedAccounts);
-        
+
         // Get pending approvals
         $pendingApprovals = $this->getPendingApprovals($user, $managedAccounts);
-        
+
         // Get team activity
         $teamActivity = $this->getTeamActivity($user, $managedAccounts);
-        
+
         // Get performance metrics
         $performanceMetrics = $this->getPerformanceMetrics($user, $managedAccounts);
 
@@ -48,10 +47,10 @@ class ManagerDashboardController extends Controller
             'teamActivity' => $teamActivity,
             'performanceMetrics' => $performanceMetrics,
             'managedAccounts' => $managedAccounts,
-            'dashboardType' => 'manager'
+            'dashboardType' => 'manager',
         ]);
     }
-    
+
     /**
      * Team oversight interface
      */
@@ -59,11 +58,11 @@ class ManagerDashboardController extends Controller
     {
         $user = $request->user();
         $managedAccounts = $this->getManagedAccounts($user);
-        
+
         // Get team members with their current activity
         $teamMembers = User::whereHas('accounts', function ($query) use ($managedAccounts) {
-                $query->whereIn('accounts.id', $managedAccounts->pluck('id'));
-            })
+            $query->whereIn('accounts.id', $managedAccounts->pluck('id'));
+        })
             ->with(['accounts', 'roleTemplate'])
             ->withCount([
                 'timers as active_timers_count' => function ($query) {
@@ -71,14 +70,14 @@ class ManagerDashboardController extends Controller
                 },
                 'timeEntries as pending_entries_count' => function ($query) {
                     $query->where('status', 'pending');
-                }
+                },
             ])
             ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             })
             ->paginate(20);
-            
+
         // Get current team activity
         $currentActivity = Timer::whereIn('account_id', $managedAccounts->pluck('id'))
             ->whereIn('status', ['running', 'paused'])
@@ -90,10 +89,10 @@ class ManagerDashboardController extends Controller
             'teamMembers' => $teamMembers,
             'currentActivity' => $currentActivity,
             'managedAccounts' => $managedAccounts,
-            'dashboardType' => 'manager'
+            'dashboardType' => 'manager',
         ]);
     }
-    
+
     /**
      * Approval workflow interface
      */
@@ -101,7 +100,7 @@ class ManagerDashboardController extends Controller
     {
         $user = $request->user();
         $managedAccounts = $this->getManagedAccounts($user);
-        
+
         $pendingApprovals = TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
             ->where('status', 'pending')
             ->with(['user:id,name', 'account:id,name', 'project:id,name'])
@@ -119,7 +118,7 @@ class ManagerDashboardController extends Controller
             })
             ->latest()
             ->paginate(20);
-            
+
         // Get approval statistics
         $approvalStats = [
             'pending_count' => TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
@@ -130,7 +129,7 @@ class ManagerDashboardController extends Controller
             'rejected_today' => TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
                 ->where('status', 'rejected')
                 ->whereDate('updated_at', Carbon::today())->count(),
-            'average_approval_time' => $this->getAverageApprovalTime($managedAccounts)
+            'average_approval_time' => $this->getAverageApprovalTime($managedAccounts),
         ];
 
         return Inertia::render('Dashboard/Manager/Approvals', [
@@ -141,10 +140,10 @@ class ManagerDashboardController extends Controller
                 $query->whereIn('accounts.id', $managedAccounts->pluck('id'));
             })->get(['id', 'name']),
             'managedAccounts' => $managedAccounts,
-            'dashboardType' => 'manager'
+            'dashboardType' => 'manager',
         ]);
     }
-    
+
     /**
      * Project management interface
      */
@@ -152,20 +151,20 @@ class ManagerDashboardController extends Controller
     {
         $user = $request->user();
         $managedAccounts = $this->getManagedAccounts($user);
-        
+
         $projects = Project::whereIn('account_id', $managedAccounts->pluck('id'))
             ->with(['account:id,name'])
             ->withCount(['timers', 'timeEntries'])
             ->withSum('timeEntries as total_hours', 'duration')
             ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             })
             ->when($request->account_id, function ($query, $accountId) {
                 $query->where('account_id', $accountId);
             })
             ->paginate(20);
-            
+
         // Get project statistics
         $projectStats = [
             'total_projects' => Project::whereIn('account_id', $managedAccounts->pluck('id'))->count(),
@@ -174,7 +173,7 @@ class ManagerDashboardController extends Controller
             'completed_projects' => Project::whereIn('account_id', $managedAccounts->pluck('id'))
                 ->where('status', 'completed')->count(),
             'total_project_hours' => TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
-                ->sum('duration') / 3600
+                ->sum('duration') / 3600,
         ];
 
         return Inertia::render('Dashboard/Manager/Projects', [
@@ -182,10 +181,10 @@ class ManagerDashboardController extends Controller
             'projects' => $projects,
             'projectStats' => $projectStats,
             'managedAccounts' => $managedAccounts,
-            'dashboardType' => 'manager'
+            'dashboardType' => 'manager',
         ]);
     }
-    
+
     /**
      * Team analytics and reports
      */
@@ -195,22 +194,22 @@ class ManagerDashboardController extends Controller
         $managedAccounts = $this->getManagedAccounts($user);
         $period = $request->input('period', '30'); // days
         $startDate = Carbon::now()->subDays($period);
-        
+
         // Team performance analytics
         $teamAnalytics = [
             'productivity_trends' => $this->getTeamProductivityTrends($managedAccounts, $startDate),
             'utilization_rates' => $this->getUtilizationRates($managedAccounts, $startDate),
             'project_progress' => $this->getProjectProgress($managedAccounts, $startDate),
-            'approval_metrics' => $this->getApprovalMetrics($managedAccounts, $startDate)
+            'approval_metrics' => $this->getApprovalMetrics($managedAccounts, $startDate),
         ];
-        
+
         // Department metrics
         $departmentMetrics = [
             'average_hours_per_employee' => TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
                 ->where('created_at', '>=', $startDate)
                 ->sum('duration') / 3600 / $managedAccounts->sum('users_count'),
             'billable_vs_nonbillable' => $this->getBillableRatio($managedAccounts, $startDate),
-            'cost_per_project' => $this->getCostPerProject($managedAccounts, $startDate)
+            'cost_per_project' => $this->getCostPerProject($managedAccounts, $startDate),
         ];
 
         return Inertia::render('Dashboard/Manager/Analytics', [
@@ -219,10 +218,10 @@ class ManagerDashboardController extends Controller
             'departmentMetrics' => $departmentMetrics,
             'period' => $period,
             'managedAccounts' => $managedAccounts,
-            'dashboardType' => 'manager'
+            'dashboardType' => 'manager',
         ]);
     }
-    
+
     /**
      * Get accounts managed by the user
      */
@@ -236,7 +235,7 @@ class ManagerDashboardController extends Controller
             ->withCount(['users'])
             ->get();
     }
-    
+
     /**
      * Get team statistics for dashboard
      */
@@ -245,7 +244,7 @@ class ManagerDashboardController extends Controller
         $today = Carbon::today();
         $thisWeek = Carbon::now()->startOfWeek();
         $thisMonth = Carbon::now()->startOfMonth();
-        
+
         return [
             'total_team_members' => User::whereHas('accounts', function ($query) use ($managedAccounts) {
                 $query->whereIn('accounts.id', $managedAccounts->pluck('id'));
@@ -260,10 +259,10 @@ class ManagerDashboardController extends Controller
                 ->sum('total_duration'),
             'pending_approvals' => TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
                 ->where('status', 'pending')->count(),
-            'projects_count' => Project::whereIn('account_id', $managedAccounts->pluck('id'))->count()
+            'projects_count' => Project::whereIn('account_id', $managedAccounts->pluck('id'))->count(),
         ];
     }
-    
+
     /**
      * Get pending approvals
      */
@@ -276,7 +275,7 @@ class ManagerDashboardController extends Controller
             ->limit(10)
             ->get();
     }
-    
+
     /**
      * Get team activity
      */
@@ -291,24 +290,24 @@ class ManagerDashboardController extends Controller
                 ->with(['user:id,name', 'account:id,name', 'project:id,name'])
                 ->latest()
                 ->limit(10)
-                ->get()
+                ->get(),
         ];
     }
-    
+
     /**
      * Get performance metrics
      */
     private function getPerformanceMetrics($user, $managedAccounts): array
     {
         $lastWeek = Carbon::now()->subWeek();
-        
+
         return [
             'team_productivity' => $this->calculateTeamProductivity($managedAccounts, $lastWeek),
             'approval_efficiency' => $this->calculateApprovalEfficiency($managedAccounts, $lastWeek),
-            'project_completion_rate' => $this->calculateProjectCompletionRate($managedAccounts, $lastWeek)
+            'project_completion_rate' => $this->calculateProjectCompletionRate($managedAccounts, $lastWeek),
         ];
     }
-    
+
     /**
      * Helper methods for analytics
      */
@@ -319,10 +318,10 @@ class ManagerDashboardController extends Controller
             ->whereNotNull('approved_at')
             ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, approved_at)) as avg_hours')
             ->first();
-            
+
         return $approvals->avg_hours ?? 0;
     }
-    
+
     private function getTeamProductivityTrends($managedAccounts, $startDate): array
     {
         return TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
@@ -333,7 +332,7 @@ class ManagerDashboardController extends Controller
             ->get()
             ->toArray();
     }
-    
+
     private function getUtilizationRates($managedAccounts, $startDate): array
     {
         // Placeholder implementation - would calculate based on working hours vs tracked hours
@@ -343,12 +342,12 @@ class ManagerDashboardController extends Controller
                 return [
                     'account_id' => $account->id,
                     'account_name' => $account->name,
-                    'utilization_rate' => rand(65, 85) // Placeholder
+                    'utilization_rate' => rand(65, 85), // Placeholder
                 ];
-            })->toArray()
+            })->toArray(),
         ];
     }
-    
+
     private function getProjectProgress($managedAccounts, $startDate): array
     {
         return Project::whereIn('account_id', $managedAccounts->pluck('id'))
@@ -362,12 +361,12 @@ class ManagerDashboardController extends Controller
                     'name' => $project->name,
                     'account_name' => $project->account->name,
                     'total_hours' => ($project->total_hours ?? 0) / 3600,
-                    'progress_percentage' => rand(20, 95) // Placeholder - would calculate based on tasks
+                    'progress_percentage' => rand(20, 95), // Placeholder - would calculate based on tasks
                 ];
             })
             ->toArray();
     }
-    
+
     private function getApprovalMetrics($managedAccounts, $startDate): array
     {
         $total = TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
@@ -378,14 +377,14 @@ class ManagerDashboardController extends Controller
         $rejected = TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
             ->where('created_at', '>=', $startDate)
             ->where('status', 'rejected')->count();
-            
+
         return [
             'approval_rate' => $total > 0 ? ($approved / $total * 100) : 0,
             'rejection_rate' => $total > 0 ? ($rejected / $total * 100) : 0,
-            'pending_rate' => $total > 0 ? (($total - $approved - $rejected) / $total * 100) : 0
+            'pending_rate' => $total > 0 ? (($total - $approved - $rejected) / $total * 100) : 0,
         ];
     }
-    
+
     private function getBillableRatio($managedAccounts, $startDate): array
     {
         $billable = TimeEntry::whereIn('account_id', $managedAccounts->pluck('id'))
@@ -396,14 +395,14 @@ class ManagerDashboardController extends Controller
             ->where('created_at', '>=', $startDate)
             ->where('billable', false)
             ->sum('duration');
-            
+
         return [
             'billable_hours' => $billable / 3600,
             'non_billable_hours' => $nonBillable / 3600,
-            'billable_percentage' => ($billable + $nonBillable) > 0 ? ($billable / ($billable + $nonBillable) * 100) : 0
+            'billable_percentage' => ($billable + $nonBillable) > 0 ? ($billable / ($billable + $nonBillable) * 100) : 0,
         ];
     }
-    
+
     private function getCostPerProject($managedAccounts, $startDate): array
     {
         // Placeholder - would calculate based on billing rates and time entries
@@ -414,24 +413,24 @@ class ManagerDashboardController extends Controller
                 return [
                     'project_id' => $project->id,
                     'project_name' => $project->name,
-                    'estimated_cost' => rand(5000, 50000) // Placeholder
+                    'estimated_cost' => rand(5000, 50000), // Placeholder
                 ];
             })
             ->toArray();
     }
-    
+
     private function calculateTeamProductivity($managedAccounts, $startDate): float
     {
         // Placeholder calculation
         return 82.5;
     }
-    
+
     private function calculateApprovalEfficiency($managedAccounts, $startDate): float
     {
-        // Placeholder calculation  
+        // Placeholder calculation
         return 91.2;
     }
-    
+
     private function calculateProjectCompletionRate($managedAccounts, $startDate): float
     {
         // Placeholder calculation

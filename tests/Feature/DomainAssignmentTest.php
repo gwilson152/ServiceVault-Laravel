@@ -23,7 +23,7 @@ class DomainAssignmentTest extends TestCase
         // Create test data
         $account = Account::factory()->active()->create(['name' => 'Test Company']);
         $roleTemplate = RoleTemplate::factory()->employee()->create();
-        
+
         $domainMapping = DomainMapping::factory()->create([
             'domain_pattern' => 'testcompany.com',
             'account_id' => $account->id,
@@ -33,17 +33,17 @@ class DomainAssignmentTest extends TestCase
         ]);
 
         $user = User::factory()->create([
-            'email' => 'john.doe@testcompany.com'
+            'email' => 'john.doe@testcompany.com',
         ]);
 
-        $service = new DomainAssignmentService();
+        $service = new DomainAssignmentService;
         $result = $service->assignUserBasedOnDomain($user);
 
         // Assert assignment was made correctly
         $this->assertEquals('domain_mapping', $result['method']);
         $this->assertEquals($account->id, $result['account']->id);
         $this->assertEquals($roleTemplate->id, $result['role_template']->id);
-        
+
         // Verify user was assigned to correct account
         $user->refresh();
         $this->assertEquals($account->id, $user->current_account_id);
@@ -58,7 +58,7 @@ class DomainAssignmentTest extends TestCase
         // Create test data
         $account = Account::factory()->active()->create(['name' => 'Umbrella Corp']);
         $roleTemplate = RoleTemplate::factory()->employee()->create();
-        
+
         $domainMapping = DomainMapping::factory()->create([
             'domain_pattern' => '*.umbrella.com',
             'account_id' => $account->id,
@@ -67,10 +67,10 @@ class DomainAssignmentTest extends TestCase
         ]);
 
         $user = User::factory()->create([
-            'email' => 'alice@mail.umbrella.com'
+            'email' => 'alice@mail.umbrella.com',
         ]);
 
-        $service = new DomainAssignmentService();
+        $service = new DomainAssignmentService;
         $result = $service->assignUserBasedOnDomain($user);
 
         $this->assertEquals('domain_mapping', $result['method']);
@@ -87,10 +87,10 @@ class DomainAssignmentTest extends TestCase
         RoleTemplate::factory()->employee()->default()->create();
 
         $user = User::factory()->create([
-            'email' => 'john@nomatch.com'
+            'email' => 'john@nomatch.com',
         ]);
 
-        $service = new DomainAssignmentService();
+        $service = new DomainAssignmentService;
         $result = $service->assignUserBasedOnDomain($user);
 
         $this->assertEquals('default', $result['method']);
@@ -104,7 +104,7 @@ class DomainAssignmentTest extends TestCase
     {
         $account = Account::factory()->active()->create(['name' => 'Test Company']);
         $roleTemplate = RoleTemplate::factory()->employee()->create();
-        
+
         DomainMapping::factory()->create([
             'domain_pattern' => 'testcompany.com',
             'account_id' => $account->id,
@@ -112,7 +112,7 @@ class DomainAssignmentTest extends TestCase
             'is_active' => true,
         ]);
 
-        $service = new DomainAssignmentService();
+        $service = new DomainAssignmentService;
         $preview = $service->previewAssignmentForEmail('test@testcompany.com');
 
         $this->assertEquals('domain_mapping', $preview['method']);
@@ -127,7 +127,7 @@ class DomainAssignmentTest extends TestCase
     public function test_domain_pattern_matching(): void
     {
         $mapping = DomainMapping::factory()->create([
-            'domain_pattern' => '*.example.com'
+            'domain_pattern' => '*.example.com',
         ]);
 
         $this->assertTrue($mapping->matchesDomain('mail.example.com'));

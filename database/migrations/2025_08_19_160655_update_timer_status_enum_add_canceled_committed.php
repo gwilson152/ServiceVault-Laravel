@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -22,21 +22,21 @@ return new class extends Migration
         if (DB::getDriverName() === 'pgsql') {
             // Drop the existing check constraint
             DB::statement('ALTER TABLE timers DROP CONSTRAINT IF EXISTS timers_status_check');
-            
+
             // Change the column type to VARCHAR to remove enum constraint
             DB::statement('ALTER TABLE timers ALTER COLUMN status TYPE VARCHAR(20)');
-            
+
             // Add new check constraint with updated values
             DB::statement("ALTER TABLE timers ADD CONSTRAINT timers_status_check CHECK (status IN ('running', 'paused', 'canceled', 'committed'))");
-            
+
             // Set default value
             DB::statement("ALTER TABLE timers ALTER COLUMN status SET DEFAULT 'running'");
         } else {
             // Use Laravel schema builder for other databases (MySQL, etc.)
             Schema::table('timers', function (Blueprint $table) {
                 $table->enum('status', ['running', 'paused', 'canceled', 'committed'])
-                      ->default('running')
-                      ->change();
+                    ->default('running')
+                    ->change();
             });
         }
     }
@@ -55,18 +55,18 @@ return new class extends Migration
         if (DB::getDriverName() === 'pgsql') {
             // Drop the current check constraint
             DB::statement('ALTER TABLE timers DROP CONSTRAINT IF EXISTS timers_status_check');
-            
+
             // Add original check constraint
             DB::statement("ALTER TABLE timers ADD CONSTRAINT timers_status_check CHECK (status IN ('running', 'paused', 'stopped'))");
-            
+
             // Set default value
             DB::statement("ALTER TABLE timers ALTER COLUMN status SET DEFAULT 'running'");
         } else {
             // Use Laravel schema builder for other databases (MySQL, etc.)
             Schema::table('timers', function (Blueprint $table) {
                 $table->enum('status', ['running', 'paused', 'stopped'])
-                      ->default('running')
-                      ->change();
+                    ->default('running')
+                    ->change();
             });
         }
     }

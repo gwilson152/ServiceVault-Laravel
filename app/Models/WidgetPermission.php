@@ -2,15 +2,13 @@
 
 namespace App\Models;
 
-use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class WidgetPermission extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
         'widget_id',
         'widget_name',
@@ -22,13 +20,13 @@ class WidgetPermission extends Model
         'is_configurable',
         'default_enabled',
     ];
-    
+
     protected $casts = [
         'required_permissions' => 'array',
         'is_configurable' => 'boolean',
         'default_enabled' => 'boolean',
     ];
-    
+
     /**
      * Get role templates that have this widget permission
      */
@@ -36,7 +34,7 @@ class WidgetPermission extends Model
     {
         return $this->belongsToMany(RoleTemplate::class, 'role_template_widgets', 'widget_id', 'role_template_id', 'widget_id');
     }
-    
+
     /**
      * Get widget configurations for this permission
      */
@@ -44,7 +42,7 @@ class WidgetPermission extends Model
     {
         return $this->hasMany(RoleTemplateWidget::class, 'widget_id', 'widget_id');
     }
-    
+
     /**
      * Scope for context filtering
      */
@@ -52,7 +50,7 @@ class WidgetPermission extends Model
     {
         return $query->where('context', $context)->orWhere('context', 'both');
     }
-    
+
     /**
      * Scope for category filtering
      */
@@ -60,7 +58,7 @@ class WidgetPermission extends Model
     {
         return $query->where('category', $category);
     }
-    
+
     /**
      * Check if widget is available in given context
      */
@@ -68,7 +66,7 @@ class WidgetPermission extends Model
     {
         return $this->context === 'both' || $this->context === $context;
     }
-    
+
     /**
      * Get the display name for this widget
      */

@@ -24,7 +24,7 @@ class TicketPriority extends Model
         'severity_level',
         'escalation_multiplier',
         'sort_order',
-        'metadata'
+        'metadata',
     ];
 
     protected $casts = [
@@ -32,7 +32,7 @@ class TicketPriority extends Model
         'is_default' => 'boolean',
         'severity_level' => 'integer',
         'escalation_multiplier' => 'decimal:2',
-        'metadata' => 'array'
+        'metadata' => 'array',
     ];
 
     /**
@@ -83,14 +83,14 @@ class TicketPriority extends Model
         return static::active()
             ->ordered()
             ->get()
-            ->map(fn($priority) => [
+            ->map(fn ($priority) => [
                 'value' => $priority->key,
                 'label' => $priority->name,
                 'color' => $priority->color,
                 'bg_color' => $priority->bg_color,
                 'icon' => $priority->icon,
                 'severity_level' => $priority->severity_level,
-                'escalation_multiplier' => $priority->escalation_multiplier
+                'escalation_multiplier' => $priority->escalation_multiplier,
             ])
             ->toArray();
     }

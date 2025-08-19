@@ -68,7 +68,7 @@ class BillingSetting extends Model
                 return $settings;
             }
         }
-        
+
         // Fall back to global settings
         return static::whereNull('account_id')->first();
     }
@@ -77,7 +77,8 @@ class BillingSetting extends Model
     {
         $current = $this->next_invoice_number;
         $this->increment('next_invoice_number');
-        return $this->invoice_prefix . '-' . str_pad($current, 4, '0', STR_PAD_LEFT);
+
+        return $this->invoice_prefix.'-'.str_pad($current, 4, '0', STR_PAD_LEFT);
     }
 
     public function getEnabledPaymentMethods(): array

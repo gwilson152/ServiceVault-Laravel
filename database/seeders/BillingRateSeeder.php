@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\BillingRate;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class BillingRateSeeder extends Seeder
@@ -50,7 +49,7 @@ class BillingRateSeeder extends Seeder
                 $rateData
             );
         }
-        
+
         // Ensure only one default billing rate exists
         $defaultCount = BillingRate::where('is_default', true)->count();
         if ($defaultCount === 0) {

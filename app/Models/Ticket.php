@@ -6,11 +6,10 @@ use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Carbon\Carbon;
 
 class Ticket extends Model
 {
-    use HasFactory, SoftDeletes, HasUuid;
+    use HasFactory, HasUuid, SoftDeletes;
 
     protected $table = 'tickets';
 
@@ -52,31 +51,44 @@ class Ticket extends Model
 
     // Status constants for better code organization
     public const STATUS_OPEN = 'open';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_WAITING_CUSTOMER = 'waiting_customer';
+
     public const STATUS_ON_HOLD = 'on_hold';
+
     public const STATUS_RESOLVED = 'resolved';
+
     public const STATUS_CLOSED = 'closed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     // Priority constants
     public const PRIORITY_LOW = 'low';
+
     public const PRIORITY_NORMAL = 'normal';
+
     public const PRIORITY_MEDIUM = 'medium';
+
     public const PRIORITY_HIGH = 'high';
+
     public const PRIORITY_URGENT = 'urgent';
 
     // Category constants
     public const CATEGORY_SUPPORT = 'support';
+
     public const CATEGORY_MAINTENANCE = 'maintenance';
+
     public const CATEGORY_DEVELOPMENT = 'development';
+
     public const CATEGORY_CONSULTING = 'consulting';
+
     public const CATEGORY_OTHER = 'other';
 
     /**
      * Relationships
      */
-
     public function account()
     {
         return $this->belongsTo(Account::class);
@@ -202,14 +214,14 @@ class Ticket extends Model
             ->orderBy('ticket_number', 'desc')
             ->first();
 
-        if (!$lastTicket) {
+        if (! $lastTicket) {
             $number = 1;
         } else {
             $lastNumber = (int) str_replace($prefix, '', $lastTicket->ticket_number);
             $number = $lastNumber + 1;
         }
 
-        return $prefix . str_pad($number, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad($number, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -219,7 +231,7 @@ class Ticket extends Model
     {
         return $this->due_date &&
             $this->due_date->isPast() &&
-            !in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED]);
+            ! in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED]);
     }
 
     /**
@@ -227,7 +239,7 @@ class Ticket extends Model
      */
     public function isSlaBreached(): bool
     {
-        return !is_null($this->sla_breached_at);
+        return ! is_null($this->sla_breached_at);
     }
 
     /**
@@ -287,7 +299,6 @@ class Ticket extends Model
     /**
      * Status workflow methods
      */
-
     public function canTransitionTo(string $newStatus): bool
     {
         $validTransitions = [
@@ -305,7 +316,7 @@ class Ticket extends Model
 
     public function transitionTo(string $newStatus, User $user, ?string $notes = null): bool
     {
-        if (!$this->canTransitionTo($newStatus)) {
+        if (! $this->canTransitionTo($newStatus)) {
             return false;
         }
 
@@ -411,7 +422,7 @@ class Ticket extends Model
      */
     public function canBeEditedBy(User $user): bool
     {
-        if (!$this->canBeViewedBy($user)) {
+        if (! $this->canBeViewedBy($user)) {
             return false;
         }
 
@@ -431,13 +442,12 @@ class Ticket extends Model
 
         // Users can edit tickets they created (unless closed)
         return $this->created_by_id === $user->id &&
-            !in_array($this->status, [self::STATUS_CLOSED, self::STATUS_CANCELLED]);
+            ! in_array($this->status, [self::STATUS_CLOSED, self::STATUS_CANCELLED]);
     }
 
     /**
      * Scopes for common queries
      */
-
     public function scopeForAccount($query, $accountId)
     {
         return $query->where('account_id', $accountId);

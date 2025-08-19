@@ -5,10 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DomainMapping;
 use App\Services\DomainAssignmentService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 class DomainMappingController extends Controller
 {
@@ -147,7 +146,7 @@ class DomainMappingController extends Controller
         if ($request->has('domain_pattern') || $request->has('account_id')) {
             $domainPattern = $request->get('domain_pattern', $domainMapping->domain_pattern);
             $accountId = $request->get('account_id', $domainMapping->account_id);
-            
+
             $exists = DomainMapping::where('domain_pattern', $domainPattern)
                 ->where('account_id', $accountId)
                 ->where('id', '!=', $domainMapping->id)
@@ -201,7 +200,7 @@ class DomainMappingController extends Controller
             ], 422);
         }
 
-        $assignmentService = new DomainAssignmentService();
+        $assignmentService = new DomainAssignmentService;
         $preview = $assignmentService->previewAssignmentForEmail($request->email);
 
         return response()->json([
@@ -216,7 +215,7 @@ class DomainMappingController extends Controller
     {
         $this->authorize('viewAny', DomainMapping::class);
 
-        $assignmentService = new DomainAssignmentService();
+        $assignmentService = new DomainAssignmentService;
         $validation = $assignmentService->validateAssignmentRequirements();
 
         return response()->json([

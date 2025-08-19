@@ -23,13 +23,13 @@ class AccountResource extends JsonResource
             'description' => $this->description,
             'is_active' => $this->is_active,
             'status' => $this->is_active ? 'active' : 'inactive',
-            
+
             // Contact Information
             'contact_person' => $this->contact_person,
             'email' => $this->email,
             'phone' => $this->phone,
             'website' => $this->website,
-            
+
             // Address Information
             'address' => $this->address,
             'city' => $this->city,
@@ -37,7 +37,7 @@ class AccountResource extends JsonResource
             'postal_code' => $this->postal_code,
             'country' => $this->country,
             'full_address' => $this->full_address,
-            
+
             // Billing Information
             'billing_address' => $this->billing_address,
             'billing_city' => $this->billing_city,
@@ -45,21 +45,20 @@ class AccountResource extends JsonResource
             'billing_postal_code' => $this->billing_postal_code,
             'billing_country' => $this->billing_country,
             'full_billing_address' => $this->full_billing_address,
-            
+
             // Business Details
             'tax_id' => $this->tax_id,
             'notes' => $this->notes,
-            
+
             // Account Information
             'users_count' => $this->users()->count(),
-            
+
             // System Information
             'settings' => $this->settings,
             'theme_settings' => $this->theme_settings,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
-            
+
             // Include users when loaded
             'users' => $this->whenLoaded('users'),
         ];

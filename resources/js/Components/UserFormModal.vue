@@ -17,14 +17,6 @@ const props = defineProps({
         type: Object,
         default: null
     },
-    accounts: {
-        type: Array,
-        default: () => []
-    },
-    roleTemplates: {
-        type: Array,
-        default: () => []
-    },
     preselectedAccountId: {
         type: [String, Number],
         default: null
@@ -168,9 +160,8 @@ const handleRoleSelected = (role) => {
 }
 
 const getAccountDisplayName = () => {
-    if (!props.preselectedAccountId) return ''
-    const account = props.accounts.find(acc => acc.id == props.preselectedAccountId)
-    return account ? `${account.display_name || account.name} (${account.account_type || 'Account'})` : 'Selected Account'
+    if (!props.preselectedAccountId) return 'Selected Account'
+    return 'Selected Account'
 }
 
 const timezones = [
@@ -358,7 +349,6 @@ const locales = [
                             <UnifiedSelector
                                 v-model="form.account_id"
                                 type="account"
-                                :items="accounts"
                                 label="Primary Account"
                                 placeholder="Select an account..."
                                 :can-create="true"
@@ -393,7 +383,6 @@ const locales = [
                             <UnifiedSelector
                                 v-model="form.role_template_id"
                                 type="role-template"
-                                :items="roleTemplates"
                                 label="Role Template"
                                 placeholder="Search and select a role..."
                                 :nested="true"

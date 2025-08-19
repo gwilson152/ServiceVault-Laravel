@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\WidgetPermission;
 use App\Models\RoleTemplate;
+use App\Models\WidgetPermission;
 use App\Services\WidgetRegistryService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class WidgetPermissionController extends Controller
@@ -22,28 +22,28 @@ class WidgetPermissionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = WidgetPermission::query();
-        
+
         // Filter by context
         if ($request->has('context')) {
             $query->forContext($request->context);
         }
-        
+
         // Filter by category
         if ($request->has('category')) {
             $query->byCategory($request->category);
         }
-        
+
         // Search by name or widget_id
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('widget_name', 'like', "%{$search}%")
-                  ->orWhere('widget_id', 'like', "%{$search}%");
+                    ->orWhere('widget_id', 'like', "%{$search}%");
             });
         }
-        
+
         $widgetPermissions = $query->orderBy('category')->orderBy('widget_name')->get();
-        
+
         return response()->json([
             'data' => $widgetPermissions->map(function ($permission) {
                 return [
@@ -80,13 +80,13 @@ class WidgetPermissionController extends Controller
             'is_configurable' => 'boolean',
             'default_enabled' => 'boolean',
         ]);
-        
+
         $validated['required_permissions'] = $validated['required_permissions'] ?? [];
         $validated['is_configurable'] = $validated['is_configurable'] ?? true;
         $validated['default_enabled'] = $validated['default_enabled'] ?? false;
-        
+
         $widgetPermission = WidgetPermission::create($validated);
-        
+
         return response()->json([
             'message' => 'Widget permission created successfully',
             'data' => $widgetPermission,
@@ -99,7 +99,7 @@ class WidgetPermissionController extends Controller
     public function show(WidgetPermission $widgetPermission): JsonResponse
     {
         $widgetPermission->load(['roleTemplates', 'configurations']);
-        
+
         return response()->json([
             'data' => [
                 'id' => $widgetPermission->id,
@@ -149,9 +149,9 @@ class WidgetPermissionController extends Controller
             'is_configurable' => 'boolean',
             'default_enabled' => 'boolean',
         ]);
-        
+
         $widgetPermission->update($validated);
-        
+
         return response()->json([
             'message' => 'Widget permission updated successfully',
             'data' => $widgetPermission->fresh(),
@@ -169,14 +169,14 @@ class WidgetPermissionController extends Controller
                 'message' => 'Cannot delete widget permission that is currently assigned to role templates',
             ], 422);
         }
-        
+
         $widgetPermission->delete();
-        
+
         return response()->json([
             'message' => 'Widget permission deleted successfully',
         ]);
     }
-    
+
     /**
      * Sync widget permissions from WidgetRegistryService
      */
@@ -185,7 +185,7 @@ class WidgetPermissionController extends Controller
         $widgetPermissionKeys = $this->widgetService->getAllWidgetPermissionKeys();
         $synced = 0;
         $updated = 0;
-        
+
         foreach ($widgetPermissionKeys as $widgetData) {
             $widgetPermission = WidgetPermission::updateOrCreate(
                 ['permission_key' => $widgetData['key']],
@@ -200,14 +200,14 @@ class WidgetPermissionController extends Controller
                     'default_enabled' => false,
                 ]
             );
-            
+
             if ($widgetPermission->wasRecentlyCreated) {
                 $synced++;
             } else {
                 $updated++;
             }
         }
-        
+
         return response()->json([
             'message' => 'Widget permissions synced successfully',
             'data' => [
@@ -217,7 +217,7 @@ class WidgetPermissionController extends Controller
             ],
         ]);
     }
-    
+
     /**
      * Get widget categories
      */
@@ -227,12 +227,12 @@ class WidgetPermissionController extends Controller
             ->distinct()
             ->orderBy('category')
             ->pluck('category');
-        
+
         return response()->json([
             'data' => $categories,
         ]);
     }
-    
+
     /**
      * Assign widget permission to role template
      */
@@ -244,23 +244,23 @@ class WidgetPermissionController extends Controller
             'display_order' => 'integer|min:0',
             'widget_config' => 'array',
         ]);
-        
+
         $roleTemplate = RoleTemplate::findOrFail($validated['role_template_id']);
-        
+
         // Check if role template is modifiable
-        if (!$roleTemplate->isModifiable()) {
+        if (! $roleTemplate->isModifiable()) {
             return response()->json([
                 'message' => 'This role template cannot be modified',
             ], 403);
         }
-        
+
         // Check context compatibility
-        if (!$widgetPermission->isAvailableInContext($roleTemplate->context) && $roleTemplate->context !== 'both') {
+        if (! $widgetPermission->isAvailableInContext($roleTemplate->context) && $roleTemplate->context !== 'both') {
             return response()->json([
                 'message' => 'Widget permission is not compatible with role template context',
             ], 422);
         }
-        
+
         $roleTemplate->widgets()->updateOrCreate(
             ['widget_id' => $widgetPermission->widget_id],
             [
@@ -269,12 +269,12 @@ class WidgetPermissionController extends Controller
                 'widget_config' => $validated['widget_config'] ?? [],
             ]
         );
-        
+
         return response()->json([
             'message' => 'Widget permission assigned to role template successfully',
         ]);
     }
-    
+
     /**
      * Remove widget permission from role template
      */
@@ -283,20 +283,20 @@ class WidgetPermissionController extends Controller
         $validated = $request->validate([
             'role_template_id' => 'required|exists:role_templates,id',
         ]);
-        
+
         $roleTemplate = RoleTemplate::findOrFail($validated['role_template_id']);
-        
+
         // Check if role template is modifiable
-        if (!$roleTemplate->isModifiable()) {
+        if (! $roleTemplate->isModifiable()) {
             return response()->json([
                 'message' => 'This role template cannot be modified',
             ], 403);
         }
-        
+
         $roleTemplate->widgets()
             ->where('widget_id', $widgetPermission->widget_id)
             ->delete();
-        
+
         return response()->json([
             'message' => 'Widget permission removed from role template successfully',
         ]);

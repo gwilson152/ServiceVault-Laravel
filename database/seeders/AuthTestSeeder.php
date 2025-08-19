@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use App\Models\Account;
-use App\Models\RoleTemplate;
 use App\Models\Role;
+use App\Models\RoleTemplate;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -19,8 +19,8 @@ class AuthTestSeeder extends Seeder
             'slug' => 'test-company',
             'settings' => json_encode([
                 'timezone' => 'UTC',
-                'currency' => 'USD'
-            ])
+                'currency' => 'USD',
+            ]),
         ]);
 
         // Create role templates
@@ -45,7 +45,7 @@ class AuthTestSeeder extends Seeder
         ]);
 
         $employee = User::create([
-            'name' => 'Employee User', 
+            'name' => 'Employee User',
             'email' => 'employee@test.com',
             'password' => Hash::make('password'),
             'email_verified_at' => now(),

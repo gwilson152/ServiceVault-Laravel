@@ -15,10 +15,10 @@ return new class extends Migration
             // Add ticket_id foreign key column
             $table->uuid('ticket_id')->nullable()->after('account_id');
             $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('cascade');
-            
+
             // Add index for efficient querying
             $table->index(['user_id', 'ticket_id', 'status']);
-            
+
             // Note: Unique constraint for active timers will be enforced in application logic
             // since we need conditional constraint based on status (running/paused)
         });

@@ -14,7 +14,7 @@ class TicketComment extends Model
 
     protected $fillable = [
         'ticket_id',
-        'user_id', 
+        'user_id',
         'content',
         'is_internal',
         'attachments',
@@ -77,7 +77,7 @@ class TicketComment extends Model
     }
 
     /**
-     * Scope to get external/customer comments only  
+     * Scope to get external/customer comments only
      */
     public function scopeExternal($query)
     {
@@ -98,7 +98,7 @@ class TicketComment extends Model
     public function canBeEditedBy(User $user): bool
     {
         // Users can edit their own comments within 1 hour, or admins can edit any comment
-        return ($this->user_id === $user->id && $this->created_at->diffInHours(now()) <= 1) 
+        return ($this->user_id === $user->id && $this->created_at->diffInHours(now()) <= 1)
                || $user->hasAnyPermission(['admin.write', 'tickets.manage']);
     }
 
@@ -108,7 +108,7 @@ class TicketComment extends Model
     public function canBeDeletedBy(User $user): bool
     {
         // Users can delete their own comments, or admins can delete any comment
-        return $this->user_id === $user->id 
+        return $this->user_id === $user->id
                || $user->hasAnyPermission(['admin.write', 'tickets.manage']);
     }
 }

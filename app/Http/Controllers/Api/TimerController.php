@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\TimerDeleted;
 use App\Events\TimerStarted;
 use App\Events\TimerStopped;
 use App\Events\TimerUpdated;
-use App\Events\TimerDeleted;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTimerRequest;
 use App\Http\Requests\UpdateTimerRequest;
@@ -99,18 +99,18 @@ class TimerController extends Controller
     {
         // Validate that user is an Agent (can create timers for time entry conversion)
         $user = $request->user();
-        if (!$user->canCreateTimeEntries()) {
+        if (! $user->canCreateTimeEntries()) {
             return response()->json([
                 'message' => 'Only Agents can create timers for time tracking purposes.',
-                'error' => 'User type validation failed'
+                'error' => 'User type validation failed',
             ], 403);
         }
 
         DB::beginTransaction();
         try {
             // Use provided user_id if valid and user has permission, otherwise use current user
-            $userId = $request->input('user_id') && $user->hasPermission('timers.manage') 
-                ? $request->input('user_id') 
+            $userId = $request->input('user_id') && $user->hasPermission('timers.manage')
+                ? $request->input('user_id')
                 : $user->id;
             $ticketId = $request->input('ticket_id');
 
@@ -120,7 +120,7 @@ class TimerController extends Controller
                 if (Timer::userHasActiveTimerForTicket($userId, $ticketId)) {
                     return response()->json([
                         'message' => 'You already have an active timer for this ticket. Please stop it first.',
-                        'existing_timer' => new TimerResource(Timer::getUserActiveTimerForTicket($userId, $ticketId))
+                        'existing_timer' => new TimerResource(Timer::getUserActiveTimerForTicket($userId, $ticketId)),
                     ], 422);
                 }
             }
@@ -343,7 +343,7 @@ class TimerController extends Controller
                 broadcast(new TimerUpdated($timer))->toOthers();
             } catch (\Exception $e) {
                 // Log broadcast error but don't fail the request
-                \Log::warning('Failed to broadcast timer update: ' . $e->getMessage());
+                \Log::warning('Failed to broadcast timer update: '.$e->getMessage());
             }
 
             // Update Redis state
@@ -351,7 +351,7 @@ class TimerController extends Controller
                 $this->timerService->updateRedisState($timer);
             } catch (\Exception $e) {
                 // Log Redis error but don't fail the request
-                \Log::warning('Failed to update Redis state: ' . $e->getMessage());
+                \Log::warning('Failed to update Redis state: '.$e->getMessage());
             }
 
             return response()->json([
@@ -359,10 +359,10 @@ class TimerController extends Controller
                 'data' => new TimerResource($timer),
             ]);
         } catch (\Exception $e) {
-            \Log::error('Timer resume error: ' . $e->getMessage(), [
+            \Log::error('Timer resume error: '.$e->getMessage(), [
                 'timer_id' => $timer->id ?? 'unknown',
                 'user_id' => auth()->id() ?? 'unknown',
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
@@ -428,7 +428,7 @@ class TimerController extends Controller
         $this->authorize('update', $timer);
 
         $validated = $request->validate([
-            'time_entry_id' => 'required|exists:time_entries,id'
+            'time_entry_id' => 'required|exists:time_entries,id',
         ]);
 
         try {
@@ -447,7 +447,7 @@ class TimerController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to mark timer as committed: ' . $e->getMessage()
+                'error' => 'Failed to mark timer as committed: '.$e->getMessage(),
             ], 422);
         }
     }
@@ -461,28 +461,28 @@ class TimerController extends Controller
 
         try {
             // Only allow canceling active timers
-            if (!in_array($timer->status, ['running', 'paused'])) {
+            if (! in_array($timer->status, ['running', 'paused'])) {
                 return response()->json([
-                    'error' => 'Timer cannot be canceled. Current status: ' . $timer->status
+                    'error' => 'Timer cannot be canceled. Current status: '.$timer->status,
                 ], 422);
             }
 
             // Cancel the timer using the model method
             $timer->cancel();
-            
+
             // Remove timer from Redis cache
             $this->timerService->removeFromRedis($timer);
-            
+
             // Broadcast timer canceled event (reuse TimerStopped for now)
             broadcast(new TimerStopped($timer))->toOthers();
-            
+
             return response()->json([
                 'message' => 'Timer canceled successfully',
                 'data' => new TimerResource($timer->fresh()),
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to cancel timer: ' . $e->getMessage()
+                'error' => 'Failed to cancel timer: '.$e->getMessage(),
             ], 422);
         }
     }
@@ -729,14 +729,14 @@ class TimerController extends Controller
         $forceDelete = $request->boolean('force', false);
 
         // Only allow deletion of non-running timers unless force delete
-        if (!$forceDelete && $timer->status === 'running') {
+        if (! $forceDelete && $timer->status === 'running') {
             return response()->json([
                 'message' => 'Cannot delete a running timer. Please stop it first or use force delete.',
             ], 400);
         }
 
         // Check if timer has been converted to time entry
-        if ($timer->time_entry_id && !$forceDelete) {
+        if ($timer->time_entry_id && ! $forceDelete) {
             return response()->json([
                 'message' => 'Cannot delete a timer that has been converted to a time entry.',
             ], 400);
@@ -769,7 +769,7 @@ class TimerController extends Controller
         $user = $request->user();
 
         // Check if user has timer permissions
-        if (!$user->hasAnyPermission(['timers.read', 'timers.write', 'time.track'])) {
+        if (! $user->hasAnyPermission(['timers.read', 'timers.write', 'time.track'])) {
             abort(403, 'Insufficient permissions to view timers.');
         }
 
@@ -781,7 +781,7 @@ class TimerController extends Controller
             ->where('ticket_id', $ticketId);
 
         // By default, only show active timers
-        if (!$request->boolean('include_all_statuses', false)) {
+        if (! $request->boolean('include_all_statuses', false)) {
             $query->whereIn('status', ['running', 'paused']);
         }
 
@@ -802,10 +802,10 @@ class TimerController extends Controller
     {
         // Validate that user is an Agent (can create timers for time entry conversion)
         $user = $request->user();
-        if (!$user->canCreateTimeEntries()) {
+        if (! $user->canCreateTimeEntries()) {
             return response()->json([
                 'message' => 'Only Agents can create timers for time tracking purposes.',
-                'error' => 'User type validation failed'
+                'error' => 'User type validation failed',
             ], 403);
         }
 
@@ -820,7 +820,7 @@ class TimerController extends Controller
         if (Timer::userHasActiveTimerForTicket($userId, $ticketId)) {
             return response()->json([
                 'message' => 'You already have an active timer for this ticket. Please stop it first.',
-                'existing_timer' => new TimerResource(Timer::getUserActiveTimerForTicket($userId, $ticketId))
+                'existing_timer' => new TimerResource(Timer::getUserActiveTimerForTicket($userId, $ticketId)),
             ], 422);
         }
 
@@ -837,7 +837,7 @@ class TimerController extends Controller
                 'description' => $request->input('description'),
                 'status' => 'running',
                 'started_at' => now(),
-                'device_id' => $request->input('device_id', 'web-' . uniqid()),
+                'device_id' => $request->input('device_id', 'web-'.uniqid()),
                 'is_synced' => true,
                 'metadata' => [
                     'client_ip' => $request->ip(),
@@ -876,7 +876,7 @@ class TimerController extends Controller
         $user = $request->user();
 
         // Check if user has timer permissions
-        if (!$user->hasAnyPermission(['timers.read', 'timers.write', 'time.track'])) {
+        if (! $user->hasAnyPermission(['timers.read', 'timers.write', 'time.track'])) {
             return response()->json(['error' => 'Insufficient permissions to view timers.'], 403);
         }
 
@@ -916,7 +916,7 @@ class TimerController extends Controller
                         $results[] = ['id' => $timer->id, 'status' => 'stopped'];
                         break;
                     case 'delete':
-                        if ($timer->status !== 'running' && !$timer->time_entry_id) {
+                        if ($timer->status !== 'running' && ! $timer->time_entry_id) {
                             $timer->delete();
                             $results[] = ['id' => $timer->id, 'status' => 'deleted'];
                         } else {
@@ -957,14 +957,25 @@ class TimerController extends Controller
     }
 
     /**
-     * Get all active timers across all users (Admin only)
+     * Get all active timers across all users (Permission-based access)
      */
     public function allActive(Request $request): JsonResponse
     {
-        // Check admin permissions
         $user = $request->user();
-        if (!$user->isSuperAdmin() && !$user->hasPermission('admin.read')) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+
+        // Use centralized permission service to check timer management permissions
+        $canManageAllTimers = $user->hasAnyPermission([
+            'timers.manage',
+            'timers.view_all',
+            'admin.read',
+            'admin.manage',
+        ]);
+
+        if (! $canManageAllTimers) {
+            return response()->json([
+                'message' => 'Unauthorized - Insufficient permissions to view all active timers',
+                'required_permissions' => ['timers.manage', 'timers.view_all', 'admin.read', 'admin.manage'],
+            ], 403);
         }
 
         $timers = Timer::with(['user', 'billingRate', 'ticket'])
@@ -1011,14 +1022,194 @@ class TimerController extends Controller
     }
 
     /**
+     * Get active timers with enhanced permission-based access and controls
+     * This method is used by the active timers page
+     */
+    public function activeWithControls(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check if user can view their own timers
+        $canViewOwnTimers = $user->hasAnyPermission([
+            'timers.read',
+            'timers.write',
+            'timers.view',
+        ]);
+
+        // Check if user can view all timers (admin/manager permissions)
+        $canViewAllTimers = $user->hasAnyPermission([
+            'timers.manage',
+            'timers.view_all',
+            'admin.read',
+            'admin.manage',
+        ]);
+
+        if (! $canViewOwnTimers && ! $canViewAllTimers) {
+            return response()->json([
+                'message' => 'Unauthorized - No timer viewing permissions',
+                'required_permissions' => ['timers.read', 'timers.write', 'timers.view'],
+            ], 403);
+        }
+
+        // Build query based on permissions
+        $query = Timer::with(['user', 'billingRate', 'ticket', 'account'])
+            ->whereIn('status', ['running', 'paused']);
+
+        // Filter timers based on permissions
+        if ($canViewAllTimers) {
+            // Can see all timers - no additional filters needed
+            $query->orderBy('started_at', 'desc');
+        } else {
+            // Can only see own timers
+            $query->where('user_id', $user->id)
+                ->orderBy('started_at', 'desc');
+        }
+
+        $timers = $query->get();
+
+        $totalDuration = 0;
+        $totalAmount = 0;
+        $timerData = [];
+
+        foreach ($timers as $timer) {
+            $currentDuration = $timer->duration;
+            $currentAmount = $timer->calculated_amount;
+
+            $totalAmount += $currentAmount ?? 0;
+            $totalDuration += $currentDuration;
+
+            // Determine user's control permissions for this timer
+            $canControl = $timer->user_id === $user->id || $user->hasAnyPermission([
+                'timers.manage',
+                'timers.admin',
+                'admin.write',
+            ]);
+
+            $canCancel = $canControl && in_array($timer->status, ['running', 'paused']);
+            $canCommit = $timer->user_id === $user->id || $user->hasAnyPermission([
+                'timers.manage',
+                'timers.admin',
+            ]);
+
+            $timerData[] = [
+                'id' => $timer->id,
+                'description' => $timer->description,
+                'status' => $timer->status,
+                'started_at' => $timer->started_at,
+                'duration_seconds' => $currentDuration,
+                'formatted_duration' => $timer->duration_formatted,
+                'running_amount' => $currentAmount,
+                'user_id' => $timer->user_id,
+                'user_name' => $timer->user?->name,
+                'account' => $timer->account ? [
+                    'id' => $timer->account->id,
+                    'name' => $timer->account->name,
+                ] : null,
+                'ticket' => $timer->ticket ? [
+                    'id' => $timer->ticket->id,
+                    'ticket_number' => $timer->ticket->ticket_number,
+                    'title' => $timer->ticket->title,
+                ] : null,
+                'billing_rate' => $timer->billingRate ? [
+                    'id' => $timer->billingRate->id,
+                    'name' => $timer->billingRate->name,
+                    'rate' => $timer->billingRate->rate,
+                ] : null,
+                'permissions' => [
+                    'can_control' => $canControl,
+                    'can_pause' => $canControl && $timer->status === 'running',
+                    'can_resume' => $canControl && $timer->status === 'paused',
+                    'can_cancel' => $canCancel,
+                    'can_commit' => $canCommit,
+                    'can_edit' => $canControl,
+                ],
+            ];
+        }
+
+        return response()->json([
+            'data' => $timerData,
+            'stats' => [
+                'active_timers' => count($timerData),
+                'total_duration' => $totalDuration,
+                'total_amount' => $totalAmount,
+                'active_users' => $timers->unique('user_id')->count(),
+            ],
+            'user_permissions' => [
+                'can_view_own_timers' => $canViewOwnTimers,
+                'can_view_all_timers' => $canViewAllTimers,
+                'can_manage_timers' => $user->hasAnyPermission(['timers.manage', 'timers.admin', 'admin.write']),
+            ],
+        ]);
+    }
+
+    /**
+     * Admin action: Cancel any user's timer
+     */
+    public function adminCancelTimer(Request $request, Timer $timer): JsonResponse
+    {
+        $user = $request->user();
+
+        // Use centralized permission service for timer management permissions
+        $canManageAllTimers = $user->hasAnyPermission([
+            'timers.manage',
+            'timers.admin',
+            'admin.write',
+        ]);
+
+        if (! $canManageAllTimers) {
+            return response()->json([
+                'message' => 'Unauthorized - Insufficient permissions to manage timers',
+                'required_permissions' => ['timers.manage', 'timers.admin', 'admin.write'],
+            ], 403);
+        }
+
+        try {
+            // Only allow canceling active timers
+            if (! in_array($timer->status, ['running', 'paused'])) {
+                return response()->json([
+                    'error' => 'Timer cannot be canceled. Current status: '.$timer->status,
+                ], 422);
+            }
+
+            // Cancel the timer using the model method
+            $timer->cancel();
+
+            // Remove timer from Redis cache
+            $this->timerService->removeFromRedis($timer);
+
+            // Broadcast timer canceled event
+            broadcast(new TimerStopped($timer))->toOthers();
+
+            return response()->json([
+                'message' => 'Timer canceled successfully by admin',
+                'data' => new TimerResource($timer->fresh()),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to cancel timer: '.$e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
      * Admin action: Pause any user's timer
      */
     public function adminPauseTimer(Request $request, Timer $timer): JsonResponse
     {
-        // Check admin permissions
         $user = $request->user();
-        if (!$user->isSuperAdmin() && !$user->hasPermission('admin.write')) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+
+        // Use centralized permission service for timer management permissions
+        $canManageAllTimers = $user->hasAnyPermission([
+            'timers.manage',
+            'timers.admin',
+            'admin.write',
+        ]);
+
+        if (! $canManageAllTimers) {
+            return response()->json([
+                'message' => 'Unauthorized - Insufficient permissions to manage timers',
+                'required_permissions' => ['timers.manage', 'timers.admin', 'admin.write'],
+            ], 403);
         }
 
         if ($timer->status !== 'running') {
@@ -1047,10 +1238,20 @@ class TimerController extends Controller
      */
     public function adminResumeTimer(Request $request, Timer $timer): JsonResponse
     {
-        // Check admin permissions
         $user = $request->user();
-        if (!$user->isSuperAdmin() && !$user->hasPermission('admin.write')) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+
+        // Use centralized permission service for timer management permissions
+        $canManageAllTimers = $user->hasAnyPermission([
+            'timers.manage',
+            'timers.admin',
+            'admin.write',
+        ]);
+
+        if (! $canManageAllTimers) {
+            return response()->json([
+                'message' => 'Unauthorized - Insufficient permissions to manage timers',
+                'required_permissions' => ['timers.manage', 'timers.admin', 'admin.write'],
+            ], 403);
         }
 
         if ($timer->status !== 'paused') {
@@ -1083,17 +1284,27 @@ class TimerController extends Controller
      */
     public function adminStopTimer(Request $request, Timer $timer): JsonResponse
     {
-        // Check admin permissions
         $user = $request->user();
-        if (!$user->isSuperAdmin() && !$user->hasPermission('admin.write')) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+
+        // Use centralized permission service for timer management permissions
+        $canManageAllTimers = $user->hasAnyPermission([
+            'timers.manage',
+            'timers.admin',
+            'admin.write',
+        ]);
+
+        if (! $canManageAllTimers) {
+            return response()->json([
+                'message' => 'Unauthorized - Insufficient permissions to manage timers',
+                'required_permissions' => ['timers.manage', 'timers.admin', 'admin.write'],
+            ], 403);
         }
 
         DB::beginTransaction();
         try {
             $result = $this->timerService->stopTimer($timer, [
                 'convert_to_entry' => true,
-                'notes' => 'Stopped by administrator: ' . $user->name,
+                'notes' => 'Stopped by administrator: '.$user->name,
             ]);
 
             // Broadcast timer stopped event to the timer owner
@@ -1155,9 +1366,9 @@ class TimerController extends Controller
             'data' => $timersByTicket,
             'meta' => [
                 'tickets_requested' => count($ticketIds),
-                'tickets_with_timers' => count(array_filter($timersByTicket, fn($timers) => !empty($timers))),
+                'tickets_with_timers' => count(array_filter($timersByTicket, fn ($timers) => ! empty($timers))),
                 'total_active_timers' => $timers->count(),
-            ]
+            ],
         ]);
     }
 }

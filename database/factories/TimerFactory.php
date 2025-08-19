@@ -3,9 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\User;
-use App\Models\Project;
-use App\Models\Task;
-use App\Models\BillingRate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -23,7 +20,7 @@ class TimerFactory extends Factory
         $statuses = ['running', 'paused', 'canceled', 'committed'];
         $status = fake()->randomElement($statuses);
         $startedAt = fake()->dateTimeBetween('-1 week', 'now');
-        
+
         $data = [
             'user_id' => User::factory(),
             'task_id' => null,
@@ -73,6 +70,7 @@ class TimerFactory extends Factory
     public function paused(): static
     {
         $startedAt = fake()->dateTimeBetween('-4 hours', '-1 hour');
+
         return $this->state(fn (array $attributes) => [
             'status' => 'paused',
             'started_at' => $startedAt,
@@ -88,6 +86,7 @@ class TimerFactory extends Factory
     public function canceled(): static
     {
         $startedAt = fake()->dateTimeBetween('-1 week', '-1 hour');
+
         return $this->state(fn (array $attributes) => [
             'status' => 'canceled',
             'started_at' => $startedAt,
@@ -102,6 +101,7 @@ class TimerFactory extends Factory
     public function committed(): static
     {
         $startedAt = fake()->dateTimeBetween('-1 week', '-1 hour');
+
         return $this->state(fn (array $attributes) => [
             'status' => 'committed',
             'started_at' => $startedAt,

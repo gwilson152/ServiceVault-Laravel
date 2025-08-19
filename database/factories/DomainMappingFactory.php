@@ -19,18 +19,18 @@ class DomainMappingFactory extends Factory
     public function definition(): array
     {
         $companies = [
-            'acme', 'globex', 'umbrella', 'waynetech', 'stark', 
-            'oscorp', 'lexcorp', 'initech', 'hooli', 'piedpiper'
+            'acme', 'globex', 'umbrella', 'waynetech', 'stark',
+            'oscorp', 'lexcorp', 'initech', 'hooli', 'piedpiper',
         ];
-        
+
         $company = fake()->randomElement($companies);
-        
+
         return [
             'domain_pattern' => fake()->randomElement([
-                $company . '.com',
-                '*.' . $company . '.com',
-                'mail.' . $company . '.com',
-                $company . '.org',
+                $company.'.com',
+                '*.'.$company.'.com',
+                'mail.'.$company.'.com',
+                $company.'.org',
             ]),
             'account_id' => Account::factory(),
             'role_template_id' => RoleTemplate::factory(),
@@ -66,7 +66,7 @@ class DomainMappingFactory extends Factory
     public function wildcard(): static
     {
         return $this->state(fn (array $attributes) => [
-            'domain_pattern' => '*.' . fake()->domainName(),
+            'domain_pattern' => '*.'.fake()->domainName(),
         ]);
     }
 

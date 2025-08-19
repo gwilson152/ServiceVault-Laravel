@@ -234,6 +234,7 @@ import {
   useSelectorAccountsQuery,
   useSelectorUsersQuery,
   useSelectorBillingRatesQuery,
+  useSelectorRoleTemplatesQuery,
   useActiveSelectorItem,
   selectorUtils
 } from '@/Composables/queries/useSelectorQueries'
@@ -365,17 +366,21 @@ const inputRef = ref(null)
 
 // Debounce utility
 let searchDebounceTimeout = null
+const hasSelectedItem = ref(false)
+
 const debounceSearch = (value) => {
   clearTimeout(searchDebounceTimeout)
   searchDebounceTimeout = setTimeout(() => {
     searchTerm.value = value
     isSearching.value = false
-    // Maintain focus and dropdown state after search
+    // Maintain focus and dropdown state after search, but not if an item was just selected
     nextTick(() => {
-      if (inputRef.value && document.activeElement !== inputRef.value) {
+      if (inputRef.value && document.activeElement !== inputRef.value && !hasSelectedItem.value) {
         inputRef.value.focus()
         showDropdown.value = true
       }
+      // Reset the flag after handling
+      hasSelectedItem.value = false
     })
   }, props.searchDebounceMs)
 }
@@ -450,16 +455,26 @@ if (!shouldUseCustomData.value) {
         enabled: enableQueries
       })
       break
+    case 'role-template':
+      selectorQuery = useSelectorRoleTemplatesQuery({
+        searchTerm,
+        filterSet: filterSetRef,
+        sortField: sortFieldRef,
+        sortDirection: sortDirectionRef,
+        recentLimit: props.recentItemsLimit,
+        enabled: enableQueries
+      })
+      break
   }
 
   // Active selection query for ensuring selected item is available
-  if (props.activeSelection) {
-    activeItemQuery = useActiveSelectorItem(
-      props.type,
-      ref(props.activeSelection),
-      { enabled: computed(() => !!props.activeSelection) }
-    )
-  }
+  // Use modelValue as the activeSelection if no explicit activeSelection is provided
+  const activeSelectionRef = computed(() => props.activeSelection || props.modelValue)
+  activeItemQuery = useActiveSelectorItem(
+    props.type,
+    activeSelectionRef,
+    { enabled: computed(() => !!(props.activeSelection || props.modelValue)) }
+  )
 }
 
 // Computed properties for query results
@@ -699,7 +714,7 @@ const typeConfigs = {
           classes: 'bg-purple-100 text-purple-800'
         })
       }
-      if (item.is_system) {
+      if (item.is_system_role) {
         badges.push({
           text: 'System Role',
           classes: 'bg-gray-100 text-gray-800'
@@ -749,6 +764,13 @@ watch(() => props.modelValue, (newValue) => {
     }
   } else {
     selectedItem.value = null
+  }
+}, { immediate: true })
+
+// Watch for changes in activeItemData to update selected item
+watch(() => activeItemData.value, (newActiveItem) => {
+  if (newActiveItem && props.modelValue && getItemKey(newActiveItem) == props.modelValue) {
+    selectedItem.value = newActiveItem
   }
 }, { immediate: true })
 
@@ -806,6 +828,12 @@ const selectItem = (item) => {
   
   // Update recent items
   selectorUtils.updateRecentItems(props.type, item)
+  
+  // Set flag to prevent debounce callback from reopening dropdown
+  hasSelectedItem.value = true
+  
+  // Clear any pending debounce timeout since we're selecting an item
+  clearTimeout(searchDebounceTimeout)
   
   showDropdown.value = false
   highlightedIndex.value = -1

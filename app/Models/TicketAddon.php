@@ -3,11 +3,10 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
-
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class TicketAddon extends Model
 {
@@ -33,7 +32,7 @@ class TicketAddon extends Model
         'approved_by_user_id',
         'approved_at',
         'approval_notes',
-        'metadata'
+        'metadata',
     ];
 
     protected $casts = [
@@ -45,7 +44,7 @@ class TicketAddon extends Model
         'billable' => 'boolean',
         'is_taxable' => 'boolean',
         'approved_at' => 'datetime',
-        'metadata' => 'array'
+        'metadata' => 'array',
     ];
 
     protected $attributes = [
@@ -54,9 +53,8 @@ class TicketAddon extends Model
         'is_taxable' => true,
         'quantity' => 1,
         'discount_amount' => 0,
-        'tax_rate' => 0
+        'tax_rate' => 0,
     ];
-
 
     /**
      * Calculate and set the total amount
@@ -163,7 +161,7 @@ class TicketAddon extends Model
      */
     public function approve(User $approver, ?string $notes = null): bool
     {
-        if (!$this->canBeApproved()) {
+        if (! $this->canBeApproved()) {
             return false;
         }
 
@@ -180,7 +178,7 @@ class TicketAddon extends Model
      */
     public function reject(User $approver, ?string $notes = null): bool
     {
-        if (!$this->canBeApproved()) {
+        if (! $this->canBeApproved()) {
             return false;
         }
 
@@ -198,7 +196,7 @@ class TicketAddon extends Model
     protected function formattedTotal(): Attribute
     {
         return Attribute::make(
-            get: fn() => '$' . number_format($this->total_amount, 2)
+            get: fn () => '$'.number_format($this->total_amount, 2)
         );
     }
 
@@ -208,7 +206,7 @@ class TicketAddon extends Model
     protected function formattedUnitPrice(): Attribute
     {
         return Attribute::make(
-            get: fn() => '$' . number_format($this->unit_price, 2)
+            get: fn () => '$'.number_format($this->unit_price, 2)
         );
     }
 }

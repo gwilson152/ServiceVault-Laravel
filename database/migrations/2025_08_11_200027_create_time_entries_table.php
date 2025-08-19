@@ -32,14 +32,14 @@ return new class extends Migration
             $table->json('metadata')->nullable();
             $table->timestamps();
             $table->softDeletes();
-            
+
             // Foreign keys
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('account_id')->references('id')->on('accounts')->onDelete('set null');
             $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('set null');
             $table->foreign('billing_rate_id')->references('id')->on('billing_rates')->onDelete('set null');
             $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');
-            
+
             // Indexes
             $table->index(['user_id', 'status']);
             $table->index(['account_id', 'billable']);

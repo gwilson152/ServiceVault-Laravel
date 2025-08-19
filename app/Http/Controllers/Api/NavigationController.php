@@ -27,25 +27,25 @@ class NavigationController extends Controller
         if ($grouped) {
             $navigation = $this->navigationService->getGroupedNavigationForUser($user);
             $groupLabels = $this->navigationService->getGroupLabels();
-            
+
             return response()->json([
                 'navigation' => $navigation,
                 'group_labels' => $groupLabels,
                 'user_context' => [
                     'is_super_admin' => $user->isSuperAdmin(),
-                    'permissions_count' => count($user->permissions ?? [])
-                ]
+                    'permissions_count' => count($user->permissions ?? []),
+                ],
             ]);
         }
 
         $navigation = $this->navigationService->getNavigationForUser($user);
-        
+
         return response()->json([
             'navigation' => $navigation,
             'user_context' => [
                 'is_super_admin' => $user->isSuperAdmin(),
-                'permissions_count' => count($user->permissions ?? [])
-            ]
+                'permissions_count' => count($user->permissions ?? []),
+            ],
         ]);
     }
 
@@ -56,11 +56,11 @@ class NavigationController extends Controller
     {
         $user = $request->user();
         $currentRoute = $request->input('route', 'dashboard');
-        
+
         $breadcrumbs = $this->navigationService->getBreadcrumbsForRoute($user, $currentRoute);
-        
+
         return response()->json([
-            'breadcrumbs' => $breadcrumbs
+            'breadcrumbs' => $breadcrumbs,
         ]);
     }
 
@@ -71,8 +71,8 @@ class NavigationController extends Controller
     {
         $user = $request->user();
         $routes = $request->input('routes', []);
-        
-        if (!is_array($routes)) {
+
+        if (! is_array($routes)) {
             return response()->json(['error' => 'Routes must be an array'], 400);
         }
 
@@ -82,7 +82,7 @@ class NavigationController extends Controller
         }
 
         return response()->json([
-            'access' => $access
+            'access' => $access,
         ]);
     }
 }

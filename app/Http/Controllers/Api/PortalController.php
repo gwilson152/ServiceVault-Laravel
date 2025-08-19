@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\TimeEntry;
-use App\Models\Ticket;
 use App\Models\Invoice;
-use Illuminate\Http\Request;
+use App\Models\Ticket;
+use App\Models\TimeEntry;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class PortalController extends Controller
 {
@@ -17,29 +17,29 @@ class PortalController extends Controller
     public function stats(Request $request)
     {
         $user = $request->user();
-        
+
         // Verify portal access
-        if (!$user->hasAnyPermission(['portal.access', 'accounts.view'])) {
+        if (! $user->hasAnyPermission(['portal.access', 'accounts.view'])) {
             return response()->json(['message' => 'Access denied. Portal access required.'], 403);
         }
 
         // Get customer's account
         $customerAccount = $user->currentAccount ?? $user->account;
-        
-        if (!$customerAccount) {
+
+        if (! $customerAccount) {
             return response()->json([
                 'message' => 'No account access',
                 'data' => [
                     'open_tickets' => 0,
                     'closed_tickets' => 0,
                     'hours_this_month' => 0,
-                    'total_spent' => 0
-                ]
+                    'total_spent' => 0,
+                ],
             ]);
         }
 
         $thisMonth = Carbon::now()->startOfMonth();
-        
+
         $stats = [
             'open_tickets' => Ticket::where('account_id', $customerAccount->id)
                 ->whereIn('status', ['open', 'in_progress', 'waiting_customer', 'on_hold'])
@@ -50,12 +50,12 @@ class PortalController extends Controller
             'hours_this_month' => TimeEntry::where('account_id', $customerAccount->id)
                 ->where('date', '>=', $thisMonth)
                 ->sum('duration') / 3600,
-            'total_spent' => $this->calculateTotalSpent($customerAccount)
+            'total_spent' => $this->calculateTotalSpent($customerAccount),
         ];
 
         return response()->json([
             'success' => true,
-            'data' => $stats
+            'data' => $stats,
         ]);
     }
 
@@ -65,19 +65,19 @@ class PortalController extends Controller
     public function recentTickets(Request $request)
     {
         $user = $request->user();
-        
+
         // Verify portal access
-        if (!$user->hasAnyPermission(['portal.access', 'accounts.view'])) {
+        if (! $user->hasAnyPermission(['portal.access', 'accounts.view'])) {
             return response()->json(['message' => 'Access denied. Portal access required.'], 403);
         }
 
         // Get customer's account
         $customerAccount = $user->currentAccount ?? $user->account;
-        
-        if (!$customerAccount) {
+
+        if (! $customerAccount) {
             return response()->json([
                 'success' => true,
-                'data' => []
+                'data' => [],
             ]);
         }
 
@@ -93,13 +93,13 @@ class PortalController extends Controller
                     'description' => $ticket->description,
                     'status' => $ticket->status,
                     'created_at' => $ticket->created_at,
-                    'updated_at' => $ticket->updated_at
+                    'updated_at' => $ticket->updated_at,
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data' => $recentTickets
+            'data' => $recentTickets,
         ]);
     }
 
@@ -109,19 +109,19 @@ class PortalController extends Controller
     public function recentActivity(Request $request)
     {
         $user = $request->user();
-        
+
         // Verify portal access
-        if (!$user->hasAnyPermission(['portal.access', 'accounts.view'])) {
+        if (! $user->hasAnyPermission(['portal.access', 'accounts.view'])) {
             return response()->json(['message' => 'Access denied. Portal access required.'], 403);
         }
 
         // Get customer's account
         $customerAccount = $user->currentAccount ?? $user->account;
-        
-        if (!$customerAccount) {
+
+        if (! $customerAccount) {
             return response()->json([
                 'success' => true,
-                'data' => []
+                'data' => [],
             ]);
         }
 
@@ -135,12 +135,12 @@ class PortalController extends Controller
             ->get()
             ->map(function ($entry) {
                 return [
-                    'id' => 'time_entry_' . $entry->id,
+                    'id' => 'time_entry_'.$entry->id,
                     'type' => 'time_entry',
-                    'description' => ($entry->user->name ?? 'Unknown') . ' logged ' . 
-                                   round($entry->duration / 3600, 2) . ' hours on ' . 
+                    'description' => ($entry->user->name ?? 'Unknown').' logged '.
+                                   round($entry->duration / 3600, 2).' hours on '.
                                    ($entry->ticket->title ?? 'General Work'),
-                    'created_at' => $entry->created_at
+                    'created_at' => $entry->created_at,
                 ];
             });
 
@@ -151,11 +151,11 @@ class PortalController extends Controller
             ->get()
             ->map(function ($ticket) {
                 return [
-                    'id' => 'ticket_' . $ticket->id,
+                    'id' => 'ticket_'.$ticket->id,
                     'type' => 'ticket_update',
-                    'description' => 'Ticket "' . $ticket->title . '" status updated to ' . 
+                    'description' => 'Ticket "'.$ticket->title.'" status updated to '.
                                    ucfirst(str_replace('_', ' ', $ticket->status)),
-                    'created_at' => $ticket->updated_at
+                    'created_at' => $ticket->updated_at,
                 ];
             });
 
@@ -167,7 +167,7 @@ class PortalController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $allActivity
+            'data' => $allActivity,
         ]);
     }
 
@@ -192,6 +192,7 @@ class PortalController extends Controller
 
         // Use a default rate if no billing rate is set
         $defaultRate = 100; // $100/hour default
+
         return $billableHours * $defaultRate;
     }
 }

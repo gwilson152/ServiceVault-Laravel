@@ -3,9 +3,7 @@
 namespace App\Events;
 
 use App\Models\Timer;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -34,7 +32,7 @@ class TimerStarted implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('user.' . $this->timer->user_id),
+            new PrivateChannel('user.'.$this->timer->user_id),
         ];
     }
 

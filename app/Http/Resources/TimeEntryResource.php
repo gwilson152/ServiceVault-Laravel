@@ -27,7 +27,7 @@ class TimeEntryResource extends JsonResource
             'approval_notes' => $this->approval_notes,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
+
             // Relationships
             'user' => $this->whenLoaded('user', function () use ($request) {
                 return [
@@ -37,17 +37,17 @@ class TimeEntryResource extends JsonResource
                         $request->user()->id === $this->user_id ||
                         $request->user()->hasPermission('admin.manage'),
                         $this->user->email
-                    )
+                    ),
                 ];
             }),
-            
+
             'account' => $this->whenLoaded('account', function () {
                 return [
                     'id' => $this->account->id,
-                    'name' => $this->account->name
+                    'name' => $this->account->name,
                 ];
             }),
-            
+
             'project' => $this->whenLoaded('project', function () {
                 return [
                     'id' => $this->project->id,
@@ -55,28 +55,28 @@ class TimeEntryResource extends JsonResource
                     'description' => $this->when(
                         isset($this->project->description),
                         $this->project->description
-                    )
+                    ),
                 ];
             }),
-            
+
             'billing_rate' => $this->whenLoaded('billingRate', function () {
                 return [
                     'id' => $this->billingRate->id,
                     'rate' => $this->billingRate->rate,
-                    'type' => $this->billingRate->type
+                    'type' => $this->billingRate->type,
                 ];
             }),
-            
+
             'approved_by' => $this->whenLoaded('approvedBy', function () {
                 return [
                     'id' => $this->approvedBy->id,
-                    'name' => $this->approvedBy->name
+                    'name' => $this->approvedBy->name,
                 ];
             }),
-            
+
             'approved_at' => $this->approved_at,
-            
-            // Calculated fields  
+
+            // Calculated fields
             'hours' => round($this->duration / 3600, 2), // Convert seconds to hours
             'calculated_cost' => $this->when(
                 $this->relationLoaded('billingRate') && $this->billingRate,
@@ -84,14 +84,14 @@ class TimeEntryResource extends JsonResource
                     return round(($this->duration / 3600) * $this->billingRate->rate, 2); // Convert seconds to hours
                 }
             ),
-            
+
             // Permission flags for frontend
             'can_edit' => $this->canEdit($request->user()),
             'can_delete' => $this->canDelete($request->user()),
             'can_approve' => $this->canApprove($request->user()),
         ];
     }
-    
+
     /**
      * Format duration in seconds to human readable format
      */
@@ -99,14 +99,14 @@ class TimeEntryResource extends JsonResource
     {
         $hours = floor($seconds / 3600);
         $minutes = floor(($seconds % 3600) / 60);
-        
+
         if ($hours > 0) {
             return sprintf('%dh %02dm', $hours, $minutes);
         }
-        
+
         return sprintf('%dm', $minutes);
     }
-    
+
     /**
      * Check if user can edit this time entry
      */
@@ -116,26 +116,26 @@ class TimeEntryResource extends JsonResource
         if ($this->status !== 'pending') {
             return false;
         }
-        
+
         // Original creator can always edit their own pending entries
         if ($this->user_id === $user->id) {
             return true;
         }
-        
+
         // Service providers and users with time management permissions can edit time entries
-        if ($user->user_type === 'service_provider' || 
+        if ($user->user_type === 'service_provider' ||
             $user->hasAnyPermission(['time.manage', 'time.edit.all', 'admin.manage', 'admin.write'])) {
             return true;
         }
-        
+
         // Team managers can edit entries from their team members
         if ($user->hasPermission('time.edit.team') || $user->hasPermission('teams.manage')) {
             return true;
         }
-        
+
         return false;
     }
-    
+
     /**
      * Check if user can delete this time entry
      */
@@ -145,26 +145,26 @@ class TimeEntryResource extends JsonResource
         if ($this->status !== 'pending') {
             return false;
         }
-        
+
         // Original creator can always delete their own pending entries
         if ($this->user_id === $user->id) {
             return true;
         }
-        
+
         // Service providers and managers can delete time entries
-        if ($user->user_type === 'service_provider' || 
+        if ($user->user_type === 'service_provider' ||
             $user->hasAnyPermission(['time.manage', 'time.delete.all', 'admin.manage', 'admin.write'])) {
             return true;
         }
-        
+
         // Team managers can delete entries from their team members
         if ($user->hasPermission('time.edit.team') || $user->hasPermission('teams.manage')) {
             return true;
         }
-        
+
         return false;
     }
-    
+
     /**
      * Check if user can approve this time entry
      */
@@ -174,18 +174,18 @@ class TimeEntryResource extends JsonResource
         if ($this->status !== 'pending') {
             return false;
         }
-        
+
         // Can't approve your own entries
         if ($this->user_id === $user->id) {
             return false;
         }
-        
+
         // Service providers, managers, and admins can approve
-        if ($user->user_type === 'service_provider' || 
+        if ($user->user_type === 'service_provider' ||
             $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write'])) {
             return true;
         }
-        
+
         return false;
     }
 }

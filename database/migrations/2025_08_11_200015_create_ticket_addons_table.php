@@ -24,10 +24,10 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->boolean('billable')->default(true);
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['ticket_id', 'status']);
         });

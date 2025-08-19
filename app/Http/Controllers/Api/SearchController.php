@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\BillingRate;
+use App\Models\RoleTemplate;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +28,7 @@ class SearchController extends Controller
 
         // Validate sort field for tickets
         $allowedSortFields = ['created_at', 'updated_at', 'title', 'ticket_number', 'status', 'priority'];
-        if (!in_array($sortField, $allowedSortFields)) {
+        if (! in_array($sortField, $allowedSortFields)) {
             $sortField = 'created_at';
         }
 
@@ -66,12 +67,12 @@ class SearchController extends Controller
             $builder->where('status', $request->input('status'));
         }
 
-        // Apply search or default ordering logic  
-        if (!empty($query)) {
+        // Apply search or default ordering logic
+        if (! empty($query)) {
             // Search by ticket number or title (case-insensitive)
             $builder->where(function ($q) use ($query) {
                 $q->where('ticket_number', 'ilike', "%{$query}%")
-                  ->orWhere('title', 'ilike', "%{$query}%");
+                    ->orWhere('title', 'ilike', "%{$query}%");
             });
             $builder->orderByRaw("
                 CASE 
@@ -101,7 +102,7 @@ class SearchController extends Controller
                     'assigned_user' => $ticket->assignedUser,
                     'created_at' => $ticket->created_at,
                 ];
-            })
+            }),
         ]);
     }
 
@@ -120,7 +121,7 @@ class SearchController extends Controller
 
         // Validate sort field for accounts
         $allowedSortFields = ['created_at', 'updated_at', 'name', 'email'];
-        if (!in_array($sortField, $allowedSortFields)) {
+        if (! in_array($sortField, $allowedSortFields)) {
             $sortField = 'created_at';
         }
 
@@ -153,10 +154,10 @@ class SearchController extends Controller
         }
 
         // Apply search or default ordering logic
-        if (!empty($query)) {
+        if (! empty($query)) {
             $builder->where(function ($q) use ($query) {
                 $q->where('name', 'ilike', "%{$query}%")
-                  ->orWhere('email', 'ilike', "%{$query}%");
+                    ->orWhere('email', 'ilike', "%{$query}%");
             });
             $builder->orderByRaw("
                 CASE 
@@ -182,7 +183,7 @@ class SearchController extends Controller
                     'is_active' => $account->is_active,
                     'created_at' => $account->created_at,
                 ];
-            })
+            }),
         ]);
     }
 
@@ -201,7 +202,7 @@ class SearchController extends Controller
 
         // Validate sort field for users
         $allowedSortFields = ['created_at', 'updated_at', 'name', 'email', 'user_type'];
-        if (!in_array($sortField, $allowedSortFields)) {
+        if (! in_array($sortField, $allowedSortFields)) {
             $sortField = 'created_at';
         }
 
@@ -209,7 +210,7 @@ class SearchController extends Controller
         $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
 
         // Check permissions
-        if (!$user->hasAnyPermission(['users.manage', 'users.manage.account', 'admin.manage'])) {
+        if (! $user->hasAnyPermission(['users.manage', 'users.manage.account', 'admin.manage'])) {
             return response()->json(['error' => 'Insufficient permissions'], 403);
         }
 
@@ -234,10 +235,10 @@ class SearchController extends Controller
         // Remove account_id filtering for now since accounts relationship may need adjustment
 
         // Apply search or default ordering logic
-        if (!empty($query)) {
+        if (! empty($query)) {
             $builder->where(function ($q) use ($query) {
                 $q->where('name', 'ilike', "%{$query}%")
-                  ->orWhere('email', 'ilike', "%{$query}%");
+                    ->orWhere('email', 'ilike', "%{$query}%");
             });
             $builder->orderByRaw("
                 CASE 
@@ -262,7 +263,7 @@ class SearchController extends Controller
                     'user_type' => $user->user_type,
                     'created_at' => $user->created_at,
                 ];
-            })
+            }),
         ]);
     }
 
@@ -282,7 +283,7 @@ class SearchController extends Controller
 
         // Validate sort field for agents (same as users)
         $allowedSortFields = ['created_at', 'updated_at', 'name', 'email', 'user_type'];
-        if (!in_array($sortField, $allowedSortFields)) {
+        if (! in_array($sortField, $allowedSortFields)) {
             $sortField = 'created_at';
         }
 
@@ -290,7 +291,7 @@ class SearchController extends Controller
         $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
 
         // Check permissions
-        if (!$user->hasAnyPermission(['users.manage', 'users.manage.account', 'admin.manage'])) {
+        if (! $user->hasAnyPermission(['users.manage', 'users.manage.account', 'admin.manage'])) {
             return response()->json(['error' => 'Insufficient permissions'], 403);
         }
 
@@ -302,17 +303,17 @@ class SearchController extends Controller
         $builder->where(function ($q) use ($agentType) {
             // Users with user_type = 'agent' or 'service_provider'
             $q->whereIn('user_type', ['agent', 'service_provider']);
-            
+
             // Or users with specific agent permissions
             if ($agentType) {
                 $agentPermission = match ($agentType) {
                     'timer' => 'timers.act_as_agent',
-                    'ticket' => 'tickets.act_as_agent', 
+                    'ticket' => 'tickets.act_as_agent',
                     'time' => 'time.act_as_agent',
                     'billing' => 'billing.act_as_agent',
                     default => 'timers.act_as_agent'
                 };
-                
+
                 $q->orWhereHas('roleTemplate', function ($roleQuery) use ($agentPermission) {
                     $roleQuery->whereJsonContains('permissions', $agentPermission);
                 });
@@ -331,10 +332,10 @@ class SearchController extends Controller
         }
 
         // Apply search or default ordering logic
-        if (!empty($query)) {
+        if (! empty($query)) {
             $builder->where(function ($q) use ($query) {
                 $q->where('name', 'ilike', "%{$query}%")
-                  ->orWhere('email', 'ilike', "%{$query}%");
+                    ->orWhere('email', 'ilike', "%{$query}%");
             });
             $builder->orderByRaw("
                 CASE 
@@ -366,7 +367,7 @@ class SearchController extends Controller
                     'role_template' => $agent->roleTemplate,
                     'created_at' => $agent->created_at,
                 ];
-            })
+            }),
         ]);
     }
 
@@ -384,7 +385,7 @@ class SearchController extends Controller
 
         // Validate sort field for billing rates
         $allowedSortFields = ['created_at', 'updated_at', 'name', 'rate', 'description'];
-        if (!in_array($sortField, $allowedSortFields)) {
+        if (! in_array($sortField, $allowedSortFields)) {
             $sortField = 'created_at';
         }
 
@@ -392,7 +393,7 @@ class SearchController extends Controller
         $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
 
         // Check permissions
-        if (!$user->hasAnyPermission(['billing.rates.view', 'billing.manage', 'admin.manage'])) {
+        if (! $user->hasAnyPermission(['billing.rates.view', 'billing.manage', 'admin.manage'])) {
             return response()->json(['error' => 'Insufficient permissions'], 403);
         }
 
@@ -407,7 +408,7 @@ class SearchController extends Controller
                 // Account-specific rates + global rates (null account_id)
                 $builder->where(function ($q) use ($accountId) {
                     $q->where('account_id', $accountId)
-                      ->orWhereNull('account_id');
+                        ->orWhereNull('account_id');
                 });
             } else {
                 // Only global rates
@@ -419,11 +420,11 @@ class SearchController extends Controller
         $builder->where('is_active', true);
 
         // Apply search or default ordering logic
-        if (!empty($query)) {
+        if (! empty($query)) {
             $builder->where(function ($q) use ($query) {
                 $q->where('name', 'ilike', "%{$query}%")
-                  ->orWhere('description', 'ilike', "%{$query}%")
-                  ->orWhere('rate', 'like', "%{$query}%"); // Keep 'like' for rate since it's numeric
+                    ->orWhere('description', 'ilike', "%{$query}%")
+                    ->orWhere('rate', 'like', "%{$query}%"); // Keep 'like' for rate since it's numeric
             });
             $builder->orderByRaw("
                 CASE 
@@ -452,7 +453,75 @@ class SearchController extends Controller
                     'is_default' => $rate->account_id === null, // Global rates are "default"
                     'created_at' => $rate->created_at,
                 ];
-            })
+            }),
+        ]);
+    }
+
+    /**
+     * Search role templates for selector dropdown
+     */
+    public function roleTemplates(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $query = $request->input('q', '');
+        $limit = min($request->input('limit', 30), 100); // Role templates typically have fewer items
+        $recent = $request->boolean('recent');
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+
+        // Validate sort field for role templates
+        $allowedSortFields = ['created_at', 'updated_at', 'name', 'context'];
+        if (! in_array($sortField, $allowedSortFields)) {
+            $sortField = 'created_at';
+        }
+
+        // Validate sort direction
+        $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
+
+        // Check permissions
+        if (! $user->hasAnyPermission(['users.manage', 'admin.manage'])) {
+            return response()->json(['error' => 'Insufficient permissions'], 403);
+        }
+
+        // Build base query
+        $builder = RoleTemplate::select('id', 'name', 'display_name', 'context', 'description', 'is_system_role', 'is_active', 'created_at')
+            ->where('is_active', true);
+
+        // Apply search or default ordering logic
+        if (! empty($query)) {
+            $builder->where(function ($q) use ($query) {
+                $q->where('name', 'ilike', "%{$query}%")
+                    ->orWhere('description', 'ilike', "%{$query}%")
+                    ->orWhere('context', 'ilike', "%{$query}%");
+            });
+            $builder->orderByRaw("
+                CASE 
+                    WHEN name ILIKE '{$query}%' THEN 1
+                    WHEN description ILIKE '{$query}%' THEN 2
+                    WHEN context ILIKE '{$query}%' THEN 3
+                    ELSE 4
+                END, name ASC
+            ");
+        } else {
+            // Default: sort by specified field and direction
+            $builder->orderBy($sortField, $sortDirection);
+        }
+
+        $roleTemplates = $builder->limit($limit)->get();
+
+        return response()->json([
+            'data' => $roleTemplates->map(function ($roleTemplate) {
+                return [
+                    'id' => $roleTemplate->id,
+                    'name' => $roleTemplate->name,
+                    'display_name' => $roleTemplate->display_name,
+                    'context' => $roleTemplate->context,
+                    'description' => $roleTemplate->description,
+                    'is_system_role' => $roleTemplate->is_system_role,
+                    'is_active' => $roleTemplate->is_active,
+                    'created_at' => $roleTemplate->created_at,
+                ];
+            }),
         ]);
     }
 }

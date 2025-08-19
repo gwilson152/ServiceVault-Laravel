@@ -21,17 +21,17 @@ return new class extends Migration
             $table->uuid('parent_id')->nullable(); // for reply threading
             $table->timestamp('edited_at')->nullable();
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            
+
             // Indexes
             $table->index(['ticket_id', 'created_at']);
             $table->index(['user_id', 'created_at']);
             $table->index(['parent_id']);
         });
-        
+
         // Add self-referencing foreign key constraint after table creation
         Schema::table('ticket_comments', function (Blueprint $table) {
             $table->foreign('parent_id')->references('id')->on('ticket_comments')->onDelete('cascade');

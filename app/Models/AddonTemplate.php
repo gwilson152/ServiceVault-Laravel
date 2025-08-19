@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,7 +23,7 @@ class AddonTemplate extends Model
         'requires_approval',
         'account_id',
         'is_system',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [
@@ -33,11 +32,11 @@ class AddonTemplate extends Model
         'is_taxable' => 'boolean',
         'requires_approval' => 'boolean',
         'is_system' => 'boolean',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
     ];
 
     protected $appends = [
-        'default_unit_price'
+        'default_unit_price',
     ];
 
     /**
@@ -133,7 +132,7 @@ class AddonTemplate extends Model
      */
     public function getFormattedDefaultPriceAttribute(): string
     {
-        return '$' . number_format($this->default_unit_price, 2);
+        return '$'.number_format($this->default_unit_price, 2);
     }
 
     /**
@@ -148,7 +147,7 @@ class AddonTemplate extends Model
             'hardware' => 'Hardware',
             'software' => 'Software',
             'expense' => 'Expense',
-            'other' => 'Other'
+            'other' => 'Other',
         ];
     }
 
@@ -158,6 +157,7 @@ class AddonTemplate extends Model
     public function getCategoryDisplayNameAttribute(): string
     {
         $categories = self::getCategories();
+
         return $categories[$this->category] ?? ucfirst($this->category);
     }
 }

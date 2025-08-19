@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
-use App\Models\TimeEntry;
-use App\Models\Ticket;
 use App\Models\Account;
 use App\Models\Invoice;
+use App\Models\Ticket;
+use App\Models\TimeEntry;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class CustomerPortalController extends Controller
 {
@@ -19,31 +19,31 @@ class CustomerPortalController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         // Verify portal access
-        if (!$user->hasAnyPermission(['portal.access', 'accounts.view'])) {
+        if (! $user->hasAnyPermission(['portal.access', 'accounts.view'])) {
             abort(403, 'Access denied. Portal access required.');
         }
 
         // Get customer's account (customers are usually assigned to one primary account)
         $customerAccount = $user->currentAccount ?? $user->account;
-        
-        if (!$customerAccount) {
+
+        if (! $customerAccount) {
             return Inertia::render('Portal/NoAccess', [
                 'title' => 'No Account Access',
-                'message' => 'You have not been assigned to any accounts. Please contact your administrator.'
+                'message' => 'You have not been assigned to any accounts. Please contact your administrator.',
             ]);
         }
-        
+
         // Get account overview statistics
         $accountStats = $this->getAccountStatistics($customerAccount);
-        
+
         // Get recent project activity
         $recentActivity = $this->getRecentActivity($customerAccount);
-        
+
         // Get billing information (if customer has billing access)
         $billingInfo = $this->getBillingInformation($user, $customerAccount);
-        
+
         // Get upcoming milestones or deadlines
         $upcomingItems = $this->getUpcomingItems($customerAccount);
 
@@ -58,10 +58,10 @@ class CustomerPortalController extends Controller
             'permissions' => [
                 'canViewTimeTracking' => $user->hasPermission('time.view'),
                 'canViewBilling' => $user->hasPermission('billing.view'),
-            ]
+            ],
         ]);
     }
-    
+
     /**
      * View tickets
      */
@@ -69,24 +69,24 @@ class CustomerPortalController extends Controller
     {
         $user = $request->user();
         $customerAccount = $user->currentAccount ?? $user->account;
-        
-        if (!$customerAccount) {
+
+        if (! $customerAccount) {
             abort(404, 'No account access.');
         }
-        
+
         $tickets = Ticket::where('account_id', $customerAccount->id)
             ->when($request->status, function ($query, $status) {
                 $query->where('status', $status);
             })
             ->when($request->search, function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             })
             ->withCount('timeEntries')
             ->withSum('timeEntries as total_hours', 'duration')
             ->latest()
             ->paginate(20);
-            
+
         // Get ticket statistics
         $ticketStats = [
             'total_tickets' => Ticket::where('account_id', $customerAccount->id)->count(),
@@ -95,7 +95,7 @@ class CustomerPortalController extends Controller
             'closed_tickets' => Ticket::where('account_id', $customerAccount->id)
                 ->where('status', 'closed')->count(),
             'total_hours_tracked' => TimeEntry::where('account_id', $customerAccount->id)
-                ->sum('duration') / 3600
+                ->sum('duration') / 3600,
         ];
 
         return Inertia::render('Portal/Tickets', [
@@ -103,10 +103,10 @@ class CustomerPortalController extends Controller
             'tickets' => $tickets,
             'ticketStats' => $ticketStats,
             'customerAccount' => $customerAccount,
-            'dashboardType' => 'portal'
+            'dashboardType' => 'portal',
         ]);
     }
-    
+
     /**
      * View time tracking (if permitted)
      */
@@ -114,19 +114,19 @@ class CustomerPortalController extends Controller
     {
         $user = $request->user();
         $customerAccount = $user->currentAccount ?? $user->account;
-        
-        if (!$customerAccount) {
+
+        if (! $customerAccount) {
             abort(404, 'No account access.');
         }
-        
+
         // Check if customer can view time tracking
-        if (!$user->hasPermission('time.view')) {
+        if (! $user->hasPermission('time.view')) {
             return Inertia::render('Portal/Restricted', [
                 'title' => 'Time Tracking - Access Restricted',
-                'message' => 'Time tracking visibility is restricted for your account level.'
+                'message' => 'Time tracking visibility is restricted for your account level.',
             ]);
         }
-        
+
         $timeEntries = TimeEntry::where('account_id', $customerAccount->id)
             ->with(['user:id,name', 'ticket:id,title'])
             ->when($request->ticket_id, function ($query, $ticketId) {
@@ -143,7 +143,7 @@ class CustomerPortalController extends Controller
             })
             ->latest('date')
             ->paginate(20);
-            
+
         // Get time tracking statistics
         $timeStats = [
             'total_hours' => TimeEntry::where('account_id', $customerAccount->id)
@@ -155,7 +155,7 @@ class CustomerPortalController extends Controller
                 ->where('date', '>=', Carbon::now()->startOfMonth())
                 ->sum('duration') / 3600,
             'team_members' => TimeEntry::where('account_id', $customerAccount->id)
-                ->distinct('user_id')->count('user_id')
+                ->distinct('user_id')->count('user_id'),
         ];
 
         return Inertia::render('Portal/TimeTracking', [
@@ -165,10 +165,10 @@ class CustomerPortalController extends Controller
             'tickets' => Ticket::where('account_id', $customerAccount->id)
                 ->get(['id', 'title']),
             'customerAccount' => $customerAccount,
-            'dashboardType' => 'portal'
+            'dashboardType' => 'portal',
         ]);
     }
-    
+
     /**
      * View invoices and billing (if permitted)
      */
@@ -176,19 +176,19 @@ class CustomerPortalController extends Controller
     {
         $user = $request->user();
         $customerAccount = $user->currentAccount ?? $user->account;
-        
-        if (!$customerAccount) {
+
+        if (! $customerAccount) {
             abort(404, 'No account access.');
         }
-        
+
         // Check if customer can view billing
-        if (!$user->hasPermission('billing.view')) {
+        if (! $user->hasPermission('billing.view')) {
             return Inertia::render('Portal/Restricted', [
                 'title' => 'Billing - Access Restricted',
-                'message' => 'Billing information is restricted for your account level.'
+                'message' => 'Billing information is restricted for your account level.',
             ]);
         }
-        
+
         $invoices = Invoice::where('account_id', $customerAccount->id)
             ->when($request->status, function ($query, $status) {
                 $query->where('status', $status);
@@ -201,7 +201,7 @@ class CustomerPortalController extends Controller
             })
             ->latest('date')
             ->paginate(20);
-            
+
         // Get billing statistics
         $billingStats = [
             'total_invoiced' => Invoice::where('account_id', $customerAccount->id)
@@ -214,7 +214,7 @@ class CustomerPortalController extends Controller
                 ->sum('total_amount'),
             'overdue_amount' => Invoice::where('account_id', $customerAccount->id)
                 ->where('status', 'overdue')
-                ->sum('total_amount')
+                ->sum('total_amount'),
         ];
 
         return Inertia::render('Portal/Billing', [
@@ -222,10 +222,10 @@ class CustomerPortalController extends Controller
             'invoices' => $invoices,
             'billingStats' => $billingStats,
             'customerAccount' => $customerAccount,
-            'dashboardType' => 'portal'
+            'dashboardType' => 'portal',
         ]);
     }
-    
+
     /**
      * Account settings and profile
      */
@@ -233,25 +233,25 @@ class CustomerPortalController extends Controller
     {
         $user = $request->user();
         $customerAccount = $user->currentAccount ?? $user->account;
-        
-        if (!$customerAccount) {
+
+        if (! $customerAccount) {
             abort(404, 'No account access.');
         }
-        
+
         // Get account information (limited to what customer can see)
         $accountInfo = [
             'name' => $customerAccount->name,
             'type' => $customerAccount->type,
             'status' => $customerAccount->status,
-            'created_at' => $customerAccount->created_at
+            'created_at' => $customerAccount->created_at,
         ];
-        
+
         // Get user profile information
         $userProfile = [
             'name' => $user->name,
             'email' => $user->email,
             'role_templates' => $user->roleTemplates->pluck('name')->toArray(),
-            'created_at' => $user->created_at
+            'created_at' => $user->created_at,
         ];
 
         return Inertia::render('Portal/Settings', [
@@ -259,17 +259,17 @@ class CustomerPortalController extends Controller
             'accountInfo' => $accountInfo,
             'userProfile' => $userProfile,
             'customerAccount' => $customerAccount,
-            'dashboardType' => 'portal'
+            'dashboardType' => 'portal',
         ]);
     }
-    
+
     /**
      * Get account statistics for dashboard
      */
     private function getAccountStatistics($account): array
     {
         $thisMonth = Carbon::now()->startOfMonth();
-        
+
         return [
             'open_tickets' => Ticket::where('account_id', $account->id)
                 ->whereIn('status', ['open', 'in_progress'])->count(),
@@ -280,10 +280,10 @@ class CustomerPortalController extends Controller
                 ->sum('duration') / 3600,
             'team_members' => $account->users()->count(),
             'pending_tasks' => 0, // Placeholder for task management
-            'resolution_rate' => $this->calculateResolutionRate($account)
+            'resolution_rate' => $this->calculateResolutionRate($account),
         ];
     }
-    
+
     /**
      * Get recent activity for dashboard
      */
@@ -294,29 +294,29 @@ class CustomerPortalController extends Controller
             ->latest()
             ->limit(10)
             ->get();
-            
+
         $recentTickets = Ticket::where('account_id', $account->id)
             ->latest('updated_at')
             ->limit(5)
             ->get(['id', 'title', 'status', 'updated_at']);
-            
+
         return [
             'recent_time_entries' => $recentTimeEntries,
-            'recent_ticket_updates' => $recentTickets
+            'recent_ticket_updates' => $recentTickets,
         ];
     }
-    
+
     /**
      * Get billing information (if accessible)
      */
     private function getBillingInformation($user, $account): ?array
     {
-        if (!$user->hasPermission('billing.view')) {
+        if (! $user->hasPermission('billing.view')) {
             return null;
         }
-        
+
         $thisMonth = Carbon::now()->startOfMonth();
-        
+
         return [
             'current_month_hours' => TimeEntry::where('account_id', $account->id)
                 ->where('date', '>=', $thisMonth)
@@ -329,10 +329,10 @@ class CustomerPortalController extends Controller
                 ->where('status', 'paid')
                 ->latest('date')
                 ->value('date'),
-            'next_invoice_date' => $this->calculateNextInvoiceDate($account)
+            'next_invoice_date' => $this->calculateNextInvoiceDate($account),
         ];
     }
-    
+
     /**
      * Get upcoming items (deadlines, milestones)
      */
@@ -344,10 +344,10 @@ class CustomerPortalController extends Controller
             'pending_approvals' => TimeEntry::where('account_id', $account->id)
                 ->where('status', 'pending')
                 ->count(),
-            'scheduled_meetings' => [] // Future integration
+            'scheduled_meetings' => [], // Future integration
         ];
     }
-    
+
     /**
      * Calculate resolution rate for account tickets
      */
@@ -356,10 +356,10 @@ class CustomerPortalController extends Controller
         $totalTickets = Ticket::where('account_id', $account->id)->count();
         $closedTickets = Ticket::where('account_id', $account->id)
             ->where('status', 'closed')->count();
-            
+
         return $totalTickets > 0 ? ($closedTickets / $totalTickets * 100) : 0;
     }
-    
+
     /**
      * Calculate next invoice date (placeholder)
      */

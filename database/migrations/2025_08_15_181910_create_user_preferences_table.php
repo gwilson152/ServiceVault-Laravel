@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('key', 100)->index();
             $table->json('value');
             $table->timestamps();
-            
+
             $table->unique(['user_id', 'key']);
         });
     }

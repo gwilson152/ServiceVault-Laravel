@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 
 class BillingSchedule extends Model
 {
@@ -60,7 +60,7 @@ class BillingSchedule extends Model
     public function scopeDue($query)
     {
         return $query->where('next_billing_date', '<=', now())
-                    ->where('is_active', true);
+            ->where('is_active', true);
     }
 
     public function scopeByFrequency($query, $frequency)
@@ -77,8 +77,8 @@ class BillingSchedule extends Model
     public function calculateNextBillingDate(): Carbon
     {
         $current = $this->next_billing_date ?? $this->start_date;
-        
-        return match($this->frequency) {
+
+        return match ($this->frequency) {
             'weekly' => $current->addWeeks($this->interval),
             'monthly' => $current->addMonths($this->interval),
             'quarterly' => $current->addMonths($this->interval * 3),
@@ -91,12 +91,12 @@ class BillingSchedule extends Model
     {
         $this->last_billed_date = $this->next_billing_date;
         $this->next_billing_date = $this->calculateNextBillingDate();
-        
+
         // Check if we've passed the end date
         if ($this->end_date && $this->next_billing_date->isAfter($this->end_date)) {
             $this->is_active = false;
         }
-        
+
         return $this->save();
     }
 
@@ -104,8 +104,9 @@ class BillingSchedule extends Model
     {
         $label = ucfirst($this->frequency);
         if ($this->interval > 1) {
-            $label = "Every {$this->interval} " . str_plural($this->frequency, $this->interval);
+            $label = "Every {$this->interval} ".str_plural($this->frequency, $this->interval);
         }
+
         return $label;
     }
 }

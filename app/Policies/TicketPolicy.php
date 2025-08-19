@@ -16,7 +16,7 @@ class TicketPolicy
             'admin.read',
             'tickets.view',
             'tickets.view.account',
-            'tickets.view.all'
+            'tickets.view.all',
         ]);
     }
 
@@ -41,6 +41,7 @@ class TicketPolicy
             if ($user->hasPermission('accounts.hierarchy.access')) {
                 // Check if ticket belongs to accessible accounts (own + children)
                 $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+
                 return $accessibleAccountIds->contains($ticket->account_id);
             } else {
                 // Regular account user - only their own account
@@ -74,7 +75,7 @@ class TicketPolicy
         return $user->hasAnyPermission([
             'admin.write',
             'tickets.create',
-            'tickets.create.account'
+            'tickets.create.account',
         ]);
     }
 
@@ -99,6 +100,7 @@ class TicketPolicy
             if ($user->hasPermission('accounts.hierarchy.access')) {
                 // Check if ticket belongs to accessible accounts (own + children)
                 $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+
                 return $accessibleAccountIds->contains($ticket->account_id);
             } else {
                 // Regular account user - only their own account
@@ -148,6 +150,7 @@ class TicketPolicy
             if ($user->hasPermission('accounts.hierarchy.access')) {
                 // Check if ticket belongs to accessible accounts (own + children)
                 $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+
                 return $accessibleAccountIds->contains($ticket->account_id);
             } else {
                 // Regular account user - only their own account
@@ -188,6 +191,7 @@ class TicketPolicy
             if ($user->hasPermission('accounts.hierarchy.access')) {
                 // Check if ticket belongs to accessible accounts (own + children)
                 $accessibleAccountIds = $user->account->getAccessibleAccountIds();
+
                 return $accessibleAccountIds->contains($ticket->account_id);
             } else {
                 // Regular account user - only their own account
