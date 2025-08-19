@@ -12,6 +12,10 @@ import { useColumnVisibility } from './useColumnVisibility'
 export function useTicketsTable(tickets, user, canViewAllAccounts) {
   const columnHelper = createColumnHelper()
   
+  // ABAC: Check if user can access actions column
+  const isAccountUser = computed(() => user.value?.user_type === 'account_user')
+  const canAccessActions = computed(() => !isAccountUser.value)
+  
   // Table state with default sort by created_at descending
   const sorting = ref([{ id: 'created_at', desc: true }])
   const globalFilter = ref('')
@@ -36,17 +40,26 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
   // Available columns metadata
   const availableColumns = computed(() => {
     const cols = [
-      { id: 'ticket_number', label: 'Ticket Details', required: true },
-      { id: 'actions', label: 'Actions', required: true },
+      { id: 'ticket_number', label: 'Ticket Details', required: true }
+    ]
+
+    // Only add actions column if user has permission (not account users)
+    if (canAccessActions.value) {
+      cols.push({ id: 'actions', label: 'Actions', required: true })
+    }
+
+    cols.push(
       { id: 'created_at', label: 'Created Date', required: false },
       { id: 'due_date', label: 'Due Date', required: false },
       { id: 'category', label: 'Category', required: false },
       { id: 'assigned_agent', label: 'Assigned Agent', required: false },
       { id: 'updated_at', label: 'Updated', required: false, defaultVisible: false }
-    ]
+    )
 
     if (canViewAllAccounts) {
-      cols.splice(1, 0, { id: 'account', label: 'Account/Customer', required: false })
+      // Insert account column after ticket_number, adjusting position based on actions column presence
+      const insertIndex = canAccessActions.value ? 2 : 1
+      cols.splice(insertIndex, 0, { id: 'account', label: 'Account/Customer', required: false })
     }
 
     return cols
@@ -133,16 +146,18 @@ export function useTicketsTable(tickets, user, canViewAllAccounts) {
       )
     }
 
-    // Add actions column (always visible)
-    cols.push(
-      columnHelper.display({
-        id: 'actions',
-        header: 'Actions',
-        size: 120, // Fixed width for actions
-        minSize: 100,
-        maxSize: 150,
-      })
-    )
+    // Add actions column (only for users with action permissions - not account users)
+    if (canAccessActions.value) {
+      cols.push(
+        columnHelper.display({
+          id: 'actions',
+          header: 'Actions',
+          size: 120, // Fixed width for actions
+          minSize: 100,
+          maxSize: 150,
+        })
+      )
+    }
 
     // Add updated column if visible (hidden by default)
     if (isColumnVisible.value('updated_at')) {

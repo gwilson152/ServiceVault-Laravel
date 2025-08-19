@@ -432,11 +432,8 @@ class TimerController extends Controller
         ]);
 
         try {
-            // Update timer status to stopped (committed to time entry)
-            $timer->update([
-                'status' => 'stopped',
-                'stopped_at' => now(),
-            ]);
+            // Mark timer as committed using the model method
+            $timer->commit();
 
             // Remove timer from Redis cache
             $this->timerService->removeFromRedis($timer);
@@ -451,6 +448,41 @@ class TimerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to mark timer as committed: ' . $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Cancel a timer (mark as canceled without deleting)
+     */
+    public function cancel(Timer $timer): JsonResponse
+    {
+        $this->authorize('update', $timer);
+
+        try {
+            // Only allow canceling active timers
+            if (!in_array($timer->status, ['running', 'paused'])) {
+                return response()->json([
+                    'error' => 'Timer cannot be canceled. Current status: ' . $timer->status
+                ], 422);
+            }
+
+            // Cancel the timer using the model method
+            $timer->cancel();
+            
+            // Remove timer from Redis cache
+            $this->timerService->removeFromRedis($timer);
+            
+            // Broadcast timer canceled event (reuse TimerStopped for now)
+            broadcast(new TimerStopped($timer))->toOthers();
+            
+            return response()->json([
+                'message' => 'Timer canceled successfully',
+                'data' => new TimerResource($timer->fresh()),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to cancel timer: ' . $e->getMessage()
             ], 422);
         }
     }

@@ -61,7 +61,6 @@
                                 <UnifiedSelector
                                     v-model="form.accountId"
                                     type="account"
-                                    :items="availableAccounts"
                                     label="Account"
                                     placeholder="Select account..."
                                     :required="true"
@@ -75,13 +74,12 @@
                                 <UnifiedSelector
                                     v-model="form.ticketId"
                                     type="ticket"
-                                    :items="availableTickets"
-                                    :loading="ticketsLoading"
                                     label="Ticket"
                                     placeholder="Select ticket..."
-                                    :required="true"
+                                    :required="false"
                                     :disabled="!form.accountId"
                                     :error="errors.ticketId"
+                                    :filter-set="{ account_id: form.accountId }"
                                     @item-selected="handleTicketSelected"
                                 />
                             </div>
@@ -91,7 +89,6 @@
                                 <UnifiedSelector
                                     v-model="form.userId"
                                     type="agent"
-                                    :items="availableAgents"
                                     :loading="agentsLoading"
                                     label="Service Agent"
                                     placeholder="Select the agent who performed this work..."
@@ -696,24 +693,30 @@ const loadBillingRatesForAccount = async (accountId) => {
     billingRatesLoading.value = true;
     try {
         const params = accountId ? { account_id: accountId } : {};
+        
+        // In timer-commit mode, include the specific billing rate ID if it exists
+        if (props.mode === "timer-commit" && props.timerData?.billing_rate_id) {
+            params.include_rate_id = props.timerData.billing_rate_id;
+        }
+        
         const response = await axios.get("/api/billing-rates", { params });
         availableBillingRates.value = response.data.data || [];
 
         // Force UnifiedSelector to reinitialize with the new rates
-        console.log('loadBillingRatesForAccount - About to force reinitialize:', {
-            currentBillingRateId: form.value.billingRateId,
-            loadedRatesCount: availableBillingRates.value.length,
-            selectorExists: !!billingRateSelector.value
-        });
+        // if (props.mode === "timer-commit") {
+        //     console.log('Timer commit - loaded billing rates:', {
+        //         currentBillingRateId: form.value.billingRateId,
+        //         loadedRatesCount: availableBillingRates.value.length,
+        //         ratesIncludeTimer: !!availableBillingRates.value.find(r => r.id === form.value.billingRateId)
+        //     });
+        // }
         
         // Give the component more time to render and be available
         setTimeout(() => {
             if (billingRateSelector.value) {
-                console.log('Calling billingRateSelector.initializeSelectedItem() with:', {
-                    currentFormBillingRateId: form.value.billingRateId,
-                    availableRatesCount: availableBillingRates.value.length,
-                    firstFewRates: availableBillingRates.value.slice(0, 3).map(r => ({ id: r.id, name: r.name }))
-                });
+                // if (props.mode === "timer-commit") {
+                //     console.log('Timer commit - forcing selector initialization');
+                // }
                 billingRateSelector.value.initializeSelectedItem();
             } else {
                 console.log('billingRateSelector.value is null - cannot initialize');
@@ -727,12 +730,13 @@ const loadBillingRatesForAccount = async (accountId) => {
             props.mode === "timer-commit" && 
             props.timerData?.billing_rate_id;
             
-        console.log("Billing rate auto-selection check:", {
-            currentRateId: form.value.billingRateId,
-            ratesCount: availableBillingRates.value.length,
-            shouldSkip: shouldSkipAutoSelection,
-            mode: props.mode
-        });
+        // console.log("Billing rate auto-selection check:", {
+        //     currentRateId: form.value.billingRateId,
+        //     ratesCount: availableBillingRates.value.length,
+        //     shouldSkip: shouldSkipAutoSelection,
+        //     mode: props.mode,
+        //     timerHasBillingRate: !!props.timerData?.billing_rate_id
+        // });
             
         if (
             !form.value.billingRateId &&
@@ -1002,7 +1006,7 @@ const initializeForm = async () => {
             form.value.billingRateId = props.timerData.billing_rate_id;
             console.log("Pre-set billing rate ID:", props.timerData.billing_rate_id, "Type:", typeof props.timerData.billing_rate_id);
         } else {
-            console.log("Timer data has no billing_rate_id:", props.timerData);
+            console.log("Timer data has no billing_rate_id - should auto-select default");
         }
 
         // Load related data after setting initial values
@@ -1073,10 +1077,13 @@ const initializeForm = async () => {
     // Edit mode initialization
     if (props.mode === "edit" && props.timeEntry) {
         form.value.description = props.timeEntry.description || "";
-        form.value.accountId = props.timeEntry.account_id;
-        form.value.ticketId = props.timeEntry.ticket_id;
-        form.value.userId = props.timeEntry.user_id;
-        form.value.billingRateId = props.timeEntry.billing_rate_id;
+        
+        // Handle both flat and nested data structures
+        form.value.accountId = props.timeEntry.account_id || props.timeEntry.account?.id;
+        form.value.ticketId = props.timeEntry.ticket_id || props.timeEntry.ticket?.id;
+        form.value.userId = props.timeEntry.user_id || props.timeEntry.user?.id;
+        form.value.billingRateId = props.timeEntry.billing_rate_id || props.timeEntry.billing_rate?.id;
+        
         form.value.billable = props.timeEntry.billable;
         form.value.billingAmount = props.timeEntry.billed_amount || 0;
         form.value.notes = props.timeEntry.notes || "";

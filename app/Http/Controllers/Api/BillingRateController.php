@@ -29,7 +29,42 @@ class BillingRateController extends Controller
         // If account_id is provided, return hierarchical rates for that account
         if ($request->has('account_id') && $request->account_id) {
             $account = Account::findOrFail($request->account_id);
+            
+            // Get the standard available rates
             $rates = $this->billingRateService->getAvailableRatesForAccount($account);
+            
+            // If include_rate_id is specified, ensure that specific rate is included
+            if ($request->has('include_rate_id') && $request->include_rate_id) {
+                $specificRateId = $request->include_rate_id;
+                
+                // Check if the rate is already in the collection
+                if (!$rates->where('id', $specificRateId)->count()) {
+                    // Rate not in collection, try to find and add it
+                    $specificRate = BillingRate::find($specificRateId);
+                    if ($specificRate && $specificRate->is_active) {
+                        // Mark it as a special inclusion
+                        $specificRate->inheritance_source = $specificRate->account_id ? 'account' : 'global';
+                        $specificRate->inherited_from_account = null;
+                        $specificRate->inherited_from_account_id = null;
+                        $specificRate->is_timer_specific = true; // Flag to indicate this was specifically requested
+                        
+                        // Add it to the collection
+                        $rates->push($specificRate);
+                        
+                        // Re-sort the collection
+                        $rates = $rates->sortBy(function ($rate) {
+                            $priority = 0;
+                            if ($rate->inheritance_source === 'account' && $rate->is_default) $priority = 1;
+                            elseif ($rate->inheritance_source === 'account') $priority = 2;
+                            elseif ($rate->inheritance_source === 'global' && $rate->is_default) $priority = 3;
+                            else $priority = 4;
+                            
+                            return sprintf('%02d_%s', $priority, $rate->name);
+                        })->values();
+                    }
+                }
+            }
+            
             return response()->json(['data' => $rates]);
         }
         

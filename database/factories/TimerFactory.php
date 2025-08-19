@@ -20,13 +20,12 @@ class TimerFactory extends Factory
      */
     public function definition(): array
     {
-        $statuses = ['running', 'paused', 'stopped'];
+        $statuses = ['running', 'paused', 'canceled', 'committed'];
         $status = fake()->randomElement($statuses);
         $startedAt = fake()->dateTimeBetween('-1 week', 'now');
         
         $data = [
             'user_id' => User::factory(),
-            'project_id' => null, // Avoid factory relationships that might not exist
             'task_id' => null,
             'billing_rate_id' => null,
             'description' => fake()->sentence(),
@@ -47,8 +46,8 @@ class TimerFactory extends Factory
             $data['total_paused_duration'] = fake()->numberBetween(60, 3600);
         }
 
-        // Add stopped_at if status is stopped
-        if ($status === 'stopped') {
+        // Add stopped_at if status is canceled or committed
+        if (in_array($status, ['canceled', 'committed'])) {
             $data['stopped_at'] = fake()->dateTimeBetween($startedAt, 'now');
         }
 
@@ -84,13 +83,27 @@ class TimerFactory extends Factory
     }
 
     /**
-     * Create a stopped timer.
+     * Create a canceled timer.
      */
-    public function stopped(): static
+    public function canceled(): static
     {
         $startedAt = fake()->dateTimeBetween('-1 week', '-1 hour');
         return $this->state(fn (array $attributes) => [
-            'status' => 'stopped',
+            'status' => 'canceled',
+            'started_at' => $startedAt,
+            'stopped_at' => fake()->dateTimeBetween($startedAt, 'now'),
+            'paused_at' => null,
+        ]);
+    }
+
+    /**
+     * Create a committed timer.
+     */
+    public function committed(): static
+    {
+        $startedAt = fake()->dateTimeBetween('-1 week', '-1 hour');
+        return $this->state(fn (array $attributes) => [
+            'status' => 'committed',
             'started_at' => $startedAt,
             'stopped_at' => fake()->dateTimeBetween($startedAt, 'now'),
             'paused_at' => null,

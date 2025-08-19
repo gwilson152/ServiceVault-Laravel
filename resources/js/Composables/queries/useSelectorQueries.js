@@ -1,0 +1,272 @@
+import { useQuery } from '@tanstack/vue-query'
+import { computed, ref } from 'vue'
+import axios from 'axios'
+import { usePage } from '@inertiajs/vue3'
+import { initializeCSRF } from '@/Services/api'
+import { queryKeys } from '@/Services/queryClient'
+
+// Initialize CSRF on module load
+initializeCSRF()
+
+// Recent items management
+const recentItems = ref({
+  tickets: JSON.parse(localStorage.getItem('selector_recent_tickets') || '[]'),
+  accounts: JSON.parse(localStorage.getItem('selector_recent_accounts') || '[]'),
+  users: JSON.parse(localStorage.getItem('selector_recent_users') || '[]'),
+  agents: JSON.parse(localStorage.getItem('selector_recent_agents') || '[]'),
+  'billing-rates': JSON.parse(localStorage.getItem('selector_recent_billing_rates') || '[]'),
+})
+
+// Helper to update recent items
+const updateRecentItems = (type, item) => {
+  if (!item || !item.id) return
+  
+  const current = recentItems.value[type] || []
+  const filtered = current.filter(existing => existing.id !== item.id)
+  const updated = [item, ...filtered].slice(0, 10) // Keep last 10
+  
+  recentItems.value[type] = updated
+  localStorage.setItem(`selector_recent_${type.replace('-', '_')}`, JSON.stringify(updated))
+}
+
+// Permission helpers
+const getUserPermissionLevel = (user, type) => {
+  if (!user) return 'none'
+  
+  switch (type) {
+    case 'tickets':
+      if (user.permissions?.includes('tickets.view.all') || user.permissions?.includes('admin.manage')) return 'all'
+      if (user.permissions?.includes('tickets.view.account')) return 'account'
+      if (user.permissions?.includes('tickets.view.assigned')) return 'assigned'
+      return 'own'
+      
+    case 'accounts':
+      if (user.permissions?.includes('accounts.manage') || user.permissions?.includes('admin.manage')) return 'all'
+      if (user.permissions?.includes('accounts.view')) return 'account'
+      return 'own'
+      
+    case 'users':
+    case 'agents':
+      if (user.permissions?.includes('users.manage') || user.permissions?.includes('admin.manage')) return 'all'
+      if (user.permissions?.includes('users.manage.account')) return 'account'
+      return 'none'
+      
+    case 'billing-rates':
+      if (user.permissions?.includes('billing.rates.view') || user.permissions?.includes('admin.manage')) return 'all'
+      return 'none'
+      
+    default:
+      return 'none'
+  }
+}
+
+// Tickets selector query
+export function useSelectorTicketsQuery(options = {}) {
+  const {
+    searchTerm = ref(''),
+    filterSet = ref({}),
+    recentLimit = 10,
+    enabled = ref(true)
+  } = options
+  
+  const page = usePage()
+  const user = computed(() => page.props.auth?.user)
+  
+  return useQuery({
+    queryKey: ['selector', 'tickets', searchTerm.value, filterSet.value],
+    queryFn: async () => {
+      const permissionLevel = getUserPermissionLevel(user.value, 'tickets')
+      if (permissionLevel === 'none') return { data: [], recent: [] }
+      
+      const params = {
+        q: searchTerm.value,
+        limit: searchTerm.value ? 50 : recentLimit,
+        permission_level: permissionLevel,
+        ...filterSet.value
+      }
+      
+      const response = await axios.get('/api/search/tickets', { params })
+      
+      return {
+        data: response.data.data || [],
+        recent: recentItems.value.tickets || []
+      }
+    },
+    enabled: computed(() => enabled.value),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    select: (data) => {
+      // Merge search results with recent items, prioritizing search results
+      if (searchTerm.value) {
+        const searchIds = new Set(data.data.map(item => item.id))
+        const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
+        return [...data.data, ...uniqueRecent.slice(0, 3)] // Add 3 recent items to search results
+      }
+      return data.recent.slice(0, recentLimit)
+    }
+  })
+}
+
+// Accounts selector query
+export function useSelectorAccountsQuery(options = {}) {
+  const {
+    searchTerm = ref(''),
+    filterSet = ref({}),
+    recentLimit = 10,
+    enabled = ref(true)
+  } = options
+  
+  const page = usePage()
+  const user = computed(() => page.props.auth?.user)
+  
+  return useQuery({
+    queryKey: ['selector', 'accounts', searchTerm.value, filterSet.value],
+    queryFn: async () => {
+      const permissionLevel = getUserPermissionLevel(user.value, 'accounts')
+      if (permissionLevel === 'none') return { data: [], recent: [] }
+      
+      const params = {
+        q: searchTerm.value,
+        limit: searchTerm.value ? 50 : recentLimit,
+        permission_level: permissionLevel,
+        ...filterSet.value
+      }
+      
+      const response = await axios.get('/api/search/accounts', { params })
+      
+      return {
+        data: response.data.data || [],
+        recent: recentItems.value.accounts || []
+      }
+    },
+    enabled: computed(() => enabled.value),
+    staleTime: 1000 * 60 * 3, // 3 minutes - accounts change less frequently
+    select: (data) => {
+      if (searchTerm.value) {
+        const searchIds = new Set(data.data.map(item => item.id))
+        const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
+        return [...data.data, ...uniqueRecent.slice(0, 3)]
+      }
+      return data.recent.slice(0, recentLimit)
+    }
+  })
+}
+
+// Users selector query
+export function useSelectorUsersQuery(options = {}) {
+  const {
+    searchTerm = ref(''),
+    filterSet = ref({}),
+    agentType = ref(null),
+    recentLimit = 10,
+    enabled = ref(true)
+  } = options
+  
+  const page = usePage()
+  const user = computed(() => page.props.auth?.user)
+  
+  return useQuery({
+    queryKey: ['selector', 'users', searchTerm.value, filterSet.value, agentType.value],
+    queryFn: async () => {
+      const permissionLevel = getUserPermissionLevel(user.value, 'users')
+      if (permissionLevel === 'none') return { data: [], recent: [] }
+      
+      const params = {
+        q: searchTerm.value,
+        limit: searchTerm.value ? 50 : recentLimit,
+        permission_level: permissionLevel,
+        agent_type: agentType.value,
+        ...filterSet.value
+      }
+      
+      const endpoint = agentType.value ? '/api/search/agents' : '/api/search/users'
+      const response = await axios.get(endpoint, { params })
+      
+      const storageKey = agentType.value ? 'agents' : 'users'
+      return {
+        data: response.data.data || [],
+        recent: recentItems.value[storageKey] || []
+      }
+    },
+    enabled: computed(() => enabled.value),
+    staleTime: 1000 * 60 * 5, // 5 minutes - users change less frequently
+    select: (data) => {
+      if (searchTerm.value) {
+        const searchIds = new Set(data.data.map(item => item.id))
+        const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
+        return [...data.data, ...uniqueRecent.slice(0, 3)]
+      }
+      return data.recent.slice(0, recentLimit)
+    }
+  })
+}
+
+// Billing rates selector query
+export function useSelectorBillingRatesQuery(options = {}) {
+  const {
+    searchTerm = ref(''),
+    filterSet = ref({}),
+    recentLimit = 10,
+    enabled = ref(true)
+  } = options
+  
+  const page = usePage()
+  const user = computed(() => page.props.auth?.user)
+  
+  return useQuery({
+    queryKey: ['selector', 'billing-rates', searchTerm.value, filterSet.value],
+    queryFn: async () => {
+      const permissionLevel = getUserPermissionLevel(user.value, 'billing-rates')
+      if (permissionLevel === 'none') return { data: [], recent: [] }
+      
+      const params = {
+        q: searchTerm.value,
+        limit: searchTerm.value ? 30 : recentLimit, // Billing rates typically have fewer items
+        ...filterSet.value
+      }
+      
+      const response = await axios.get('/api/search/billing-rates', { params })
+      
+      return {
+        data: response.data.data || [],
+        recent: recentItems.value['billing-rates'] || []
+      }
+    },
+    enabled: computed(() => enabled.value),
+    staleTime: 1000 * 60 * 10, // 10 minutes - billing rates change less frequently
+    select: (data) => {
+      if (searchTerm.value) {
+        const searchIds = new Set(data.data.map(item => item.id))
+        const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
+        return [...data.data, ...uniqueRecent.slice(0, 3)]
+      }
+      return data.recent.slice(0, recentLimit)
+    }
+  })
+}
+
+// Active selection fetcher - ensures specific item is available even if not in recent/search
+export function useActiveSelectorItem(type, itemId, options = {}) {
+  const { enabled = ref(true) } = options
+  
+  return useQuery({
+    queryKey: ['selector', 'active-item', type, itemId.value],
+    queryFn: async () => {
+      if (!itemId.value) return null
+      
+      const response = await axios.get(`/api/${type}/${itemId.value}`)
+      return response.data.data || response.data
+    },
+    enabled: computed(() => enabled.value && !!itemId.value),
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+// Export recent items utilities
+export const selectorUtils = {
+  updateRecentItems,
+  getRecentItems: (type) => recentItems.value[type] || [],
+  clearRecentItems: (type) => {
+    recentItems.value[type] = []
+    localStorage.removeItem(`selector_recent_${type.replace('-', '_')}`)
+  }
+}

@@ -1,16 +1,18 @@
 <template>
-  <!-- Debug Overlay - Super Admin Only -->
-  <div
-    v-if="showDebugOverlay && user?.is_super_admin"
-    ref="debugOverlay"
-    :style="{
-      left: debugPosition.x + 'px',
-      top: debugPosition.y + 'px',
-      width: debugMinimized ? '200px' : '320px'
-    }"
-    class="fixed z-45 bg-gray-900 text-white rounded-lg shadow-2xl border border-gray-700 select-none"
-    @mousedown="startDrag"
-  >
+  <!-- Overlay Container (click-through for entire overlay system) -->
+  <div class="fixed inset-0 pointer-events-none z-40">
+    <!-- Debug Overlay - Super Admin Only -->
+    <div
+      v-if="showDebugOverlay && user?.is_super_admin"
+      ref="debugOverlay"
+      :style="{
+        left: debugPosition.x + 'px',
+        top: debugPosition.y + 'px',
+        width: debugMinimized ? '200px' : '320px'
+      }"
+      class="absolute z-5 bg-gray-900 text-white rounded-lg shadow-2xl border border-gray-700 select-none pointer-events-auto"
+      @mousedown="startDrag"
+    >
     <!-- Debug Header -->
     <div class="bg-gray-800 px-3 py-2 rounded-t-lg flex items-center justify-between cursor-move">
       <div class="flex items-center space-x-2">
@@ -80,11 +82,11 @@
     </div>
   </div>
 
-  <!-- Docked Mode: Original corner overlay -->
-  <div
-    v-if="shouldShowOverlay && isDocked"
-    :class="overlayPositionClasses"
-  >
+    <!-- Docked Mode: Original corner overlay -->
+    <div
+      v-if="shouldShowOverlay && isDocked"
+      class="absolute bottom-4 left-4 pointer-events-auto"
+    >
     <!-- Main Horizontal Container -->
     <div class="flex flex-row items-end space-x-3">
 
@@ -299,6 +301,16 @@
               </svg>
             </button>
             <button
+              v-if="(canControlOwnTimer(timer) || canManageAllTimers(timer))"
+              @click="cancelTimer(timer.id)"
+              class="flex-1 p-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors"
+              title="Cancel Timer"
+            >
+              <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <button
               v-if="canCommitOwnTimer(timer)"
               @click="handleStopTimer(timer)"
               class="flex-1 p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"
@@ -325,18 +337,15 @@
     </div>
   </div>
 
-  <!-- Undocked Mode: Moveable panel with unified timer list -->
-  <div
-    v-if="shouldShowOverlay && !isDocked"
-    ref="overlayPanel"
-    :class="[
-      overlayPositionClasses,
-      'bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200/50 dark:border-gray-700/50 min-w-72 max-w-80',
-      { 'cursor-move': !panelDragging, 'cursor-grabbing': panelDragging }
-    ]"
-    :style="overlayPanelStyle"
-    @mousedown="startPanelDrag"
-  >
+    <!-- Undocked Mode: Moveable panel with unified timer list -->
+    <div
+      v-else-if="shouldShowOverlay && !isDocked"
+      ref="overlayPanel"
+      class="absolute bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200/50 dark:border-gray-700/50 min-w-72 max-w-80 pointer-events-auto"
+      :class="{ 'cursor-move': !panelDragging, 'cursor-grabbing': panelDragging }"
+      :style="overlayPanelStyle"
+      @mousedown="startPanelDrag"
+    >
     <!-- Panel Header -->
     <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg px-3 py-1.5 flex items-center justify-between cursor-move">
       <div class="flex items-center space-x-2">
@@ -478,6 +487,16 @@
               </svg>
             </button>
             <button
+              v-if="(canControlOwnTimer(timer) || canManageAllTimers(timer))"
+              @click.stop="cancelTimer(timer.id)"
+              class="flex-1 p-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded text-xs font-medium transition-colors"
+              title="Cancel Timer"
+            >
+              <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <button
               v-if="canCommitOwnTimer(timer)"
               @click.stop="handleStopTimer(timer)"
               class="flex-1 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium transition-colors"
@@ -514,30 +533,33 @@
     </div>
   </div>
 
-    <!-- Unified Time Entry Dialog for Timer Commit -->
-    <UnifiedTimeEntryDialog
-      :show="showCommitDialog"
-      mode="timer-commit"
-      :timer-data="timerToCommit"
-      @close="closeCommitDialog"
-      @timer-committed="handleTimerCommitted"
-    />
+  </div>
 
-    <!-- Start Timer Modal -->
-    <StartTimerModalTabbed
-      :show="showStartTimerModal"
-      @close="showStartTimerModal = false"
-      @timer-started="handleTimerStarted"
-    />
+  <!-- Modals (outside click-through container) -->
+  <!-- Unified Time Entry Dialog for Timer Commit -->
+  <UnifiedTimeEntryDialog
+    :show="showCommitDialog"
+    mode="timer-commit"
+    :timer-data="timerToCommit"
+    @close="closeCommitDialog"
+    @timer-committed="handleTimerCommitted"
+  />
 
-    <!-- Timer Settings Modal -->
-    <StartTimerModalTabbed
-      :show="showTimerSettingsModal"
-      mode="edit"
-      :timer="currentTimerSettings"
-      @close="showTimerSettingsModal = false"
-      @timer-updated="handleTimerUpdated"
-    />
+  <!-- Start Timer Modal -->
+  <StartTimerModalTabbed
+    :show="showStartTimerModal"
+    @close="showStartTimerModal = false"
+    @timer-started="handleTimerStarted"
+  />
+
+  <!-- Timer Settings Modal -->
+  <StartTimerModalTabbed
+    :show="showTimerSettingsModal"
+    mode="edit"
+    :timer="currentTimerSettings"
+    @close="showTimerSettingsModal = false"
+    @timer-updated="handleTimerUpdated"
+  />
 
 </template>
 
@@ -729,17 +751,10 @@ const stopPanelDrag = async () => {
   document.removeEventListener('mouseup', stopPanelDrag)
 }
 
-// Computed position classes and styles
+// Computed position classes and styles (simplified since we now use absolute positioning)
 const overlayPositionClasses = computed(() => {
-  if (isLoadingPreferences.value) {
-    return 'fixed bottom-4 left-4 z-40' // Default position while loading
-  }
-
-  if (isDocked.value) {
-    return 'fixed bottom-4 left-4 z-40' // Docked to bottom-left corner
-  } else {
-    return 'fixed z-40' // Undocked moveable panel
-  }
+  // This is now used mainly for backwards compatibility and fallbacks
+  return 'absolute bottom-4 left-4'
 })
 
 const overlayPanelStyle = computed(() => {
@@ -861,6 +876,20 @@ const reactiveTimerData = computed(() => {
     currentAmount: calculateAmount(timer)
   }))
 })
+
+// Cancel timer function
+const cancelTimer = async (timerId) => {
+  if (!confirm('Are you sure you want to cancel this timer? This will mark it as canceled without creating a time entry.')) {
+    return
+  }
+  
+  try {
+    await window.axios.post(`/api/timers/${timerId}/cancel`)
+    removeTimer(timerId)
+  } catch (error) {
+    console.error('Failed to cancel timer:', error)
+  }
+}
 
 // Delete timer function
 const deleteTimer = async (timerId) => {

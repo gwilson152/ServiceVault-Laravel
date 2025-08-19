@@ -6,14 +6,19 @@ Complete API reference for Service Vault's billing rates, invoices, and financia
 
 ### List Billing Rates
 ```http
-GET /api/billing-rates?account_id={id}&include_inherited=true
+GET /api/billing-rates?account_id={id}&include_rate_id={rate_id}
 ```
 
 **Query Parameters**:
-- `account_id`: Filter rates for specific account
-- `include_inherited`: Include parent account and global rates
+- `account_id`: Filter rates for specific account (uses BillingRateService hierarchy)
+- `include_rate_id`: Force inclusion of specific rate (for timer commits)
 - `is_default`: Filter by default status
 - `active_only`: Only active rates
+
+**Enhanced Behavior** (August 2025):
+- **Hierarchical Filtering**: When `account_id` provided, returns properly prioritized rates
+- **Timer-Specific Inclusion**: `include_rate_id` ensures specific rates are available even if normally filtered by hierarchy
+- **Rate Disambiguation**: Timer-specific rates flagged with `is_timer_specific: true`
 
 **Response**:
 ```json
@@ -23,35 +28,36 @@ GET /api/billing-rates?account_id={id}&include_inherited=true
       "id": "rate-uuid",
       "name": "Senior Developer",
       "rate": "125.00",
+      "description": "Senior development work",
       "is_default": true,
       "account_id": "account-uuid",
+      "inheritance_source": "account",
+      "is_timer_specific": false,
       "account": {
         "id": "account-uuid",
         "name": "Company Account"
       },
       "created_at": "2025-08-19T10:30:00Z"
+    },
+    {
+      "id": "timer-rate-uuid",
+      "name": "Critical Hourly",
+      "rate": "130.00", 
+      "description": "Emergency and critical support rate",
+      "is_default": false,
+      "account_id": null,
+      "inheritance_source": "global",
+      "is_timer_specific": true,
+      "created_at": "2025-08-19T08:15:00Z"
     }
-  ],
-  "grouped_rates": {
-    "account_specific": [
-      {
-        "id": "rate-uuid",
-        "name": "Custom Rate",
-        "rate": "150.00",
-        "badge_color": "blue"
-      }
-    ],
-    "global_default": [
-      {
-        "id": "rate-uuid",
-        "name": "Standard Rate", 
-        "rate": "100.00",
-        "badge_color": "green"
-      }
-    ]
-  }
+  ]
 }
 ```
+
+**Key Fields**:
+- `inheritance_source`: "account", "global", or "fallback"
+- `is_timer_specific`: Rate was specifically requested via `include_rate_id`
+- `description`: Rate description (displayed alongside amount in UI)
 
 ### Create Billing Rate
 ```http

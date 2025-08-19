@@ -139,8 +139,10 @@ class RoleTemplateSeeder extends Seeder
                 'tickets.close',
                 'tickets.delete',
                 'time.admin',
+                'time.manage',
                 'time.view.all',
                 'time.edit.all',
+                'time.edit.team',
                 'time.approve',
                 'time.reports',
                 'time.reports.account',
@@ -169,6 +171,83 @@ class RoleTemplateSeeder extends Seeder
         ]);
 
 
+        // Service Provider - Comprehensive time management and client access (MODIFIABLE)
+        RoleTemplate::updateOrCreate(['name' => 'Service Provider'], [
+            'display_name' => 'Service Provider',
+            'description' => 'Service provider with comprehensive time management and client account access',
+            'is_system_role' => false,
+            'is_default' => false,
+            'is_modifiable' => true,
+            'context' => 'service_provider',
+            'permissions' => [
+                // Account Management
+                'accounts.view',
+                'accounts.manage',
+                
+                // User Management
+                'users.view',
+                'users.manage.account',
+                
+                // Service Tickets - Comprehensive Access
+                'tickets.create',
+                'tickets.create.account',
+                'tickets.view.all',
+                'tickets.view.account',
+                'tickets.edit.all',
+                'tickets.edit.account',
+                'tickets.assign',
+                'tickets.assign.account',
+                'tickets.transition',
+                'tickets.close',
+                'tickets.comment',
+                'tickets.act_as_agent',
+                
+                // Time Tracking - Full Management Access
+                'time.track',
+                'time.manage',         // Key permission for service providers
+                'time.view.all',
+                'time.view.account',
+                'time.edit.all',       // Can edit all time entries
+                'time.edit.team',      // Can edit team member entries
+                'time.approve',        // Can approve time entries
+                'time.reports',
+                
+                // Timer Management
+                'timers.create',
+                'timers.read',
+                'timers.write',
+                'timers.manage',
+                'timers.sync',
+                'timers.act_as_agent',
+                
+                // Billing - View and manage client billing
+                'billing.view.account',
+                'billing.manage.account',
+                'billing.rates.view',
+                
+                // Reports
+                'reports.account',
+                'reports.time',
+            ],
+            'widget_permissions' => [
+                'widgets.dashboard.account-management',
+                'widgets.dashboard.ticket-overview',
+                'widgets.dashboard.my-tickets',
+                'widgets.dashboard.time-tracking',
+                'widgets.dashboard.all-timers',
+                'widgets.dashboard.billing-overview',
+                'widgets.dashboard.account-activity',
+                'widgets.dashboard.quick-actions',
+            ],
+            'page_permissions' => [
+                'pages.tickets.manage',
+                'pages.accounts.manage',
+                'pages.reports.account',
+                'pages.billing.overview',
+                'pages.time-entries.manage',
+            ]
+        ]);
+
         // Agent - Service delivery and time tracking (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Agent'], [
             'display_name' => 'Service Agent',
@@ -189,12 +268,15 @@ class RoleTemplateSeeder extends Seeder
                 'time.track',
                 'time.view.own',
                 'time.edit.own',
+                'time.edit.team',      // Added team permission
                 'time.reports.own',
                 // Legacy timer support
                 'timers.create',
                 'timers.read',
                 'timers.write',
                 'timers.sync',
+                'timers.act_as_agent', // Added agent permission
+                'tickets.act_as_agent', // Added agent permission
             ],
             'widget_permissions' => [
                 'widgets.dashboard.my-tickets',

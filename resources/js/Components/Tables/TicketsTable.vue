@@ -382,29 +382,31 @@
             </div>
           </a>
 
-          <button
-            @click="$emit('open-manual-time-entry', item); close()"
-            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-          >
-            <div class="flex items-center">
-              <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Add Time Entry
-            </div>
-          </button>
+          <template v-if="canAccessActions">
+            <button
+              @click="$emit('open-manual-time-entry', item); close()"
+              class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+            >
+              <div class="flex items-center">
+                <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Add Time Entry
+              </div>
+            </button>
 
-          <button
-            @click="$emit('open-ticket-addon', item); close()"
-            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-          >
-            <div class="flex items-center">
-              <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Addon
-            </div>
-          </button>
+            <button
+              @click="$emit('open-ticket-addon', item); close()"
+              class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+            >
+              <div class="flex items-center">
+                <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Addon
+              </div>
+            </button>
+          </template>
 
           <hr class="my-1 border-gray-100">
 
@@ -427,7 +429,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { FlexRender } from '@tanstack/vue-table'
 import { useContextMenu } from '@/Composables/useContextMenu'
@@ -455,6 +457,10 @@ const emit = defineEmits([
   'open-manual-time-entry',
   'open-ticket-addon'
 ])
+
+// ABAC: Check if user can access actions column
+const isAccountUser = computed(() => props.user?.user_type === 'account_user')
+const canAccessActions = computed(() => !isAccountUser.value)
 
 // Context menu functionality
 const {

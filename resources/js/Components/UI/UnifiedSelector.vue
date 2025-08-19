@@ -9,13 +9,13 @@
       <span v-if="required" class="text-red-500">*</span>
     </label>
 
-    <!-- Search Input (only show when no item is selected) -->
-    <div v-if="!selectedItem" class="relative">
+    <!-- Search Input (only show when no item is selected or clearable is false) -->
+    <div v-if="!selectedItem || !clearable" class="relative">
       <input
         :id="inputId"
-        v-model="searchTerm"
+        v-model="actualSearchTerm"
         type="text"
-        :placeholder="placeholder"
+        :placeholder="defaultPlaceholder"
         :required="required"
         :disabled="loading || disabled"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -28,7 +28,7 @@
       <!-- Dropdown Icon -->
       <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
         <div
-          v-if="loading"
+          v-if="loading || isSearching"
           class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"
         ></div>
         <svg
@@ -49,7 +49,7 @@
     </div>
 
     <!-- Selected Item Display -->
-    <div v-if="selectedItem" :class="selectedItemClasses">
+    <div v-if="selectedItem && clearable" :class="selectedItemClasses">
       <div class="flex items-center justify-between">
         <div class="flex items-center flex-1 min-w-0">
           <!-- Icon -->
@@ -80,6 +80,7 @@
         
         <!-- Clear Button -->
         <button
+          v-if="clearable"
           type="button"
           @click="clearSelection"
           class="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
@@ -99,101 +100,100 @@
 
     <!-- Dropdown -->
     <div
-      v-if="showDropdown && !selectedItem"
-      ref="dropdown"
-      class="absolute w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-      style="z-index: 9999;"
-      :class="dropdownPosition"
+      v-if="showDropdown"
+      :class="[
+        'absolute left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto',
+        dropdownPosition
+      ]"
     >
-      <div v-if="loading" class="p-4 text-center text-gray-500">
-        <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-        <span class="ml-2">Loading {{ type }}s...</span>
+      <!-- Loading state -->
+      <div v-if="loading || isSearching" class="p-4 text-center text-gray-500">
+        <div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+        {{ isSearching ? 'Searching...' : 'Loading...' }}
       </div>
 
-      <div v-else>
-        <!-- Create New Option -->
+      <!-- Error state -->
+      <div v-else-if="queryError" class="p-4 text-center text-red-500">
+        <p class="text-sm">Error loading {{ type }} data</p>
+        <button
+          @click="refetch"
+          class="text-xs text-blue-500 hover:text-blue-700 mt-1"
+        >
+          Try again
+        </button>
+      </div>
+
+      <!-- Recent/search results -->
+      <div v-else-if="displayItems.length > 0">
+        <!-- Recent items header -->
+        <div v-if="showRecentHeader" class="px-3 py-2 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase">
+          {{ actualSearchTerm ? 'Search Results' : 'Recent Items' }}
+        </div>
+
+        <!-- Items list -->
         <div
-          v-if="canCreate"
-          @mousedown.prevent="openCreateModal"
-          class="px-4 py-3 hover:bg-green-50 cursor-pointer border-b border-gray-100 bg-green-25"
+          v-for="(item, index) in displayItems"
+          :key="getItemKey(item)"
+          @click="selectItem(item)"
+          @mouseenter="highlightedIndex = index"
+          :class="[
+            'px-3 py-3 cursor-pointer border-b border-gray-100 last:border-b-0',
+            highlightedIndex === index ? 'bg-blue-50' : 'hover:bg-gray-50'
+          ]"
         >
           <div class="flex items-center">
-            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-              <svg
-                class="w-4 h-4 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
+            <!-- Icon -->
+            <div :class="[itemIconClasses, 'mr-3']">
+              <component :is="itemIcon" class="w-4 h-4" />
             </div>
-            <div class="flex-1">
-              <p class="text-sm font-medium text-green-700">{{ createOptionText }}</p>
-              <p class="text-xs text-green-600">{{ createOptionSubtext }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- No items message -->
-        <div
-          v-if="filteredItems.length === 0 && !canCreate"
-          class="p-4 text-center text-gray-500"
-        >
-          {{ searchTerm ? `No ${type}s found` : `No ${type}s available` }}
-        </div>
-
-        <!-- No existing items message (when create option is available and no items) -->
-        <div
-          v-if="filteredItems.length === 0 && canCreate"
-          class="px-4 py-2 text-xs text-gray-500 text-center"
-        >
-          {{ searchTerm ? `No existing ${type}s match your search` : `No existing ${type}s` }}
-        </div>
-
-        <!-- Items List -->
-        <div v-if="filteredItems.length > 0">
-          <div
-            v-for="item in filteredItems"
-            :key="getItemKey(item)"
-            @mousedown.prevent="selectItem(item)"
-            class="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-          >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center flex-1 min-w-0">
-                <!-- Icon -->
-                <div :class="itemIconClasses" class="flex-shrink-0 mr-3">
-                  <component :is="itemIcon" class="w-4 h-4" />
-                </div>
-                
-                <!-- Content -->
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900">{{ getItemTitle(item) }}</p>
-                  <p v-if="getItemSubtitle(item)" class="text-xs text-gray-500 truncate">
-                    {{ getItemSubtitle(item) }}
-                  </p>
-                  
-                  <!-- Badges -->
-                  <div v-if="getItemBadges(item).length > 0" class="flex items-center space-x-2 mt-1">
-                    <span
-                      v-for="badge in getItemBadges(item)"
-                      :key="badge.text"
-                      :class="badge.classes"
-                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                    >
-                      {{ badge.text }}
-                    </span>
-                  </div>
-                </div>
+            
+            <!-- Content -->
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate">
+                {{ getItemTitle(item) }}
+              </p>
+              <p v-if="getItemSubtitle(item)" class="text-xs text-gray-500 truncate">
+                {{ getItemSubtitle(item) }}
+              </p>
+              
+              <!-- Badges -->
+              <div v-if="getItemBadges(item).length > 0" class="flex items-center space-x-1 mt-1">
+                <span
+                  v-for="badge in getItemBadges(item)"
+                  :key="badge.text"
+                  :class="badge.classes"
+                  class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium"
+                >
+                  {{ badge.text }}
+                </span>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- No results -->
+      <div v-else class="p-4 text-center text-gray-500">
+        <p class="text-sm">
+          {{ searchTerm ? `No ${type}s found for "${searchTerm}"` : `No recent ${type}s` }}
+        </p>
+      </div>
+
+      <!-- Create new option -->
+      <div
+        v-if="canCreate && createModalComponent"
+        @click="openCreateModal"
+        class="px-3 py-3 cursor-pointer border-t border-gray-200 bg-gray-50 hover:bg-gray-100"
+      >
+        <div class="flex items-center text-blue-600">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="text-sm font-medium">{{ createOptionText }}</span>
+        </div>
+        <p v-if="createOptionSubtext" class="text-xs text-gray-500 ml-6">
+          {{ createOptionSubtext }}
+        </p>
       </div>
     </div>
 
@@ -203,7 +203,7 @@
     <!-- Create Modal (Teleported to body to avoid clipping) -->
     <Teleport to="body">
       <component
-        v-if="canCreate && showCreateModal"
+        v-if="canCreate && showCreateModal && createModalComponent"
         :is="createModalComponent"
         :show="showCreateModal"
         :open="showCreateModal"
@@ -218,7 +218,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import {
   UserIcon,
   BuildingOfficeIcon,
@@ -226,6 +226,16 @@ import {
   CurrencyDollarIcon,
   UserGroupIcon
 } from '@heroicons/vue/24/outline'
+
+// Import query composables
+import {
+  useSelectorTicketsQuery,
+  useSelectorAccountsQuery,
+  useSelectorUsersQuery,
+  useSelectorBillingRatesQuery,
+  useActiveSelectorItem,
+  selectorUtils
+} from '@/Composables/queries/useSelectorQueries'
 
 // Import modal components
 import CreateTicketModalTabbed from '@/Components/Modals/CreateTicketModalTabbed.vue'
@@ -243,14 +253,42 @@ const props = defineProps({
     required: true,
     validator: value => ['ticket', 'account', 'user', 'agent', 'billing-rate', 'role-template'].includes(value)
   },
-  items: {
+  
+  // Data override for edge cases
+  customItems: {
     type: Array,
-    default: () => [],
+    default: () => [], // Override with custom dataset for special cases
   },
-  loading: {
+  recentItemsLimit: {
+    type: Number,
+    default: 10, // Number of recent items to show initially
+  },
+  searchMinLength: {
+    type: Number,
+    default: 2, // Minimum characters before API search
+  },
+  searchDebounceMs: {
+    type: Number,
+    default: 300,
+  },
+  clearable: {
     type: Boolean,
-    default: false,
+    default: true, // Allow clearing selection
   },
+  activeSelection: {
+    type: [String, Number],
+    default: null, // Force specific item to be selectable
+  },
+  filterSet: {
+    type: Object,
+    default: () => ({}), // Applied filters
+  },
+  autoPermissions: {
+    type: Boolean,
+    default: true, // Auto-handle permission logic internally
+  },
+  
+  // UI props
   disabled: {
     type: Boolean,
     default: false,
@@ -283,6 +321,7 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  
   // Type-specific props
   agentType: {
     type: String,
@@ -299,43 +338,167 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits([
-  'update:modelValue',
-  'item-selected',
-  'item-created',
-  // Legacy event names for backward compatibility during migration
-  'ticket-selected',
-  'ticket-created',
-  'account-selected', 
-  'account-created',
-  'user-selected',
-  'user-created',
-  'agent-selected',
-  'rate-selected',
-  'billing-rate-selected',  // For billing rate selectors
-  'role-template-selected',
-])
+const emit = defineEmits(['update:modelValue', 'item-selected', 'item-created'])
 
-// State
-const inputId = `unified-selector-${Math.random().toString(36).substr(2, 9)}`
-const searchTerm = ref('')
+// Reactive state
+const searchTerm = ref('') // Debounced search term for API
+const actualSearchTerm = ref('') // Immediate search term for UI
 const showDropdown = ref(false)
-const selectedItem = ref(null)
-const dropdown = ref(null)
-const dropupMode = ref(false)
+const highlightedIndex = ref(-1)
 const showCreateModal = ref(false)
+const dropupMode = ref(false)
+const inputId = `unified-selector-${Math.random().toString(36).substr(2, 9)}`
+const isSearching = ref(false)
 
-// Type configurations
+// Debounce utility
+let searchDebounceTimeout = null
+const debounceSearch = (value) => {
+  clearTimeout(searchDebounceTimeout)
+  searchDebounceTimeout = setTimeout(() => {
+    searchTerm.value = value
+    isSearching.value = false
+  }, props.searchDebounceMs)
+}
+
+// Use custom items if provided (for special cases)
+const shouldUseCustomData = computed(() => {
+  return props.customItems.length > 0
+})
+
+// Query setup based on selector type and custom data preference
+const filterSetRef = ref(props.filterSet)
+const agentTypeRef = ref(props.agentType)
+const enableQueries = computed(() => !shouldUseCustomData.value && !props.disabled)
+
+// Initialize appropriate query based on type
+let selectorQuery = null
+let activeItemQuery = null
+
+if (!shouldUseCustomData.value) {
+  switch (props.type) {
+    case 'ticket':
+      selectorQuery = useSelectorTicketsQuery({
+        searchTerm,
+        filterSet: filterSetRef,
+        recentLimit: props.recentItemsLimit,
+        enabled: enableQueries
+      })
+      break
+    case 'account':
+      selectorQuery = useSelectorAccountsQuery({
+        searchTerm,
+        filterSet: filterSetRef,
+        recentLimit: props.recentItemsLimit,
+        enabled: enableQueries
+      })
+      break
+    case 'user':
+      selectorQuery = useSelectorUsersQuery({
+        searchTerm,
+        filterSet: filterSetRef,
+        agentType: agentTypeRef,
+        recentLimit: props.recentItemsLimit,
+        enabled: enableQueries
+      })
+      break
+    case 'agent':
+      selectorQuery = useSelectorUsersQuery({
+        searchTerm,
+        filterSet: filterSetRef,
+        agentType: agentTypeRef,
+        recentLimit: props.recentItemsLimit,
+        enabled: enableQueries
+      })
+      break
+    case 'billing-rate':
+      selectorQuery = useSelectorBillingRatesQuery({
+        searchTerm,
+        filterSet: filterSetRef,
+        recentLimit: props.recentItemsLimit,
+        enabled: enableQueries
+      })
+      break
+  }
+
+  // Active selection query for ensuring selected item is available
+  if (props.activeSelection) {
+    activeItemQuery = useActiveSelectorItem(
+      props.type,
+      ref(props.activeSelection),
+      { enabled: computed(() => !!props.activeSelection) }
+    )
+  }
+}
+
+// Computed properties for query results
+const queryData = computed(() => selectorQuery?.data?.value || [])
+const queryLoading = computed(() => selectorQuery?.isLoading?.value || false)
+const queryError = computed(() => selectorQuery?.error?.value)
+const refetch = () => selectorQuery?.refetch?.()
+
+// Active item data
+const activeItemData = computed(() => activeItemQuery?.data?.value)
+
+// Combined data source
+const displayItems = computed(() => {
+  if (shouldUseCustomData.value) {
+    // Use custom data with simple filtering
+    if (actualSearchTerm.value) {
+      const term = actualSearchTerm.value.toLowerCase()
+      return props.customItems.filter(item => {
+        const title = getItemTitle(item).toLowerCase()
+        const subtitle = getItemSubtitle(item)?.toLowerCase() || ''
+        return title.includes(term) || subtitle.includes(term)
+      })
+    }
+    return props.customItems
+  }
+
+  // Use query data
+  let items = queryData.value || []
+  
+  // Ensure active selection is included if provided and not in results
+  if (activeItemData.value && !items.some(item => getItemKey(item) === getItemKey(activeItemData.value))) {
+    items = [activeItemData.value, ...items]
+  }
+  
+  return items
+})
+
+// Loading state
+const loading = computed(() => {
+  return queryLoading.value || (shouldUseCustomData.value ? false : selectorQuery?.isFetching?.value)
+})
+
+// Search state tracking with debouncing
+watch(actualSearchTerm, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    isSearching.value = true
+    debounceSearch(newValue)
+  }
+})
+
+// Type configurations (preserved from original)
+const getUserTypeBadgeClasses = (userType) => {
+  const classes = {
+    'service_provider': 'bg-purple-100 text-purple-800',
+    'account_user': 'bg-blue-100 text-blue-800',
+    'agent': 'bg-green-100 text-green-800',
+    'employee': 'bg-gray-100 text-gray-800',
+  }
+  return classes[userType] || 'bg-gray-100 text-gray-800'
+}
+
 const typeConfigs = {
   ticket: {
     icon: TicketIcon,
     createModal: CreateTicketModalTabbed,
     createText: 'Create New Ticket',
-    createSubtext: 'Add a new ticket to the system',
+    createSubtext: 'Start a new service request',
     titleField: 'title',
-    subtitleField: 'ticket_number',
+    subtitleField: 'account.name',
     keyField: 'id',
-    selectedClasses: 'p-2 bg-blue-50 border border-blue-200 rounded-lg',
+    selectedClasses: 'p-3 bg-blue-50 border border-blue-200 rounded-lg',
     iconClasses: 'w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center',
     titleClasses: 'text-sm font-medium text-blue-900',
     subtitleClasses: 'text-xs text-blue-700',
@@ -344,13 +507,13 @@ const typeConfigs = {
       if (item.status) {
         badges.push({
           text: item.status,
-          classes: getStatusClasses(item.status)
+          classes: 'bg-blue-100 text-blue-800'
         })
       }
       if (item.priority) {
         badges.push({
-          text: `${item.priority} Priority`,
-          classes: 'bg-gray-100 text-gray-800'
+          text: item.priority,
+          classes: 'bg-orange-100 text-orange-800'
         })
       }
       return badges
@@ -360,9 +523,9 @@ const typeConfigs = {
     icon: BuildingOfficeIcon,
     createModal: AccountFormModal,
     createText: 'Create New Account',
-    createSubtext: 'Add a new account to the system',
+    createSubtext: 'Add a new customer account',
     titleField: 'name',
-    subtitleField: 'display_name',
+    subtitleField: 'email',
     keyField: 'id',
     selectedClasses: 'p-3 bg-green-50 border border-green-200 rounded-lg',
     iconClasses: 'w-8 h-8 bg-green-100 rounded-full flex items-center justify-center',
@@ -370,10 +533,10 @@ const typeConfigs = {
     subtitleClasses: 'text-xs text-green-700',
     getBadges: (item) => {
       const badges = []
-      if (item.account_type) {
+      if (item.status) {
         badges.push({
-          text: item.account_type,
-          classes: 'bg-green-100 text-green-800'
+          text: item.status,
+          classes: item.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         })
       }
       return badges
@@ -383,14 +546,14 @@ const typeConfigs = {
     icon: UserIcon,
     createModal: UserFormModal,
     createText: 'Create New User',
-    createSubtext: 'Add a new user to the system',
+    createSubtext: 'Add a new user to the account',
     titleField: 'name',
     subtitleField: 'email',
     keyField: 'id',
-    selectedClasses: 'p-3 bg-purple-50 border border-purple-200 rounded-lg',
-    iconClasses: 'w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center',
-    titleClasses: 'text-sm font-medium text-purple-900',
-    subtitleClasses: 'text-xs text-purple-700',
+    selectedClasses: 'p-3 bg-gray-50 border border-gray-200 rounded-lg',
+    iconClasses: 'w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center',
+    titleClasses: 'text-sm font-medium text-gray-900',
+    subtitleClasses: 'text-xs text-gray-700',
     getBadges: (item) => {
       const badges = []
       if (item.user_type) {
@@ -443,7 +606,7 @@ const typeConfigs = {
   },
   'billing-rate': {
     icon: CurrencyDollarIcon,
-    createModal: null, // Billing rates typically don't have creation modals
+    createModal: null,
     createText: 'Create New Rate',
     createSubtext: 'Add a new billing rate',
     titleField: 'name',
@@ -477,7 +640,7 @@ const typeConfigs = {
   },
   'role-template': {
     icon: UserGroupIcon,
-    createModal: null, // Role templates typically don't have creation modals in user forms
+    createModal: null,
     createText: 'Create New Role',
     createSubtext: 'Add a new role template',
     titleField: 'name',
@@ -508,35 +671,45 @@ const typeConfigs = {
 
 // Computed properties
 const config = computed(() => typeConfigs[props.type])
-
 const defaultPlaceholder = computed(() => {
   return props.placeholder || `Search and select a ${props.type}...`
 })
-
 const createOptionText = computed(() => config.value.createText)
 const createOptionSubtext = computed(() => config.value.createSubtext)
 const createModalComponent = computed(() => config.value.createModal)
-
 const itemIcon = computed(() => config.value.icon)
 const selectedItemClasses = computed(() => config.value.selectedClasses)
 const itemIconClasses = computed(() => config.value.iconClasses)
 const itemTitleClasses = computed(() => config.value.titleClasses)
 const itemSubtitleClasses = computed(() => config.value.subtitleClasses)
 
-const filteredItems = computed(() => {
-  if (!searchTerm.value) return props.items
-
-  const term = searchTerm.value.toLowerCase()
-  return props.items.filter(item => {
-    const title = getItemTitle(item).toLowerCase()
-    const subtitle = getItemSubtitle(item)?.toLowerCase() || ''
-    return title.includes(term) || subtitle.includes(term)
-  })
-})
-
 const dropdownPosition = computed(() => {
   return dropupMode.value ? 'bottom-full mb-1' : 'top-full mt-1'
 })
+
+const showRecentHeader = computed(() => {
+  return displayItems.value.length > 0 && !shouldUseCustomData.value && !searchTerm.value
+})
+
+// Selected item management
+const selectedItem = ref(null)
+
+// Initialize selected item from modelValue
+watch(() => props.modelValue, (newValue) => {
+  if (newValue && typeof newValue === 'object') {
+    selectedItem.value = newValue
+  } else if (newValue) {
+    // Find item in current data
+    const found = displayItems.value.find(item => getItemKey(item) == newValue)
+    if (found) {
+      selectedItem.value = found
+    } else if (activeItemData.value && getItemKey(activeItemData.value) == newValue) {
+      selectedItem.value = activeItemData.value
+    }
+  } else {
+    selectedItem.value = null
+  }
+}, { immediate: true })
 
 // Methods
 const getItemKey = (item) => {
@@ -548,16 +721,36 @@ const getItemTitle = (item) => {
     return `#${item.ticket_number} - ${item[config.value.titleField]}`
   }
   if (props.type === 'billing-rate') {
-    return item[config.value.titleField] || ''
+    let title = item[config.value.titleField] || ''
+    if (item.is_timer_specific) {
+      title += ' (Original)'
+    }
+    return title
   }
   return item[config.value.titleField] || ''
 }
 
 const getItemSubtitle = (item) => {
   if (props.type === 'billing-rate') {
-    return item.description || `$${item.rate}/hr`
+    const rate = `$${item.rate}/hr`
+    if (item.description) {
+      return `${item.description} • ${rate}`
+    }
+    return rate
   }
-  return item[config.value.subtitleField] || null
+  
+  const subtitleField = config.value.subtitleField
+  if (subtitleField.includes('.')) {
+    const parts = subtitleField.split('.')
+    let value = item
+    for (const part of parts) {
+      value = value?.[part]
+      if (!value) break
+    }
+    return value || ''
+  }
+  
+  return item[subtitleField] || ''
 }
 
 const getItemBadges = (item) => {
@@ -566,183 +759,108 @@ const getItemBadges = (item) => {
 
 const selectItem = (item) => {
   selectedItem.value = item
-  searchTerm.value = ''
-  showDropdown.value = false
-
   const itemKey = getItemKey(item)
   emit('update:modelValue', itemKey)
   emit('item-selected', item)
   
-  // Emit legacy events for backward compatibility during migration
-  emit(`${props.type}-selected`, item)
+  // Update recent items
+  selectorUtils.updateRecentItems(props.type, item)
+  
+  showDropdown.value = false
+  highlightedIndex.value = -1
+  actualSearchTerm.value = ''
+  searchTerm.value = ''
 }
 
 const clearSelection = () => {
+  if (!props.clearable) return
+  
   selectedItem.value = null
-  searchTerm.value = ''
   emit('update:modelValue', null)
   emit('item-selected', null)
-  emit(`${props.type}-selected`, null)
-
-  // Optionally reopen dropdown and focus input
-  showDropdown.value = true
-  setTimeout(() => {
-    const input = document.getElementById(inputId)
-    if (input) {
-      input.focus()
-      checkDropdownPosition()
-    }
-  }, 10)
+  
+  actualSearchTerm.value = ''
+  searchTerm.value = ''
+  showDropdown.value = false
 }
 
-const openCreateModal = async () => {
-  showDropdown.value = false
+const handleFocus = () => {
+  showDropdown.value = true
+  highlightedIndex.value = -1
+}
 
-  // Ensure CSRF token is ready before opening modal
-  try {
-    await window.axios.get('/sanctum/csrf-cookie')
-  } catch (error) {
-    console.error('Failed to initialize CSRF token:', error)
+const handleBlur = (event) => {
+  // Delay hiding dropdown to allow clicks on dropdown items
+  setTimeout(() => {
+    if (!event.relatedTarget?.closest('.absolute')) {
+      showDropdown.value = false
+      highlightedIndex.value = -1
+    }
+  }, 150)
+}
+
+const handleKeydown = (event) => {
+  if (!showDropdown.value) {
+    if (['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) {
+      showDropdown.value = true
+      return
+    }
   }
 
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault()
+      highlightedIndex.value = Math.min(highlightedIndex.value + 1, displayItems.value.length - 1)
+      break
+    case 'ArrowUp':
+      event.preventDefault()
+      highlightedIndex.value = Math.max(highlightedIndex.value - 1, -1)
+      break
+    case 'Enter':
+      event.preventDefault()
+      if (highlightedIndex.value >= 0 && displayItems.value[highlightedIndex.value]) {
+        selectItem(displayItems.value[highlightedIndex.value])
+      }
+      break
+    case 'Escape':
+      showDropdown.value = false
+      highlightedIndex.value = -1
+      break
+  }
+}
+
+// No need for this watcher since we're using v-model directly
+
+// Create modal handling
+const openCreateModal = () => {
   showCreateModal.value = true
+  showDropdown.value = false
 }
 
 const closeCreateModal = () => {
   showCreateModal.value = false
 }
 
-const handleItemCreated = (newItem) => {
-  // Close modal
-  showCreateModal.value = false
-
-  // Select the newly created item
-  selectItem(newItem)
-
-  // Emit creation event
-  emit('item-created', newItem)
-  emit(`${props.type}-created`, newItem)
-}
-
-const handleFocus = () => {
-  if (props.disabled || props.loading) return
-  showDropdown.value = true
-  setTimeout(checkDropdownPosition, 10)
-}
-
-const handleBlur = () => {
-  // Delay hiding dropdown to allow for selection
-  setTimeout(() => {
-    showDropdown.value = false
-  }, 150)
-}
-
-const handleKeydown = (event) => {
-  if (event.key === 'Escape') {
-    showDropdown.value = false
+const handleItemCreated = (item) => {
+  closeCreateModal()
+  if (item) {
+    selectItem(item)
   }
+  emit('item-created', item)
 }
 
-const checkDropdownPosition = () => {
-  const input = document.getElementById(inputId)
-  if (!input) return
+// Update filter set reactively
+watch(() => props.filterSet, (newFilters) => {
+  filterSetRef.value = newFilters
+}, { deep: true })
 
-  const inputRect = input.getBoundingClientRect()
-  const viewportHeight = window.innerHeight
-  const spaceBelow = viewportHeight - inputRect.bottom
-  const spaceAbove = inputRect.top
-
-  // If there's not enough space below (for 250px dropdown) and more space above, use dropup
-  dropupMode.value = spaceBelow < 250 && spaceAbove > spaceBelow
-}
-
-// Helper functions for badge styling
-const getStatusClasses = (status) => {
-  const statusLower = status.toLowerCase()
-  if (statusLower.includes('open') || statusLower.includes('new')) {
-    return 'bg-green-100 text-green-800'
-  } else if (statusLower.includes('progress') || statusLower.includes('assigned')) {
-    return 'bg-blue-100 text-blue-800'
-  } else if (statusLower.includes('pending') || statusLower.includes('waiting')) {
-    return 'bg-yellow-100 text-yellow-800'
-  } else if (statusLower.includes('closed') || statusLower.includes('resolved')) {
-    return 'bg-gray-100 text-gray-800'
-  } else if (statusLower.includes('cancelled')) {
-    return 'bg-red-100 text-red-800'
-  }
-  return 'bg-gray-100 text-gray-800'
-}
-
-const getUserTypeBadgeClasses = (userType) => {
-  switch (userType) {
-    case 'agent':
-      return 'bg-blue-100 text-blue-800'
-    case 'account_user':
-      return 'bg-green-100 text-green-800'
-    case 'admin':
-      return 'bg-red-100 text-red-800'
-    default:
-      return 'bg-gray-100 text-gray-800'
-  }
-}
-
-// Initialize selected item from modelValue
-const initializeSelectedItem = () => {
-  if (props.type === 'billing-rate') {
-    console.log('UnifiedSelector - initializeSelectedItem called for billing-rate:', {
-      modelValue: props.modelValue,
-      modelValueType: typeof props.modelValue,
-      itemsLength: props.items.length,
-      items: props.items.slice(0, 3).map(i => ({ id: getItemKey(i), name: i.name || i.title, rate: i.rate }))
-    });
-  }
-  
-  if (props.modelValue && props.items.length > 0) {
-    const item = props.items.find(i => getItemKey(i) == props.modelValue)
-    if (props.type === 'billing-rate') {
-      console.log('UnifiedSelector - Looking for billing-rate:', {
-        lookingFor: props.modelValue,
-        foundItem: item ? { id: getItemKey(item), name: item.name || item.title, rate: item.rate } : null,
-        comparisonDetails: props.items.slice(0, 5).map(i => ({
-          itemId: getItemKey(i),
-          matches: getItemKey(i) == props.modelValue
-        }))
-      });
-    }
-    
-    if (item) {
-      selectedItem.value = item
-      if (props.type === 'billing-rate') {
-        console.log('UnifiedSelector - Billing rate selected:', { id: getItemKey(item), name: item.name || item.title, rate: item.rate });
-      }
-    } else {
-      selectedItem.value = null
-      if (props.type === 'billing-rate') {
-        console.log('UnifiedSelector - No matching billing rate found - clearing selection');
-      }
-    }
-  } else if (!props.modelValue) {
-    selectedItem.value = null
-    // console.log('UnifiedSelector - Cleared selection (no modelValue)');
-  } else {
-    if (props.type === 'billing-rate') {
-      console.log('UnifiedSelector - Cannot initialize billing rate: modelValue present but no items available');
-    }
-  }
-}
-
-// Watchers
-watch(() => props.modelValue, () => {
-  initializeSelectedItem()
+// Update agent type reactively
+watch(() => props.agentType, (newType) => {
+  agentTypeRef.value = newType
 })
 
-watch(() => props.items, () => {
-  initializeSelectedItem()
+// Cleanup
+onUnmounted(() => {
+  // Any cleanup if needed
 })
-
-// Expose functions for parent components
-defineExpose({
-  initializeSelectedItem
-})
-
 </script>

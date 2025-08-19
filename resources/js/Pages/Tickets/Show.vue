@@ -83,51 +83,27 @@
 
                     <!-- Action Buttons -->
                     <div class="flex items-center space-x-3">
-                        <!-- Timer Controls -->
-                        <div
-                            v-if="canManageTime"
-                            class="flex items-center space-x-2"
+                        <!-- Edit Ticket Button -->
+                        <button
+                            v-if="canEdit"
+                            @click="showEditModal = true"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center space-x-2"
                         >
-                            <button
-                                v-if="!activeTimer"
-                                @click="startTimer"
-                                class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center space-x-2"
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                             >
-                                <svg
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                                <span>Start Timer</span>
-                            </button>
-
-                            <div v-else class="flex items-center space-x-2">
-                                <div
-                                    class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-center space-x-2"
-                                >
-                                    <div
-                                        class="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                                    ></div>
-                                    <span class="text-green-700 font-medium">{{
-                                        formatDuration(activeTimer.duration)
-                                    }}</span>
-                                </div>
-                                <button
-                                    @click="stopTimer"
-                                    class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                                >
-                                    Stop
-                                </button>
-                            </div>
-                        </div>
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                            </svg>
+                            <span>Edit Ticket</span>
+                        </button>
 
                         <!-- Status Change -->
                         <div v-if="canChangeStatus" class="relative">
@@ -173,13 +149,6 @@
                                 class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10"
                             >
                                 <div class="py-1">
-                                    <button
-                                        v-if="canEdit"
-                                        @click="showEditModal = true; showActionsMenu = false"
-                                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                    >
-                                        Edit Ticket
-                                    </button>
                                     <button
                                         @click="duplicateTicket"
                                         class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -1004,16 +973,22 @@ const userPermissions = {
 useTicketCommentBroadcasting(props.ticketId, handleNewComment, userPermissions);
 
 // Only query timers if user has timer permissions
-const { data: activeTimers, isLoading: timersLoading } = props.permissions
-    ?.canViewTimers
+const { 
+    data: activeTimers, 
+    isLoading: timersLoading, 
+    refetch: refetchTimers 
+} = props.permissions?.canViewTimers
     ? useTicketTimersQuery(ticketId)
-    : { data: ref([]), isLoading: ref(false) };
+    : { data: ref([]), isLoading: ref(false), refetch: () => Promise.resolve() };
 
 // Only query time entries if user has permission
-const { data: timeEntries, isLoading: timeEntriesLoading } = props.permissions
-    ?.canViewTimeEntries
+const { 
+    data: timeEntries, 
+    isLoading: timeEntriesLoading, 
+    refetch: refetchTimeEntries 
+} = props.permissions?.canViewTimeEntries
     ? useTicketTimeEntriesQuery(ticketId)
-    : { data: ref([]), isLoading: ref(false) };
+    : { data: ref([]), isLoading: ref(false), refetch: () => Promise.resolve() };
 
 // Related tickets for activity tab
 const { data: relatedTickets, isLoading: relatedLoading } = props.permissions
@@ -1338,6 +1313,18 @@ const sendMessage = async (messageData) => {
     } catch (error) {
         console.error("Failed to send message:", error);
         throw error; // Re-throw so the component can handle it
+    }
+};
+
+// Time tracking data refresh function
+const loadTimeTrackingData = async () => {
+    try {
+        await Promise.all([
+            refetchTimers(),
+            refetchTimeEntries(),
+        ]);
+    } catch (error) {
+        console.error("Failed to refresh time tracking data:", error);
     }
 };
 

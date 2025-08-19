@@ -22,6 +22,10 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 **🎯 Platform Status:** Production-Ready
 
 **Recent Key Improvements:**
+- **Enhanced Billing Rate System**: Complete overhaul of billing rate selection and display across timer creation, editing, and commit workflows
+- **Timer Billing Rate Preservation**: Timer commit now preserves original billing rates even when accounts have overriding rates with same names
+- **Improved Rate Auto-Selection**: Both timer creation and time entry dialogs properly auto-select account default → global default rates
+- **Enhanced Rate Display**: Billing rates now show "Description • $XX.XX/hr" format with clear disambiguation between account and global rates
 - **Timer System Fixes**: Fixed timer creation and editing issues - ticket_id and account_id now save properly, edit modal displays pre-selected values correctly
 - **Currency System Removal**: Removed all currency specifications from billing rates system for simplified pricing structure
 - **Migration System Stability**: Fixed duplicate migration errors and improved migration resilience with existence checks
@@ -445,4 +449,4 @@ This CLAUDE.md file focuses on essential development context. For detailed imple
 
 ---
 
-*Last Updated: August 19, 2025 - Timer System & Currency Fixes: Fixed timer creation/editing issues where ticket_id and account_id weren't saving properly. Removed currency system from billing rates for simplified pricing. Fixed admin dashboard activity display and migration stability issues. Enhanced request validation for timer operations and improved Vue component data flow.*
+*Last Updated: August 19, 2025 - Enhanced Billing Rate System: Complete overhaul of billing rate selection and display across timer workflows. Timer commit now preserves original billing rates even when accounts have overriding rates. Fixed auto-selection logic for both timer creation and time entry dialogs. Enhanced rate display with "Description • $XX.XX/hr" format and clear account vs global rate disambiguation. Improved UnifiedSelector with timer-specific rate inclusion and BillingRateService integration.*

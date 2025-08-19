@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
 use App\Http\Controllers\Api\PortalController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TimerController;
@@ -34,6 +35,15 @@ Route::get('/csrf-token', function (Request $request) {
 
 // API routes with authentication (web session + sanctum)
 Route::middleware(['auth:sanctum'])->group(function () {
+    
+    // Search routes for selectors
+    Route::prefix('search')->group(function () {
+        Route::get('tickets', [SearchController::class, 'tickets']);
+        Route::get('accounts', [SearchController::class, 'accounts']);
+        Route::get('users', [SearchController::class, 'users']);
+        Route::get('agents', [SearchController::class, 'agents']);
+        Route::get('billing-rates', [SearchController::class, 'billingRates']);
+    });
     
     // Token management routes
     Route::prefix('auth')->group(function () {
@@ -98,6 +108,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::post('timers/{timer}/mark-committed', [TimerController::class, 'markCommitted'])
         ->name('timers.mark-committed');
+    
+    Route::post('timers/{timer}/cancel', [TimerController::class, 'cancel'])
+        ->name('timers.cancel');
     
     Route::patch('timers/{timer}/duration', [TimerController::class, 'adjustDuration'])
         ->name('timers.adjust-duration');

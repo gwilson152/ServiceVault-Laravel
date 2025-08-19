@@ -324,18 +324,6 @@
                         Additional Options
                     </h4>
 
-                    <!-- Start Timer -->
-                    <label class="flex items-center">
-                        <input
-                            v-model="form.start_timer"
-                            type="checkbox"
-                            class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
-                        />
-                        <span class="ml-2 text-sm text-gray-700"
-                            >Start timer immediately after creating ticket</span
-                        >
-                    </label>
-
                     <!-- Send Notifications -->
                     <label class="flex items-center">
                         <input
@@ -481,7 +469,6 @@ const form = reactive({
     category: "",
     due_date: "",
     tags: "",
-    start_timer: false,
     send_notifications: true,
 });
 
@@ -598,7 +585,6 @@ const resetForm = () => {
             form.due_date = "";
         }
         form.tags = Array.isArray(props.ticket.tags) ? props.ticket.tags.join(", ") : (props.ticket.tags || "");
-        form.start_timer = false; // Always false for edit mode
         form.send_notifications = true;
     } else {
         // Create mode - use default values and props
@@ -630,7 +616,6 @@ const resetForm = () => {
         
         form.due_date = "";
         form.tags = "";
-        form.start_timer = false;
         form.send_notifications = true;
     }
     
@@ -872,7 +857,6 @@ const submitForm = async () => {
             category: "",
             due_date: "",
             tags: "",
-            start_timer: false,
             send_notifications: true,
         });
     } catch (error) {

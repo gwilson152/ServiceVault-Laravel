@@ -19,22 +19,32 @@ class TimeEntryController extends Controller
     {
         $user = $request->user();
         
-        // Build base query with user's accessible accounts
-        $query = TimeEntry::with(['user:id,name', 'account:id,name']);
+        // Build base query with user's accessible accounts and all necessary relationships
+        $query = TimeEntry::with([
+            'user:id,name',
+            'account:id,name', 
+            'ticket:id,title,account_id',
+            'billingRate:id,rate,type'
+        ]);
         
-        // Apply user scope - employees see their own, managers/admins see team members
-        if ($user->hasPermission('admin.manage')) {
+        // Apply user scope - employees see their own, service providers/managers/admins see team members
+        if ($user->hasAnyPermission(['admin.manage', 'admin.write'])) {
             // Admins see all time entries
-        } elseif ($user->hasPermission('teams.manage')) {
-            // Managers see entries for accounts they manage
+        } elseif ($user->user_type === 'service_provider' || 
+                  $user->hasAnyPermission(['time.manage', 'time.view.all', 'teams.manage'])) {
+            // Service providers and managers see entries for accounts they manage
             $managedAccountIds = $user->accounts()
                 ->whereHas('users', function ($userQuery) use ($user) {
                     $userQuery->where('users.id', $user->id);
                 })
                 ->pluck('accounts.id');
             $query->whereIn('account_id', $managedAccountIds);
+        } elseif ($user->hasPermission('time.view.team')) {
+            // Team members can see team entries but filtered by their team accounts
+            $teamAccountIds = $user->teamAccounts()->pluck('accounts.id');
+            $query->whereIn('account_id', $teamAccountIds);
         } else {
-            // Employees see only their own entries
+            // Regular employees see only their own entries
             $query->where('user_id', $user->id);
         }
         
@@ -42,8 +52,9 @@ class TimeEntryController extends Controller
         $query->when($request->status, function ($q, $status) {
             $q->where('status', $status);
         })->when($request->user_id, function ($q, $userId) use ($user) {
-            // Only managers/admins can filter by user
-            if ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+            // Service providers, managers, and admins can filter by user
+            if ($user->user_type === 'service_provider' || 
+                $user->hasAnyPermission(['time.manage', 'time.view.all', 'teams.manage', 'admin.manage', 'admin.write'])) {
                 $q->where('user_id', $userId);
             }
         })->when($request->account_id, function ($q, $accountId) {
@@ -190,11 +201,23 @@ class TimeEntryController extends Controller
     {
         $user = $request->user();
         
-        // Check permissions - users can edit their own pending entries, managers can edit team entries
+        // Check permissions - users can edit their own pending entries, service providers/managers can edit team entries
         $canEdit = false;
-        if ($timeEntry->user_id === $user->id && $timeEntry->status === 'pending') {
+        
+        // Only pending entries can be edited
+        if ($timeEntry->status !== 'pending') {
+            return response()->json(['error' => 'Can only edit pending time entries.'], 403);
+        }
+        
+        // Original creator can always edit their own pending entries
+        if ($timeEntry->user_id === $user->id) {
             $canEdit = true;
-        } elseif ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        } elseif ($user->user_type === 'service_provider' || 
+                  $user->hasAnyPermission(['time.manage', 'time.edit.all', 'admin.manage', 'admin.write'])) {
+            // Service providers and users with time management permissions can edit time entries
+            $canEdit = true;
+        } elseif ($user->hasPermission('time.edit.team') || $user->hasPermission('teams.manage')) {
+            // Team managers can edit entries from their team members
             $canEdit = true;
         }
         
@@ -261,8 +284,9 @@ class TimeEntryController extends Controller
     {
         $user = $request->user();
         
-        // Verify approval permissions
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        // Verify approval permissions - service providers, managers, and admins can approve
+        if (!($user->user_type === 'service_provider' || 
+              $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write']))) {
             return response()->json(['error' => 'Insufficient permissions to approve time entries.'], 403);
         }
         
@@ -305,8 +329,9 @@ class TimeEntryController extends Controller
     {
         $user = $request->user();
         
-        // Verify rejection permissions
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        // Verify rejection permissions - service providers, managers, and admins can reject
+        if (!($user->user_type === 'service_provider' || 
+              $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write']))) {
             return response()->json(['error' => 'Insufficient permissions to reject time entries.'], 403);
         }
         
@@ -336,8 +361,9 @@ class TimeEntryController extends Controller
     {
         $user = $request->user();
         
-        // Verify bulk approval permissions
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        // Verify bulk approval permissions - service providers, managers, and admins can bulk approve
+        if (!($user->user_type === 'service_provider' || 
+              $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write']))) {
             return response()->json(['error' => 'Insufficient permissions for bulk approval.'], 403);
         }
         
@@ -393,8 +419,9 @@ class TimeEntryController extends Controller
     {
         $user = $request->user();
         
-        // Verify bulk rejection permissions
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        // Verify bulk rejection permissions - service providers, managers, and admins can bulk reject
+        if (!($user->user_type === 'service_provider' || 
+              $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write']))) {
             return response()->json(['error' => 'Insufficient permissions for bulk rejection.'], 403);
         }
         

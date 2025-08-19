@@ -321,11 +321,11 @@
                         Time Entries
                     </h3>
                     <p class="mt-1 max-w-2xl text-sm text-gray-500">
-                        {{ timeEntries.total }} total entries
+                        {{ timeEntries.total || 0 }} total entries
                         <span
-                            v-if="timeEntries.total !== timeEntries.data.length"
+                            v-if="timeEntries.total !== (timeEntries.data?.length || 0)"
                         >
-                            (showing {{ timeEntries.data.length }})
+                            (showing {{ timeEntries.data?.length || 0 }})
                         </span>
                     </p>
                 </div>
@@ -353,7 +353,7 @@
                 </div>
 
                 <ul
-                    v-else-if="timeEntries.data.length > 0"
+                    v-else-if="timeEntries.data?.length > 0"
                     class="divide-y divide-gray-200"
                 >
                     <li
@@ -489,7 +489,7 @@
 
                 <!-- Pagination -->
                 <div
-                    v-if="timeEntries.data.length > 0"
+                    v-if="timeEntries.data?.length > 0"
                     class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6"
                 >
                     <div class="flex items-center justify-between">
@@ -575,6 +575,8 @@
         :show="showCreateModal || !!editingEntry"
         :mode="editingEntry ? 'edit' : 'create'"
         :time-entry="editingEntry"
+        :context-account="editingEntry?.account"
+        :context-ticket="editingEntry?.ticket"
         @close="closeModal"
         @saved="handleTimeEntrySaved"
     />
@@ -707,16 +709,27 @@ const {
 } = useTimeEntriesListQuery(queryOptions);
 
 // Computed properties for backward compatibility
-const timeEntries = computed(
-    () => timeEntriesData.value?.data || { data: [], total: 0 }
-);
-const stats = computed(() => timeEntriesStats.value || {});
+const timeEntries = computed(() => {
+    if (!timeEntriesData.value) {
+        return { data: [], total: 0 };
+    }
+    return {
+        data: timeEntriesData.value.data || [],
+        total: timeEntriesData.value.meta?.total || 0,
+        ...timeEntriesData.value.meta
+    };
+});
+const stats = computed(() => timeEntriesData.value?.meta?.stats || {});
 
 // Computed properties
 const canApprove = computed(() => {
     return (
+        user.value?.user_type === 'service_provider' ||
+        user.value?.permissions?.includes("time.manage") ||
+        user.value?.permissions?.includes("time.approve") ||
         user.value?.permissions?.includes("teams.manage") ||
-        user.value?.permissions?.includes("admin.manage")
+        user.value?.permissions?.includes("admin.manage") ||
+        user.value?.permissions?.includes("admin.write")
     );
 });
 

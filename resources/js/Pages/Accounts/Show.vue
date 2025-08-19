@@ -728,6 +728,14 @@
                             </div>
                         </div>
 
+                        <!-- Time Entries Tab -->
+                        <div v-show="activeTab === 'time-entries'">
+                            <AccountTimeEntries 
+                                :account-id="account?.id"
+                                :account="account"
+                            />
+                        </div>
+
                         <!-- Reports Tab -->
                         <div v-show="activeTab === 'reports'">
                             <div
@@ -894,6 +902,7 @@ import UsersTable from "@/Components/Tables/UsersTable.vue";
 import UserFormModal from "@/Components/UserFormModal.vue";
 import CreateTicketModalTabbed from "@/Components/Modals/CreateTicketModalTabbed.vue";
 import TicketList from "@/Components/Tickets/TicketList.vue";
+import AccountTimeEntries from "@/Components/Accounts/AccountTimeEntries.vue";
 import { useTicketsTable } from "@/Composables/useTicketsTable";
 import { useRoleTemplatesQuery } from "@/Composables/queries/useUsersQuery";
 import axios from "axios";
@@ -905,6 +914,7 @@ import {
     UserGroupIcon,
     TicketIcon,
     ChartBarIcon,
+    ClockIcon,
 } from "@heroicons/vue/24/outline";
 
 // Define persistent layout
@@ -973,6 +983,7 @@ const accountTabs = [
     { id: "billing", name: "Billing Rates", icon: CurrencyDollarIcon },
     { id: "users", name: "Users", icon: UserGroupIcon },
     { id: "tickets", name: "Tickets", icon: TicketIcon },
+    { id: "time-entries", name: "Time Entries", icon: ClockIcon },
     { id: "reports", name: "Reports", icon: ChartBarIcon },
 ];
 

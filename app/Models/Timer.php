@@ -306,7 +306,43 @@ class Timer extends Model
             $this->paused_at = null;
         }
 
-        $this->status = 'stopped';
+        $this->status = 'canceled';
+        $this->stopped_at = now();
+        $this->save();
+    }
+
+    /**
+     * Cancel the timer (mark as abandoned without creating time entry).
+     *
+     * @return void
+     */
+    public function cancel(): void
+    {
+        if ($this->status === 'paused' && $this->paused_at) {
+            // Calculate paused duration in seconds and ensure it's a positive integer
+            $additionalPausedSeconds = max(0, now()->diffInSeconds($this->paused_at));
+            $this->total_paused_duration = max(0, ($this->total_paused_duration ?? 0) + $additionalPausedSeconds);
+            $this->paused_at = null;
+        }
+        $this->status = 'canceled';
+        $this->stopped_at = now();
+        $this->save();
+    }
+
+    /**
+     * Mark timer as committed (should only be called after successful time entry creation).
+     *
+     * @return void
+     */
+    public function commit(): void
+    {
+        if ($this->status === 'paused' && $this->paused_at) {
+            // Calculate paused duration in seconds and ensure it's a positive integer
+            $additionalPausedSeconds = max(0, now()->diffInSeconds($this->paused_at));
+            $this->total_paused_duration = max(0, ($this->total_paused_duration ?? 0) + $additionalPausedSeconds);
+            $this->paused_at = null;
+        }
+        $this->status = 'committed';
         $this->stopped_at = now();
         $this->save();
     }

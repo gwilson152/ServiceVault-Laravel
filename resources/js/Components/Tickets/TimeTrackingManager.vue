@@ -425,6 +425,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
+import { usePage } from "@inertiajs/vue3";
 import axios from "axios";
 
 // Import child components
@@ -446,12 +447,16 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(["updated"]);
 
+// Page and user data
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
+
 // Reactive data
 const activeTimers = ref([]);
 const timeEntries = ref([]);
 const availableUsers = ref([]);
 const loading = ref(false);
-const currentUserId = ref(window.auth?.user?.id);
+const currentUserId = computed(() => user.value?.id);
 
 // Modal states
 const showAddTimeEntryModal = ref(false);
@@ -537,7 +542,32 @@ const getStatusClasses = (status) => {
 
 // Permission checking methods
 const canEditTimeEntry = (entry) => {
-    return entry.user_id === currentUserId.value && entry.status === "pending";
+    // Can't edit non-pending entries
+    if (entry.status !== "pending") {
+        return false;
+    }
+    
+    // Original creator can always edit their own pending entries
+    if (entry.user_id === currentUserId.value) {
+        return true;
+    }
+    
+    // Service providers and users with time management permissions can edit time entries
+    if (user.value?.user_type === 'service_provider' || 
+        user.value?.permissions?.includes('time.manage') ||
+        user.value?.permissions?.includes('time.edit.all') ||
+        user.value?.permissions?.includes('admin.manage') ||
+        user.value?.permissions?.includes('admin.write')) {
+        return true;
+    }
+    
+    // Team managers can edit entries from their team members
+    if (user.value?.permissions?.includes('time.edit.team') ||
+        user.value?.permissions?.includes('teams.manage')) {
+        return true;
+    }
+    
+    return false;
 };
 
 const canApproveTimeEntry = (entry) => {
@@ -549,10 +579,27 @@ const canRejectTimeEntry = (entry) => {
 };
 
 const canDeleteTimeEntry = (entry) => {
-    return (
-        (entry.user_id === currentUserId.value && entry.status === "pending") ||
-        canManageAllTimers.value
-    );
+    // Can only delete pending entries
+    if (entry.status !== "pending") {
+        return false;
+    }
+    
+    // Original creator can always delete their own pending entries
+    if (entry.user_id === currentUserId.value) {
+        return true;
+    }
+    
+    // Service providers and managers can delete time entries
+    if (user.value?.user_type === 'service_provider' || 
+        user.value?.permissions?.includes('time.manage') ||
+        user.value?.permissions?.includes('time.delete.all') ||
+        user.value?.permissions?.includes('admin.manage') ||
+        user.value?.permissions?.includes('admin.write') ||
+        canManageAllTimers.value) {
+        return true;
+    }
+    
+    return false;
 };
 
 // Data loading methods

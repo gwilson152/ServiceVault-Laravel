@@ -60,7 +60,7 @@
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
               Ticket Details
             </th>
-            <th class="w-20 px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+            <th v-if="canAccessActions" class="w-20 px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
               Actions
             </th>
             <th class="w-40 px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
@@ -129,8 +129,8 @@
               </div>
             </td>
             
-            <!-- Actions Column -->
-            <td :class="[
+            <!-- Actions Column (only for users with action permissions) -->
+            <td v-if="canAccessActions" :class="[
               density === 'compact' ? 'px-2 py-2' : 'px-3 py-4', 
               'w-20 text-center border-b border-gray-100'
             ]">
@@ -184,6 +184,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import TicketsTable from '@/Components/Tables/TicketsTable.vue'
 
@@ -254,6 +255,10 @@ const emit = defineEmits([
   'open-manual-time-entry',
   'open-ticket-addon'
 ])
+
+// ABAC: Check if user can access actions column
+const isAccountUser = computed(() => props.user?.user_type === 'account_user')
+const canAccessActions = computed(() => !isAccountUser.value)
 
 // Helper functions for simple table
 const getStatusColor = (status) => {

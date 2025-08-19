@@ -358,27 +358,26 @@ const loadAgents = async () => {
 const loadBillingRates = async () => {
   try {
     billingRatesLoading.value = true
-    const params = form.value.accountId ? `?account_id=${form.value.accountId}` : ''
-    const response = await axios.get(`/api/billing-rates${params}`)
+    // For StartTimer dialog, we want to show ALL available rates, not filtered by hierarchy
+    // So we get all rates and do our own filtering to show both account and global rates
+    const response = await axios.get('/api/billing-rates')
+    const allRates = response.data.data || []
     
-    // Filter to only show rates for the selected account or global rates
-    const allRates = response.data.data
-    
+    // Filter to show rates relevant to the current account selection
     availableBillingRates.value = allRates.filter(rate => {
       // Always include global rates (no account_id)
       if (!rate.account_id) return true
       
       // Include account-specific rates only if they match the selected account
       if (form.value.accountId) {
-        return rate.account_id === parseInt(form.value.accountId)
+        return rate.account_id === form.value.accountId
       }
       
       // If no account selected, exclude all account-specific rates
       return false
-    })
+    }).filter(rate => rate.is_active) // Only show active rates
     
-    
-    // Check if currently selected billing rate is still valid after filtering
+    // Check if currently selected billing rate is still valid after loading
     if (form.value.billingRateId) {
       const currentRateStillValid = availableBillingRates.value.find(rate => 
         rate.id === form.value.billingRateId
@@ -390,19 +389,23 @@ const loadBillingRates = async () => {
     
     // Auto-select default billing rate if none is currently selected
     if (!form.value.billingRateId && availableBillingRates.value.length > 0) {
-      // First, try to find an account-specific default rate
-      let defaultRate = availableBillingRates.value.find(rate => 
-        rate.account_id === form.value.accountId && rate.is_default
-      )
+      let defaultRate = null
       
-      // If no account-specific default, try global default
+      // 1. First priority: Account-specific default rates (if account is selected)
+      if (form.value.accountId) {
+        defaultRate = availableBillingRates.value.find(rate => 
+          rate.account_id === form.value.accountId && rate.is_default
+        )
+      }
+      
+      // 2. Second priority: Global default rates
       if (!defaultRate) {
         defaultRate = availableBillingRates.value.find(rate => 
           !rate.account_id && rate.is_default
         )
       }
       
-      // If still no default found, take the first account-specific rate, then first global rate
+      // 3. Fallback: First account-specific rate (if account selected), then first global rate
       if (!defaultRate && form.value.accountId) {
         defaultRate = availableBillingRates.value.find(rate => rate.account_id === form.value.accountId)
       }
@@ -411,9 +414,15 @@ const loadBillingRates = async () => {
         defaultRate = availableBillingRates.value.find(rate => !rate.account_id)
       }
       
-      // Set the auto-selected rate
       if (defaultRate) {
         form.value.billingRateId = defaultRate.id
+        console.log('StartTimerModal - Auto-selected default billing rate:', {
+          id: defaultRate.id,
+          name: defaultRate.name,
+          rate: defaultRate.rate,
+          isAccountSpecific: !!defaultRate.account_id,
+          isDefault: defaultRate.is_default
+        })
       }
     }
   } catch (error) {

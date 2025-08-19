@@ -30,7 +30,7 @@ When starting a timer, configure:
 - **Account**: Which client account (auto-populated from ticket)
 - **Ticket**: Which specific ticket (if applicable)
 - **User/Agent**: Who is performing the work
-- **Billing Rate**: Hourly rate for this work
+- **Billing Rate**: Hourly rate for this work (auto-selects appropriate default)
 
 ### Timer Controls
 
@@ -54,14 +54,17 @@ Click the "Edit" (⚙️) button on any timer to modify:
 
 ### Converting Timers to Time Entries
 
-**Timer Commit Process** (Recent Enhancement):
+**Timer Commit Process** (Enhanced August 2025):
 1. **Commit Option**: Use "Commit to Time Entry" from timer overlay dropdown
 2. **Unified Dialog**: Opens the same time entry dialog used for manual entries
 3. **Pre-Population**: All timer data (description, account, ticket, user) automatically filled
 4. **Agent Assignment**: User who ran the timer is pre-selected as the assignee
-5. **Review & Save**: Modify any details before creating the time entry
+5. **Billing Rate Preservation**: Timer's original billing rate is preserved, even if account has overriding rates
+6. **Review & Save**: Modify any details before creating the time entry
 
-**Key Behavior**: Timer commit uses the same agent loading logic as manual time entry creation, showing all available time agents regardless of account association.
+**Key Behaviors**:
+- Timer commit uses the same agent loading logic as manual time entry creation, showing all available time agents regardless of account association
+- **Billing Rate Handling**: The exact billing rate assigned to the timer is preserved during commit, ensuring rate consistency across timer lifecycle
 
 ## Time Entry Management
 
@@ -104,6 +107,33 @@ Navigate to `/time-entries` for unified time management:
 - **Timer Commit**: Uses unified time entry dialog with same agent loading logic
 
 **Permission Service**: All agent filtering uses the centralized `PermissionService` to ensure consistent behavior and proper Super Admin inheritance.
+
+## Billing Rate Behavior
+
+### Timer Creation Auto-Selection
+
+**Billing Rate Priority** (when starting new timers):
+1. **Account-Specific Default**: If account has a default billing rate
+2. **Global Default**: System-wide default billing rate  
+3. **First Available**: First account rate, then first global rate
+
+**Rate Availability**:
+- **Account Selected**: Shows all account-specific rates + all global rates
+- **No Account**: Shows only global rates
+- **Rate Display**: Shows rate name, description, and hourly amount
+
+### Timer Commit Rate Preservation
+
+**Enhanced Rate Handling** (August 2025):
+- **Original Rate Preserved**: Timer's billing rate is maintained during commit
+- **Override Protection**: Even if account has rates with same names, timer's exact rate is used
+- **Rate Disambiguation**: UI clearly shows "Rate Name (Original)" vs account rates
+- **Consistent Billing**: Ensures timer billing remains consistent from start to time entry
+
+**Technical Implementation**:
+- Timer commit API includes `include_rate_id` parameter to ensure rate availability
+- UnifiedSelector enhanced with rate amount display and disambiguation
+- BillingRateService extended to handle timer-specific rate inclusion
 
 ## API Integration
 
@@ -177,5 +207,29 @@ Timer updates broadcast to:
 - Check Redis connection and configuration
 - Verify WebSocket server (Laravel Reverb) is running
 - Clear browser cache and localStorage
+
+### Billing Rate Selection Issues
+
+**Timer Creation - Rate Not Auto-Selecting**:
+1. Verify account has a default billing rate set
+2. Check global default billing rate exists
+3. Confirm user has `timers.view` permission
+4. Check browser console for billing rate loading errors
+
+**Timer Commit - Rate Not Preserved**:
+1. Verify timer has `billing_rate_id` in database
+2. Check that BillingRateService includes timer's specific rate
+3. Look for "Timer-specific" rates in dropdown with "(Original)" suffix
+4. Ensure API call includes `include_rate_id` parameter
+
+**Billing Rates Not Showing Amounts**:
+- **Fixed**: All billing rates now display "Description • $XX.XX/hr" format
+- Clear browser cache if old format persists
+- Verify `rate` field exists in billing rate data
+
+**Account vs Global Rate Conflicts**:
+- **Expected Behavior**: Account rates override global rates with same names
+- **Timer Preservation**: Original timer rates preserved during commit
+- **UI Clarity**: Timer-specific rates show as "Rate Name (Original)"
 
 For technical implementation details, see [Timer Architecture](../technical/architecture.md#timer-system).

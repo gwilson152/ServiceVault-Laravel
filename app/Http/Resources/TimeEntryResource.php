@@ -112,13 +112,24 @@ class TimeEntryResource extends JsonResource
      */
     private function canEdit($user): bool
     {
-        // Users can edit their own pending entries
-        if ($this->user_id === $user->id && $this->status === 'pending') {
+        // Can't edit non-pending entries
+        if ($this->status !== 'pending') {
+            return false;
+        }
+        
+        // Original creator can always edit their own pending entries
+        if ($this->user_id === $user->id) {
             return true;
         }
         
-        // Managers and admins can edit any entries
-        if ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        // Service providers and users with time management permissions can edit time entries
+        if ($user->user_type === 'service_provider' || 
+            $user->hasAnyPermission(['time.manage', 'time.edit.all', 'admin.manage', 'admin.write'])) {
+            return true;
+        }
+        
+        // Team managers can edit entries from their team members
+        if ($user->hasPermission('time.edit.team') || $user->hasPermission('teams.manage')) {
             return true;
         }
         
@@ -130,13 +141,24 @@ class TimeEntryResource extends JsonResource
      */
     private function canDelete($user): bool
     {
-        // Users can delete their own pending entries
-        if ($this->user_id === $user->id && $this->status === 'pending') {
+        // Can only delete pending entries
+        if ($this->status !== 'pending') {
+            return false;
+        }
+        
+        // Original creator can always delete their own pending entries
+        if ($this->user_id === $user->id) {
             return true;
         }
         
-        // Managers and admins can delete any entries
-        if ($user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        // Service providers and managers can delete time entries
+        if ($user->user_type === 'service_provider' || 
+            $user->hasAnyPermission(['time.manage', 'time.delete.all', 'admin.manage', 'admin.write'])) {
+            return true;
+        }
+        
+        // Team managers can delete entries from their team members
+        if ($user->hasPermission('time.edit.team') || $user->hasPermission('teams.manage')) {
             return true;
         }
         
@@ -148,8 +170,8 @@ class TimeEntryResource extends JsonResource
      */
     private function canApprove($user): bool
     {
-        // Only managers and admins can approve
-        if (!$user->hasAnyPermission(['teams.manage', 'admin.manage'])) {
+        // Entry must be pending
+        if ($this->status !== 'pending') {
             return false;
         }
         
@@ -158,11 +180,12 @@ class TimeEntryResource extends JsonResource
             return false;
         }
         
-        // Entry must be pending
-        if ($this->status !== 'pending') {
-            return false;
+        // Service providers, managers, and admins can approve
+        if ($user->user_type === 'service_provider' || 
+            $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write'])) {
+            return true;
         }
         
-        return true;
+        return false;
     }
 }
