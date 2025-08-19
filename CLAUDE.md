@@ -33,7 +33,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Timer Performance Optimization**: Eliminated N+1 query problem in tickets list by embedding user-specific timer data in ticket API responses
 - **Account Hierarchy Removal**: Simplified account structure by removing complex hierarchy system while maintaining core functionality
 - **Setup Page Streamlining**: Updated setup wizard to remove account hierarchy configuration for cleaner initial setup experience
-- **Unified Selector System**: Single component handles tickets, accounts, users, agents, and billing rates with consistent interface
+- **Enhanced Unified Selector System**: Self-managing selectors with automatic data loading, debounced case-insensitive search, recent items tracking, and focus preservation
 - **StackedDialog Architecture**: All modals converted to use native dialog with proper stacking and z-index management
 - **Streamlined Ticket Creation**: Merged basic info and assignment tabs for improved user experience
 - **Enhanced Modal System**: Vertical expansion to fit content, proper modal stacking, and consistent UI
@@ -153,6 +153,15 @@ npm run dev             # Development with hot reload
 # POST   /api/auth/tokens/scope          # Create scoped token (employee, manager, etc.)
 # DELETE /api/auth/tokens/revoke-all     # Revoke all user tokens
 
+# Unified Selector Search API (Self-Managing Components)
+# GET    /api/search/tickets             # Search tickets with permission-aware filtering
+# GET    /api/search/accounts            # Search accounts with permission-aware filtering  
+# GET    /api/search/users               # Search users with permission-aware filtering
+# GET    /api/search/agents              # Search agents with permission-aware filtering
+# GET    /api/search/billing-rates       # Search billing rates with permission-aware filtering
+# Parameters: q (search term), limit, permission_level, sort_field, sort_direction, agent_type
+# Features: Case-insensitive search (ILIKE), debounced queries, intelligent ranking
+
 # Ticket Configuration Management (Admin/Settings)
 # GET    /api/settings/ticket-config     # Get all ticket configuration (statuses, categories, priorities)
 # GET    /api/ticket-statuses            # List ticket statuses with filtering
@@ -261,38 +270,69 @@ Automatic user-to-account mapping via domain patterns. See [Authentication Syste
 
 ## Unified Selector System
 
-Service Vault uses a single `UnifiedSelector` component for consistent entity selection across the entire application:
+Service Vault uses a **self-managing** `UnifiedSelector` component for consistent entity selection across the entire application. Selectors automatically handle their own data loading, search, caching, and permissions.
 
 **Supported Types:**
 - `ticket` - Ticket selection with creation support
-- `account` - Hierarchical account selection with creation support  
+- `account` - Account selection with creation support  
 - `user` - User selection (customer users)
 - `agent` - Agent selection with feature-specific types (timer, ticket, time, billing)
 - `billing-rate` - Billing rate selection with hierarchy display
 
 **Key Features:**
-- **Consistent Interface**: Same props and events across all entity types
+- **Self-Managing Data**: Automatic data loading, search, and caching via TanStack Query
+- **Permission-Aware**: Built-in permission filtering based on user context
+- **Case-Insensitive Search**: Debounced search with PostgreSQL ILIKE for smooth UX
+- **Recent Items Tracking**: localStorage-based recent selections with API fallback
+- **Custom Sorting**: Configurable sort field and direction per selector
+- **Focus Preservation**: Input maintains focus during search operations
 - **Creation Support**: Built-in "Create New" options with proper modal stacking
 - **Type-Specific Configurations**: Icons, colors, badges, and behaviors per type
-- **Hierarchical Display**: Visual hierarchy for accounts and billing rates
 - **Modal Stacking**: `nested` prop for proper z-index management
-- **Search & Filter**: Built-in search and filtering capabilities
 
-**Usage Example:**
+**Usage Example (New Self-Managing Architecture):**
 ```vue
 <UnifiedSelector
   v-model="selectedId"
   type="account"
-  :items="availableAccounts"
   label="Account"
   placeholder="Select account..."
-  :hierarchical="true"
+  sort-field="name"
+  sort-direction="asc"
   :can-create="true"
   :nested="true"
+  :clearable="true"
   @item-selected="handleSelection"
   @item-created="handleCreation"
 />
 ```
+
+**Available Props:**
+- `type` - Entity type (required)
+- `sort-field` - Custom sort field (e.g., 'name', 'created_at')
+- `sort-direction` - Sort direction ('asc' or 'desc')
+- `agent-type` - For agent selectors: 'timer', 'ticket', 'time', 'billing'
+- `filter-set` - Applied filters for context-aware results
+- `custom-items` - Override with custom dataset for special cases
+- `clearable` - Allow clearing selection (default: true)
+- `recent-items-limit` - Number of recent items to show (default: 10)
+- `search-min-length` - Minimum characters before API search (default: 2)
+
+**Migration from Old Pattern:**
+```vue
+<!-- OLD: Manual data management -->
+<UnifiedSelector :items="availableAccounts" />
+
+<!-- NEW: Self-managing (no items prop needed) -->
+<UnifiedSelector type="account" />
+```
+
+**Technical Implementation:**
+- **Query Composables**: `/resources/js/Composables/queries/useSelectorQueries.js`
+- **Search API Controller**: `/app/Http/Controllers/Api/SearchController.php`
+- **Permission Integration**: Automatic filtering based on user context and abilities
+- **TanStack Query**: Optimized caching with reactive query keys
+- **Recent Items**: localStorage persistence with `selector_recent_{type}` keys
 
 ## StackedDialog Architecture
 
@@ -401,10 +441,10 @@ GET /api/users/billing-agents                   # Billing agents
 **Component Integration:**
 ```vue
 <!-- StartTimerModal uses timer agent type -->
-<UnifiedSelector type="agent" agent-type="timer" :items="availableAgents" />
+<UnifiedSelector type="agent" agent-type="timer" />
 
 <!-- UnifiedTimeEntryDialog uses time agent type -->
-<UnifiedSelector type="agent" agent-type="time" :items="availableAgents" />
+<UnifiedSelector type="agent" agent-type="time" />
 ```
 
 **Permission Helper Methods:**
@@ -449,4 +489,4 @@ This CLAUDE.md file focuses on essential development context. For detailed imple
 
 ---
 
-*Last Updated: August 19, 2025 - Enhanced Billing Rate System: Complete overhaul of billing rate selection and display across timer workflows. Timer commit now preserves original billing rates even when accounts have overriding rates. Fixed auto-selection logic for both timer creation and time entry dialogs. Enhanced rate display with "Description • $XX.XX/hr" format and clear account vs global rate disambiguation. Improved UnifiedSelector with timer-specific rate inclusion and BillingRateService integration.*
+*Last Updated: August 19, 2025 - Enhanced Unified Selector System: Complete overhaul of selector architecture to self-managing components. Selectors now automatically handle data loading, debounced case-insensitive search (PostgreSQL ILIKE), recent items tracking with localStorage, and focus preservation during search operations. Added new /api/search/* endpoints with permission-aware filtering and customizable sorting. Fixed query reactivity issues and dropdown state management for smooth search UX. Updated CreateTicketModalTabbed to use new selector architecture. All selectors now support sort-field, sort-direction, and filter-set props for enhanced customization.*

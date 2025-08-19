@@ -159,12 +159,24 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
             </svg>
           </button>
+
+          <!-- Minimize All Button -->
+          <button
+            v-if="timers.length > 1"
+            @click="minimizeAllTimers"
+            class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded-lg text-sm font-medium transition-colors flex items-center shadow-sm"
+            title="Minimize all timers"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+            </svg>
+          </button>
         </div>
 
         <!-- Totals (if multiple timers) -->
         <div
           v-if="timers.length > 1"
-          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-xs border border-blue-200 dark:border-blue-800"
+          class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-xs border border-blue-200 dark:border-blue-800 w-fit"
           title="Combined total of all active timers"
         >
           <div class="flex items-center space-x-2">
@@ -194,33 +206,46 @@
         <!-- Mini Badge (Default State) -->
         <div
           v-if="!expandedTimers[timer.id]"
-          @click="toggleTimerExpansion(timer.id)"
-          class="bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-2 cursor-pointer hover:shadow-xl transition-all flex items-center space-x-2 min-w-48"
+          class="relative bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-gray-800/95 dark:via-gray-800/90 dark:to-gray-900/85 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-2 transition-all flex items-center justify-between min-w-48 pointer-events-none"
         >
-          <!-- Status Indicator (Left) -->
-          <div
-            :class="timerStatusClasses(timer.status)"
-            class="w-2 h-2 rounded-full flex-shrink-0"
-          ></div>
+          <!-- Left Content Group -->
+          <div class="flex items-center space-x-2">
+            <!-- Status Indicator (Left) -->
+            <div
+              :class="timerStatusClasses(timer.status)"
+              class="w-2 h-2 rounded-full flex-shrink-0"
+            ></div>
 
-          <!-- Duration Display (Center) -->
-          <div class="text-sm font-mono font-bold text-gray-900 dark:text-gray-100">
-            {{ formatDuration(timer.currentDuration, true) }}
+            <!-- Duration Display (Center) -->
+            <div class="text-sm font-mono font-bold text-gray-900 dark:text-gray-100">
+              {{ formatDuration(timer.currentDuration, true) }}
+            </div>
+
+            <!-- Price Display (Right) -->
+            <div
+              v-if="timer.billing_rate"
+              class="text-xs text-green-600 dark:text-green-400 font-medium flex-shrink-0"
+            >
+              ${{ (timer.currentAmount || 0).toFixed(2) }}
+            </div>
           </div>
 
-          <!-- Price Display (Right) -->
-          <div
-            v-if="timer.billing_rate"
-            class="text-xs text-green-600 dark:text-green-400 font-medium flex-shrink-0"
+          <!-- Expand Button (Far Right) -->
+          <button
+            @click="toggleTimerExpansion(timer.id)"
+            class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 flex-shrink-0 p-1 rounded transition-colors pointer-events-auto"
+            title="Expand timer details"
           >
-            ${{ (timer.currentAmount || 0).toFixed(2) }}
-          </div>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
 
         <!-- Expanded Panel -->
         <div
           v-else
-          class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-4 min-w-80"
+          class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-4 min-w-80 pointer-events-none"
         >
           <!-- Timer Header -->
           <div class="flex items-center justify-between mb-2">
@@ -241,7 +266,7 @@
               <button
                 v-if="canControlOwnTimer(timer) || canManageAllTimers(timer)"
                 @click="openTimerSettings(timer)"
-                class="text-gray-400 hover:text-blue-600 transition-colors"
+                class="text-gray-400 hover:text-blue-600 transition-colors pointer-events-auto"
                 title="Timer Settings"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -251,7 +276,7 @@
               </button>
               <button
                 @click="toggleTimerExpansion(timer.id)"
-                class="text-gray-400 hover:text-gray-600 transition-colors"
+                class="text-gray-400 hover:text-gray-600 transition-colors pointer-events-auto"
                 :title="expandedTimers[timer.id] ? 'Minimize timer' : 'Expand timer'"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -283,7 +308,7 @@
             <button
               v-if="timer.status === 'running' && (canControlOwnTimer(timer) || canManageAllTimers(timer))"
               @click="pauseTimer(timer.id)"
-              class="flex-1 p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition-colors"
+              class="flex-1 p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition-colors pointer-events-auto"
               title="Pause Timer"
             >
               <svg class="w-4 h-4 mx-auto" fill="currentColor" viewBox="0 0 24 24">
@@ -293,7 +318,7 @@
             <button
               v-if="timer.status === 'paused' && (canControlOwnTimer(timer) || canManageAllTimers(timer))"
               @click="resumeTimer(timer.id)"
-              class="flex-1 p-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
+              class="flex-1 p-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors pointer-events-auto"
               title="Resume Timer"
             >
               <svg class="w-4 h-4 mx-auto" fill="currentColor" viewBox="0 0 24 24">
@@ -303,7 +328,7 @@
             <button
               v-if="(canControlOwnTimer(timer) || canManageAllTimers(timer))"
               @click="cancelTimer(timer.id)"
-              class="flex-1 p-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors"
+              class="flex-1 p-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors pointer-events-auto"
               title="Cancel Timer"
             >
               <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,7 +338,7 @@
             <button
               v-if="canCommitOwnTimer(timer)"
               @click="handleStopTimer(timer)"
-              class="flex-1 p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"
+              class="flex-1 p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors pointer-events-auto"
               title="Stop & Commit Timer"
             >
               <svg class="w-4 h-4 mx-auto" fill="currentColor" viewBox="0 0 24 24">
@@ -392,22 +417,20 @@
       <!-- Summary Stats -->
       <div
         v-if="timers.length > 1"
-        class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1.5 mb-2 border border-blue-200 dark:border-blue-800"
+        class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1.5 mb-2 border border-blue-200 dark:border-blue-800 w-fit"
       >
-        <div class="flex items-center justify-between text-xs">
+        <div class="flex items-center space-x-2 text-xs">
           <span class="font-medium text-blue-900 dark:text-blue-100">
-            Total ({{ timers.length }} timers):
+            Total ({{ timers.length }}):
           </span>
-          <div class="flex items-center space-x-2">
-            <div class="font-mono font-bold text-blue-900 dark:text-blue-100">
-              {{ formatDuration(totalDuration) }}
-            </div>
-            <div
-              v-if="totalAmount > 0"
-              class="text-xs text-blue-700 dark:text-blue-300 font-medium"
-            >
-              ${{ totalAmount.toFixed(2) }}
-            </div>
+          <div class="font-mono font-bold text-blue-900 dark:text-blue-100">
+            {{ formatDuration(totalDuration) }}
+          </div>
+          <div
+            v-if="totalAmount > 0"
+            class="text-xs text-blue-700 dark:text-blue-300 font-medium"
+          >
+            ${{ totalAmount.toFixed(2) }}
           </div>
         </div>
       </div>
@@ -417,7 +440,7 @@
         <div
           v-for="timer in reactiveTimerData"
           :key="timer.id"
-          class="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2 border border-gray-200 dark:border-gray-600"
+          class="bg-gray-50 dark:bg-gray-700/50 rounded-md p-2 border border-gray-200 dark:border-gray-600 pointer-events-none"
         >
           <!-- Timer Header -->
           <div class="flex items-center justify-between mb-1">
@@ -437,7 +460,7 @@
             <button
               v-if="canControlOwnTimer(timer) || canManageAllTimers(timer)"
               @click.stop="openTimerSettings(timer)"
-              class="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+              class="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0 pointer-events-auto"
               title="Timer Settings"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -469,7 +492,7 @@
             <button
               v-if="timer.status === 'running' && (canControlOwnTimer(timer) || canManageAllTimers(timer))"
               @click.stop="pauseTimer(timer.id)"
-              class="flex-1 p-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded text-xs font-medium transition-colors"
+              class="flex-1 p-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded text-xs font-medium transition-colors pointer-events-auto"
               title="Pause Timer"
             >
               <svg class="w-3 h-3 mx-auto" fill="currentColor" viewBox="0 0 24 24">
@@ -479,7 +502,7 @@
             <button
               v-if="timer.status === 'paused' && (canControlOwnTimer(timer) || canManageAllTimers(timer))"
               @click.stop="resumeTimer(timer.id)"
-              class="flex-1 p-1.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-medium transition-colors"
+              class="flex-1 p-1.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-medium transition-colors pointer-events-auto"
               title="Resume Timer"
             >
               <svg class="w-3 h-3 mx-auto" fill="currentColor" viewBox="0 0 24 24">
@@ -489,7 +512,7 @@
             <button
               v-if="(canControlOwnTimer(timer) || canManageAllTimers(timer))"
               @click.stop="cancelTimer(timer.id)"
-              class="flex-1 p-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded text-xs font-medium transition-colors"
+              class="flex-1 p-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded text-xs font-medium transition-colors pointer-events-auto"
               title="Cancel Timer"
             >
               <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -499,7 +522,7 @@
             <button
               v-if="canCommitOwnTimer(timer)"
               @click.stop="handleStopTimer(timer)"
-              class="flex-1 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium transition-colors"
+              class="flex-1 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium transition-colors pointer-events-auto"
               title="Stop & Commit Timer"
             >
               <svg class="w-3 h-3 mx-auto" fill="currentColor" viewBox="0 0 24 24">
@@ -911,6 +934,13 @@ const toggleAllTimers = () => {
   const shouldExpand = !allExpanded.value
   timers.value.forEach(timer => {
     expandedTimers[timer.id] = shouldExpand
+  })
+}
+
+// Minimize all timers (set all to collapsed)
+const minimizeAllTimers = () => {
+  timers.value.forEach(timer => {
+    expandedTimers[timer.id] = false
   })
 }
 

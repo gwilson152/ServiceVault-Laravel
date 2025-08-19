@@ -22,6 +22,17 @@ class SearchController extends Controller
         $limit = min($request->input('limit', 10), 100);
         $recent = $request->boolean('recent');
         $permissionLevel = $request->input('permission_level', 'own');
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+
+        // Validate sort field for tickets
+        $allowedSortFields = ['created_at', 'updated_at', 'title', 'ticket_number', 'status', 'priority'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'created_at';
+        }
+
+        // Validate sort direction
+        $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
 
         // Build base query with necessary relationships
         $builder = Ticket::with(['account:id,name', 'assignedUser:id,name'])
@@ -57,21 +68,21 @@ class SearchController extends Controller
 
         // Apply search or default ordering logic  
         if (!empty($query)) {
-            // Search by ticket number or title
+            // Search by ticket number or title (case-insensitive)
             $builder->where(function ($q) use ($query) {
-                $q->where('ticket_number', 'like', "%{$query}%")
-                  ->orWhere('title', 'like', "%{$query}%");
+                $q->where('ticket_number', 'ilike', "%{$query}%")
+                  ->orWhere('title', 'ilike', "%{$query}%");
             });
             $builder->orderByRaw("
                 CASE 
-                    WHEN ticket_number LIKE '{$query}%' THEN 1
-                    WHEN title LIKE '{$query}%' THEN 2
+                    WHEN ticket_number ILIKE '{$query}%' THEN 1
+                    WHEN title ILIKE '{$query}%' THEN 2
                     ELSE 3
                 END, created_at DESC
             ");
         } else {
-            // Default: return last 10 records by created_at
-            $builder->orderBy('created_at', 'desc');
+            // Default: sort by specified field and direction
+            $builder->orderBy($sortField, $sortDirection);
         }
 
         $tickets = $builder->limit($limit)->get();
@@ -104,6 +115,17 @@ class SearchController extends Controller
         $limit = min($request->input('limit', 10), 100);
         $recent = $request->boolean('recent');
         $permissionLevel = $request->input('permission_level', 'own');
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+
+        // Validate sort field for accounts
+        $allowedSortFields = ['created_at', 'updated_at', 'name', 'email'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'created_at';
+        }
+
+        // Validate sort direction
+        $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
 
         // Build base query
         $builder = Account::select('id', 'name', 'email', 'phone', 'is_active', 'created_at');
@@ -133,19 +155,19 @@ class SearchController extends Controller
         // Apply search or default ordering logic
         if (!empty($query)) {
             $builder->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
+                $q->where('name', 'ilike', "%{$query}%")
+                  ->orWhere('email', 'ilike', "%{$query}%");
             });
             $builder->orderByRaw("
                 CASE 
-                    WHEN name LIKE '{$query}%' THEN 1
-                    WHEN email LIKE '{$query}%' THEN 2
+                    WHEN name ILIKE '{$query}%' THEN 1
+                    WHEN email ILIKE '{$query}%' THEN 2
                     ELSE 3
                 END, name ASC
             ");
         } else {
-            // Default: return last 10 accounts by created_at
-            $builder->orderBy('created_at', 'desc');
+            // Default: sort by specified field and direction
+            $builder->orderBy($sortField, $sortDirection);
         }
 
         $accounts = $builder->limit($limit)->get();
@@ -174,6 +196,17 @@ class SearchController extends Controller
         $limit = min($request->input('limit', 10), 100);
         $recent = $request->boolean('recent');
         $permissionLevel = $request->input('permission_level', 'none');
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+
+        // Validate sort field for users
+        $allowedSortFields = ['created_at', 'updated_at', 'name', 'email', 'user_type'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'created_at';
+        }
+
+        // Validate sort direction
+        $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
 
         // Check permissions
         if (!$user->hasAnyPermission(['users.manage', 'users.manage.account', 'admin.manage'])) {
@@ -203,19 +236,19 @@ class SearchController extends Controller
         // Apply search or default ordering logic
         if (!empty($query)) {
             $builder->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
+                $q->where('name', 'ilike', "%{$query}%")
+                  ->orWhere('email', 'ilike', "%{$query}%");
             });
             $builder->orderByRaw("
                 CASE 
-                    WHEN name LIKE '{$query}%' THEN 1
-                    WHEN email LIKE '{$query}%' THEN 2
+                    WHEN name ILIKE '{$query}%' THEN 1
+                    WHEN email ILIKE '{$query}%' THEN 2
                     ELSE 3
                 END, name ASC
             ");
         } else {
-            // Default: return last 10 users by created_at
-            $builder->orderBy('created_at', 'desc');
+            // Default: sort by specified field and direction
+            $builder->orderBy($sortField, $sortDirection);
         }
 
         $users = $builder->limit($limit)->get();
@@ -244,6 +277,17 @@ class SearchController extends Controller
         $recent = $request->boolean('recent');
         $agentType = $request->input('agent_type'); // timer, ticket, time, billing
         $permissionLevel = $request->input('permission_level', 'none');
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+
+        // Validate sort field for agents (same as users)
+        $allowedSortFields = ['created_at', 'updated_at', 'name', 'email', 'user_type'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'created_at';
+        }
+
+        // Validate sort direction
+        $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
 
         // Check permissions
         if (!$user->hasAnyPermission(['users.manage', 'users.manage.account', 'admin.manage'])) {
@@ -289,19 +333,19 @@ class SearchController extends Controller
         // Apply search or default ordering logic
         if (!empty($query)) {
             $builder->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
+                $q->where('name', 'ilike', "%{$query}%")
+                  ->orWhere('email', 'ilike', "%{$query}%");
             });
             $builder->orderByRaw("
                 CASE 
-                    WHEN name LIKE '{$query}%' THEN 1
-                    WHEN email LIKE '{$query}%' THEN 2
+                    WHEN name ILIKE '{$query}%' THEN 1
+                    WHEN email ILIKE '{$query}%' THEN 2
                     ELSE 3
                 END, name ASC
             ");
         } else {
-            // Default: return last 10 agents by created_at
-            $builder->orderBy('created_at', 'desc');
+            // Default: sort by specified field and direction
+            $builder->orderBy($sortField, $sortDirection);
         }
 
         $agents = $builder->limit($limit)->get();
@@ -335,6 +379,17 @@ class SearchController extends Controller
         $query = $request->input('q', '');
         $limit = min($request->input('limit', 30), 100); // Billing rates typically have fewer items
         $recent = $request->boolean('recent');
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+
+        // Validate sort field for billing rates
+        $allowedSortFields = ['created_at', 'updated_at', 'name', 'rate', 'description'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'created_at';
+        }
+
+        // Validate sort direction
+        $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? strtolower($sortDirection) : 'desc';
 
         // Check permissions
         if (!$user->hasAnyPermission(['billing.rates.view', 'billing.manage', 'admin.manage'])) {
@@ -366,20 +421,20 @@ class SearchController extends Controller
         // Apply search or default ordering logic
         if (!empty($query)) {
             $builder->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('description', 'like', "%{$query}%")
-                  ->orWhere('rate', 'like', "%{$query}%");
+                $q->where('name', 'ilike', "%{$query}%")
+                  ->orWhere('description', 'ilike', "%{$query}%")
+                  ->orWhere('rate', 'like', "%{$query}%"); // Keep 'like' for rate since it's numeric
             });
             $builder->orderByRaw("
                 CASE 
-                    WHEN name LIKE '{$query}%' THEN 1
-                    WHEN description LIKE '{$query}%' THEN 2
+                    WHEN name ILIKE '{$query}%' THEN 1
+                    WHEN description ILIKE '{$query}%' THEN 2
                     ELSE 3
                 END, account_id IS NULL, rate DESC
             ");
         } else {
-            // Default: return last 10 billing rates by created_at
-            $builder->orderBy('created_at', 'desc');
+            // Default: sort by specified field and direction
+            $builder->orderBy($sortField, $sortDirection);
         }
 
         $billingRates = $builder->limit($limit)->get();

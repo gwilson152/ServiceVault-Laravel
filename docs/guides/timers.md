@@ -36,10 +36,11 @@ When starting a timer, configure:
 
 **Timer Overlay** (bottom-left of screen):
 - **Play/Pause**: Start/pause individual timers
-- **Stop**: Stop timer and optionally convert to time entry
-- **Commit**: Stop timer and convert to time entry with full dialog
+- **Cancel**: Cancel timer without creating time entry (marks as `canceled`)
+- **Stop & Commit**: Stop timer and convert to time entry with full dialog (marks as `committed`)
 - **Edit**: Modify timer description, billing rate, etc.
 - **Settings**: Configure timer preferences
+- **Minimize All**: Collapse all expanded timers to compact badge view
 
 ### Editing Running Timers
 

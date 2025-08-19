@@ -123,7 +123,6 @@
                             :key="accountSelectorKey"
                             v-model="form.account_id"
                             type="account"
-                            :items="availableAccounts"
                             label="Account"
                             placeholder="Select account for this ticket..."
                             required
@@ -170,7 +169,6 @@
                         <UnifiedSelector
                             v-model="form.agent_id"
                             type="agent"
-                            :items="availableAgents"
                             :agent-type="'ticket'"
                             label="Assign Agent"
                             placeholder="Select an agent (optional)..."
@@ -445,12 +443,9 @@ const activeTab = ref("basic");
 
 // State
 const isSubmitting = ref(false);
-const availableAccounts = ref([]);
 const availableCustomers = ref([]);
-const availableAgents = ref([]);
 const availableCategories = ref([]);
 const isLoadingCustomers = ref(false);
-const isLoadingAgents = ref(false);
 const isLoadingCategories = ref(false);
 const flatAccounts = ref([]);
 
@@ -628,9 +623,8 @@ const handleAgentSelected = (agent) => {
 };
 
 const handleAgentCreated = (newAgent) => {
-    // Add the newly created agent to the available agents list
-    availableAgents.value.push(newAgent);
-    // console.log("New agent created and added to list:", newAgent);
+    // The UnifiedSelector automatically handles the new agent
+    // console.log("New agent created:", newAgent);
 };
 
 
@@ -640,9 +634,7 @@ const handleAccountSelected = (account) => {
 };
 
 const handleAccountCreated = (newAccount) => {
-    // Refresh the accounts list to include the new account
-    loadAccounts();
-    // The UnifiedSelector will automatically select the newly created account
+    // The UnifiedSelector automatically handles the new account
     // Clear customer selection since we're switching accounts
     form.customer_id = null;
     // Load customers for the new account
@@ -658,22 +650,6 @@ const handleUserCreated = (user) => {
     loadCustomers();
 };
 
-const loadAccounts = async () => {
-    try {
-        const response = await axios.get("/api/accounts");
-        availableAccounts.value = response.data.data;
-        flatAccounts.value = flattenAccounts(response.data.data);
-        
-        // console.log('CreateTicketModalTabbed - Accounts loaded:', {
-        //     count: availableAccounts.value.length,
-        //     accounts: availableAccounts.value.map(a => ({ id: a.id, name: a.name })),
-        //     lookingForAccountId: props.accountId,
-        //     foundAccount: availableAccounts.value.find(a => a.id === props.accountId)
-        // });
-    } catch (error) {
-        console.error("Failed to load accounts:", error);
-    }
-};
 
 const loadCustomers = async () => {
     if (!form.account_id) {
@@ -701,38 +677,6 @@ const loadCustomers = async () => {
     }
 };
 
-const loadAgents = async (accountId = null) => {
-    try {
-        isLoadingAgents.value = true;
-        const params = {
-            agent_type: "ticket",
-            per_page: 100,
-        };
-
-        // Don't filter by account for now - let the backend handle permissions
-        // The API should return all agents with tickets.act_as_agent permission
-        // including super admins who can be assigned to any account
-
-        const response = await axios.get("/api/users/agents", { params });
-        availableAgents.value = response.data.data || [];
-        // console.log("CreateTicketModalTabbed - Loaded ticket agents:", {
-        //     count: availableAgents.value.length,
-        //     accountId: accountId,
-        //     agents: availableAgents.value.map((a) => ({
-        //         id: a.id,
-        //         name: a.name,
-        //         email: a.email,
-        //         user_type: a.user_type,
-        //         permissions: a.permissions?.includes?.("tickets.act_as_agent"),
-        //     })),
-        // });
-    } catch (error) {
-        console.error("Failed to load agents:", error);
-        availableAgents.value = [];
-    } finally {
-        isLoadingAgents.value = false;
-    }
-};
 
 const loadCategories = async () => {
     try {
@@ -960,12 +904,8 @@ watch(
             
             activeTab.value = "basic";
             
-            // Load all data first, then set preselections
-            await Promise.all([
-                loadAccounts(),
-                loadCategories(),
-                canAssignTickets.value ? loadAgents() : Promise.resolve()
-            ]);
+            // Load categories data
+            await loadCategories();
             
             // Reset form and set preselected values after data is loaded
             resetForm();
@@ -981,10 +921,6 @@ watch(
 
 // Load data on mount
 onMounted(() => {
-    loadAccounts();
-    if (canAssignTickets.value) {
-        loadAgents();
-    }
     loadCategories();
 });
 </script>

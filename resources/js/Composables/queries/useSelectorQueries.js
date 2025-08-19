@@ -43,12 +43,16 @@ const getUserPermissionLevel = (user, type) => {
     case 'accounts':
       if (user.permissions?.includes('accounts.manage') || user.permissions?.includes('admin.manage')) return 'all'
       if (user.permissions?.includes('accounts.view')) return 'account'
+      // Allow ticket creation - users need to see accounts to create tickets
+      if (user.permissions?.includes('tickets.create') || user.permissions?.includes('tickets.manage')) return 'all'
       return 'own'
       
     case 'users':
     case 'agents':
       if (user.permissions?.includes('users.manage') || user.permissions?.includes('admin.manage')) return 'all'
       if (user.permissions?.includes('users.manage.account')) return 'account'
+      // Allow ticket assignment - users with ticket management permissions need to see agents
+      if (user.permissions?.includes('tickets.assign') || user.permissions?.includes('tickets.manage')) return 'all'
       return 'none'
       
     case 'billing-rates':
@@ -65,6 +69,8 @@ export function useSelectorTicketsQuery(options = {}) {
   const {
     searchTerm = ref(''),
     filterSet = ref({}),
+    sortField = ref(null),
+    sortDirection = ref('desc'),
     recentLimit = 10,
     enabled = ref(true)
   } = options
@@ -73,7 +79,7 @@ export function useSelectorTicketsQuery(options = {}) {
   const user = computed(() => page.props.auth?.user)
   
   return useQuery({
-    queryKey: ['selector', 'tickets', searchTerm.value, filterSet.value],
+    queryKey: computed(() => ['selector', 'tickets', searchTerm.value, filterSet.value, sortField.value, sortDirection.value]),
     queryFn: async () => {
       const permissionLevel = getUserPermissionLevel(user.value, 'tickets')
       if (permissionLevel === 'none') return { data: [], recent: [] }
@@ -82,6 +88,8 @@ export function useSelectorTicketsQuery(options = {}) {
         q: searchTerm.value,
         limit: searchTerm.value ? 50 : recentLimit,
         permission_level: permissionLevel,
+        ...(sortField.value && { sort_field: sortField.value }),
+        ...(sortDirection.value && { sort_direction: sortDirection.value }),
         ...filterSet.value
       }
       
@@ -101,7 +109,13 @@ export function useSelectorTicketsQuery(options = {}) {
         const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
         return [...data.data, ...uniqueRecent.slice(0, 3)] // Add 3 recent items to search results
       }
-      return data.recent.slice(0, recentLimit)
+      // If no search term, return recent items first, then API data if no recent items
+      const recentData = data.recent.slice(0, recentLimit)
+      if (recentData.length > 0) {
+        return recentData
+      }
+      // Fallback to API data if no recent items
+      return data.data.slice(0, recentLimit)
     }
   })
 }
@@ -111,6 +125,8 @@ export function useSelectorAccountsQuery(options = {}) {
   const {
     searchTerm = ref(''),
     filterSet = ref({}),
+    sortField = ref(null),
+    sortDirection = ref('desc'),
     recentLimit = 10,
     enabled = ref(true)
   } = options
@@ -119,7 +135,7 @@ export function useSelectorAccountsQuery(options = {}) {
   const user = computed(() => page.props.auth?.user)
   
   return useQuery({
-    queryKey: ['selector', 'accounts', searchTerm.value, filterSet.value],
+    queryKey: computed(() => ['selector', 'accounts', searchTerm.value, filterSet.value, sortField.value, sortDirection.value]),
     queryFn: async () => {
       const permissionLevel = getUserPermissionLevel(user.value, 'accounts')
       if (permissionLevel === 'none') return { data: [], recent: [] }
@@ -128,6 +144,8 @@ export function useSelectorAccountsQuery(options = {}) {
         q: searchTerm.value,
         limit: searchTerm.value ? 50 : recentLimit,
         permission_level: permissionLevel,
+        ...(sortField.value && { sort_field: sortField.value }),
+        ...(sortDirection.value && { sort_direction: sortDirection.value }),
         ...filterSet.value
       }
       
@@ -146,7 +164,13 @@ export function useSelectorAccountsQuery(options = {}) {
         const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
         return [...data.data, ...uniqueRecent.slice(0, 3)]
       }
-      return data.recent.slice(0, recentLimit)
+      // If no search term, return recent items first, then API data if no recent items
+      const recentData = data.recent.slice(0, recentLimit)
+      if (recentData.length > 0) {
+        return recentData
+      }
+      // Fallback to API data if no recent items
+      return data.data.slice(0, recentLimit)
     }
   })
 }
@@ -157,6 +181,8 @@ export function useSelectorUsersQuery(options = {}) {
     searchTerm = ref(''),
     filterSet = ref({}),
     agentType = ref(null),
+    sortField = ref(null),
+    sortDirection = ref('desc'),
     recentLimit = 10,
     enabled = ref(true)
   } = options
@@ -165,7 +191,7 @@ export function useSelectorUsersQuery(options = {}) {
   const user = computed(() => page.props.auth?.user)
   
   return useQuery({
-    queryKey: ['selector', 'users', searchTerm.value, filterSet.value, agentType.value],
+    queryKey: computed(() => ['selector', 'users', searchTerm.value, filterSet.value, agentType.value, sortField.value, sortDirection.value]),
     queryFn: async () => {
       const permissionLevel = getUserPermissionLevel(user.value, 'users')
       if (permissionLevel === 'none') return { data: [], recent: [] }
@@ -175,6 +201,8 @@ export function useSelectorUsersQuery(options = {}) {
         limit: searchTerm.value ? 50 : recentLimit,
         permission_level: permissionLevel,
         agent_type: agentType.value,
+        ...(sortField.value && { sort_field: sortField.value }),
+        ...(sortDirection.value && { sort_direction: sortDirection.value }),
         ...filterSet.value
       }
       
@@ -195,7 +223,13 @@ export function useSelectorUsersQuery(options = {}) {
         const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
         return [...data.data, ...uniqueRecent.slice(0, 3)]
       }
-      return data.recent.slice(0, recentLimit)
+      // If no search term, return recent items first, then API data if no recent items
+      const recentData = data.recent.slice(0, recentLimit)
+      if (recentData.length > 0) {
+        return recentData
+      }
+      // Fallback to API data if no recent items
+      return data.data.slice(0, recentLimit)
     }
   })
 }
@@ -205,6 +239,8 @@ export function useSelectorBillingRatesQuery(options = {}) {
   const {
     searchTerm = ref(''),
     filterSet = ref({}),
+    sortField = ref(null),
+    sortDirection = ref('desc'),
     recentLimit = 10,
     enabled = ref(true)
   } = options
@@ -213,7 +249,7 @@ export function useSelectorBillingRatesQuery(options = {}) {
   const user = computed(() => page.props.auth?.user)
   
   return useQuery({
-    queryKey: ['selector', 'billing-rates', searchTerm.value, filterSet.value],
+    queryKey: computed(() => ['selector', 'billing-rates', searchTerm.value, filterSet.value, sortField.value, sortDirection.value]),
     queryFn: async () => {
       const permissionLevel = getUserPermissionLevel(user.value, 'billing-rates')
       if (permissionLevel === 'none') return { data: [], recent: [] }
@@ -221,6 +257,8 @@ export function useSelectorBillingRatesQuery(options = {}) {
       const params = {
         q: searchTerm.value,
         limit: searchTerm.value ? 30 : recentLimit, // Billing rates typically have fewer items
+        ...(sortField.value && { sort_field: sortField.value }),
+        ...(sortDirection.value && { sort_direction: sortDirection.value }),
         ...filterSet.value
       }
       
@@ -239,7 +277,13 @@ export function useSelectorBillingRatesQuery(options = {}) {
         const uniqueRecent = data.recent.filter(item => !searchIds.has(item.id))
         return [...data.data, ...uniqueRecent.slice(0, 3)]
       }
-      return data.recent.slice(0, recentLimit)
+      // If no search term, return recent items first, then API data if no recent items
+      const recentData = data.recent.slice(0, recentLimit)
+      if (recentData.length > 0) {
+        return recentData
+      }
+      // Fallback to API data if no recent items
+      return data.data.slice(0, recentLimit)
     }
   })
 }
@@ -249,7 +293,7 @@ export function useActiveSelectorItem(type, itemId, options = {}) {
   const { enabled = ref(true) } = options
   
   return useQuery({
-    queryKey: ['selector', 'active-item', type, itemId.value],
+    queryKey: computed(() => ['selector', 'active-item', type, itemId.value]),
     queryFn: async () => {
       if (!itemId.value) return null
       

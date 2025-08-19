@@ -12,12 +12,13 @@
     <!-- Search Input (only show when no item is selected or clearable is false) -->
     <div v-if="!selectedItem || !clearable" class="relative">
       <input
+        ref="inputRef"
         :id="inputId"
         v-model="actualSearchTerm"
         type="text"
         :placeholder="defaultPlaceholder"
         :required="required"
-        :disabled="loading || disabled"
+        :disabled="initialLoading || disabled"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
         :class="{ 'border-red-500': error }"
         @focus="handleFocus"
@@ -28,7 +29,7 @@
       <!-- Dropdown Icon -->
       <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
         <div
-          v-if="loading || isSearching"
+          v-if="initialLoading || isSearching || isFetching"
           class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"
         ></div>
         <svg
@@ -107,9 +108,9 @@
       ]"
     >
       <!-- Loading state -->
-      <div v-if="loading || isSearching" class="p-4 text-center text-gray-500">
+      <div v-if="initialLoading || isSearching || (isFetching && !displayItems.length)" class="p-4 text-center text-gray-500">
         <div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
-        {{ isSearching ? 'Searching...' : 'Loading...' }}
+        {{ isSearching || isFetching ? 'Searching...' : 'Loading...' }}
       </div>
 
       <!-- Error state -->
@@ -335,6 +336,17 @@ const props = defineProps({
     type: Boolean,
     default: false, // For billing rate selectors
   },
+  
+  // Sorting options
+  sortField: {
+    type: String,
+    default: null, // Custom sort field (e.g., 'name', 'created_at')
+  },
+  sortDirection: {
+    type: String,
+    default: 'desc', // Sort direction: 'asc' or 'desc'
+    validator: value => ['asc', 'desc'].includes(value.toLowerCase())
+  },
 })
 
 // Emits
@@ -349,6 +361,7 @@ const showCreateModal = ref(false)
 const dropupMode = ref(false)
 const inputId = `unified-selector-${Math.random().toString(36).substr(2, 9)}`
 const isSearching = ref(false)
+const inputRef = ref(null)
 
 // Debounce utility
 let searchDebounceTimeout = null
@@ -357,6 +370,13 @@ const debounceSearch = (value) => {
   searchDebounceTimeout = setTimeout(() => {
     searchTerm.value = value
     isSearching.value = false
+    // Maintain focus and dropdown state after search
+    nextTick(() => {
+      if (inputRef.value && document.activeElement !== inputRef.value) {
+        inputRef.value.focus()
+        showDropdown.value = true
+      }
+    })
   }, props.searchDebounceMs)
 }
 
@@ -368,6 +388,8 @@ const shouldUseCustomData = computed(() => {
 // Query setup based on selector type and custom data preference
 const filterSetRef = ref(props.filterSet)
 const agentTypeRef = ref(props.agentType)
+const sortFieldRef = ref(props.sortField)
+const sortDirectionRef = ref(props.sortDirection)
 const enableQueries = computed(() => !shouldUseCustomData.value && !props.disabled)
 
 // Initialize appropriate query based on type
@@ -380,6 +402,8 @@ if (!shouldUseCustomData.value) {
       selectorQuery = useSelectorTicketsQuery({
         searchTerm,
         filterSet: filterSetRef,
+        sortField: sortFieldRef,
+        sortDirection: sortDirectionRef,
         recentLimit: props.recentItemsLimit,
         enabled: enableQueries
       })
@@ -388,6 +412,8 @@ if (!shouldUseCustomData.value) {
       selectorQuery = useSelectorAccountsQuery({
         searchTerm,
         filterSet: filterSetRef,
+        sortField: sortFieldRef,
+        sortDirection: sortDirectionRef,
         recentLimit: props.recentItemsLimit,
         enabled: enableQueries
       })
@@ -397,6 +423,8 @@ if (!shouldUseCustomData.value) {
         searchTerm,
         filterSet: filterSetRef,
         agentType: agentTypeRef,
+        sortField: sortFieldRef,
+        sortDirection: sortDirectionRef,
         recentLimit: props.recentItemsLimit,
         enabled: enableQueries
       })
@@ -406,6 +434,8 @@ if (!shouldUseCustomData.value) {
         searchTerm,
         filterSet: filterSetRef,
         agentType: agentTypeRef,
+        sortField: sortFieldRef,
+        sortDirection: sortDirectionRef,
         recentLimit: props.recentItemsLimit,
         enabled: enableQueries
       })
@@ -414,6 +444,8 @@ if (!shouldUseCustomData.value) {
       selectorQuery = useSelectorBillingRatesQuery({
         searchTerm,
         filterSet: filterSetRef,
+        sortField: sortFieldRef,
+        sortDirection: sortDirectionRef,
         recentLimit: props.recentItemsLimit,
         enabled: enableQueries
       })
@@ -465,15 +497,24 @@ const displayItems = computed(() => {
   return items
 })
 
-// Loading state
-const loading = computed(() => {
-  return queryLoading.value || (shouldUseCustomData.value ? false : selectorQuery?.isFetching?.value)
+// Loading state - separate initial loading from search fetching
+const initialLoading = computed(() => {
+  // Only show as loading if it's the initial load (no data yet)
+  return queryLoading.value && !queryData.value?.length
+})
+
+const isFetching = computed(() => {
+  return selectorQuery?.isFetching?.value || false
 })
 
 // Search state tracking with debouncing
 watch(actualSearchTerm, (newValue, oldValue) => {
   if (newValue !== oldValue) {
     isSearching.value = true
+    // Keep dropdown open during search
+    if (!showDropdown.value) {
+      showDropdown.value = true
+    }
     debounceSearch(newValue)
   }
 })
@@ -790,13 +831,18 @@ const handleFocus = () => {
 }
 
 const handleBlur = (event) => {
-  // Delay hiding dropdown to allow clicks on dropdown items
+  // Delay hiding dropdown to allow clicks on dropdown items and prevent closing during search
   setTimeout(() => {
+    // Don't close dropdown if actively searching, fetching, or if input still has focus
+    if (isSearching.value || isFetching.value || document.activeElement === inputRef.value) {
+      return
+    }
+    
     if (!event.relatedTarget?.closest('.absolute')) {
       showDropdown.value = false
       highlightedIndex.value = -1
     }
-  }, 150)
+  }, 200) // Slightly longer delay
 }
 
 const handleKeydown = (event) => {
@@ -857,6 +903,15 @@ watch(() => props.filterSet, (newFilters) => {
 // Update agent type reactively
 watch(() => props.agentType, (newType) => {
   agentTypeRef.value = newType
+})
+
+// Update sort parameters reactively
+watch(() => props.sortField, (newField) => {
+  sortFieldRef.value = newField
+})
+
+watch(() => props.sortDirection, (newDirection) => {
+  sortDirectionRef.value = newDirection
 })
 
 // Cleanup
