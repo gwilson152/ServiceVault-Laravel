@@ -133,4 +133,33 @@ class Account extends Model
     {
         return $query->where('is_active', true);
     }
+
+    // Tax settings helper methods using TaxService
+    public function getTaxSettings(): array
+    {
+        return app(\App\Services\TaxService::class)->getAccountTaxSettings($this->id);
+    }
+
+    public function getEffectiveTaxRate(): float
+    {
+        return app(\App\Services\TaxService::class)->getEffectiveTaxRate($this->id);
+    }
+
+    public function getEffectiveTaxApplicationMode(): string
+    {
+        return app(\App\Services\TaxService::class)->getEffectiveTaxApplicationMode($this->id);
+    }
+
+    public function isTaxExempt(): bool
+    {
+        return app(\App\Services\TaxService::class)->isAccountTaxExempt($this->id);
+    }
+
+    public function hasTaxOverrides(): bool
+    {
+        return Setting::where('type', 'account')
+                     ->where('account_id', $this->id)
+                     ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
+                     ->exists();
+    }
 }

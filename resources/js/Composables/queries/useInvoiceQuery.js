@@ -3,7 +3,7 @@ import { computed } from "vue";
 import axios from "axios";
 import { queryKeys } from "@/Services/queryClient.js";
 
-export function useInvoiceQuery(invoiceId) {
+export function useInvoiceQuery(invoiceId, options = {}) {
     const queryClient = useQueryClient();
 
     // Query for individual invoice with line items
@@ -33,7 +33,7 @@ export function useInvoiceQuery(invoiceId) {
             const response = await axios.get(`/api/billing/invoices/${invoiceId}/available-items`);
             return response.data.data;
         },
-        enabled: !!invoiceId,
+        enabled: !!invoiceId && (options.loadAvailableItems ?? false),
         staleTime: 1000 * 30, // 30 seconds
     });
 

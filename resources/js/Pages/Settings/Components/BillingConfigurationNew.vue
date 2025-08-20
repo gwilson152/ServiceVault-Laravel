@@ -40,6 +40,11 @@
       <div v-show="activeSubTab === 'templates'" class="space-y-8">
         <AddonTemplates />
       </div>
+
+      <!-- Tax Configuration Tab -->
+      <div v-show="activeSubTab === 'tax'" class="space-y-8">
+        <TaxConfiguration />
+      </div>
     </div>
   </div>
 </template>
@@ -49,14 +54,17 @@ import { ref } from 'vue'
 import {
   CurrencyDollarIcon,
   CubeIcon,
+  DocumentTextIcon,
 } from '@heroicons/vue/24/outline'
 import BillingRates from './Billing/BillingRates.vue'
 import AddonTemplates from './Billing/AddonTemplates.vue'
+import TaxConfiguration from './Billing/TaxConfiguration.vue'
 
 // Sub-tab configuration
 const billingTabs = [
   { id: 'rates', name: 'Billing Rates', icon: CurrencyDollarIcon },
   { id: 'templates', name: 'Addon Templates', icon: CubeIcon },
+  { id: 'tax', name: 'Tax Configuration', icon: DocumentTextIcon },
 ]
 
 // Active sub-tab state

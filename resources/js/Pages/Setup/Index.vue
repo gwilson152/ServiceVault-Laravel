@@ -179,6 +179,91 @@
           </div>
         </div>
 
+        <!-- Tax Configuration -->
+        <div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+          <h2 class="text-xl font-semibold text-gray-900 mb-4">Tax Configuration</h2>
+          <p class="text-sm text-gray-600 mb-4">
+            Configure tax settings for your invoicing system. These can be customized later in Settings.
+          </p>
+          <div class="space-y-6">
+            <!-- Enable Tax System -->
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <InputLabel value="Enable Tax System" />
+                <p class="text-xs text-gray-500 mt-1">
+                  When enabled, taxes will be calculated on invoices according to the settings below
+                </p>
+              </div>
+              <div class="ml-4">
+                <label class="flex items-center">
+                  <Checkbox name="tax_enabled" v-model:checked="form.tax_enabled" />
+                </label>
+              </div>
+            </div>
+
+            <div v-if="form.tax_enabled" class="space-y-6">
+              <!-- Default Tax Rate -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <InputLabel for="tax_default_rate" value="Default Tax Rate (%)" />
+                  <div class="mt-1 relative rounded-md shadow-sm">
+                    <TextInput
+                      id="tax_default_rate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      class="block w-full pr-12"
+                      v-model="form.tax_default_rate"
+                      required
+                    />
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <span class="text-gray-500 sm:text-sm">%</span>
+                    </div>
+                  </div>
+                  <InputError class="mt-2" :message="form.errors.tax_default_rate" />
+                </div>
+
+                <!-- Tax Application Mode -->
+                <div>
+                  <InputLabel for="tax_application_mode" value="Tax Application" />
+                  <select
+                    id="tax_application_mode"
+                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    v-model="form.tax_application_mode"
+                    required
+                  >
+                    <option value="all_items">All Taxable Items</option>
+                    <option value="non_service_items">Products Only (No Services)</option>
+                    <option value="custom">Custom (Per Item)</option>
+                  </select>
+                  <InputError class="mt-2" :message="form.errors.tax_application_mode" />
+                  <p class="text-xs text-gray-500 mt-1">
+                    <span v-if="form.tax_application_mode === 'all_items'">Tax applies to both time entries (services) and addons (products)</span>
+                    <span v-else-if="form.tax_application_mode === 'non_service_items'">Tax applies only to addons/products, not time entries/services</span>
+                    <span v-else>Tax application determined by individual item settings</span>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Time Entries Taxable by Default -->
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <InputLabel value="Time Entries Taxable by Default" />
+                  <p class="text-xs text-gray-500 mt-1">
+                    When "All Taxable Items" is selected above, this controls whether time entries are taxable by default
+                  </p>
+                </div>
+                <div class="ml-4">
+                  <label class="flex items-center">
+                    <Checkbox name="time_entries_taxable_by_default" v-model:checked="form.time_entries_taxable_by_default" />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- User Limits -->
         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
           <h2 class="text-xl font-semibold text-gray-900 mb-4">User Limits</h2>
@@ -349,6 +434,12 @@ const form = useForm({
   enable_notifications: true,
   timer_sync_interval: 5,
   permission_cache_ttl: 300,
+  
+  // Tax Configuration (with user-specified defaults)
+  tax_enabled: true,
+  tax_default_rate: 6.0,
+  tax_application_mode: 'non_service_items',
+  time_entries_taxable_by_default: false,
   
   // User Limits (licensing will be implemented later)
   max_users: 250,

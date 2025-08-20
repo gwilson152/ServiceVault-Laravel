@@ -466,27 +466,41 @@ CREATE INDEX idx_import_mappings_order ON import_mappings(import_order);
 CREATE UNIQUE INDEX idx_import_mappings_unique ON import_mappings(profile_id, source_table, destination_table);
 ```
 
-**Field Mappings Structure** (FreeScout Example):
+**Field Mappings Structure** (Enhanced FreeScout Example):
 ```json
 {
+  "name": {
+    "type": "combine_fields",
+    "fields": ["first_name", "last_name"],
+    "separator": " "
+  },
+  "email": {
+    "type": "direct_mapping",
+    "source_field": "email"
+  },
+  "user_type": {
+    "type": "static_value",
+    "static_value": "agent"
+  },
   "id": {
     "type": "integer_to_uuid",
     "source_field": "id",
     "prefix": "freescout_user_"
   },
-  "first_name": {
-    "type": "combine_fields",
-    "fields": ["first_name", "last_name"],
-    "destination": "name",
-    "separator": " "
-  },
-  "email": {
-    "type": "direct_mapping",
+  "normalized_email": {
+    "type": "transform_function",
     "source_field": "email",
-    "destination": "email"
+    "transform_function": "lowercase"
   }
 }
 ```
+
+**Transformation Types:**
+- `direct_mapping` - One-to-one field mapping
+- `combine_fields` - Merge multiple fields with separator
+- `static_value` - Set fixed value for all records  
+- `integer_to_uuid` - Convert integers to deterministic UUIDs
+- `transform_function` - Apply data transformations (lowercase, uppercase, trim, date_format, boolean_convert)
 
 ## Key Constraints & Features
 
@@ -527,11 +541,12 @@ PostgreSQL JSONB used for:
 - Rollback capability for schema changes
 
 ### Recent Schema Changes
-- **Import System Addition**: Added import_profiles, import_jobs, and import_mappings tables with UUID primary keys
-- **Import Profile UUID Migration**: Converted import_profiles.id from integer to UUID with foreign key updates
-- **Currency Removal**: Removed currency columns from billing_rates for simplified pricing
-- **Account Hierarchy Simplification**: Streamlined parent-child relationships
-- **Email Optional**: Made user email nullable with unique constraint for flexibility
+- **Complete Field Mapping System**: Enhanced import_mappings table with comprehensive field transformation support
+- **PostgreSQL Schema Introspection**: Fixed stdClass object handling in schema queries for reliable database inspection
+- **Import System API Enhancement**: Added field mapping endpoints and missing job status methods
+- **Import Profile UUID Architecture**: Complete UUID migration with deterministic conversion for consistent data integrity
+- **Filter-Based Import Controls**: Enhanced import job options structure with comprehensive filtering capabilities
+- **Production Stability Fixes**: Resolved API route binding issues and controller method inconsistencies
 
 ### Best Practices
 - Always add existence checks in migrations

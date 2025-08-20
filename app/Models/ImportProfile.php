@@ -130,4 +130,12 @@ class ImportProfile extends Model
                isset($this->last_test_result['success']) && 
                $this->last_test_result['success'] === true;
     }
+
+    /**
+     * Get the field mappings for this import profile.
+     */
+    public function mappings()
+    {
+        return $this->hasMany(ImportMapping::class, 'profile_id');
+    }
 }

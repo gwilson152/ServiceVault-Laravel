@@ -122,7 +122,40 @@
                         <!-- Tax & Pricing Tab -->
                         <div v-if="activeOptionsTab === 'taxes'">
                           <div class="space-y-4">
-                            <div>
+                            <div class="flex items-center">
+                              <input
+                                id="override_tax"
+                                v-model="form.override_tax"
+                                type="checkbox"
+                                class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                              />
+                              <label for="override_tax" class="ml-2 block text-sm font-medium text-gray-700">
+                                Override Tax Settings for This Invoice
+                              </label>
+                            </div>
+                            <p v-if="!form.override_tax" class="text-xs text-gray-500">
+                              When unchecked, this invoice will use tax settings inherited from account or system defaults.
+                            </p>
+
+                            <div v-if="!form.override_tax" class="bg-blue-50 border border-blue-200 rounded-md p-3">
+                              <div class="flex">
+                                <div class="flex-shrink-0">
+                                  <InformationCircleIcon class="h-5 w-5 text-blue-400" />
+                                </div>
+                                <div class="ml-3">
+                                  <h4 class="text-sm font-medium text-blue-900">Using Inherited Tax Settings</h4>
+                                  <div class="mt-1 text-sm text-blue-700">
+                                    <p>Tax Rate: <strong>{{ getEffectiveTaxRateForForm() }}%</strong></p>
+                                    <p>Application Mode: <strong>{{ getEffectiveTaxApplicationModeDisplayForForm() }}</strong></p>
+                                    <p class="text-xs mt-1 text-blue-600">
+                                      These settings come from account or system defaults. Enable "Override Tax Settings" to customize.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div v-if="form.override_tax">
                               <label for="tax_rate" class="block text-sm font-medium text-gray-700">
                                 Tax Rate (%)
                               </label>
@@ -136,7 +169,26 @@
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                 placeholder="0.00"
                               />
-                              <p class="mt-1 text-xs text-gray-500">Applied only to taxable items</p>
+                            </div>
+                            
+                            <div v-if="form.override_tax">
+                              <label for="tax_application_mode" class="block text-sm font-medium text-gray-700">
+                                Apply Tax To
+                              </label>
+                              <select
+                                id="tax_application_mode"
+                                v-model="form.tax_application_mode"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                              >
+                                <option value="all_items">All Taxable Items</option>
+                                <option value="non_service_items">Products Only (No Services)</option>
+                                <option value="custom">Custom (Per Item)</option>
+                              </select>
+                              <p class="mt-1 text-xs text-gray-500">
+                                <span v-if="form.tax_application_mode === 'all_items'">Tax applies to both services and products</span>
+                                <span v-else-if="form.tax_application_mode === 'non_service_items'">Tax applies only to products/addons, not time entries</span>
+                                <span v-else>Tax applies based on individual item settings</span>
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -266,7 +318,7 @@ import {
   TransitionChild,
   TransitionRoot,
 } from '@headlessui/vue'
-import { XMarkIcon, DocumentIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, DocumentIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import UnbilledItemsSelector from '@/Components/Billing/UnbilledItemsSelector.vue'
 import { useUnbilledItemsQuery, useCreateInvoiceMutation } from '@/Composables/queries/useBillingQuery.js'
@@ -289,6 +341,8 @@ const form = reactive({
   invoice_date: new Date().toISOString().split('T')[0],
   due_date: '',
   tax_rate: 0,
+  tax_application_mode: 'all_items',
+  override_tax: false,
   notes: ''
 })
 
@@ -331,15 +385,37 @@ const invoiceSubtotal = computed(() => {
 })
 
 const taxableSubtotal = computed(() => {
-  // Calculate subtotal for only taxable items
-  const timeEntryTaxable = selectedItems.value.time_entries
-    .filter(item => item.is_taxable !== false) // Time entries are taxable by default
-    .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+  // Calculate subtotal based on tax application mode
+  let timeEntryTaxable = 0
+  let addonTaxable = 0
+  
+  if (form.tax_application_mode === 'all_items') {
+    // Apply to all taxable items (original behavior)
+    timeEntryTaxable = selectedItems.value.time_entries
+      .filter(item => item.is_taxable !== false) // Time entries are taxable by default
+      .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+      
+    addonTaxable = selectedItems.value.ticket_addons
+      .filter(item => item.is_taxable === true) // Only explicitly taxable addons
+      .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+  } else if (form.tax_application_mode === 'non_service_items') {
+    // Apply only to non-service items (addons/products), not time entries
+    timeEntryTaxable = 0 // Services are not taxed
     
-  const addonTaxable = selectedItems.value.ticket_addons
-    .filter(item => item.is_taxable === true) // Only explicitly taxable addons
-    .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
-    
+    addonTaxable = selectedItems.value.ticket_addons
+      .filter(item => item.is_taxable === true) // Only explicitly taxable addons
+      .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+  } else if (form.tax_application_mode === 'custom') {
+    // Use individual item taxable settings (same as all_items for now)
+    timeEntryTaxable = selectedItems.value.time_entries
+      .filter(item => item.is_taxable !== false)
+      .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+      
+    addonTaxable = selectedItems.value.ticket_addons
+      .filter(item => item.is_taxable === true)
+      .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+  }
+  
   return timeEntryTaxable + addonTaxable
 })
 
@@ -390,7 +466,43 @@ watch(() => form.invoice_date, (newDate) => {
 // Methods
 const onAccountSelected = (account) => {
   selectedAccountName.value = account?.name || ''
+  
+  // Inherit account tax preferences (only when override is disabled)
+  if (account && !form.override_tax) {
+    form.tax_rate = account.default_tax_rate || 0
+    form.tax_application_mode = account.default_tax_application_mode || 'all_items'
+  }
 }
+
+// Helper methods for tax inheritance display
+const getEffectiveTaxRateForForm = () => {
+  if (form.override_tax) {
+    return form.tax_rate || 0;
+  }
+  
+  // Get from selected account or system default (via API)
+  // For now, use form.tax_rate which gets populated from account selection
+  return form.tax_rate || 0;
+};
+
+const getEffectiveTaxApplicationModeForForm = () => {
+  if (form.override_tax) {
+    return form.tax_application_mode || 'all_items';
+  }
+  
+  // Get from selected account or system default
+  return form.tax_application_mode || 'all_items';
+};
+
+const getEffectiveTaxApplicationModeDisplayForForm = () => {
+  const mode = getEffectiveTaxApplicationModeForForm();
+  switch (mode) {
+    case 'all_items': return 'All Taxable Items';
+    case 'non_service_items': return 'Products Only (No Services)';
+    case 'custom': return 'Custom (Per Item)';
+    default: return 'All Taxable Items';
+  }
+};
 
 
 const handleLaunchApprovalWizard = () => {
@@ -413,6 +525,8 @@ const handleCreateInvoice = async () => {
     invoice_date: form.invoice_date,
     due_date: form.due_date,
     tax_rate: form.tax_rate || 0,
+    tax_application_mode: form.tax_application_mode,
+    override_tax: form.override_tax,
     notes: form.notes || null,
     time_entry_ids: timeEntryIds,
     ticket_addon_ids: addonIds
@@ -434,6 +548,8 @@ const resetForm = () => {
     invoice_date: new Date().toISOString().split('T')[0],
     due_date: '',
     tax_rate: 0,
+    tax_application_mode: 'all_items',
+    override_tax: false,
     notes: ''
   })
   selectedItems.value = { time_entries: [], ticket_addons: [] }

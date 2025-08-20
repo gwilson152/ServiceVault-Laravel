@@ -95,8 +95,27 @@ export function useImportQueries() {
 
     // Preview Import Mutation
     const previewImportMutation = useMutation({
-        mutationFn: async (profileId) => {
-            const response = await axios.get(`/api/import/profiles/${profileId}/preview`)
+        mutationFn: async ({ profileId, filters }) => {
+            const url = `/api/import/profiles/${profileId}/preview`
+            const params = new URLSearchParams()
+            
+            // Add filter parameters if provided
+            if (filters?.selected_tables?.length > 0) {
+                params.append('tables', filters.selected_tables.join(','))
+            }
+            
+            if (filters?.import_filters) {
+                Object.entries(filters.import_filters).forEach(([key, value]) => {
+                    if (value !== null && value !== undefined && value !== '') {
+                        params.append(key, value)
+                    }
+                })
+            }
+            
+            const queryString = params.toString()
+            const fullUrl = queryString ? `${url}?${queryString}` : url
+            
+            const response = await axios.get(fullUrl)
             return response.data
         },
     })
@@ -167,8 +186,15 @@ export function useImportQueries() {
         return getSchemaMutation.mutateAsync(profileId)
     }
 
-    const previewImport = (profileId) => {
-        return previewImportMutation.mutateAsync(profileId)
+    const previewImport = (profileId, filters = null) => {
+        // Handle both old API (profileId only) and new API (profileId + filters)
+        if (typeof profileId === 'string' && !filters) {
+            // Old API: just profileId
+            return previewImportMutation.mutateAsync({ profileId })
+        } else {
+            // New API: profileId + filters
+            return previewImportMutation.mutateAsync({ profileId, filters })
+        }
     }
 
     const executeImport = (profileId, options = {}) => {
@@ -177,6 +203,19 @@ export function useImportQueries() {
 
     const cancelJob = (jobId) => {
         return cancelJobMutation.mutateAsync(jobId)
+    }
+
+    // Field Mappings API
+    const getFieldMappings = async (profileId) => {
+        const response = await axios.get(`/api/import/profiles/${profileId}/mappings`)
+        return response.data
+    }
+
+    const saveFieldMappings = async (profileId, mappings) => {
+        const response = await axios.post(`/api/import/profiles/${profileId}/mappings`, {
+            mappings: mappings
+        })
+        return response.data
     }
 
     return {
@@ -205,6 +244,8 @@ export function useImportQueries() {
         previewImport,
         executeImport,
         cancelJob,
+        getFieldMappings,
+        saveFieldMappings,
         
         // Mutation states
         isCreatingProfile: createProfileMutation.isPending,

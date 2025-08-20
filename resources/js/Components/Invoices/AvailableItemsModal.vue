@@ -199,7 +199,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import StackedDialog from '@/Components/StackedDialog.vue'
 import { DocumentIcon } from '@heroicons/vue/24/outline'
 import { useInvoiceQuery } from '@/Composables/queries/useInvoiceQuery.js'
@@ -229,13 +229,21 @@ const customItem = reactive({
   unit_price: 0
 })
 
-// Query composable
+// Query composable - don't load available items automatically
 const { 
   availableItems, 
   loadingAvailableItems: loading,
+  refetchAvailableItems,
   addLineItem,
   isAddingLineItem: isAddingItems
-} = useInvoiceQuery(props.invoiceId)
+} = useInvoiceQuery(props.invoiceId, { loadAvailableItems: false })
+
+// Load available items only when modal is opened
+watch(() => props.show, (isOpen) => {
+  if (isOpen && props.invoiceId) {
+    refetchAvailableItems()
+  }
+}, { immediate: true })
 
 // Computed
 const filteredItems = computed(() => {

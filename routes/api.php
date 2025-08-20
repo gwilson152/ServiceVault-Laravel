@@ -434,6 +434,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('user-management', [SettingController::class, 'updateUserManagementSettings'])
             ->name('settings.user-management.update');
 
+        // Tax Settings
+        Route::get('tax', [SettingController::class, 'getTaxSettings'])
+            ->name('settings.tax');
+        Route::put('tax', [SettingController::class, 'updateTaxSettings'])
+            ->name('settings.tax.update');
+
         // Advanced Settings
         Route::get('advanced', [SettingController::class, 'getAdvancedSettings'])
             ->name('settings.advanced');
@@ -473,6 +479,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('invoices.line-items.update');
         Route::delete('invoices/{invoice}/line-items/{lineItem}', [App\Http\Controllers\Api\InvoiceController::class, 'removeLineItem'])
             ->name('invoices.line-items.remove');
+        Route::post('invoices/{invoice}/line-items/reorder', [App\Http\Controllers\Api\InvoiceController::class, 'reorderLineItems'])
+            ->name('invoices.line-items.reorder');
+        Route::post('invoices/{invoice}/separators', [App\Http\Controllers\Api\InvoiceController::class, 'addSeparator'])
+            ->name('invoices.separators.add');
 
         // Payment Management
         Route::apiResource('payments', App\Http\Controllers\Api\PaymentController::class);
@@ -549,6 +559,12 @@ Route::prefix('admin')->middleware(['auth:web,sanctum'])->group(function () {
             ->name('import.profiles.preview');
         Route::post('profiles/{profile}/preview-table', [ImportProfileController::class, 'previewTable'])
             ->name('import.profiles.preview-table');
+        
+        // Field Mapping Management
+        Route::get('profiles/{profile}/mappings', [ImportProfileController::class, 'getMappings'])
+            ->name('import.profiles.mappings.get');
+        Route::post('profiles/{profile}/mappings', [ImportProfileController::class, 'saveMappings'])
+            ->name('import.profiles.mappings.save');
 
         // Import Job Management
         Route::apiResource('jobs', ImportJobController::class)->except(['update']);

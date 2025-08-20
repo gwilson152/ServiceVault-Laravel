@@ -173,8 +173,12 @@ class SearchController extends Controller
 
         $accounts = $builder->limit($limit)->get();
 
+        $taxService = app(\App\Services\TaxService::class);
+        
         return response()->json([
-            'data' => $accounts->map(function ($account) {
+            'data' => $accounts->map(function ($account) use ($taxService) {
+                $taxSettings = $taxService->getAccountTaxSettings($account->id);
+                
                 return [
                     'id' => $account->id,
                     'name' => $account->name,
@@ -182,6 +186,9 @@ class SearchController extends Controller
                     'phone' => $account->phone,
                     'is_active' => $account->is_active,
                     'created_at' => $account->created_at,
+                    'default_tax_rate' => $taxSettings['tax_rate'],
+                    'default_tax_application_mode' => $taxSettings['tax_application_mode'],
+                    'tax_exempt' => $taxSettings['tax_exempt'],
                 ];
             }),
         ]);

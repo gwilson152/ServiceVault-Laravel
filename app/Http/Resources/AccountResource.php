@@ -50,6 +50,12 @@ class AccountResource extends JsonResource
             'tax_id' => $this->tax_id,
             'notes' => $this->notes,
 
+            // Tax Configuration
+            'default_tax_rate' => $this->getEffectiveTaxRate(),
+            'default_tax_application_mode' => $this->getEffectiveTaxApplicationMode(), 
+            'tax_exempt' => $this->isTaxExempt(),
+            'has_tax_overrides' => $this->hasTaxOverrides(),
+
             // Account Information
             'users_count' => $this->users()->count(),
 

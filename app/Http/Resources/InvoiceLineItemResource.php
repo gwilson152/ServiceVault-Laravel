@@ -17,6 +17,7 @@ class InvoiceLineItemResource extends JsonResource
         return [
             'id' => $this->id,
             'line_type' => $this->line_type,
+            'sort_order' => $this->sort_order,
             'description' => $this->description,
             'quantity' => number_format($this->quantity, 2),
             'unit_price' => number_format($this->unit_price, 2),
@@ -25,6 +26,7 @@ class InvoiceLineItemResource extends JsonResource
             'tax_amount' => number_format($this->tax_amount, 2),
             'total_amount' => number_format($this->total_amount, 2),
             'billable' => $this->billable,
+            'taxable' => $this->taxable,
             'metadata' => $this->metadata,
 
             // Relationships

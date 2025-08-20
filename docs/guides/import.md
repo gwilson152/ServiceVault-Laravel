@@ -9,13 +9,14 @@ The import system allows administrators to migrate data from external PostgreSQL
 ## Key Features
 
 - **PostgreSQL Database Connectivity** with SSL support and connection testing
-- **FreeScout Import Profile** with predefined data mappings and UUID conversion
-- **Filter-Based Import Control** - Apply date ranges, status filters, and record limits
+- **Visual Field Mapping Configuration** with multiple transformation types (direct, combine, static, UUID conversion, transforms)
+- **Comprehensive Filter Builder** - Configure date ranges, status filters, record limits, and data type selection
+- **FreeScout Import Profile** with specialized mappings and deterministic UUID conversion
 - **Real-Time Import Progress** tracking and monitoring with WebSocket updates
-- **Import Preview** with tabbed interface and relationship resolution
+- **Enhanced Import Preview** with tabbed interface, relationship resolution, and filter indicators
 - **Permission-Based Access Control** with comprehensive three-dimensional authorization
-- **UUID-Based Primary Keys** for consistent data architecture
-- **Intelligent Data Transformation** with automatic integer-to-UUID conversion
+- **UUID-Based Primary Keys** for consistent data architecture with deterministic generation
+- **Production-Ready Stability** with comprehensive error handling and API reliability
 
 ## Getting Started
 
@@ -127,6 +128,163 @@ Service Vault uses UUID primary keys while FreeScout uses integer IDs. The impor
 'conversation_id' → 'ticket_id' (UUID lookup from converted conversation)
 'person_id' → 'user_id' (UUID lookup from converted user)
 'created_at' → 'created_at' (timestamp preserved)
+```
+
+## Field Mapping Configuration
+
+### Visual Field Mapping Interface
+
+The field mapping configuration provides a comprehensive visual interface to customize how source database fields map to Service Vault fields. Access this through the **"Configure Field Mappings"** option in the import profile menu.
+
+#### Key Components
+
+**Data Type Selection** (Left Sidebar):
+- **Staff Users** - FreeScout users → Service Vault users
+- **Customer Accounts** - FreeScout customers → Service Vault accounts + users
+- **Tickets** - FreeScout conversations → Service Vault tickets  
+- **Comments** - FreeScout threads → Service Vault comments
+
+Each data type shows its configuration status:
+- 🔴 **Not Configured** - No mappings defined
+- 🟡 **Partial** - Some fields mapped (< 3 mappings)
+- 🟢 **Complete** - Well-configured (3+ mappings)
+
+#### Field Mapping Types
+
+**1. Direct Mapping**
+```php
+// One-to-one field mapping
+source: "email" → destination: "email"
+```
+
+**2. Combine Fields**
+```php
+// Merge multiple fields with separator
+sources: ["first_name", "last_name"] 
+separator: " "
+destination: "name"
+// Result: "John Doe"
+```
+
+**3. Static Value**
+```php
+// Set fixed value for all records
+static_value: "agent"
+destination: "user_type"
+```
+
+**4. Integer → UUID**
+```php
+// Convert FreeScout integer IDs to UUIDs
+source: "id"
+prefix: "freescout_user_"
+destination: "id"
+// Result: freescout_user_123 → deterministic UUID
+```
+
+**5. Transform Functions**
+```php
+// Apply data transformations
+source: "EMAIL"
+transform: "lowercase"
+destination: "email"
+// Result: "EMAIL" → "email"
+```
+
+**Available Transforms:**
+- `lowercase` - Convert to lowercase
+- `uppercase` - Convert to uppercase  
+- `trim` - Remove whitespace
+- `date_format` - Format date strings
+- `boolean_convert` - Convert to boolean
+
+#### Configuration Workflow
+
+1. **Select Data Type** from the left sidebar
+2. **Review Source Fields** - Shows available fields from actual database schema
+3. **Add Field Mappings** using the "Add Field Mapping" button
+4. **Configure Each Mapping**:
+   - Choose destination Service Vault field
+   - Select mapping type
+   - Configure source field(s) or static values
+5. **Preview Mapping** - See live preview of transformation
+6. **Save Configuration** - Store mappings for import execution
+
+#### Default and Sample Configurations
+
+**Load Defaults** - Applies sensible default mappings for common FreeScout fields:
+- Staff Users: Combine first_name + last_name → name, email → email
+- Customer Accounts: company → name, combine name fields
+- Tickets: subject → title, number → ticket_number
+- Comments: body → comment
+
+**Load Sample Config** - Comprehensive example showing all mapping types for learning and testing
+
+#### Mapping Validation
+
+- **Real-time validation** ensures only complete, valid mappings can be saved
+- **Source field detection** from actual database schema
+- **Type compatibility checking** between source and destination fields
+- **Preview functionality** shows transformation results before execution
+
+## Filter Configuration
+
+### Comprehensive Filter Builder
+
+The filter builder provides precise control over which data is imported. Access through **"Configure Filters"** in the import profile menu.
+
+#### Filter Options
+
+**Data Type Selection**
+- Choose which tables to import: users, customers, conversations, threads
+- Visual checkboxes with descriptions for each data type
+
+**Date Range Filtering**
+- **Enable Date Filter** - Toggle to apply date restrictions
+- **From Date** - Import records created after this date
+- **To Date** - Import records created before this date
+- Leave blank to import all dates
+
+**Ticket Status Filtering**
+- **Enable Status Filter** - Toggle for conversation status filtering
+- **Status Options**:
+  - Active (Open) - Status 1
+  - Pending - Status 2  
+  - Closed - Status 3
+- Leave unselected to import all statuses
+
+**Record Limits**
+- **Enable Record Limit** - Toggle for testing with smaller datasets
+- **Maximum Records** - Number per data type (useful for testing)
+- Helps with iterative testing and validation
+
+**Active Users Only**
+- **Checkbox** - Skip disabled or inactive user accounts
+- Improves data quality by excluding obsolete accounts
+
+#### Filter Presets
+
+**Testing Preset** - Pre-configured for development:
+- Users + Conversations only
+- 100 record limit per type
+- Active users only
+- Perfect for initial testing and validation
+
+#### Filter Application Workflow
+
+1. **Configure Filters** through the filter builder interface
+2. **Apply Filters & Preview** - See filtered data in preview modal
+3. **Visual Filter Indicators** - Active filters shown in amber boxes
+4. **Execute Import** - Filters applied automatically during import
+
+**Filter Summary Display:**
+```
+Active Import Filters
+✓ Data Types: users, conversations
+✓ Date Range: 2024-01-01 to 2024-12-31  
+✓ Ticket Status: Active (Open)
+✓ Record Limit: 1000 per type
+✓ Users: Active only
 ```
 
 ## Import Execution

@@ -117,9 +117,36 @@ class AccountController extends Controller
             'tax_id' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
+            // Tax configuration
+            'override_tax' => 'nullable|boolean',
+            'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'tax_application_mode' => 'nullable|in:all_items,non_service_items,custom',
+            'tax_exempt' => 'nullable|boolean',
         ]);
 
-        $account = Account::create($validated);
+        // Create account without tax settings
+        $accountData = collect($validated)->except(['override_tax', 'tax_rate', 'tax_application_mode', 'tax_exempt'])->toArray();
+        $account = Account::create($accountData);
+
+        // Handle tax settings via TaxService if override_tax is enabled
+        if ($validated['override_tax'] ?? false) {
+            $taxService = app(\App\Services\TaxService::class);
+            $taxSettings = [];
+            
+            if (isset($validated['tax_rate'])) {
+                $taxSettings['default_rate'] = $validated['tax_rate'];
+            }
+            if (isset($validated['tax_application_mode'])) {
+                $taxSettings['default_application_mode'] = $validated['tax_application_mode'];
+            }
+            if (isset($validated['tax_exempt'])) {
+                $taxSettings['exempt'] = $validated['tax_exempt'];
+            }
+            
+            if (!empty($taxSettings)) {
+                $taxService->setAccountTaxSettings($account->id, $taxSettings);
+            }
+        }
 
         return response()->json([
             'message' => 'Account created successfully',
@@ -165,9 +192,44 @@ class AccountController extends Controller
             'tax_id' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
+            // Tax configuration
+            'override_tax' => 'nullable|boolean',
+            'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'tax_application_mode' => 'nullable|in:all_items,non_service_items,custom',
+            'tax_exempt' => 'nullable|boolean',
         ]);
 
-        $account->update($validated);
+        // Update account without tax settings
+        $accountData = collect($validated)->except(['override_tax', 'tax_rate', 'tax_application_mode', 'tax_exempt'])->toArray();
+        $account->update($accountData);
+
+        // Handle tax settings via TaxService
+        $taxService = app(\App\Services\TaxService::class);
+        
+        if ($validated['override_tax'] ?? false) {
+            // Set account-specific tax settings
+            $taxSettings = [];
+            
+            if (isset($validated['tax_rate'])) {
+                $taxSettings['default_rate'] = $validated['tax_rate'];
+            }
+            if (isset($validated['tax_application_mode'])) {
+                $taxSettings['default_application_mode'] = $validated['tax_application_mode'];
+            }
+            if (isset($validated['tax_exempt'])) {
+                $taxSettings['exempt'] = $validated['tax_exempt'];
+            }
+            
+            if (!empty($taxSettings)) {
+                $taxService->setAccountTaxSettings($account->id, $taxSettings);
+            }
+        } else {
+            // Remove account-specific tax overrides (fall back to system defaults)
+            \App\Models\Setting::where('type', 'account')
+                               ->where('account_id', $account->id)
+                               ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
+                               ->delete();
+        }
 
         return response()->json([
             'message' => 'Account updated successfully',

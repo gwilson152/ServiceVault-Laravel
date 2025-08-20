@@ -370,6 +370,193 @@ GET /api/import/profiles/{profile_id}/preview
 }
 ```
 
+## Field Mapping Management
+
+### Get Import Profile Field Mappings
+
+```bash
+GET /api/import/profiles/{profile_id}/mappings
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "profile_id": "uuid",
+    "source_table": "users",
+    "destination_table": "users",
+    "field_mappings": {
+      "name": {
+        "type": "combine_fields",
+        "fields": ["first_name", "last_name"],
+        "separator": " "
+      },
+      "email": {
+        "type": "direct_mapping",
+        "source_field": "email"
+      },
+      "user_type": {
+        "type": "static_value",
+        "static_value": "agent"
+      },
+      "id": {
+        "type": "integer_to_uuid",
+        "source_field": "id",
+        "prefix": "freescout_user_"
+      }
+    },
+    "import_order": 1,
+    "is_active": true,
+    "created_at": "2025-08-20T12:00:00Z",
+    "updated_at": "2025-08-20T12:00:00Z"
+  },
+  {
+    "id": "uuid",
+    "profile_id": "uuid",
+    "source_table": "conversations",
+    "destination_table": "tickets",
+    "field_mappings": {
+      "title": {
+        "type": "direct_mapping",
+        "source_field": "subject"
+      },
+      "ticket_number": {
+        "type": "integer_to_uuid",
+        "source_field": "number",
+        "prefix": "FS"
+      },
+      "status": {
+        "type": "transform_function",
+        "source_field": "status",
+        "transform_function": "status_mapping"
+      }
+    },
+    "import_order": 3,
+    "is_active": true,
+    "created_at": "2025-08-20T12:00:00Z",
+    "updated_at": "2025-08-20T12:00:00Z"
+  }
+]
+```
+
+### Save Field Mappings
+
+```bash
+POST /api/import/profiles/{profile_id}/mappings
+```
+
+**Request Body:**
+```json
+{
+  "mappings": [
+    {
+      "source_table": "users",
+      "destination_table": "users",
+      "field_mappings": {
+        "name": {
+          "type": "combine_fields",
+          "fields": ["first_name", "last_name"],
+          "separator": " "
+        },
+        "email": {
+          "type": "direct_mapping",
+          "source_field": "email"
+        },
+        "user_type": {
+          "type": "static_value",
+          "static_value": "agent"
+        }
+      },
+      "import_order": 1
+    },
+    {
+      "source_table": "conversations",
+      "destination_table": "tickets", 
+      "field_mappings": {
+        "title": {
+          "type": "direct_mapping",
+          "source_field": "subject"
+        },
+        "description": {
+          "type": "transform_function",
+          "source_field": "preview",
+          "transform_function": "trim"
+        }
+      },
+      "import_order": 3
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Field mappings saved successfully",
+  "mappings": [
+    // ... array of created mapping objects
+  ]
+}
+```
+
+### Field Mapping Types
+
+The field mapping system supports multiple transformation types:
+
+#### 1. Direct Mapping
+```json
+{
+  "type": "direct_mapping",
+  "source_field": "email"
+}
+```
+Maps one source field directly to destination field.
+
+#### 2. Combine Fields  
+```json
+{
+  "type": "combine_fields",
+  "fields": ["first_name", "last_name"],
+  "separator": " "
+}
+```
+Combines multiple source fields with a separator.
+
+#### 3. Static Value
+```json
+{
+  "type": "static_value",
+  "static_value": "agent"
+}
+```
+Sets a fixed value for all records.
+
+#### 4. Integer to UUID
+```json
+{
+  "type": "integer_to_uuid",
+  "source_field": "id",
+  "prefix": "freescout_user_"
+}
+```
+Converts integer IDs to deterministic UUIDs with prefix.
+
+#### 5. Transform Functions
+```json
+{
+  "type": "transform_function",
+  "source_field": "email_address",
+  "transform_function": "lowercase"
+}
+```
+Applies data transformations. Available functions:
+- `lowercase` - Convert to lowercase
+- `uppercase` - Convert to uppercase  
+- `trim` - Remove whitespace
+- `date_format` - Format date strings
+- `boolean_convert` - Convert to boolean
+
 ## Import Jobs
 
 ### List Import Jobs

@@ -21,6 +21,8 @@ class Invoice extends Model
         'status',
         'subtotal',
         'tax_rate',
+        'tax_application_mode',
+        'override_tax',
         'tax_amount',
         'total',
         'notes',
@@ -33,6 +35,7 @@ class Invoice extends Model
         'tax_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'override_tax' => 'boolean',
     ];
 
     protected static function boot()
@@ -58,7 +61,7 @@ class Invoice extends Model
 
     public function lineItems(): HasMany
     {
-        return $this->hasMany(InvoiceLineItem::class);
+        return $this->hasMany(InvoiceLineItem::class)->orderBy('sort_order');
     }
 
     public function payments(): HasMany
@@ -114,9 +117,89 @@ class Invoice extends Model
 
     public function calculateTotals(): void
     {
-        $this->subtotal = $this->lineItems->sum('total_amount');
-        $this->tax_amount = $this->subtotal * ($this->tax_rate / 100);
+        // First, recalculate each line item's tax amount
+        foreach ($this->lineItems as $lineItem) {
+            $lineItem->calculateTotals();
+            $lineItem->save();
+        }
+        
+        // Then calculate invoice totals from updated line items
+        $this->subtotal = $this->lineItems->sum(function($item) {
+            $subtotal = $item->quantity * $item->unit_price;
+            return $subtotal - $item->discount_amount;
+        });
+        
+        $this->tax_amount = $this->lineItems->sum('tax_amount');
         $this->total = $this->subtotal + $this->tax_amount;
+    }
+
+    /**
+     * Calculate the taxable subtotal based on line item taxable settings
+     */
+    public function calculateTaxableSubtotal(): float
+    {
+        $taxableSubtotal = 0;
+        $taxService = app(\App\Services\TaxService::class);
+        
+        // Get effective tax application mode
+        $effectiveMode = $this->override_tax 
+            ? ($this->tax_application_mode ?? 'all_items')
+            : $taxService->getEffectiveTaxApplicationMode($this->account_id);
+        
+        foreach ($this->lineItems as $item) {
+            $isItemTaxable = $this->isLineItemTaxable($item, $effectiveMode);
+            
+            if ($isItemTaxable) {
+                $taxableSubtotal += $item->total_amount;
+            }
+        }
+        
+        return $taxableSubtotal;
+    }
+
+    /**
+     * Determine if a line item is taxable based on its setting and inheritance
+     */
+    public function isLineItemTaxable(InvoiceLineItem $item, string $effectiveMode = null): bool
+    {
+        // Explicit taxable setting takes precedence
+        if ($item->taxable !== null) {
+            return $item->taxable;
+        }
+        
+        $taxService = app(\App\Services\TaxService::class);
+        
+        // Inherit from tax application mode
+        $mode = $effectiveMode ?? ($this->override_tax 
+            ? ($this->tax_application_mode ?? 'all_items')
+            : $taxService->getEffectiveTaxApplicationMode($this->account_id));
+        
+        switch ($mode) {
+            case 'all_items':
+                // For time entries, check the specific setting
+                if ($item->line_type === 'time_entry') {
+                    return $taxService->getTimeEntriesTaxableDefault($this->account_id);
+                }
+                return true;
+            case 'non_service_items':
+                return $item->line_type !== 'time_entry';
+            case 'custom':
+                return $item->taxable === true; // Only explicitly marked as taxable
+            default:
+                // For time entries, check the specific setting
+                if ($item->line_type === 'time_entry') {
+                    return $taxService->getTimeEntriesTaxableDefault($this->account_id);
+                }
+                return true;
+        }
+    }
+
+    /**
+     * Get inherited tax settings for this invoice
+     */
+    public function getInheritedTaxSettings(): array
+    {
+        return app(\App\Services\TaxService::class)->getAccountTaxSettings($this->account_id);
     }
 
     public static function generateInvoiceNumber(string $accountId): string

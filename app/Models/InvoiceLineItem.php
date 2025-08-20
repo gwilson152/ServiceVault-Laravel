@@ -16,6 +16,7 @@ class InvoiceLineItem extends Model
         'time_entry_id',
         'ticket_addon_id',
         'line_type',
+        'sort_order',
         'description',
         'quantity',
         'unit_price',
@@ -24,6 +25,7 @@ class InvoiceLineItem extends Model
         'tax_amount',
         'total_amount',
         'billable',
+        'taxable',
         'metadata',
     ];
 
@@ -35,7 +37,9 @@ class InvoiceLineItem extends Model
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'billable' => 'boolean',
+        'taxable' => 'boolean',
         'metadata' => 'array',
+        'sort_order' => 'integer',
     ];
 
     protected static function boot()
@@ -66,7 +70,26 @@ class InvoiceLineItem extends Model
     {
         $subtotal = $this->quantity * $this->unit_price;
         $afterDiscount = $subtotal - $this->discount_amount;
-        $this->tax_amount = $afterDiscount * ($this->tax_rate / 100);
+        
+        // Calculate tax amount based on invoice tax settings and line item taxable status
+        if ($this->invoice && $this->invoice->account_id) {
+            $isItemTaxable = $this->invoice->isLineItemTaxable($this);
+            
+            if ($isItemTaxable) {
+                $taxService = app(\App\Services\TaxService::class);
+                $effectiveTaxRate = $this->invoice->override_tax 
+                    ? ($this->invoice->tax_rate ?? 0)
+                    : $taxService->getEffectiveTaxRate($this->invoice->account_id);
+                
+                $this->tax_amount = round($afterDiscount * ($effectiveTaxRate / 100), 2);
+            } else {
+                $this->tax_amount = 0;
+            }
+        } else {
+            // Fallback for cases where invoice is not loaded
+            $this->tax_amount = $afterDiscount * (($this->tax_rate ?? 0) / 100);
+        }
+        
         $this->total_amount = $afterDiscount + $this->tax_amount;
     }
 
@@ -91,8 +114,24 @@ class InvoiceLineItem extends Model
         return $query->where('line_type', 'addon');
     }
 
+    public function scopeSeparators($query)
+    {
+        return $query->where('line_type', 'separator');
+    }
+
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('sort_order');
+    }
+
     public function scopeBillable($query)
     {
         return $query->where('billable', true);
+    }
+
+    // Helper methods
+    public function isSeparator(): bool
+    {
+        return $this->line_type === 'separator';
     }
 }

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, computed, nextTick } from 'vue'
+import { InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { useCreateAccountMutation, useUpdateAccountMutation } from '@/Composables/queries/useAccountsQuery'
 import StackedDialog from '@/Components/StackedDialog.vue'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
@@ -48,7 +49,12 @@ const form = ref({
     billing_country: '',
     tax_id: '',
     notes: '',
-    is_active: true
+    is_active: true,
+    // Tax configuration
+    override_tax: false,
+    tax_rate: 0,
+    tax_application_mode: 'all_items',
+    tax_exempt: false
 })
 
 const errors = ref({})
@@ -96,7 +102,12 @@ watch(() => isModalOpen.value, async (isOpen) => {
                 billing_country: props.account.billing_country || '',
                 tax_id: props.account.tax_id || '',
                 notes: props.account.notes || '',
-                is_active: props.account.is_active ?? true
+                is_active: props.account.is_active ?? true,
+                // Tax configuration (check if account has tax overrides)
+                override_tax: props.account.has_tax_overrides || false,
+                tax_rate: props.account.default_tax_rate || 0,
+                tax_application_mode: props.account.default_tax_application_mode || 'all_items',
+                tax_exempt: props.account.tax_exempt || false
             }
         } else {
             // Creating new account
@@ -128,7 +139,12 @@ const resetForm = () => {
         billing_country: '',
         tax_id: '',
         notes: '',
-        is_active: true
+        is_active: true,
+        // Tax configuration defaults
+        override_tax: false,
+        tax_rate: 0,
+        tax_application_mode: 'all_items',
+        tax_exempt: false
     }
 }
 
@@ -173,6 +189,28 @@ const copyAddressToBilling = () => {
 
 const closeModal = () => {
     emit('close')
+}
+
+// Helper methods for system tax defaults display
+// Note: In a real implementation, these would come from an API call to get system defaults
+const getSystemTaxRate = () => {
+    // TODO: Fetch from system settings via API
+    return 0; // Default system rate
+}
+
+const getSystemTaxApplicationMode = () => {
+    // TODO: Fetch from system settings via API  
+    return 'all_items'; // Default system mode
+}
+
+const getSystemTaxApplicationModeDisplay = () => {
+    const mode = getSystemTaxApplicationMode();
+    switch (mode) {
+        case 'all_items': return 'All Taxable Items';
+        case 'non_service_items': return 'Products Only (No Services)';
+        case 'custom': return 'Custom (Per Item)';
+        default: return 'All Taxable Items';
+    }
 }
 
 
@@ -514,6 +552,111 @@ const closeModal = () => {
                                 :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.tax_id }"
                             />
                             <p v-if="errors.tax_id" class="mt-1 text-sm text-red-600">{{ errors.tax_id[0] }}</p>
+                        </div>
+
+                        <!-- Tax Configuration -->
+                        <div class="border-t border-gray-200 pt-6">
+                            <h4 class="text-sm font-medium text-gray-900 mb-4">Tax Configuration</h4>
+                            
+                            <!-- Tax Exempt -->
+                            <div class="mb-4">
+                                <div class="flex items-center">
+                                    <input
+                                        id="tax_exempt"
+                                        v-model="form.tax_exempt"
+                                        type="checkbox"
+                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    />
+                                    <label for="tax_exempt" class="ml-2 block text-sm font-medium text-gray-700">
+                                        Tax Exempt Account
+                                    </label>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    When enabled, this account will never have taxes applied to invoices.
+                                </p>
+                            </div>
+
+                            <!-- Override Tax Settings -->
+                            <div v-if="!form.tax_exempt" class="space-y-4">
+                                <div class="flex items-center">
+                                    <input
+                                        id="override_tax"
+                                        v-model="form.override_tax"
+                                        type="checkbox"
+                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    />
+                                    <label for="override_tax" class="ml-2 block text-sm font-medium text-gray-700">
+                                        Override System Tax Settings
+                                    </label>
+                                </div>
+                                <p v-if="!form.override_tax" class="text-xs text-gray-500">
+                                    When unchecked, this account will use system default tax settings for all invoices.
+                                </p>
+
+                                <!-- System Default Display -->
+                                <div v-if="!form.override_tax" class="bg-blue-50 border border-blue-200 rounded-md p-3">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <InformationCircleIcon class="h-5 w-5 text-blue-400" />
+                                        </div>
+                                        <div class="ml-3">
+                                            <h4 class="text-sm font-medium text-blue-900">Using System Default Tax Settings</h4>
+                                            <div class="mt-1 text-sm text-blue-700">
+                                                <p>Tax Rate: <strong>{{ getSystemTaxRate() }}%</strong></p>
+                                                <p>Application Mode: <strong>{{ getSystemTaxApplicationModeDisplay() }}</strong></p>
+                                                <p class="text-xs mt-1 text-blue-600">
+                                                    These settings come from the system configuration. Enable "Override System Tax Settings" to customize for this account.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Custom Tax Settings -->
+                                <div v-if="form.override_tax" class="space-y-4">
+                                    <!-- Tax Rate -->
+                                    <div>
+                                        <label for="tax_rate" class="block text-sm font-medium text-gray-700">
+                                            Default Tax Rate (%)
+                                        </label>
+                                        <input
+                                            id="tax_rate"
+                                            v-model="form.tax_rate"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            max="100"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.tax_rate }"
+                                            placeholder="0.00"
+                                        />
+                                        <p v-if="errors.tax_rate" class="mt-1 text-sm text-red-600">{{ errors.tax_rate[0] }}</p>
+                                    </div>
+
+                                    <!-- Tax Application Mode -->
+                                    <div>
+                                        <label for="tax_application_mode" class="block text-sm font-medium text-gray-700">
+                                            Apply Tax To
+                                        </label>
+                                        <select
+                                            id="tax_application_mode"
+                                            v-model="form.tax_application_mode"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.tax_application_mode }"
+                                        >
+                                            <option value="all_items">All Taxable Items</option>
+                                            <option value="non_service_items">Products Only (No Services)</option>
+                                            <option value="custom">Custom (Per Item)</option>
+                                        </select>
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            <span v-if="form.tax_application_mode === 'all_items'">Tax applies to both services and products</span>
+                                            <span v-else-if="form.tax_application_mode === 'non_service_items'">Tax applies only to products/addons, not time entries</span>
+                                            <span v-else>Tax application determined by individual item settings</span>
+                                        </p>
+                                        <p v-if="errors.tax_application_mode" class="mt-1 text-sm text-red-600">{{ errors.tax_application_mode[0] }}</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Notes -->

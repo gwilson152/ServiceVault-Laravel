@@ -58,6 +58,38 @@
         </div>
       </div>
 
+      <!-- Active Filters Indicator -->
+      <div v-if="profile?.tempFilters" class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <CheckCircleIcon class="h-5 w-5 text-amber-400" />
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-amber-800">Active Import Filters</h3>
+            <div class="mt-2 text-sm text-amber-700">
+              <div class="space-y-1">
+                <div v-if="profile.tempFilters.selected_tables?.length > 0">
+                  <span class="font-medium">Data Types:</span> {{ profile.tempFilters.selected_tables.join(', ') }}
+                </div>
+                <div v-if="profile.tempFilters.import_filters?.date_from || profile.tempFilters.import_filters?.date_to">
+                  <span class="font-medium">Date Range:</span> 
+                  {{ profile.tempFilters.import_filters.date_from || 'No start' }} to {{ profile.tempFilters.import_filters.date_to || 'No end' }}
+                </div>
+                <div v-if="profile.tempFilters.import_filters?.ticket_status">
+                  <span class="font-medium">Ticket Status:</span> {{ getStatusLabel(profile.tempFilters.import_filters.ticket_status) }}
+                </div>
+                <div v-if="profile.tempFilters.import_filters?.limit">
+                  <span class="font-medium">Record Limit:</span> {{ profile.tempFilters.import_filters.limit }} per type
+                </div>
+                <div v-if="profile.tempFilters.import_filters?.active_users_only">
+                  <span class="font-medium">Users:</span> Active only
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Import Selection -->
       <div class="bg-gray-50 rounded-lg p-4 space-y-3">
         <h3 class="text-sm font-medium text-gray-900">Select Data to Import</h3>
@@ -344,6 +376,10 @@ const totalRecords = computed(() => {
   return totals
 })
 
+const hasActiveFilters = computed(() => {
+  return Boolean(props.profile?.tempFilters)
+})
+
 // Watch for profile changes
 watch(() => [props.show, props.profile], ([show, profile]) => {
   if (show && profile) {
@@ -363,7 +399,9 @@ const loadPreview = async () => {
   
   try {
     error.value = null
-    const result = await previewImport(props.profile.id)
+    // Use tempFilters if available from filter builder, otherwise use default preview
+    const filters = props.profile.tempFilters || null
+    const result = await previewImport(props.profile.id, filters)
     previewData.value = result
     
     // Set active tab to first available section and select all tables by default
@@ -420,6 +458,15 @@ const getShortTitle = (title) => {
   }
   
   return titleMap[title] || title.split(' ')[0] || title
+}
+
+const getStatusLabel = (status) => {
+  const statusMap = {
+    '1': 'Active (Open)',
+    '2': 'Pending',
+    '3': 'Closed'
+  }
+  return statusMap[status] || `Status ${status}`
 }
 
 const selectAll = () => {
@@ -509,9 +556,15 @@ const executeImport = async () => {
   }
   
   try {
-    const options = {
+    // Use tempFilters from filter builder if available, otherwise use current filters
+    const filters = props.profile?.tempFilters || {
       selected_tables: selectedTables.value,
-      import_filters: importFilters.value,
+      import_filters: importFilters.value
+    }
+    
+    const options = {
+      selected_tables: filters.selected_tables || selectedTables.value,
+      import_filters: filters.import_filters || importFilters.value,
       overwrite_existing: false,
       batch_size: 100
     }
@@ -521,8 +574,8 @@ const executeImport = async () => {
     // Emit success event for parent component to handle
     emit('executed', {
       message: 'Import job started successfully',
-      selectedTables: selectedTables.value,
-      filters: importFilters.value
+      selectedTables: filters.selected_tables || selectedTables.value,
+      filters: filters.import_filters || importFilters.value
     })
     
     // Close the modal

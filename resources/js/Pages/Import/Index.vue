@@ -84,11 +84,11 @@
                   >
                     <div class="py-1">
                       <button
-                        @click="previewImport(profile)"
+                        @click="openImportWizard(profile)"
                         class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        <EyeIcon class="inline w-4 h-4 mr-2" />
-                        Preview Data
+                        <CogIcon class="inline w-4 h-4 mr-2" />
+                        Configure & Preview Import
                       </button>
                       <button
                         @click="executeImport(profile)"
@@ -233,12 +233,12 @@
       @saved="handleProfileSaved"
     />
     
-    <!-- Preview Modal -->
-    <ImportPreviewModal
-      :show="showPreview"
+    <!-- Import Wizard Modal -->
+    <ImportWizardModal
+      :show="showImportWizard"
       :profile="selectedProfile"
-      @close="showPreview = false"
-      @execute="handleExecuteFromPreview"
+      @close="showImportWizard = false"
+      @execute-import="handleWizardExecuteImport"
     />
     
     <!-- Job Details Modal -->
@@ -254,24 +254,24 @@
 import { ref, onMounted } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import ImportProfileModal from './Components/ImportProfileModal.vue'
-import ImportPreviewModal from './Components/ImportPreviewModal.vue'
+import ImportWizardModal from './Components/ImportWizardModal.vue'
 import ImportJobDetailsModal from './Components/ImportJobDetailsModal.vue'
 import {
   ArrowDownTrayIcon,
   CircleStackIcon,
   EllipsisVerticalIcon,
-  EyeIcon,
   PlayIcon,
   PencilIcon,
   TrashIcon,
   ServerIcon,
   ClockIcon,
+  CogIcon,
 } from '@heroicons/vue/24/outline'
 import { useImportQueries } from '@/Composables/queries/useImportQueries.js'
 
 // Reactive state
 const showCreateProfile = ref(false)
-const showPreview = ref(false)
+const showImportWizard = ref(false)
 const showJobDetails = ref(false)
 const selectedProfile = ref(null)
 const selectedJob = ref(null)
@@ -301,9 +301,9 @@ const toggleProfileMenu = (profileId) => {
   activeProfileMenu.value = activeProfileMenu.value === profileId ? null : profileId
 }
 
-const previewImport = (profile) => {
+const openImportWizard = (profile) => {
   selectedProfile.value = profile
-  showPreview.value = true
+  showImportWizard.value = true
   activeProfileMenu.value = null
 }
 
@@ -356,10 +356,23 @@ const handleProfileSaved = () => {
   refreshProfiles()
 }
 
-const handleExecuteFromPreview = () => {
-  showPreview.value = false
-  executeImport(selectedProfile.value)
+const handleWizardExecuteImport = async ({ profile, filters, mappings }) => {
+  showImportWizard.value = false
   selectedProfile.value = null
+  
+  // Execute import with configured filters and mappings
+  try {
+    const options = {
+      selected_tables: filters?.selected_tables || [],
+      import_filters: filters?.import_filters || {},
+      field_mappings: mappings || {}
+    }
+    
+    await executeImportMutation(profile.id, options)
+    refreshJobs()
+  } catch (error) {
+    console.error('Import execution failed:', error)
+  }
 }
 
 // Helper methods

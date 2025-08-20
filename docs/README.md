@@ -57,12 +57,12 @@ npm run dev         # Vite dev server with HMR
 
 ## Recent Updates (August 2025)
 
-- **Enhanced Import System**: Filter-based import controls with date ranges, status filters, and record limits
-- **UUID Architecture**: Complete migration to UUID primary keys for import system tables
-- **Relationship Resolution**: Import preview now shows resolved status names and user relationships
-- **Import System Fixes**: Resolved route model binding issues and deletion functionality
-- **Timer System Fixes**: Fixed timer creation/editing - ticket_id and account_id now save properly
-- **Migration Stability**: Fixed duplicate migration errors with existence checks and UUID conversions
+- **Complete Field Mapping System**: Visual field mapping configuration with multiple transformation types (direct, combine, static, UUID conversion, transforms)
+- **Enhanced Filter Configuration**: Comprehensive filter builder with date ranges, status filters, record limits, and data type selection
+- **UUID Architecture**: Complete migration to UUID primary keys for import system tables with deterministic conversion
+- **API Stability Fixes**: Resolved missing API methods, route binding issues, and PostgreSQL schema introspection errors
+- **Relationship Resolution**: Import preview shows resolved status names, user relationships, and applied filter indicators
+- **Production-Ready Import System**: Complete PostgreSQL database import with specialized FreeScout support
 
 ---
 

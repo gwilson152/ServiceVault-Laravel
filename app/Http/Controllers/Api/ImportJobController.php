@@ -436,6 +436,14 @@ class ImportJobController extends Controller
     /**
      * Get real-time status for a job.
      */
+    public function status(ImportJob $importJob): JsonResponse
+    {
+        return $this->getStatus($importJob);
+    }
+
+    /**
+     * Get real-time status for a job.
+     */
     public function getStatus(ImportJob $importJob): JsonResponse
     {
         $this->authorize('getStatus', $importJob);

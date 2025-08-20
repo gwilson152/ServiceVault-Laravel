@@ -724,4 +724,64 @@ class SettingController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get tax configuration settings
+     */
+    public function getTaxSettings(): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        // Get tax settings with tax.* prefix
+        $taxSettings = Setting::where('key', 'like', 'tax.%')
+                              ->where('type', 'system')
+                              ->pluck('value', 'key');
+        $taxData = [];
+        foreach ($taxSettings as $key => $value) {
+            // Remove 'tax.' prefix from key
+            $shortKey = str_replace('tax.', '', $key);
+            $taxData[$shortKey] = $value;
+        }
+
+        // Set defaults if not present
+        $taxData['enabled'] = $taxData['enabled'] ?? true;
+        $taxData['default_rate'] = $taxData['default_rate'] ?? 0.0;
+        $taxData['default_application_mode'] = $taxData['default_application_mode'] ?? 'all_items';
+        $taxData['time_entries_taxable_by_default'] = $taxData['time_entries_taxable_by_default'] ?? true;
+
+        return response()->json([
+            'data' => $taxData,
+        ]);
+    }
+
+    /**
+     * Update tax configuration settings
+     */
+    public function updateTaxSettings(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        $validator = Validator::make($request->all(), [
+            'enabled' => 'sometimes|boolean',
+            'default_rate' => 'sometimes|numeric|min:0|max:100',
+            'default_application_mode' => 'sometimes|string|in:all_items,non_service_items,custom',
+            'time_entries_taxable_by_default' => 'sometimes|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Update tax settings with tax.* prefix
+        foreach ($validator->validated() as $key => $value) {
+            Setting::setValue("tax.{$key}", $value, 'system');
+        }
+
+        return response()->json([
+            'message' => 'Tax settings updated successfully',
+        ]);
+    }
 }

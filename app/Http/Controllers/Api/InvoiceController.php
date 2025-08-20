@@ -78,6 +78,8 @@ class InvoiceController extends Controller
             'manual_line_items.*.quantity' => 'required|numeric|min:0.01',
             'manual_line_items.*.unit_price' => 'required|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'tax_application_mode' => 'nullable|in:all_items,non_service_items,custom',
+            'override_tax' => 'nullable|boolean',
             'notes' => 'nullable|string',
             'auto_send' => 'boolean',
         ]);
@@ -88,16 +90,40 @@ class InvoiceController extends Controller
             return response()->json(['error' => 'You do not have access to this account.'], 403);
         }
 
+        // Get tax settings using TaxService hierarchy
+        $taxService = app(\App\Services\TaxService::class);
+        $account = \App\Models\Account::find($validated['account_id']);
+        
+        $taxRate = $taxService->getEffectiveTaxRate($validated['account_id'], $validated['tax_rate'] ?? null);
+        $taxApplicationMode = $taxService->getEffectiveTaxApplicationMode($validated['account_id'], $validated['tax_application_mode'] ?? null);
+        
+        // If tax preferences were specified and differ from current account settings, update account settings
+        if (isset($validated['tax_rate']) || isset($validated['tax_application_mode'])) {
+            $accountTaxSettings = [];
+            if (isset($validated['tax_rate'])) {
+                $accountTaxSettings['default_rate'] = $validated['tax_rate'];
+            }
+            if (isset($validated['tax_application_mode'])) {
+                $accountTaxSettings['default_application_mode'] = $validated['tax_application_mode'];
+            }
+            
+            if (!empty($accountTaxSettings)) {
+                $taxService->setAccountTaxSettings($validated['account_id'], $accountTaxSettings);
+            }
+        }
+
         DB::beginTransaction();
         try {
-            // Create invoice
+            // Create invoice with inherited/updated tax preferences
             $invoice = Invoice::create([
                 'account_id' => $validated['account_id'],
                 'user_id' => $user->id,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'],
                 'status' => 'draft',
-                'tax_rate' => $validated['tax_rate'] ?? 0,
+                'tax_rate' => $taxRate,
+                'tax_application_mode' => $taxApplicationMode,
+                'override_tax' => $validated['override_tax'] ?? false,
                 'notes' => $validated['notes'],
             ]);
 
@@ -221,18 +247,57 @@ class InvoiceController extends Controller
             return response()->json(['error' => 'Unauthorized access.'], 403);
         }
 
-        // Can only edit draft invoices
-        if ($invoice->status !== 'draft') {
+        // Can only edit draft invoices, except for status changes
+        if ($invoice->status !== 'draft' && !$request->has('status')) {
             return response()->json(['error' => 'Only draft invoices can be edited.'], 422);
+        }
+        
+        // Allow status changes: draft -> sent/cancelled, sent -> draft
+        if ($request->has('status')) {
+            $newStatus = $validated['status'] ?? $request->input('status');
+            
+            // Define allowed status transitions
+            $allowedTransitions = [
+                'draft' => ['sent', 'cancelled'],
+                'sent' => ['draft'],  // Allow reverting sent invoices back to draft
+            ];
+            
+            $currentStatus = $invoice->status;
+            if (!isset($allowedTransitions[$currentStatus]) || 
+                !in_array($newStatus, $allowedTransitions[$currentStatus])) {
+                return response()->json([
+                    'error' => "Cannot change invoice status from '{$currentStatus}' to '{$newStatus}'."
+                ], 422);
+            }
         }
 
         $validated = $request->validate([
             'invoice_date' => 'sometimes|date',
             'due_date' => 'sometimes|nullable|date|after:invoice_date',
             'tax_rate' => 'sometimes|numeric|min:0|max:100',
+            'tax_application_mode' => 'sometimes|in:all_items,non_service_items,custom',
+            'override_tax' => 'sometimes|boolean',
             'notes' => 'nullable|string',
             'status' => 'sometimes|in:draft,sent,cancelled',
         ]);
+
+        // Update account tax preferences if changed using TaxService
+        if (isset($validated['tax_rate']) || isset($validated['tax_application_mode'])) {
+            $taxService = app(\App\Services\TaxService::class);
+            $accountTaxSettings = [];
+            
+            if (isset($validated['tax_rate'])) {
+                $accountTaxSettings['default_rate'] = $validated['tax_rate'];
+            }
+            
+            if (isset($validated['tax_application_mode'])) {
+                $accountTaxSettings['default_application_mode'] = $validated['tax_application_mode'];
+            }
+            
+            if (!empty($accountTaxSettings)) {
+                $taxService->setAccountTaxSettings($invoice->account_id, $accountTaxSettings);
+            }
+        }
 
         $invoice->update($validated);
         $invoice->calculateTotals();
@@ -813,26 +878,35 @@ class InvoiceController extends Controller
             return response()->json(['error' => 'Line item does not belong to this invoice.'], 422);
         }
 
-        // Can only update custom line items (not time entries or addons)
-        if ($lineItem->line_type !== 'custom') {
-            return response()->json(['error' => 'Can only update custom line items.'], 422);
+        // For taxable field updates, allow all line item types
+        // For other fields, only allow custom line items
+        $requestKeys = array_keys($request->all());
+        $isTaxableOnlyUpdate = count($requestKeys) === 1 && in_array('taxable', $requestKeys);
+        
+        if (!$isTaxableOnlyUpdate && $lineItem->line_type !== 'custom') {
+            return response()->json(['error' => 'Can only update description, quantity, and unit_price on custom line items.'], 422);
         }
 
         $validated = $request->validate([
             'description' => 'sometimes|string|max:1000',
             'quantity' => 'sometimes|numeric|min:0.01',
             'unit_price' => 'sometimes|numeric|min:0',
+            'taxable' => 'sometimes|nullable|boolean',
         ]);
 
         DB::beginTransaction();
         try {
             $lineItem->update($validated);
 
-            // Recalculate totals if quantity or price changed
-            if (isset($validated['quantity']) || isset($validated['unit_price'])) {
-                $lineItem->total_amount = $lineItem->quantity * $lineItem->unit_price;
-                $lineItem->save();
+            // Recalculate totals if quantity, price, or taxable status changed
+            if (isset($validated['quantity']) || isset($validated['unit_price']) || isset($validated['taxable'])) {
+                // Recalculate line item totals
+                if (isset($validated['quantity']) || isset($validated['unit_price'])) {
+                    $lineItem->total_amount = $lineItem->quantity * $lineItem->unit_price;
+                    $lineItem->save();
+                }
 
+                // Recalculate invoice totals (including tax)
                 $invoice->calculateTotals();
                 $invoice->save();
             }
@@ -848,5 +922,104 @@ class InvoiceController extends Controller
             DB::rollBack();
             return response()->json(['error' => 'Failed to update line item.'], 500);
         }
+    }
+
+    /**
+     * Reorder line items
+     */
+    public function reorderLineItems(Request $request, Invoice $invoice): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check permissions
+        if (! $user->accounts()->where('accounts.id', $invoice->account_id)->exists() &&
+            ! $user->hasAnyPermission(['admin.write', 'billing.admin'])) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+
+        // Can only reorder line items on draft invoices
+        if ($invoice->status !== 'draft') {
+            return response()->json(['error' => 'Can only reorder items on draft invoices.'], 422);
+        }
+
+        $validated = $request->validate([
+            'line_items' => 'required|array',
+            'line_items.*.id' => 'required|uuid|exists:invoice_line_items,id',
+            'line_items.*.sort_order' => 'required|integer|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['line_items'] as $item) {
+                $lineItem = InvoiceLineItem::where('id', $item['id'])
+                                          ->where('invoice_id', $invoice->id)
+                                          ->first();
+                
+                if ($lineItem) {
+                    $lineItem->update(['sort_order' => $item['sort_order']]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Line items reordered successfully.',
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to reorder line items.'], 500);
+        }
+    }
+
+    /**
+     * Add separator line item
+     */
+    public function addSeparator(Request $request, Invoice $invoice): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check permissions
+        if (! $user->accounts()->where('accounts.id', $invoice->account_id)->exists() &&
+            ! $user->hasAnyPermission(['admin.write', 'billing.admin'])) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+
+        // Can only add separators to draft invoices
+        if ($invoice->status !== 'draft') {
+            return response()->json(['error' => 'Can only add separators to draft invoices.'], 422);
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'position' => 'sometimes|integer|min:0', // Optional position, defaults to end
+        ]);
+
+        // Get the next sort order if position not specified
+        $sortOrder = $validated['position'] ?? $invoice->lineItems()->max('sort_order') + 1;
+
+        // Shift existing items if inserting in middle
+        if (isset($validated['position'])) {
+            $invoice->lineItems()
+                    ->where('sort_order', '>=', $sortOrder)
+                    ->increment('sort_order');
+        }
+
+        // Create separator line item
+        $separator = InvoiceLineItem::create([
+            'invoice_id' => $invoice->id,
+            'line_type' => 'separator',
+            'sort_order' => $sortOrder,
+            'description' => $validated['title'],
+            'quantity' => 0,
+            'unit_price' => 0,
+            'total_amount' => 0,
+            'billable' => false,
+        ]);
+
+        return response()->json([
+            'data' => new \App\Http\Resources\InvoiceLineItemResource($separator),
+            'message' => 'Separator added successfully.',
+        ], 201);
     }
 }

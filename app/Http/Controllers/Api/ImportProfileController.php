@@ -352,12 +352,26 @@ class ImportProfileController extends Controller
 
         try {
             $connectionName = $this->connectionService->createConnection($profile);
-            $schema = $this->connectionService->getSchemaInfo($connectionName);
+            $schemaInfo = $this->connectionService->getSchemaInfo($connectionName);
             $serverInfo = $this->connectionService->getServerInfo($connectionName);
             $this->connectionService->closeConnection($connectionName);
+            
+            // Transform schema info to expected format for frontend
+            $tables = [];
+            foreach ($schemaInfo as $tableName => $tableData) {
+                $tables[] = [
+                    'name' => $tableName,
+                    'table_name' => $tableName,
+                    'table_comment' => $tableData['table_comment'],
+                    'columns' => $tableData['columns'],
+                    'foreign_keys' => $tableData['foreign_keys'],
+                ];
+            }
 
             return response()->json([
-                'schema' => $schema,
+                'schema' => [
+                    'tables' => $tables
+                ],
                 'server_info' => $serverInfo,
             ]);
         } catch (\Exception $e) {
@@ -496,6 +510,71 @@ class ImportProfileController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to preview table data',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get field mappings for an import profile.
+     */
+    public function getMappings(ImportProfile $profile): JsonResponse
+    {
+        $this->authorize('view', $profile);
+
+        $mappings = $profile->mappings()
+            ->where('is_active', true)
+            ->orderBy('import_order')
+            ->get();
+
+        return response()->json($mappings);
+    }
+
+    /**
+     * Save field mappings for an import profile.
+     */
+    public function saveMappings(Request $request, ImportProfile $profile): JsonResponse
+    {
+        $this->authorize('update', $profile);
+
+        $validator = Validator::make($request->all(), [
+            'mappings' => 'required|array',
+            'mappings.*.source_table' => 'required|string',
+            'mappings.*.destination_table' => 'required|string',
+            'mappings.*.field_mappings' => 'required|array',
+            'mappings.*.import_order' => 'integer|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            // Clear existing mappings for this profile
+            $profile->mappings()->delete();
+
+            // Create new mappings
+            foreach ($request->mappings as $mappingData) {
+                $profile->mappings()->create([
+                    'source_table' => $mappingData['source_table'],
+                    'destination_table' => $mappingData['destination_table'],
+                    'field_mappings' => $mappingData['field_mappings'],
+                    'import_order' => $mappingData['import_order'] ?? 0,
+                    'is_active' => true,
+                ]);
+            }
+
+            return response()->json([
+                'message' => 'Field mappings saved successfully',
+                'mappings' => $profile->mappings()->orderBy('import_order')->get(),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to save field mappings',
                 'error' => $e->getMessage(),
             ], 500);
         }

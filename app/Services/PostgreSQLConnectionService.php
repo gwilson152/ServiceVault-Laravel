@@ -103,11 +103,11 @@ class PostgreSQLConnectionService
             $schemaInfo = [];
 
             foreach ($tables as $table) {
-                $schemaInfo[$table['table_name']] = [
-                    'table_name' => $table['table_name'],
-                    'table_comment' => $table['table_comment'],
-                    'columns' => $this->getTableColumns($connectionName, $table['table_name']),
-                    'foreign_keys' => $this->getTableForeignKeys($connectionName, $table['table_name']),
+                $schemaInfo[$table->table_name] = [
+                    'table_name' => $table->table_name,
+                    'table_comment' => $table->table_comment,
+                    'columns' => $this->getTableColumns($connectionName, $table->table_name),
+                    'foreign_keys' => $this->getTableForeignKeys($connectionName, $table->table_name),
                 ];
             }
 
