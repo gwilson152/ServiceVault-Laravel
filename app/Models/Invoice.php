@@ -176,20 +176,14 @@ class Invoice extends Model
         
         switch ($mode) {
             case 'all_items':
-                // For time entries, check the specific setting
-                if ($item->line_type === 'time_entry') {
-                    return $taxService->getTimeEntriesTaxableDefault($this->account_id);
-                }
+                // All items mode: time entries are taxable by default
                 return true;
             case 'non_service_items':
                 return $item->line_type !== 'time_entry';
             case 'custom':
                 return $item->taxable === true; // Only explicitly marked as taxable
             default:
-                // For time entries, check the specific setting
-                if ($item->line_type === 'time_entry') {
-                    return $taxService->getTimeEntriesTaxableDefault($this->account_id);
-                }
+                // Default to all items mode behavior
                 return true;
         }
     }

@@ -57,6 +57,20 @@ npm run dev         # Vite dev server with HMR
 
 ## Recent Updates (August 2025)
 
+### Tax Management System (Latest)
+- **Complete Tax Configuration**: System-wide tax settings configurable during setup and in settings
+- **3-State Taxable Controls**: Per-line-item tax override (taxable/not taxable/inherit) with visual indicators
+- **Tax Application Modes**: All items, products only, or custom per-item taxation
+- **Time Entry Tax Settings**: Configurable default taxability for time entries vs products
+- **Tax Inheritance**: Hierarchical tax calculation (invoice → account → system settings)
+- **API Integration**: Complete tax management via REST API with validation and calculation logic
+
+### Invoice Line Item Management
+- **Drag & Drop Reordering**: Visual reordering of invoice line items with backend persistence
+- **Separator Line Items**: Add section headers/separators to organize invoice items
+- **Enhanced Tax Display**: Individual line item tax amounts and totals with clear status indicators
+
+### Import System Enhancements  
 - **Complete Field Mapping System**: Visual field mapping configuration with multiple transformation types (direct, combine, static, UUID conversion, transforms)
 - **Enhanced Filter Configuration**: Comprehensive filter builder with date ranges, status filters, record limits, and data type selection
 - **UUID Architecture**: Complete migration to UUID primary keys for import system tables with deterministic conversion

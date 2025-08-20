@@ -91,7 +91,7 @@ Content-Type: application/json
 
 ### List Invoices
 ```http
-GET /api/invoices?status=draft&account_id={id}&date_range=2025-08
+GET /api/billing/invoices?status=draft&account_id={id}&date_range=2025-08
 ```
 
 **Query Parameters**:
@@ -100,33 +100,157 @@ GET /api/invoices?status=draft&account_id={id}&date_range=2025-08
 - `date_range`: YYYY-MM format for month/year filtering
 - `due_date_start`, `due_date_end`: Due date range
 
+### Show Invoice with Line Items
+```http
+GET /api/billing/invoices/{invoice_id}
+```
+
+**Enhanced Response** (August 2025):
+```json
+{
+  "data": {
+    "id": "invoice-uuid",
+    "invoice_number": "INV-1001",
+    "account_id": "account-uuid",
+    "invoice_date": "2025-08-19",
+    "due_date": "2025-09-19",
+    "status": "draft",
+    "subtotal": "5000.00",
+    "tax_rate": 8.25,
+    "tax_application_mode": "non_service_items",
+    "override_tax": false,
+    "tax_amount": "412.50",
+    "total": "5412.50",
+    "inherited_tax_settings": {
+      "tax_rate": 8.25,
+      "tax_application_mode": "non_service_items",
+      "tax_enabled": true
+    },
+    "line_items": [
+      {
+        "id": "line-item-uuid",
+        "line_type": "time_entry",
+        "sort_order": 0,
+        "description": "Development Services",
+        "quantity": "8.00",
+        "unit_price": "125.00",
+        "tax_amount": "0.00",
+        "total_amount": "1000.00",
+        "taxable": false,
+        "billable": true
+      },
+      {
+        "id": "line-item-uuid-2",
+        "line_type": "addon",
+        "sort_order": 1,
+        "description": "Server Setup Fee",
+        "quantity": "1.00",
+        "unit_price": "500.00",
+        "tax_amount": "41.25",
+        "total_amount": "541.25",
+        "taxable": true,
+        "billable": true
+      }
+    ]
+  }
+}
+```
+
+**New Tax Features**:
+- **tax_application_mode**: Controls which items are taxable ("all_items", "non_service_items", "custom")
+- **override_tax**: Whether invoice overrides account/system tax settings
+- **inherited_tax_settings**: Tax settings inherited from account/system
+- **taxable**: Per-line-item tax override (null=inherit, true=taxable, false=not taxable)
+- **sort_order**: For drag-and-drop reordering of line items
+
 ### Create Invoice
 ```http
-POST /api/invoices
+POST /api/billing/invoices
 Content-Type: application/json
 
 {
   "account_id": "account-uuid",
   "invoice_date": "2025-08-19",
   "due_date": "2025-09-19",
-  "terms": 30,
+  "tax_rate": 8.25,
+  "tax_application_mode": "non_service_items",
+  "override_tax": false,
   "line_items": [
     {
       "description": "Development Services - August",
       "quantity": 40,
-      "rate": "125.00",
-      "amount": "5000.00",
+      "unit_price": "125.00",
+      "taxable": false,
       "time_entry_ids": ["uuid1", "uuid2", "uuid3"]
     },
     {
-      "description": "Server Setup Fee",
+      "description": "Server Setup Fee", 
       "quantity": 1,
-      "rate": "500.00",
-      "amount": "500.00",
+      "unit_price": "500.00",
+      "taxable": true,
       "ticket_addon_ids": ["addon-uuid"]
     }
   ],
   "notes": "Thank you for your business"
+}
+```
+
+### Invoice Line Item Management
+
+#### Update Line Item Taxable Status
+```http
+PUT /api/billing/invoices/{invoice_id}/line-items/{line_item_id}
+Content-Type: application/json
+
+{
+  "taxable": true
+}
+```
+
+**Taxable Field Values**:
+- `true`: Item is explicitly taxable
+- `false`: Item is explicitly not taxable  
+- `null`: Item inherits from invoice/account/system settings
+
+#### Reorder Line Items
+```http
+POST /api/billing/invoices/{invoice_id}/line-items/reorder
+Content-Type: application/json
+
+{
+  "line_items": [
+    {"id": "item-1-uuid", "sort_order": 0},
+    {"id": "item-2-uuid", "sort_order": 1},
+    {"id": "item-3-uuid", "sort_order": 2}
+  ]
+}
+```
+
+#### Add Separator Line Item
+```http
+POST /api/billing/invoices/{invoice_id}/separators
+Content-Type: application/json
+
+{
+  "title": "Additional Services",
+  "position": 2
+}
+```
+
+**Response**:
+```json
+{
+  "data": {
+    "id": "separator-uuid",
+    "line_type": "separator",
+    "sort_order": 2,
+    "description": "Additional Services",
+    "quantity": "0.00",
+    "unit_price": "0.00",
+    "total_amount": "0.00",
+    "taxable": null,
+    "billable": false
+  }
 }
 ```
 
@@ -243,6 +367,73 @@ GET /api/reports/time-billing?start_date=2025-08-01&end_date=2025-08-31
       "amount": "10000.00"
     }
   ]
+}
+```
+
+## Tax Settings API
+
+### Get Tax Configuration
+```http
+GET /api/settings/tax
+```
+
+**Response**:
+```json
+{
+  "data": {
+    "enabled": true,
+    "default_rate": 8.25,
+    "default_application_mode": "non_service_items"
+  }
+}
+```
+
+**Tax Application Modes**:
+- `all_items`: Tax applies to both time entries (services) and addons (products) - time entries are taxable by default
+- `non_service_items`: Tax applies only to addons/products, not time entries/services - time entries are never taxed
+- `custom`: Tax application determined by individual item settings - only explicitly marked items are taxable
+
+### Update Tax Configuration
+```http
+PUT /api/settings/tax
+Content-Type: application/json
+
+{
+  "enabled": true,
+  "default_rate": 6.0,
+  "default_application_mode": "non_service_items"
+}
+```
+
+**Important**: Tax settings require `system.configure` permission and manual save via settings UI.
+
+**Tax Inheritance Hierarchy**:
+1. **Invoice Override**: If `override_tax` is true, use invoice-specific settings
+2. **Account Settings**: Account-specific tax configuration (future feature)
+3. **System Defaults**: Global tax settings configured in `/settings`
+
+### Tax Calculation Logic
+
+**Time Entry Taxability**:
+```javascript
+// Determine if time entry is taxable (simplified logic)
+function isTimeEntryTaxable(timeEntry, taxSettings, invoiceMode) {
+  // 1. Explicit setting takes precedence
+  if (timeEntry.taxable !== null) {
+    return timeEntry.taxable;
+  }
+  
+  // 2. Apply tax application mode directly
+  switch (invoiceMode || taxSettings.default_application_mode) {
+    case 'all_items':
+      return true; // Time entries are taxable by default in this mode
+    case 'non_service_items':
+      return false; // Time entries are never taxed in this mode
+    case 'custom':
+      return timeEntry.taxable === true; // Only explicitly marked as taxable
+    default:
+      return true; // Default to all items behavior
+  }
 }
 ```
 

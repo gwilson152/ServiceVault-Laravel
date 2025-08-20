@@ -565,6 +565,12 @@ Route::prefix('admin')->middleware(['auth:web,sanctum'])->group(function () {
             ->name('import.profiles.mappings.get');
         Route::post('profiles/{profile}/mappings', [ImportProfileController::class, 'saveMappings'])
             ->name('import.profiles.mappings.save');
+        
+        // Database Introspection
+        Route::get('profiles/{profile}/introspect-emails', [ImportProfileController::class, 'introspectEmails'])
+            ->name('import.profiles.introspect-emails');
+        Route::get('profiles/{profile}/introspect-time-tracking', [ImportProfileController::class, 'introspectTimeTracking'])
+            ->name('import.profiles.introspect-time-tracking');
 
         // Import Job Management
         Route::apiResource('jobs', ImportJobController::class)->except(['update']);

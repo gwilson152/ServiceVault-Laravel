@@ -454,28 +454,40 @@ class FreeScoutImportService
             // Get available columns for each table to make queries flexible
             $availableColumns = $this->getTableColumns($connectionName);
             
-            // Preview users - flexible column selection
-            $userColumns = $this->selectAvailableColumns($availableColumns['users'] ?? [], 
-                ['id', 'first_name', 'last_name', 'email', 'role']);
-            $users = DB::connection($connectionName)
-                ->select("SELECT " . implode(', ', $userColumns) . " FROM users WHERE role IN (1, 2) LIMIT ?", [$limit]);
-            $preview['users'] = [
-                'title' => 'FreeScout Staff → Service Vault Users',
-                'description' => 'Admin and user accounts will become Service Vault agent users',
-                'sample_data' => $users,
-                'total_count' => DB::connection($connectionName)->selectOne('SELECT COUNT(*) as count FROM users WHERE role IN (1, 2)')->count ?? 0,
+            // Preview customer users (MOST IMPORTANT) - flexible column selection
+            $customerColumns = $this->selectAvailableColumns($availableColumns['customers'] ?? [], 
+                ['id', 'first_name', 'last_name', 'email', 'company', 'phone']);
+            $customerUsers = DB::connection($connectionName)
+                ->select("SELECT " . implode(', ', $customerColumns) . " FROM customers LIMIT ?", [$limit]);
+            $preview['customer_users'] = [
+                'title' => 'FreeScout Customers → Service Vault Customer Users',
+                'description' => 'Customer contacts become account_user type users (MOST IMPORTANT IMPORT)',
+                'sample_data' => $customerUsers,
+                'total_count' => DB::connection($connectionName)->selectOne('SELECT COUNT(*) as count FROM customers')->count ?? 0,
             ];
 
-            // Preview customers - flexible column selection
-            $customerColumns = $this->selectAvailableColumns($availableColumns['customers'] ?? [], 
-                ['id', 'first_name', 'last_name', 'email', 'company']);
-            $customers = DB::connection($connectionName)
-                ->select("SELECT " . implode(', ', $customerColumns) . " FROM customers LIMIT ?", [$limit]);
-            $preview['customers'] = [
-                'title' => 'FreeScout Customers → Service Vault Accounts + Users',
-                'description' => 'Each customer becomes an account with a user record',
-                'sample_data' => $customers,
-                'total_count' => DB::connection($connectionName)->selectOne('SELECT COUNT(*) as count FROM customers')->count ?? 0,
+            // Preview customer accounts - flexible column selection
+            $customerAccountColumns = $this->selectAvailableColumns($availableColumns['customers'] ?? [], 
+                ['id', 'company', 'first_name', 'last_name', 'email']);
+            $customerAccounts = DB::connection($connectionName)
+                ->select("SELECT " . implode(', ', $customerAccountColumns) . " FROM customers WHERE company IS NOT NULL AND company != '' LIMIT ?", [$limit]);
+            $preview['customer_accounts'] = [
+                'title' => 'FreeScout Customers → Service Vault Accounts',
+                'description' => 'Customer company records become account structures (optional if users exist)',
+                'sample_data' => $customerAccounts,
+                'total_count' => DB::connection($connectionName)->selectOne("SELECT COUNT(*) as count FROM customers WHERE company IS NOT NULL AND company != ''")->count ?? 0,
+            ];
+
+            // Preview staff users - flexible column selection  
+            $userColumns = $this->selectAvailableColumns($availableColumns['users'] ?? [], 
+                ['id', 'first_name', 'last_name', 'email', 'role']);
+            $staffUsers = DB::connection($connectionName)
+                ->select("SELECT " . implode(', ', $userColumns) . " FROM users WHERE role IN (1, 2) LIMIT ?", [$limit]);
+            $preview['staff_users'] = [
+                'title' => 'FreeScout Staff → Service Vault Agent Users',
+                'description' => 'Admin and user accounts will become Service Vault agent users',
+                'sample_data' => $staffUsers,
+                'total_count' => DB::connection($connectionName)->selectOne('SELECT COUNT(*) as count FROM users WHERE role IN (1, 2)')->count ?? 0,
             ];
 
             // Preview conversations - flexible column selection with resolved relationships

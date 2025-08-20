@@ -229,7 +229,7 @@ const previewData = ref(null)
 const previewLoading = ref(false)
 const previewError = ref(null)
 const previewWarnings = ref([])
-const activeTab = ref('users')
+const activeTab = ref('customer_users')
 
 // Computed
 const activeTabData = computed(() => {
@@ -274,10 +274,10 @@ const loadPreview = async () => {
     const data = await previewImport(props.profile.id, props.filters)
     previewData.value = data
     
-    // Set active tab to first available data type
+    // Set active tab to first available data type, preferring customer_users
     const availableTabs = Object.keys(data)
     if (availableTabs.length > 0) {
-      activeTab.value = availableTabs[0]
+      activeTab.value = availableTabs.includes('customer_users') ? 'customer_users' : availableTabs[0]
     }
     
     // Generate warnings based on data
@@ -321,9 +321,10 @@ const generateWarnings = (data) => {
 
 const formatDataTypeName = (key) => {
   const names = {
-    users: 'Staff Users',
-    customers: 'Customer Accounts',
+    customer_users: 'Customer Users',
     conversations: 'Tickets',
+    customer_accounts: 'Customer Accounts',
+    staff_users: 'Staff Users',
     threads: 'Comments'
   }
   return names[key] || key

@@ -38,11 +38,47 @@ DB_DATABASE=servicevault
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
 
-# Run migrations with test data
+# Run migrations without setup wizard (for development)
 php artisan migrate:fresh --seed
 ```
 
-### 4. Redis Configuration
+**For Production**: Skip the `--seed` flag and use the setup wizard instead.
+
+### 4. Initial Setup Wizard
+
+After database setup, navigate to your application URL to access the setup wizard at `/setup`:
+
+**Company Information**:
+- Company Name, Email, Website, Phone
+- Company Address
+- Contact details for invoicing
+
+**System Configuration**:
+- Timezone selection
+- Currency (USD, EUR, GBP, CAD, AUD)
+- Date and time formats
+- Language preference
+- Maximum users limit
+
+**Tax Configuration** (New):
+- **Enable Tax System**: Turn tax calculations on/off
+- **Default Tax Rate**: System-wide tax percentage (default: 6%)
+- **Tax Application Mode**: Choose how taxes apply:
+  - `All Taxable Items`: Tax both time entries and addons
+  - `Products Only (No Services)`: Tax only addons, not time entries (default)
+  - `Custom (Per Item)`: Tax determined per line item
+- **Time Entries Taxable by Default**: When "All Items" mode is selected (default: false)
+
+**Administrator Account**:
+- Admin name, email, and password
+- Super Admin role with all permissions
+
+**Advanced Settings**:
+- Timer sync interval
+- Permission cache TTL
+- Real-time features enabled
+
+### 5. Redis Configuration
 
 ```bash
 # Configure Redis in .env

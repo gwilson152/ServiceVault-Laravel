@@ -187,7 +187,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'filters-changed'])
 
 // Reactive state
-const selectedTables = ref(['users', 'customers', 'conversations', 'threads'])
+const selectedTables = ref(['customer_users', 'conversations', 'customer_accounts', 'threads'])
 const enableDateFilter = ref(false)
 const dateFrom = ref('')
 const dateTo = ref('')
@@ -200,19 +200,24 @@ const activeUsersOnly = ref(true)
 // Available data types
 const availableTables = ref([
   {
-    key: 'users',
-    title: 'Staff Users',
-    description: 'FreeScout staff members → Service Vault users'
-  },
-  {
-    key: 'customers',
-    title: 'Customer Accounts',
-    description: 'FreeScout customers → Service Vault accounts + users'
+    key: 'customer_users',
+    title: 'Customer Users',
+    description: 'FreeScout customers → Service Vault customer users (MOST IMPORTANT)'
   },
   {
     key: 'conversations',
     title: 'Tickets',
     description: 'FreeScout conversations → Service Vault tickets'
+  },
+  {
+    key: 'customer_accounts',
+    title: 'Customer Accounts',
+    description: 'FreeScout customers → Service Vault accounts (optional if users exist)'
+  },
+  {
+    key: 'staff_users',
+    title: 'Staff Users',
+    description: 'FreeScout staff members → Service Vault agent users'
   },
   {
     key: 'threads',
@@ -285,7 +290,7 @@ watch(() => props.modelValue, (newValue) => {
 
 // Preset methods
 const loadTestingPreset = () => {
-  selectedTables.value = ['users', 'conversations']
+  selectedTables.value = ['customer_users', 'conversations']
   enableDateFilter.value = false
   enableStatusFilter.value = false
   enableRecordLimit.value = true
@@ -294,7 +299,7 @@ const loadTestingPreset = () => {
 }
 
 const loadFullImportPreset = () => {
-  selectedTables.value = ['users', 'customers', 'conversations', 'threads']
+  selectedTables.value = ['customer_users', 'conversations', 'customer_accounts', 'staff_users', 'threads']
   enableDateFilter.value = false
   enableStatusFilter.value = false
   enableRecordLimit.value = false

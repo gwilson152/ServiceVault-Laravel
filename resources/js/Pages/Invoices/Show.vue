@@ -429,7 +429,7 @@
                                         class="bg-white divide-y divide-gray-200"
                                     >
                                         <tr
-                                            v-for="item in invoice.line_items"
+                                            v-for="item in lineItems"
                                             :key="item.id"
                                         >
                                             <td
@@ -552,7 +552,7 @@
                                 </table>
 
                                 <div
-                                    v-if="invoice.line_items.length === 0"
+                                    v-if="lineItems.length === 0"
                                     class="text-center py-8"
                                 >
                                     <DocumentIcon
@@ -761,6 +761,9 @@ const {
     isDeleting,
     isRemovingLineItem,
 } = useInvoiceQuery(props.invoiceId, { loadAvailableItems: false });
+
+// Reactive line items for editing
+const lineItems = ref([]);
 
 // Computed
 const canEdit = computed(() => {
@@ -1085,19 +1088,39 @@ const updateLineItemTaxable = async (item) => {
             throw new Error('Failed to update line item');
         }
         
-        // Refresh invoice data to get updated totals
-        // This will be handled by the query invalidation
+        const result = await response.json();
+        
+        // Update the local line item with the response data
+        const index = lineItems.value.findIndex(li => li.id === item.id);
+        if (index !== -1) {
+            lineItems.value[index] = { ...lineItems.value[index], ...result.data };
+        }
+        
+        // TODO: Refresh invoice totals - might need to reload the entire invoice
+        
     } catch (error) {
         console.error('Failed to update line item taxable status:', error);
         // Revert the change on error
-        // You might want to implement proper error handling here
+        const index = lineItems.value.findIndex(li => li.id === item.id);
+        if (index !== -1) {
+            // Revert to original value
+            lineItems.value[index].taxable = invoice.value.line_items[index]?.taxable;
+        }
     }
 };
 
-// Initialize edit form when invoice loads
+// Initialize edit form and line items when invoice loads
 watch(invoice, (newInvoice) => {
-    if (newInvoice && editMode.value) {
-        populateEditForm();
+    if (newInvoice) {
+        // Create reactive copies of line items
+        lineItems.value = newInvoice.line_items?.map(item => ({
+            ...item,
+            taxable: item.taxable
+        })) || [];
+        
+        if (editMode.value) {
+            populateEditForm();
+        }
     }
 });
 </script>

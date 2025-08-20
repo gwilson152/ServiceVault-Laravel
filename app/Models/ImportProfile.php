@@ -17,6 +17,8 @@ class ImportProfile extends Model
     protected $fillable = [
         'name',
         'type',
+        'template_id',
+        'database_type',
         'host',
         'port',
         'database',
@@ -24,6 +26,7 @@ class ImportProfile extends Model
         'password',
         'ssl_mode',
         'description',
+        'notes',
         'connection_options',
         'is_active',
         'created_by',
@@ -132,7 +135,24 @@ class ImportProfile extends Model
     }
 
     /**
+     * Get the import template for this profile.
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(ImportTemplate::class, 'template_id');
+    }
+
+    /**
+     * Get the import queries for this profile.
+     */
+    public function queries(): HasMany
+    {
+        return $this->hasMany(ImportQuery::class, 'profile_id');
+    }
+
+    /**
      * Get the field mappings for this import profile.
+     * @deprecated Use queries() instead for the new system
      */
     public function mappings()
     {

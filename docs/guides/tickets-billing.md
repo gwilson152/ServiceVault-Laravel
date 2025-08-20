@@ -50,6 +50,53 @@ Add billable items beyond time tracking:
 - **Quantity-Based Items**: Items with variable quantities
 - **Automatic Billing**: Integrates with invoice generation
 
+## Tax Configuration System
+
+### Tax Settings Overview
+
+Service Vault includes a comprehensive tax management system that can be configured during setup or in settings:
+
+**Setup Page Configuration** (Initial Installation):
+- **Tax Enabled**: Enable/disable the tax system
+- **Default Tax Rate**: System-wide tax percentage (e.g., 6%)
+- **Tax Application Mode**: Controls which items are taxable
+- **Time Entries Taxable by Default**: Whether time entries are taxable when application mode is "All Items"
+
+**Tax Application Modes**:
+1. **All Taxable Items**: Tax applies to both time entries (services) and addons (products)
+2. **Products Only (No Services)**: Tax applies only to addons/products, not time entries
+3. **Custom (Per Item)**: Tax application determined by individual line item settings
+
+### Settings Page Tax Configuration
+
+Navigate to **Settings > Billing > Tax Configuration** to modify tax settings:
+
+**Available Settings**:
+- **Enable Tax System**: Master toggle for tax calculations
+- **Default Tax Rate**: Percentage applied to taxable items
+- **Default Tax Application**: How taxes are applied system-wide
+- **Time Entries Taxable by Default**: Controls default taxability for time entries
+
+**Important**: Tax settings require clicking "Save Changes" - they are not auto-saved.
+
+### Invoice Tax Behavior
+
+**Tax Inheritance Hierarchy**:
+1. **Invoice Override**: If enabled, invoice uses custom tax settings
+2. **Account Settings**: Account-specific tax rates (future feature)
+3. **System Defaults**: Global settings from configuration
+
+**Per-Line-Item Tax Control**:
+Each invoice line item has a taxable setting with three states:
+- ✅ **Taxable** (green): Item is explicitly taxable
+- ❌ **Not Taxable** (red): Item is explicitly not taxable  
+- ➖ **Inherit** (gray): Item follows system/invoice settings
+
+**Tax Calculation**:
+- Tax is calculated individually per line item
+- Final invoice shows subtotal, tax amount, and total
+- Tax amount displays for each taxable line item in detail view
+
 ## Billing System
 
 ### Billing Rate Management

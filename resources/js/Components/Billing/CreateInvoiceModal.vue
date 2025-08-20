@@ -322,6 +322,7 @@ import { XMarkIcon, DocumentIcon, InformationCircleIcon } from '@heroicons/vue/2
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import UnbilledItemsSelector from '@/Components/Billing/UnbilledItemsSelector.vue'
 import { useUnbilledItemsQuery, useCreateInvoiceMutation } from '@/Composables/queries/useBillingQuery.js'
+import { useQuery } from '@tanstack/vue-query'
 
 const props = defineProps({
   show: {
@@ -349,6 +350,16 @@ const form = reactive({
 // TanStack Query hooks
 const createInvoiceMutation = useCreateInvoiceMutation()
 
+// Load tax settings
+const { data: taxSettings } = useQuery({
+  queryKey: ['taxSettings'],
+  queryFn: async () => {
+    const response = await window.axios.get('/api/settings/tax')
+    return response.data.data
+  },
+  staleTime: 1000 * 60 * 5, // 5 minutes
+})
+
 // Create a stable reference for the account ID to prevent unnecessary re-renders
 const accountIdForQuery = computed(() => form.account_id)
 const queryEnabled = computed(() => !!form.account_id)
@@ -369,6 +380,34 @@ const selectedItems = ref({
   ticket_addons: []
 })
 
+// Helper functions
+const isTimeEntryTaxable = (timeEntry, effectiveMode = null) => {
+  // If the time entry has an explicit taxable setting, use that
+  if (timeEntry.is_taxable !== null && timeEntry.is_taxable !== undefined) {
+    return timeEntry.is_taxable
+  }
+  
+  // Use effective mode to determine taxability
+  const mode = effectiveMode || (form.override_tax 
+    ? form.tax_application_mode 
+    : (taxSettings.value?.default_application_mode || 'all_items'))
+  
+  switch (mode) {
+    case 'all_items':
+      // All taxable items mode: time entries are taxable by default
+      return true
+    case 'non_service_items':
+      // Time entries are never taxed in this mode
+      return false
+    case 'custom':
+      // Only explicitly marked as taxable
+      return timeEntry.is_taxable === true
+    default:
+      // Default to all items mode behavior
+      return true
+  }
+}
+
 // Computed properties
 const totalSelectedItems = computed(() => {
   return selectedItems.value.time_entries.length + selectedItems.value.ticket_addons.length
@@ -385,30 +424,35 @@ const invoiceSubtotal = computed(() => {
 })
 
 const taxableSubtotal = computed(() => {
-  // Calculate subtotal based on tax application mode
+  // Use effective tax application mode (override or system default)
+  const effectiveMode = form.override_tax 
+    ? form.tax_application_mode 
+    : (taxSettings.value?.default_application_mode || 'all_items')
+  
+  // Calculate subtotal based on effective tax application mode
   let timeEntryTaxable = 0
   let addonTaxable = 0
   
-  if (form.tax_application_mode === 'all_items') {
-    // Apply to all taxable items (original behavior)
+  if (effectiveMode === 'all_items') {
+    // Apply to all taxable items - respect system setting for time entries
     timeEntryTaxable = selectedItems.value.time_entries
-      .filter(item => item.is_taxable !== false) // Time entries are taxable by default
+      .filter(item => isTimeEntryTaxable(item, effectiveMode))
       .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
       
     addonTaxable = selectedItems.value.ticket_addons
       .filter(item => item.is_taxable === true) // Only explicitly taxable addons
       .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
-  } else if (form.tax_application_mode === 'non_service_items') {
+  } else if (effectiveMode === 'non_service_items') {
     // Apply only to non-service items (addons/products), not time entries
     timeEntryTaxable = 0 // Services are not taxed
     
     addonTaxable = selectedItems.value.ticket_addons
       .filter(item => item.is_taxable === true) // Only explicitly taxable addons
       .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
-  } else if (form.tax_application_mode === 'custom') {
-    // Use individual item taxable settings (same as all_items for now)
+  } else if (effectiveMode === 'custom') {
+    // Use individual item taxable settings - respect system setting for time entries
     timeEntryTaxable = selectedItems.value.time_entries
-      .filter(item => item.is_taxable !== false)
+      .filter(item => isTimeEntryTaxable(item, effectiveMode))
       .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
       
     addonTaxable = selectedItems.value.ticket_addons
@@ -420,8 +464,13 @@ const taxableSubtotal = computed(() => {
 })
 
 const invoiceTax = computed(() => {
-  // Apply invoice-level tax rate only to taxable items
-  return taxableSubtotal.value * (parseFloat(form.tax_rate) / 100)
+  // Use effective tax rate (override or system default)
+  const effectiveRate = form.override_tax 
+    ? parseFloat(form.tax_rate || 0)
+    : parseFloat(taxSettings.value?.default_rate || 0)
+  
+  // Apply effective tax rate only to taxable items
+  return taxableSubtotal.value * (effectiveRate / 100)
 })
 
 const invoiceTotal = computed(() => {
@@ -444,6 +493,23 @@ const createButtonText = computed(() => {
     return hasSelectedItems.value ? 'Creating Invoice...' : 'Creating Blank Invoice...'
   }
   return hasSelectedItems.value ? 'Create Invoice' : 'Create Blank Invoice'
+})
+
+// Initialize form with tax settings when they load
+watch(taxSettings, (newSettings) => {
+  if (newSettings && !form.override_tax) {
+    form.tax_rate = parseFloat(newSettings.default_rate || 0)
+    form.tax_application_mode = newSettings.default_application_mode || 'all_items'
+  }
+}, { immediate: true })
+
+// Watch for override_tax changes to reset tax settings
+watch(() => form.override_tax, (isOverride) => {
+  if (!isOverride && taxSettings.value) {
+    // Reset to system defaults when override is disabled
+    form.tax_rate = parseFloat(taxSettings.value.default_rate || 0)
+    form.tax_application_mode = taxSettings.value.default_application_mode || 'all_items'
+  }
 })
 
 // Watch for account changes to clear selected items

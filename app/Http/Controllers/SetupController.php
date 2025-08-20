@@ -56,7 +56,6 @@ class SetupController extends Controller
             'tax_enabled' => 'boolean',
             'tax_default_rate' => 'required_if:tax_enabled,true|numeric|min:0|max:100',
             'tax_application_mode' => 'required_if:tax_enabled,true|string|in:all_items,non_service_items,custom',
-            'time_entries_taxable_by_default' => 'boolean',
 
             // User Limits (optional for now - licensing will be implemented later)
             'max_users' => 'required|integer|min:1|max:10000',
@@ -191,7 +190,6 @@ class SetupController extends Controller
             'tax.enabled' => $request->boolean('tax_enabled', true),
             'tax.default_rate' => $request->input('tax_default_rate', 6.0),
             'tax.default_application_mode' => $request->input('tax_application_mode', 'non_service_items'),
-            'tax.time_entries_taxable_by_default' => $request->boolean('time_entries_taxable_by_default', false),
         ];
 
         foreach ($systemSettings as $key => $value) {

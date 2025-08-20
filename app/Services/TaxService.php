@@ -107,34 +107,9 @@ class TaxService
             'tax_application_mode' => $this->getEffectiveTaxApplicationMode($accountId),
             'tax_enabled' => $this->isTaxEnabled(),
             'tax_exempt' => $this->isAccountTaxExempt($accountId),
-            'time_entries_taxable_by_default' => $this->getTimeEntriesTaxableDefault($accountId),
         ];
     }
 
-    /**
-     * Get whether time entries are taxable by default
-     */
-    public function getTimeEntriesTaxableDefault(?string $accountId = null): bool
-    {
-        // 1. Account-specific setting
-        if ($accountId) {
-            $accountSetting = Setting::where('type', 'account')
-                ->where('account_id', $accountId)
-                ->where('key', 'tax.time_entries_taxable_by_default')
-                ->first();
-            
-            if ($accountSetting && $accountSetting->value !== null) {
-                return (bool) $accountSetting->value;
-            }
-        }
-
-        // 2. System default setting
-        $systemSetting = Setting::where('type', 'system')
-            ->where('key', 'tax.time_entries_taxable_by_default')
-            ->first();
-
-        return $systemSetting ? (bool) $systemSetting->value : true; // Default to taxable
-    }
 
     /**
      * Set system default tax settings

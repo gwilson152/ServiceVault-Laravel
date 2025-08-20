@@ -246,20 +246,6 @@
                 </div>
               </div>
 
-              <!-- Time Entries Taxable by Default -->
-              <div class="flex items-center justify-between">
-                <div class="flex-1">
-                  <InputLabel value="Time Entries Taxable by Default" />
-                  <p class="text-xs text-gray-500 mt-1">
-                    When "All Taxable Items" is selected above, this controls whether time entries are taxable by default
-                  </p>
-                </div>
-                <div class="ml-4">
-                  <label class="flex items-center">
-                    <Checkbox name="time_entries_taxable_by_default" v-model:checked="form.time_entries_taxable_by_default" />
-                  </label>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -439,7 +425,6 @@ const form = useForm({
   tax_enabled: true,
   tax_default_rate: 6.0,
   tax_application_mode: 'non_service_items',
-  time_entries_taxable_by_default: false,
   
   // User Limits (licensing will be implemented later)
   max_users: 250,

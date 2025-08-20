@@ -451,6 +451,29 @@ PUT /api/settings/workflow-transitions # Update workflow transition rules
 
 ## System Settings API
 
+### Tax Settings (System Configuration)
+```http
+GET /api/settings/tax               # Get tax configuration
+PUT /api/settings/tax               # Update tax configuration
+```
+
+**Body Example**:
+```json
+{
+  "enabled": true,
+  "default_rate": 8.25,
+  "default_application_mode": "non_service_items",
+  "time_entries_taxable_by_default": false
+}
+```
+
+**Tax Application Modes**:
+- `all_items`: Tax applies to both time entries and addons
+- `non_service_items`: Tax applies only to addons, not time entries  
+- `custom`: Tax application determined per line item
+
+**Requirements**: `system.configure` permission
+
 ### Advanced Settings (Super Admin only)
 ```http
 GET /api/settings/advanced          # Get advanced settings (debug overlays)

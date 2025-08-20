@@ -747,7 +747,6 @@ class SettingController extends Controller
         $taxData['enabled'] = $taxData['enabled'] ?? true;
         $taxData['default_rate'] = $taxData['default_rate'] ?? 0.0;
         $taxData['default_application_mode'] = $taxData['default_application_mode'] ?? 'all_items';
-        $taxData['time_entries_taxable_by_default'] = $taxData['time_entries_taxable_by_default'] ?? true;
 
         return response()->json([
             'data' => $taxData,
@@ -765,7 +764,6 @@ class SettingController extends Controller
             'enabled' => 'sometimes|boolean',
             'default_rate' => 'sometimes|numeric|min:0|max:100',
             'default_application_mode' => 'sometimes|string|in:all_items,non_service_items,custom',
-            'time_entries_taxable_by_default' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {

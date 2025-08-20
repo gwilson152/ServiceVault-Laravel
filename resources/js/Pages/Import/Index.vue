@@ -91,6 +91,14 @@
                         Configure & Preview Import
                       </button>
                       <button
+                        v-if="profile.type === 'freescout-postgres'"
+                        @click="introspectEmails(profile)"
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <MagnifyingGlassIcon class="inline w-4 h-4 mr-2" />
+                        Debug Email Structure
+                      </button>
+                      <button
                         @click="executeImport(profile)"
                         class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -266,6 +274,7 @@ import {
   ServerIcon,
   ClockIcon,
   CogIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import { useImportQueries } from '@/Composables/queries/useImportQueries.js'
 
@@ -305,6 +314,53 @@ const openImportWizard = (profile) => {
   selectedProfile.value = profile
   showImportWizard.value = true
   activeProfileMenu.value = null
+}
+
+const introspectEmails = async (profile) => {
+  try {
+    console.log('Starting email introspection for profile:', profile.name)
+    const response = await fetch(`/api/import/profiles/${profile.id}/introspect-emails`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      }
+    })
+    
+    const result = await response.json()
+    
+    if (response.ok) {
+      console.log('Email introspection results:', result)
+      
+      // Display results in browser console for debugging
+      console.log('=== EMAIL TABLES FOUND ===')
+      Object.entries(result.email_tables || {}).forEach(([tableName, tableData]) => {
+        console.log(`Table: ${tableName}`)
+        console.log(`  Email columns:`, tableData.email_columns.map(col => col.name))
+        console.log(`  Customer related:`, tableData.customer_related)
+        console.log(`  Row count:`, tableData.row_count)
+        console.log(`  Sample data:`, tableData.sample_data.slice(0, 2))
+      })
+      
+      console.log('=== FOREIGN KEYS ===')
+      result.foreign_keys?.forEach(fk => {
+        console.log(`${fk.table_name}.${fk.column_name} → ${fk.foreign_table_name}.${fk.foreign_column_name}`)
+      })
+      
+      console.log('=== ANALYSIS ===')
+      result.analysis?.recommendations?.forEach(rec => console.log(`• ${rec}`))
+      
+      if (result.analysis?.customer_email_join) {
+        console.log('Suggested customer-email join:', result.analysis.customer_email_join)
+      }
+      
+    } else {
+      console.error('Email introspection failed:', result)
+    }
+  } catch (error) {
+    console.error('Error during email introspection:', error)
+  }
 }
 
 const executeImport = async (profile) => {

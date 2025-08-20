@@ -8,6 +8,7 @@ use App\Services\PostgreSQLConnectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -576,6 +577,46 @@ class ImportProfileController extends Controller
             return response()->json([
                 'message' => 'Failed to save field mappings',
                 'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Introspect FreeScout database for email structure
+     */
+    public function introspectEmails(ImportProfile $profile): JsonResponse
+    {
+        $this->authorize('view', $profile);
+
+        try {
+            $connectionName = $this->connectionService->createConnection($profile);
+            $result = $this->connectionService->introspectFreeScoutEmails($connectionName);
+            $this->connectionService->closeConnection($connectionName);
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to introspect database: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Introspect FreeScout database for time tracking structure
+     */
+    public function introspectTimeTracking(ImportProfile $profile): JsonResponse
+    {
+        $this->authorize('view', $profile);
+
+        try {
+            $connectionName = $this->connectionService->createConnection($profile);
+            $result = $this->connectionService->introspectFreeScoutTimeTracking($connectionName);
+            $this->connectionService->closeConnection($connectionName);
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to introspect time tracking: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -315,11 +315,12 @@ const emit = defineEmits(['update:modelValue', 'mappings-changed'])
 const { getSchema, getFieldMappings } = useImportQueries()
 
 // Reactive state
-const selectedTable = ref('users')
+const selectedTable = ref('customer_users')
 const fieldMappings = ref({
-  users: [],
-  customers: [],
+  customer_users: [],
   conversations: [],
+  customer_accounts: [],
+  staff_users: [],
   threads: []
 })
 const sourceFields = ref([])
@@ -328,18 +329,11 @@ const sourceFieldsLoading = ref(false)
 // Table configurations
 const availableTables = ref([
   {
-    key: 'users',
-    title: 'Staff Users',
-    description: 'FreeScout staff → Service Vault users',
-    source_table: 'users',
-    destination_table: 'users'
-  },
-  {
-    key: 'customers', 
-    title: 'Customer Accounts',
-    description: 'FreeScout customers → Service Vault accounts + users',
+    key: 'customer_users',
+    title: 'Customer Users',
+    description: 'FreeScout customers → Service Vault customer users',
     source_table: 'customers',
-    destination_table: 'accounts'
+    destination_table: 'users'
   },
   {
     key: 'conversations',
@@ -347,6 +341,20 @@ const availableTables = ref([
     description: 'FreeScout conversations → Service Vault tickets',
     source_table: 'conversations',
     destination_table: 'tickets'
+  },
+  {
+    key: 'customer_accounts', 
+    title: 'Customer Accounts',
+    description: 'FreeScout customers → Service Vault accounts',
+    source_table: 'customers',
+    destination_table: 'accounts'
+  },
+  {
+    key: 'staff_users',
+    title: 'Staff Users',
+    description: 'FreeScout staff → Service Vault agent users',
+    source_table: 'users',
+    destination_table: 'users'
   },
   {
     key: 'threads',
@@ -527,17 +535,14 @@ const getMappingStatusText = (tableKey) => {
 
 const getDestinationFields = (tableKey) => {
   const fieldDefinitions = {
-    users: [
-      { name: 'name', label: 'Name' },
-      { name: 'email', label: 'Email' },
-      { name: 'user_type', label: 'User Type' },
+    customer_users: [
+      { name: 'name', label: 'Customer Name' },
+      { name: 'email', label: 'Email Address' },
+      { name: 'user_type', label: 'User Type (account_user)' },
+      { name: 'account_id', label: 'Account Assignment' },
       { name: 'is_active', label: 'Active Status' },
-      { name: 'password', label: 'Password' }
-    ],
-    customers: [
-      { name: 'name', label: 'Account Name' },
-      { name: 'description', label: 'Description' },
-      { name: 'is_active', label: 'Active Status' }
+      { name: 'phone', label: 'Phone Number' },
+      { name: 'company', label: 'Company Name' }
     ],
     conversations: [
       { name: 'title', label: 'Ticket Title' },
@@ -548,6 +553,19 @@ const getDestinationFields = (tableKey) => {
       { name: 'ticket_number', label: 'Ticket Number' },
       { name: 'due_date', label: 'Due Date' },
       { name: 'tags', label: 'Tags' }
+    ],
+    customer_accounts: [
+      { name: 'name', label: 'Account Name' },
+      { name: 'description', label: 'Description' },
+      { name: 'is_active', label: 'Active Status' },
+      { name: 'settings', label: 'Account Settings' }
+    ],
+    staff_users: [
+      { name: 'name', label: 'Staff Name' },
+      { name: 'email', label: 'Email' },
+      { name: 'user_type', label: 'User Type (agent)' },
+      { name: 'is_active', label: 'Active Status' },
+      { name: 'password', label: 'Password' }
     ],
     threads: [
       { name: 'comment', label: 'Comment Text' },
@@ -560,7 +578,7 @@ const getDestinationFields = (tableKey) => {
 
 const loadDefaultMapping = () => {
   const defaultMappings = {
-    users: [
+    customer_users: [
       {
         destination_field: 'name',
         type: 'combine_fields',
@@ -580,16 +598,14 @@ const loadDefaultMapping = () => {
         static_value: '',
         prefix: '',
         transform_function: ''
-      }
-    ],
-    customers: [
+      },
       {
-        destination_field: 'name',
-        type: 'direct_mapping',
-        source_field: 'company',
+        destination_field: 'user_type',
+        type: 'static_value',
+        source_field: '',
         fields: [],
         separator: ' ',
-        static_value: '',
+        static_value: 'account_user',
         prefix: '',
         transform_function: ''
       }
@@ -602,6 +618,50 @@ const loadDefaultMapping = () => {
         fields: [],
         separator: ' ',
         static_value: '',
+        prefix: '',
+        transform_function: ''
+      }
+    ],
+    customer_accounts: [
+      {
+        destination_field: 'name',
+        type: 'direct_mapping',
+        source_field: 'company',
+        fields: [],
+        separator: ' ',
+        static_value: '',
+        prefix: '',
+        transform_function: ''
+      }
+    ],
+    staff_users: [
+      {
+        destination_field: 'name',
+        type: 'combine_fields',
+        source_field: '',
+        fields: ['first_name', 'last_name'],
+        separator: ' ',
+        static_value: '',
+        prefix: '',
+        transform_function: ''
+      },
+      {
+        destination_field: 'email',
+        type: 'direct_mapping',
+        source_field: 'email',
+        fields: [],
+        separator: ' ',
+        static_value: '',
+        prefix: '',
+        transform_function: ''
+      },
+      {
+        destination_field: 'user_type',
+        type: 'static_value',
+        source_field: '',
+        fields: [],
+        separator: ' ',
+        static_value: 'agent',
         prefix: '',
         transform_function: ''
       }

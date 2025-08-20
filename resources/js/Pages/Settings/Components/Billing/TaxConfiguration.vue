@@ -54,7 +54,6 @@
               <input
                 id="default_tax_rate"
                 v-model.number="settings.default_rate"
-                @input="debouncedSave"
                 type="number"
                 step="0.01"
                 min="0"
@@ -79,7 +78,6 @@
             <select
               id="tax_application_mode"
               v-model="settings.default_application_mode"
-              @change="debouncedSave"
               class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             >
               <option value="all_items">All Taxable Items</option>
@@ -93,48 +91,36 @@
             </p>
           </div>
 
-          <!-- Time Entries Taxable by Default -->
-          <div>
-            <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <label class="text-sm font-medium text-gray-700">
-                  Time Entries Taxable by Default
-                </label>
-                <p class="text-xs text-gray-500 mt-1">
-                  When "All Taxable Items" is selected above, this controls whether time entries are taxable by default. Individual line items can still override this setting.
-                </p>
-              </div>
-              <div class="ml-4">
-                <button
-                  @click="toggleTimeEntriesTaxable"
-                  :disabled="saving"
-                  :class="[
-                    settings.time_entries_taxable_by_default
-                      ? 'bg-indigo-600 focus:ring-indigo-500'
-                      : 'bg-gray-200 focus:ring-gray-500',
-                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
-                  ]"
-                >
-                  <span
-                    :class="[
-                      settings.time_entries_taxable_by_default ? 'translate-x-5' : 'translate-x-0',
-                      'inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
-                    ]"
-                  />
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <!-- Save Status -->
-        <div v-if="saving" class="flex items-center text-sm text-gray-600">
-          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-          Saving...
-        </div>
-        <div v-else-if="lastSaved" class="flex items-center text-sm text-green-600">
-          <CheckCircleIcon class="w-4 h-4 mr-2" />
-          Last saved {{ formatTime(lastSaved) }}
+        <!-- Save Actions -->
+        <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+          <div class="flex items-center">
+            <div v-if="saving" class="flex items-center text-sm text-gray-600">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+              Saving...
+            </div>
+            <div v-else-if="lastSaved" class="flex items-center text-sm text-green-600">
+              <CheckCircleIcon class="w-4 h-4 mr-2" />
+              Last saved {{ formatTime(lastSaved) }}
+            </div>
+            <div v-else class="text-sm text-gray-500">
+              Click "Save Changes" to save your settings
+            </div>
+          </div>
+          
+          <div class="flex items-center space-x-3">
+            <button
+              @click="saveTaxSettings"
+              :disabled="saving"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span v-if="saving" class="mr-2">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              </span>
+              {{ saving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -165,7 +151,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { DocumentTextIcon, CheckCircleIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
-import { debounce } from 'lodash'
 
 // Reactive state
 const saving = ref(false)
@@ -174,8 +159,7 @@ const lastSaved = ref(null)
 const settings = reactive({
   tax_enabled: true,
   default_rate: 0,
-  default_application_mode: 'all_items',
-  time_entries_taxable_by_default: true
+  default_application_mode: 'all_items'
 })
 
 // Load tax settings from API
@@ -187,8 +171,7 @@ const loadTaxSettings = async () => {
     Object.assign(settings, {
       tax_enabled: data.enabled ?? true,
       default_rate: parseFloat(data.default_rate ?? 0),
-      default_application_mode: data.default_application_mode ?? 'all_items',
-      time_entries_taxable_by_default: data.time_entries_taxable_by_default ?? true
+      default_application_mode: data.default_application_mode ?? 'all_items'
     })
   } catch (error) {
     console.error('Failed to load tax settings:', error)
@@ -204,8 +187,7 @@ const saveTaxSettings = async () => {
     await window.axios.put('/api/settings/tax', {
       enabled: settings.tax_enabled,
       default_rate: settings.default_rate,
-      default_application_mode: settings.default_application_mode,
-      time_entries_taxable_by_default: settings.time_entries_taxable_by_default
+      default_application_mode: settings.default_application_mode
     })
     
     lastSaved.value = new Date()
@@ -217,20 +199,13 @@ const saveTaxSettings = async () => {
   }
 }
 
-// Debounced save for input fields
-const debouncedSave = debounce(saveTaxSettings, 1000)
+// Removed debounced save - now only saves when button is clicked
 
-// Toggle tax system (immediate save)
-const toggleTaxSystem = async () => {
+// Toggle tax system (no auto-save)
+const toggleTaxSystem = () => {
   settings.tax_enabled = !settings.tax_enabled
-  await saveTaxSettings()
 }
 
-// Toggle time entries taxable (immediate save)
-const toggleTimeEntriesTaxable = async () => {
-  settings.time_entries_taxable_by_default = !settings.time_entries_taxable_by_default
-  await saveTaxSettings()
-}
 
 // Format time for display
 const formatTime = (date) => {
