@@ -286,6 +286,33 @@ Content-Type: application/json
 }
 ```
 
+## Billing Rate System
+
+Service Vault features a **simplified two-tier billing rate hierarchy** for clear and manageable pricing:
+
+### Rate Priority (Highest to Lowest)
+
+1. **Account-Specific Rates** - Custom rates for individual accounts
+2. **Global Default Rates** - System-wide fallback rates
+
+### Key Implementation Notes
+
+- **Smart Auto-Selection**: Time entry dialogs automatically select billing rates using hierarchy: Account Default → Global Default → First Available
+- **Unified Components**: Shared `BillingRateModal` component works across settings and account contexts
+- **Visual Hierarchy**: Color-coded badges (Blue for account rates, Green for global rates)
+- **Inheritance System**: Child accounts inherit parent account rates unless overridden
+- **Unified Selector**: `UnifiedSelector` type="billing-rate" with group headers and rate hierarchy
+- **API Integration**: `/api/billing-rates?account_id={id}` returns account + inherited + global rates
+
+### Auto-Selection Logic (UnifiedTimeEntryDialog)
+
+1. **Account Selection Trigger**: When user selects an account, `autoSelectBillingRate()` is called
+2. **Rate Priority Search**: Searches for rates in this order:
+   - Account-specific rates marked as `is_default: true`
+   - Global rates (no account_id) marked as `is_default: true` 
+   - First available rate if no defaults found
+3. **Seamless UX**: Rate selection happens automatically without user intervention
+
 ## Permissions
 
 ### Required Permissions

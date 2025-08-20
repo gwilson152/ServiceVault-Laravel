@@ -1280,7 +1280,7 @@ class TicketController extends Controller
         }
 
         $validated = $request->validate([
-            'assigned_user_id' => 'nullable|exists:users,id',
+            'agent_id' => 'nullable|exists:users,id',
             'assignment_reason' => 'nullable|string|max:1000',
             'priority' => 'nullable|string|in:low,normal,high,urgent',
             'notify_new_assignee' => 'boolean',
@@ -1290,7 +1290,7 @@ class TicketController extends Controller
 
         $oldAssignee = $ticket->assignedTo;
 
-        $updateData = ['agent_id' => $validated['assigned_user_id']];
+        $updateData = ['agent_id' => $validated['agent_id']];
         if ($validated['priority'] ?? false) {
             $updateData['priority'] = $validated['priority'];
         }
@@ -1301,12 +1301,12 @@ class TicketController extends Controller
         $ticket->activities()->create([
             'user_id' => $user->id,
             'type' => 'assignment',
-            'description' => $validated['assigned_user_id']
-                ? 'Assigned to '.User::find($validated['assigned_user_id'])->name
+            'description' => $validated['agent_id']
+                ? 'Assigned to '.User::find($validated['agent_id'])->name
                 : 'Unassigned',
             'details' => [
                 'old_assignee' => $oldAssignee?->name,
-                'new_assignee' => $validated['assigned_user_id'] ? User::find($validated['assigned_user_id'])->name : null,
+                'new_assignee' => $validated['agent_id'] ? User::find($validated['agent_id'])->name : null,
                 'reason' => $validated['assignment_reason'] ?? null,
             ],
         ]);

@@ -112,6 +112,12 @@
                   <span v-else class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
                     Add-on
                   </span>
+                  <span v-if="item.is_taxable" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                    Taxable
+                  </span>
+                  <span v-else class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                    Non-Taxable
+                  </span>
                 </div>
                 
                 <div class="mt-1 text-sm text-gray-500">
@@ -168,6 +174,12 @@
                   </span>
                   <span v-else class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
                     Add-on
+                  </span>
+                  <span v-if="item.is_taxable" class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">
+                    Taxable
+                  </span>
+                  <span v-else class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                    Non-Taxable
                   </span>
                 </div>
                 
@@ -320,18 +332,31 @@ watch(selectedItems, (newValue) => {
     ticket_addons: []
   }
   
+  console.log('UnbilledItemsSelector - Selected values:', newValue)
+  
   newValue.forEach(itemId => {
-    const [type, id] = itemId.split('-')
+    const dashIndex = itemId.indexOf('-')
+    const type = itemId.substring(0, dashIndex)
+    const id = itemId.substring(dashIndex + 1)
+    console.log('Processing item:', { itemId, type, id })
     const item = approvedItems.value.find(i => i.type === type && i.id === id)
+    console.log('Found item:', item)
     if (item) {
       if (type === 'time_entry') {
         selected.time_entries.push(item)
+        console.log('Added to time_entries')
       } else if (type === 'ticket_addon') {
         selected.ticket_addons.push(item)
+        console.log('Added to ticket_addons')
+      } else {
+        console.log('Unknown type:', type)
       }
+    } else {
+      console.log('Item not found in approvedItems')
     }
   })
   
+  console.log('Final selected structure:', selected)
   emit('update:selectedItems', selected)
 }, { deep: true })
 

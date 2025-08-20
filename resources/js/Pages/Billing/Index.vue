@@ -141,11 +141,11 @@
           <div v-if="activeTab === 'invoices'">
             <InvoicesTable 
               :invoices="invoices" 
-              :loading="loading"
+              :loading="invoicesLoading"
               @refresh="() => {}"
               @view-invoice="viewInvoice"
-              @send-invoice="sendInvoice"
-              @mark-paid="markInvoicePaid"
+              @mark-paid="handleMarkInvoicePaid"
+              @delete-invoice="handleDeleteInvoice"
             />
           </div>
 
@@ -211,7 +211,8 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import {
   useBillingDashboardStatsQuery,
   useBillingSettingsQuery,
-  useInvoicesQuery
+  useInvoicesQuery,
+  useInvoiceActionsMutations
 } from '@/Composables/queries/useBillingQuery.js'
 
 // Define persistent layout
@@ -244,6 +245,9 @@ const { data: billingStats, isLoading: statsLoading, error: statsError } = useBi
 const { data: billingSettings, isLoading: settingsLoading, error: settingsError } = useBillingSettingsQuery()
 const { data: invoices, isLoading: invoicesLoading, error: invoicesError } = useInvoicesQuery()
 
+// Invoice action mutations
+const { deleteInvoice, markAsPaid } = useInvoiceActionsMutations()
+
 // Reactive data
 const activeTab = ref('invoices')
 const payments = ref([])
@@ -267,37 +271,31 @@ const tabs = [
 ]
 
 // Methods
-const loadPayments = async () => {
-  // TODO: Convert to TanStack Query
-  try {
-    const response = await fetch('/api/billing/payments')
-    const data = await response.json()
-    payments.value = data.data
-  } catch (error) {
-    console.error('Error loading payments:', error)
-  }
-}
 
 const viewInvoice = (invoice) => {
   selectedInvoice.value = invoice
   showViewInvoiceModal.value = true
 }
 
-const sendInvoice = async (invoice) => {
+const handleMarkInvoicePaid = async (invoice) => {
   try {
-    await fetch(`/api/billing/invoices/${invoice.id}/send`, { method: 'POST' })
-    // TanStack Query will automatically refetch
+    await markAsPaid.mutateAsync(invoice.id)
+    // Success is handled automatically by the mutation's onSuccess callback
   } catch (error) {
-    console.error('Error sending invoice:', error)
+    // Error is handled automatically by the mutation's onError callback
+    console.error('Error marking invoice as paid:', error)
   }
 }
 
-const markInvoicePaid = async (invoice) => {
+const handleDeleteInvoice = async (invoice) => {
+  if (!confirm(`Are you sure you want to delete invoice ${invoice.invoice_number}? This action cannot be undone.`)) return
+  
   try {
-    await fetch(`/api/billing/invoices/${invoice.id}/mark-paid`, { method: 'POST' })
-    // TanStack Query will automatically refetch
+    await deleteInvoice.mutateAsync(invoice.id)
+    // Success is handled automatically by the mutation's onSuccess callback
   } catch (error) {
-    console.error('Error marking invoice as paid:', error)
+    // Error is handled automatically by the mutation's onError callback
+    console.error('Error deleting invoice:', error)
   }
 }
 

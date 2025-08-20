@@ -56,16 +56,25 @@ Click the "Edit" (⚙️) button on any timer to modify:
 ### Converting Timers to Time Entries
 
 **Timer Commit Process** (Enhanced August 2025):
-1. **Commit Option**: Use "Commit to Time Entry" from timer overlay dropdown
-2. **Unified Dialog**: Opens the same time entry dialog used for manual entries
-3. **Pre-Population**: All timer data (description, account, ticket, user) automatically filled
-4. **Agent Assignment**: User who ran the timer is pre-selected as the assignee
-5. **Billing Rate Preservation**: Timer's original billing rate is preserved, even if account has overriding rates
-6. **Review & Save**: Modify any details before creating the time entry
+1. **Commit Option**: Use "Stop & Commit Timer" from timer overlay
+2. **Unified Dialog**: Opens the time entry dialog with timer context
+3. **Pre-Population**: All timer data automatically filled (description, account, ticket, user, billing rate)
+4. **Duration Pre-Fill**: Timer duration directly populates hours/minutes fields (no override checkbox needed)
+5. **Database Updates**: Backend automatically updates timer status to "committed" and links time_entry_id
+6. **Visual Status**: Committed timers display with blue indicator and "✓ Committed" status
+7. **Persistent State**: Timer commit status persists across page refreshes
 
-**Key Behaviors**:
-- Timer commit uses the same agent loading logic as manual time entry creation, showing all available time agents regardless of account association
-- **Billing Rate Handling**: The exact billing rate assigned to the timer is preserved during commit, ensuring rate consistency across timer lifecycle
+**Key Improvements** (August 2025):
+- **Simplified UX**: Removed "Override timer duration" checkbox - duration fields are directly editable
+- **Proper Database Updates**: Timers now correctly update to "committed" status in database
+- **Duration Fix**: Corrected seconds (timer) to minutes (time entry) conversion in both directions
+- **Status Persistence**: Committed timers remain visible with proper status after page refresh
+- **Error Handling**: Enhanced error handling prevents crashes during timer operations
+
+**Timer States**:
+- **Running**: Green pulsing indicator, full controls available
+- **Paused**: Yellow indicator, resume/cancel/commit controls
+- **Committed**: Blue indicator, "✓ Committed" text, no action buttons (read-only)
 
 ## Time Entry Management
 
@@ -243,5 +252,42 @@ Timer updates broadcast to:
 - **Expected Behavior**: Account rates override global rates with same names
 - **Timer Preservation**: Original timer rates preserved during commit
 - **UI Clarity**: Timer-specific rates show as "Rate Name (Original)"
+
+## Time Management System
+
+Unified time management interface at `/time-entries` with tabbed interface (Time Entries + Active Timers):
+
+**Key Implementation Notes:**
+- **Time Entries Tab**: CRUD operations with approval workflows
+- **Active Timers Tab**: RBAC-based visibility (own vs all timers)
+- **URL Routes**: `/time-entries/{tab}` where tab = `time-entries|timers`
+- **Permission-Based API Access**: `/api/timers/user/active` vs `/api/admin/timers/all-active`
+- **Auto-Refresh**: 30-second intervals for live updates
+- **Timer Commit Integration**: Automatic tab switching on commit
+- **Enhanced Ticket Context**: Time entry creation from `/tickets/id` automatically preselects account, ticket, and billing rate hierarchy
+
+### Ticket-Based Time Entry Creation
+
+When creating time entries from ticket pages (`/tickets/{id}`), the system now provides enhanced preselection:
+- **Account**: Automatically selected from the ticket's account
+- **Ticket**: Current ticket is preselected and displayed in context box
+- **Billing Rate**: Intelligent hierarchy selection (Account default → Global default → First available)
+- **Context Display**: Visual indicators showing preselected account and ticket information
+
+### Multi-Timer System Architecture
+
+Service Vault supports concurrent timers with Redis state management and real-time sync:
+
+**Key Implementation Notes:**
+- **Concurrent Timers**: Multiple active timers per user with cross-device sync
+- **Redis State**: `user:{user_id}:timer:{timer_id}:state` pattern
+- **Real-Time Broadcasting**: Laravel Echo + Vue composables  
+- **Timer Overlay**: `TimerBroadcastOverlay.vue` with persistent state and left-aligned UI layout
+
+**⚠️ CRITICAL Navigation Rule:**
+Always use Inertia.js navigation (`router.visit()` or `<Link>`) to maintain timer overlay persistence. Regular `<a>` tags or `window.location.href` cause full page reloads and break timer state.
+
+**Domain-Based Assignment:**
+Automatic user-to-account mapping via domain patterns. See [Authentication API](../api/auth.md#domain-based-assignment).
 
 For technical implementation details, see [Timer Architecture](../technical/architecture.md#timer-system).

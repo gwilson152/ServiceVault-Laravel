@@ -36,6 +36,46 @@ php artisan reverb:start       # WebSocket (http://localhost:8080)
 npm run dev                    # Vite HMR (automatic)
 ```
 
+### Development Server Policy
+
+**IMPORTANT**: Never automatically start development servers without explicit user request:
+- **DO NOT** run `php artisan serve` automatically
+- **DO NOT** run `npm run dev` automatically  
+- **DO NOT** run `npm run build --watch` automatically
+- User will manually start/restart development servers when needed
+
+### Quick Start Commands
+
+```bash
+# Development servers (DO NOT run these automatically - user will start them manually)
+php artisan serve         # Start Laravel server (http://localhost:8000)
+php artisan reverb:start  # Start WebSocket server (http://localhost:8080) - for real-time features
+npm run dev              # Start Vite dev server (with HMR)
+
+# Database operations  
+php artisan migrate:fresh --seed  # Reset database with test data
+php artisan migrate      # Run pending migrations only
+php artisan db:seed      # Seed test data only
+
+# Nuclear System Reset (DESTRUCTIVE - Super Admin only)
+php artisan system:nuclear-reset --user-id=1  # Complete system reset with audit logging
+# WARNING: Destroys ALL data, clears caches, removes setup_complete flag
+# Also available via Settings > Nuclear Reset tab in UI with password confirmation
+
+# Frontend development
+npm run build           # Production build
+npm run dev             # Development with hot reload
+
+# Standard Laravel CLI
+php artisan make:model ModelName -mfs          # Model + migration/factory/seeder
+php artisan make:controller Api/ModelController --api --model=Model  # API controller
+php artisan make:policy ModelPolicy --model=Model  # Authorization policy
+
+# Testing & debugging
+php artisan test         # Run test suite
+php artisan tinker       # Interactive shell
+```
+
 ## Development Workflow
 
 ### Git Workflow
@@ -46,20 +86,27 @@ npm run dev                    # Vite HMR (automatic)
 ### Code Generation Standards
 
 **Laravel CLI-First Approach**:
+Service Vault follows Laravel best practices using CLI-first generation:
+
 ```bash
-# Model generation with relationships
-php artisan make:model Account -mfs
-# Creates: Model + Migration + Factory + Seeder
-
-# API Controller generation  
-php artisan make:controller Api/AccountController --api --model=Account
-
-# Authorization policies
-php artisan make:policy AccountPolicy --model=Account
-
-# Form request validation
-php artisan make:request StoreAccountRequest
+# Standard model generation
+php artisan make:model Account -mfs          # Model + migration/factory/seeder
+php artisan make:controller Api/AccountController --api --model=Account  # API controller
+php artisan make:policy AccountPolicy --model=Account  # Authorization policy
+php artisan make:request StoreAccountRequest          # Form validation
+php artisan make:resource AccountResource             # API responses
 ```
+
+### Architecture Principles
+
+- **Hybrid Authentication**: Laravel Sanctum (session + token) with granular abilities
+- **Multi-Timer Architecture**: Concurrent timer support with Redis state management
+- **Three-Dimensional Permission System**: Functional + Widget + Page access control
+- **Unified Component System**: Single components handle multiple entity types consistently
+- **StackedDialog Architecture**: Native dialog-based modals with proper z-index management
+- **Real-Time Infrastructure**: Laravel Echo + Vue composables for live updates
+- **API-First Backend**: RESTful endpoints with consistent JSON responses
+- **Modern Frontend Stack**: Vue.js 3.5 + Inertia.js + TanStack Query + Tailwind CSS
 
 ### Database Management
 

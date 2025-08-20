@@ -390,6 +390,13 @@ const shouldUseCustomData = computed(() => {
   return props.customItems.length > 0
 })
 
+// Configuration and helper functions (must be defined before computed properties that use them)
+const config = computed(() => typeConfigs[props.type])
+
+const getItemKey = (item) => {
+  return item[config.value.keyField]
+}
+
 // Query setup based on selector type and custom data preference
 const filterSetRef = ref(props.filterSet)
 const agentTypeRef = ref(props.agentType)
@@ -726,7 +733,6 @@ const typeConfigs = {
 }
 
 // Computed properties
-const config = computed(() => typeConfigs[props.type])
 const defaultPlaceholder = computed(() => {
   return props.placeholder || `Search and select a ${props.type}...`
 })
@@ -775,9 +781,6 @@ watch(() => activeItemData.value, (newActiveItem) => {
 }, { immediate: true })
 
 // Methods
-const getItemKey = (item) => {
-  return item[config.value.keyField]
-}
 
 const getItemTitle = (item) => {
   if (props.type === 'ticket') {

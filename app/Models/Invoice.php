@@ -97,7 +97,7 @@ class Invoice extends Model
     // Helper methods
     public function isOverdue(): bool
     {
-        return $this->due_date->isPast() && ! in_array($this->status, ['paid', 'cancelled']);
+        return $this->due_date && $this->due_date->isPast() && ! in_array($this->status, ['paid', 'cancelled']);
     }
 
     public function isPaid(): bool
@@ -121,8 +121,26 @@ class Invoice extends Model
 
     public static function generateInvoiceNumber(string $accountId): string
     {
-        $settings = BillingSetting::where('account_id', $accountId)->first()
-                   ?? BillingSetting::whereNull('account_id')->first();
+        $settings = \App\Models\BillingSetting::where('account_id', $accountId)->first()
+                   ?? \App\Models\BillingSetting::whereNull('account_id')->first();
+
+        // If no settings exist, create default global settings
+        if (!$settings) {
+            $settings = \App\Models\BillingSetting::create([
+                'account_id' => null, // Global settings
+                'company_name' => 'Company Name',
+                'company_address' => 'Company Address',
+                'company_email' => 'billing@company.com',
+                'invoice_prefix' => 'INV',
+                'next_invoice_number' => 1001,
+                'payment_terms' => 30,
+                'currency' => 'USD',
+                'timezone' => 'UTC',
+                'date_format' => 'Y-m-d',
+                'auto_send_invoices' => false,
+                'send_payment_reminders' => true,
+            ]);
+        }
 
         $prefix = $settings->invoice_prefix ?? 'INV';
         $nextNumber = $settings->next_invoice_number ?? 1001;
@@ -147,7 +165,7 @@ class Invoice extends Model
 
     public function getDaysOverdueAttribute(): int
     {
-        if (! $this->isOverdue()) {
+        if (! $this->isOverdue() || ! $this->due_date) {
             return 0;
         }
 

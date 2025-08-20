@@ -24,6 +24,8 @@ const billingApi = {
   getInvoice: (id) => axios.get(`/api/billing/invoices/${id}`).then(res => res.data),
   updateInvoice: (id, data) => axios.put(`/api/billing/invoices/${id}`, data).then(res => res.data),
   deleteInvoice: (id) => axios.delete(`/api/billing/invoices/${id}`).then(res => res.data),
+  sendInvoice: (id) => axios.post(`/api/billing/invoices/${id}/send`).then(res => res.data),
+  markInvoiceAsPaid: (id) => axios.post(`/api/billing/invoices/${id}/mark-paid`).then(res => res.data),
   
   // Billing Reports & Stats
   getDashboardStats: () => axios.get('/api/billing/reports/dashboard').then(res => res.data),
@@ -171,7 +173,7 @@ export function useBillingSettingsQuery() {
 // Invoices Query
 export function useInvoicesQuery() {
   return useQuery({
-    queryKey: queryKeys.billing.invoices,
+    queryKey: queryKeys.invoices.all,
     queryFn: () => billingApi.getInvoices().then(res => res.data),
     staleTime: 1000 * 60 * 2, // 2 minutes
   })
@@ -199,7 +201,7 @@ export function useCreateInvoiceMutation() {
   return useMutation({
     mutationFn: (data) => billingApi.createInvoice(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.billing.invoices })
+      queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.dashboardStats })
       // Invalidate unbilled items for all accounts since items may have been invoiced
       queryClient.invalidateQueries({ queryKey: ['billing', 'unbilled-items'] })
@@ -323,5 +325,64 @@ export function useBulkApprovalMutations() {
     rejectTimeEntry: useRejectTimeEntryMutation(),
     approveAddon: useApproveAddonMutation(),
     rejectAddon: useRejectAddonMutation(),
+  }
+}
+
+// Send Invoice Mutation
+export function useSendInvoiceMutation() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: (invoiceId) => billingApi.sendInvoice(invoiceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.dashboardStats })
+    },
+    onError: (error) => {
+      console.error('Failed to send invoice:', error)
+    }
+  })
+}
+
+// Delete Invoice Mutation
+export function useDeleteInvoiceMutation() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: (invoiceId) => billingApi.deleteInvoice(invoiceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.dashboardStats })
+      // Invalidate unbilled items as deleted invoice items become available again
+      queryClient.invalidateQueries({ queryKey: ['billing', 'unbilled-items'] })
+    },
+    onError: (error) => {
+      console.error('Failed to delete invoice:', error)
+    }
+  })
+}
+
+// Mark Invoice as Paid Mutation
+export function useMarkInvoiceAsPaidMutation() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: (invoiceId) => billingApi.markInvoiceAsPaid(invoiceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.dashboardStats })
+    },
+    onError: (error) => {
+      console.error('Failed to mark invoice as paid:', error)
+    }
+  })
+}
+
+// Combined Invoice Actions Composable
+export function useInvoiceActionsMutations() {
+  return {
+    sendInvoice: useSendInvoiceMutation(),
+    deleteInvoice: useDeleteInvoiceMutation(),
+    markAsPaid: useMarkInvoiceAsPaidMutation(),
   }
 }

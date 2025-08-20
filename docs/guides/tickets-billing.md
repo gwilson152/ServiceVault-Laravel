@@ -96,18 +96,59 @@ Duration × Hourly Rate = Billable Amount
 - Approved entries included in invoicing
 - Rejected entries excluded from billing
 
-### Invoice Generation
+### Invoice Generation & Approval Workflow
 
-**Automated Invoice Creation**:
-- Approved time entries from date range
-- Ticket addons and fixed-price items
-- Account-specific billing settings (terms, etc.)
+**Enhanced Invoice Creation Process**:
+Service Vault features a comprehensive invoice generation system with integrated approval workflow:
 
-**Manual Invoice Management**:
-- Create custom invoices
-- Add line items manually
-- Apply discounts or adjustments
-- Export as PDF for client delivery
+**Step 1: Account Selection & Item Discovery**
+- Select target account for invoice generation
+- System automatically discovers unbilled items:
+  - Approved time entries (ready to invoice)
+  - Pending time entries (require approval)
+  - Approved ticket addons (ready to invoice)
+  - Pending ticket addons (require approval)
+
+**Step 2: Item Review & Selection**
+- **Visual Status Indicators**:
+  - ✅ Green checkmarks: Approved items (auto-selected)
+  - ⏳ Orange pending: Unapproved items (noted as requiring approval)
+  - 🚫 Red rejected: Previously rejected items (excluded)
+- **Smart Selection**: Only approved items can be invoiced
+- **Real-time Totals**: Dynamic calculation as items are selected/deselected
+
+**Step 3: Approval Wizard Integration**
+- **Launch from Billing Page**: Quick access to bulk approval workflow
+- **Launch from Time Entries**: Review mode with account filtering
+- **Step-through Process**: Review each pending item individually
+- **Bulk Operations**: Approve/reject multiple items simultaneously
+- **Progress Tracking**: Visual indicators of approval workflow completion
+
+**Step 4: Invoice Configuration**
+- **Manual Date Setting**: Custom invoice and due dates
+- **Tax Rate Application**: Configurable tax calculations
+- **Invoice Notes**: Additional terms or comments
+- **Real-time Preview**: Live invoice summary with totals
+
+**Invoice Management Features**:
+- **Post-Generation Editing**: Add/remove items after creation
+- **PDF Export**: Professional invoices for client delivery
+- **Payment Tracking**: Mark invoices as paid/unpaid
+- **Send Invoices**: Email delivery to clients
+- **Invoice History**: Complete audit trail
+
+**Approval Workflow Details**:
+```
+Pending Items → Review Process → Approval Decision → Invoice Inclusion
+     ↓              ↓                 ↓                    ↓
+Time Entries   Individual      Approve/Reject      Auto-Selected
+  Addons       Bulk Review     with Notes         for Invoicing
+```
+
+**Permission Requirements**:
+- **Invoice Creation**: `billing.manage` or `admin.write`
+- **Item Approval**: `time.approve` (time entries) or `tickets.approve` (addons)
+- **Approval Wizard Access**: Manager-level permissions or above
 
 ## Permissions & Access
 
@@ -157,7 +198,7 @@ GET    /api/tickets/{ticket}/comments  # List comments
 POST   /api/tickets/{ticket}/comments  # Add comment
 ```
 
-### Billing Rate Endpoints
+### Billing System Endpoints
 
 ```bash
 # Billing Rate Management
@@ -168,6 +209,38 @@ DELETE /api/billing-rates/{rate}       # Delete billing rate
 
 # Account-Specific Rates
 GET    /api/billing-rates?account_id={id}  # Get rates for account
+
+# Invoice Management
+GET    /api/billing/invoices           # List invoices with filtering
+POST   /api/billing/invoices           # Create new invoice
+GET    /api/billing/invoices/{invoice} # Show invoice details
+PUT    /api/billing/invoices/{invoice} # Update invoice
+DELETE /api/billing/invoices/{invoice} # Delete invoice
+POST   /api/billing/invoices/{invoice}/send      # Email invoice to client
+POST   /api/billing/invoices/{invoice}/mark-paid # Mark invoice as paid
+GET    /api/billing/invoices/{invoice}/pdf       # Generate PDF
+
+# Unbilled Items & Approval Workflow
+GET    /api/billing/unbilled-items     # Get unbilled items by account
+                                       # Params: account_id, include_unapproved
+
+# Time Entry Approval
+POST   /api/time-entries/{id}/approve  # Approve time entry
+POST   /api/time-entries/{id}/reject   # Reject time entry
+POST   /api/time-entries/bulk/approve  # Bulk approve time entries
+POST   /api/time-entries/bulk/reject   # Bulk reject time entries
+
+# Ticket Addon Approval  
+POST   /api/ticket-addons/{id}/approve # Approve ticket addon
+POST   /api/ticket-addons/{id}/reject  # Reject ticket addon
+POST   /api/ticket-addons/bulk/approve # Bulk approve addons
+POST   /api/ticket-addons/bulk/reject  # Bulk reject addons
+
+# Billing Reports & Analytics
+GET    /api/billing/reports/dashboard   # Billing dashboard statistics
+GET    /api/billing/reports/revenue     # Revenue reports
+GET    /api/billing/reports/outstanding # Outstanding invoices
+GET    /api/billing/reports/payments    # Payment tracking
 ```
 
 ## Configuration

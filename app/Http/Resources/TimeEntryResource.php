@@ -18,7 +18,7 @@ class TimeEntryResource extends JsonResource
             'id' => $this->id,
             'description' => $this->description,
             'duration' => $this->duration,
-            'duration_formatted' => $this->formatDuration($this->duration), // Duration is already in seconds
+            'duration_formatted' => $this->formatDuration($this->duration), // Duration is stored in minutes
             'started_at' => $this->started_at,
             'ended_at' => $this->ended_at,
             'billable' => $this->billable,
@@ -63,7 +63,6 @@ class TimeEntryResource extends JsonResource
                 return [
                     'id' => $this->billingRate->id,
                     'rate' => $this->billingRate->rate,
-                    'type' => $this->billingRate->type,
                 ];
             }),
 
@@ -76,12 +75,23 @@ class TimeEntryResource extends JsonResource
 
             'approved_at' => $this->approved_at,
 
+            // Invoice information
+            'invoice_id' => $this->invoice_id,
+            'invoice' => $this->whenLoaded('invoice', function () {
+                return [
+                    'id' => $this->invoice->id,
+                    'invoice_number' => $this->invoice->invoice_number,
+                    'status' => $this->invoice->status,
+                ];
+            }),
+            'is_invoiced' => !is_null($this->invoice_id),
+
             // Calculated fields
-            'hours' => round($this->duration / 3600, 2), // Convert seconds to hours
+            'hours' => round($this->duration / 60, 2), // Convert minutes to hours
             'calculated_cost' => $this->when(
                 $this->relationLoaded('billingRate') && $this->billingRate,
                 function () {
-                    return round(($this->duration / 3600) * $this->billingRate->rate, 2); // Convert seconds to hours
+                    return round(($this->duration / 60) * $this->billingRate->rate, 2); // Convert minutes to hours
                 }
             ),
 
@@ -93,18 +103,18 @@ class TimeEntryResource extends JsonResource
     }
 
     /**
-     * Format duration in seconds to human readable format
+     * Format duration in minutes to human readable format
      */
-    private function formatDuration(int $seconds): string
+    private function formatDuration(int $minutes): string
     {
-        $hours = floor($seconds / 3600);
-        $minutes = floor(($seconds % 3600) / 60);
+        $hours = floor($minutes / 60);
+        $remainingMinutes = $minutes % 60;
 
         if ($hours > 0) {
-            return sprintf('%dh %02dm', $hours, $minutes);
+            return sprintf('%dh %02dm', $hours, $remainingMinutes);
         }
 
-        return sprintf('%dm', $minutes);
+        return sprintf('%dm', $remainingMinutes);
     }
 
     /**

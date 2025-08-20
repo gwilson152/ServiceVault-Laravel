@@ -57,7 +57,7 @@
             Assign To <span class="text-red-500">*</span>
           </label>
           <select 
-            v-model="form.assigned_user_id" 
+            v-model="form.agent_id" 
             required
             class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
@@ -89,7 +89,7 @@
               </option>
             </optgroup>
           </select>
-          <p v-if="errors.assigned_user_id" class="text-red-500 text-xs mt-1">{{ errors.assigned_user_id }}</p>
+          <p v-if="errors.agent_id" class="text-red-500 text-xs mt-1">{{ errors.agent_id }}</p>
         </div>
 
         <!-- Selected User Preview -->
@@ -205,7 +205,7 @@
         </button>
         <button
           @click="submitForm"
-          :disabled="submitting || (assignmentType === 'assign' && !form.assigned_user_id)"
+          :disabled="submitting || (assignmentType === 'assign' && !form.agent_id)"
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ submitting ? 'Updating...' : (assignmentType === 'assign' ? 'Assign Ticket' : 'Unassign Ticket') }}
@@ -237,7 +237,7 @@ const availableUsers = ref([])
 
 // Form data
 const form = ref({
-  assigned_user_id: '',
+  agent_id: '',
   assignment_reason: '',
   priority: '',
   notify_new_assignee: true,
@@ -258,7 +258,7 @@ const managers = computed(() => {
 })
 
 const selectedUser = computed(() => {
-  return availableUsers.value.find(user => user.id == form.value.assigned_user_id)
+  return availableUsers.value.find(user => user.id == form.value.agent_id)
 })
 
 const workloadWarning = computed(() => {
@@ -280,12 +280,12 @@ const validateForm = () => {
   errors.value = {}
 
   if (assignmentType.value === 'assign') {
-    if (!form.value.assigned_user_id) {
-      errors.value.assigned_user_id = 'Please select a user to assign'
+    if (!form.value.agent_id) {
+      errors.value.agent_id = 'Please select a user to assign'
     }
     
-    if (form.value.assigned_user_id == props.ticket.assigned_user?.id) {
-      errors.value.assigned_user_id = 'This user is already assigned to this ticket'
+    if (form.value.agent_id == props.ticket.agent_id) {
+      errors.value.agent_id = 'This user is already assigned to this ticket'
     }
   }
 
@@ -299,7 +299,7 @@ const submitForm = async () => {
 
   try {
     const payload = {
-      assigned_user_id: assignmentType.value === 'assign' ? form.value.assigned_user_id : null,
+      agent_id: assignmentType.value === 'assign' ? form.value.agent_id : null,
       assignment_reason: form.value.assignment_reason.trim() || null,
       notify_new_assignee: form.value.notify_new_assignee,
       notify_previous_assignee: form.value.notify_previous_assignee,

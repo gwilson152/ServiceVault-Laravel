@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TimeEntryResource;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,7 @@ class TimeEntryController extends Controller
             'user:id,name',
             'account:id,name',
             'ticket:id,title,account_id',
-            'billingRate:id,rate,type',
+            'billingRate:id,rate',
         ]);
 
         // Apply user scope - employees see their own, service providers/managers/admins see team members
@@ -85,10 +86,10 @@ class TimeEntryController extends Controller
         // Add summary statistics
         $stats = [
             'total_hours' => $timeEntries->sum(function ($entry) {
-                return $entry->duration / 3600;
+                return $entry->duration / 60; // Duration is stored in minutes
             }),
             'billable_hours' => $timeEntries->where('billable', true)->sum(function ($entry) {
-                return $entry->duration / 3600;
+                return $entry->duration / 60; // Duration is stored in minutes
             }),
             'pending_count' => $timeEntries->where('status', 'pending')->count(),
             'approved_count' => $timeEntries->where('status', 'approved')->count(),
@@ -116,7 +117,7 @@ class TimeEntryController extends Controller
 
         $validated = $request->validate([
             'description' => 'required|string|max:1000',
-            'duration' => 'required|integer|min:60|max:86400', // 1 minute to 24 hours (in seconds)
+            'duration' => 'required|integer|min:1|max:1440', // 1 minute to 24 hours (in minutes)
             'started_at' => 'required|date',
             'ended_at' => 'nullable|date|after:started_at',
             'account_id' => 'required|exists:accounts,id',
@@ -125,6 +126,7 @@ class TimeEntryController extends Controller
             'billable' => 'boolean',
             'notes' => 'nullable|string|max:2000',
             'billing_rate_id' => 'nullable|exists:billing_rates,id',
+            'rate_override' => 'nullable|numeric|min:0|max:9999.99', // Allow rate override for time managers/admins
             'timer_id' => 'nullable|exists:timers,id', // For timer commit functionality
         ]);
 
@@ -172,18 +174,37 @@ class TimeEntryController extends Controller
             }
         }
 
+        // Check if user can override rates (time managers and admins)
+        $canOverrideRates = $user->hasAnyPermission(['time.manage', 'admin.manage']);
+        $rateOverride = null;
+        
+        if ($canOverrideRates && isset($validated['rate_override'])) {
+            $rateOverride = $validated['rate_override'];
+        }
+
+        // Get billing rate value for rate_at_time field (audit trail)
+        $rateAtTime = null;
+        if (isset($validated['billing_rate_id']) && $validated['billing_rate_id']) {
+            $billingRate = \App\Models\BillingRate::find($validated['billing_rate_id']);
+            if ($billingRate) {
+                $rateAtTime = $billingRate->rate;
+            }
+        }
+
         // Create time entry with Agent/Customer architecture
         $timeEntry = TimeEntry::create([
             'user_id' => $assignedUserId, // Agent who performed the work
             'description' => $validated['description'],
-            'duration' => intval($validated['duration'] / 60), // Convert seconds to minutes for storage
+            'duration' => intval($validated['duration']), // Duration is already in minutes
             'started_at' => $validated['started_at'],
-            'ended_at' => $validated['ended_at'] ?? Carbon::parse($validated['started_at'])->addSeconds($validated['duration']),
+            'ended_at' => $validated['ended_at'] ?? Carbon::parse($validated['started_at'])->addMinutes($validated['duration']),
             'account_id' => $validated['account_id'], // Customer account (always required)
             'ticket_id' => $validated['ticket_id'] ?? null, // Optional ticket association
             'billable' => $validated['billable'] ?? true,
             'notes' => $validated['notes'] ?? null,
             'billing_rate_id' => $validated['billing_rate_id'] ?? null,
+            'rate_at_time' => $rateAtTime, // Store billing rate at time of creation for audit
+            'rate_override' => $rateOverride,
             'status' => 'pending', // Default status for approval workflow
         ]);
 
@@ -254,12 +275,31 @@ class TimeEntryController extends Controller
 
         $validated = $request->validate([
             'description' => 'sometimes|string|max:1000',
-            'duration' => 'sometimes|integer|min:60|max:86400',
+            'duration' => 'sometimes|integer|min:1|max:1440',
             'date' => 'sometimes|date|before_or_equal:today',
             'billable' => 'sometimes|boolean',
             'notes' => 'sometimes|nullable|string|max:2000',
             'billing_rate_id' => 'sometimes|nullable|exists:billing_rates,id',
+            'rate_override' => 'sometimes|nullable|numeric|min:0|max:9999.99',
         ]);
+
+        // Check if user can override rates (time managers and admins)
+        $canOverrideRates = $user->hasAnyPermission(['time.manage', 'admin.manage']);
+        
+        if (!$canOverrideRates && isset($validated['rate_override'])) {
+            unset($validated['rate_override']); // Remove rate override if user doesn't have permission
+        }
+
+        // Update rate_at_time if billing_rate_id is being changed
+        if (isset($validated['billing_rate_id']) && $validated['billing_rate_id']) {
+            $billingRate = \App\Models\BillingRate::find($validated['billing_rate_id']);
+            if ($billingRate) {
+                $validated['rate_at_time'] = $billingRate->rate;
+            }
+        } elseif (isset($validated['billing_rate_id']) && $validated['billing_rate_id'] === null) {
+            // If billing rate is being removed, clear rate_at_time
+            $validated['rate_at_time'] = null;
+        }
 
         // Reset status to pending if content changed (unless user is manager/admin)
         if (($request->has('description') || $request->has('duration') || $request->has('date')) &&
@@ -332,14 +372,23 @@ class TimeEntryController extends Controller
 
         $validated = $request->validate([
             'notes' => 'nullable|string|max:1000',
+            'rate_override' => 'nullable|numeric|min:0|max:9999.99',
         ]);
 
-        $timeEntry->update([
-            'status' => 'approved',
-            'approved_by' => $user->id,
-            'approved_at' => now(),
-            'approval_notes' => $validated['notes'] ?? null,
-        ]);
+        // Check if user can override rates (time managers and admins)
+        $canOverrideRates = $user->hasAnyPermission(['time.manage', 'admin.manage']);
+        $rateOverride = null;
+        
+        if ($canOverrideRates && isset($validated['rate_override'])) {
+            $rateOverride = $validated['rate_override'];
+        }
+
+        // Use the model's approve method which locks the calculated amount
+        $timeEntry->approve(
+            $user->id,
+            $validated['notes'] ?? null,
+            $rateOverride
+        );
 
         $timeEntry->load(['user:id,name', 'account:id,name', 'approvedBy:id,name']);
 
@@ -508,7 +557,7 @@ class TimeEntryController extends Controller
             'rejected_count' => (clone $query)->where('status', 'rejected')
                 ->where('approved_at', '>=', $startDate)->count(),
             'total_hours_pending' => (clone $query)->where('status', 'pending')
-                ->sum('duration') / 3600,
+                ->sum('duration') / 60, // Duration is stored in minutes
             'average_approval_time' => $this->getAverageApprovalTime($query, $startDate),
             'approval_rate' => $this->getApprovalRate($query, $startDate),
         ];

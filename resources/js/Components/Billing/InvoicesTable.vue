@@ -57,7 +57,7 @@
               @click="header.column.getToggleSortingHandler()?.($event)"
             >
               <div class="flex items-center space-x-1">
-                <span>{{ header.renderHeader() }}</span>
+                <span>{{ header.column.columnDef.header }}</span>
                 <span v-if="header.column.getCanSort()">
                   <ChevronUpDownIcon v-if="!header.column.getIsSorted()" class="h-4 w-4" />
                   <ChevronUpIcon v-else-if="header.column.getIsSorted() === 'asc'" class="h-4 w-4" />
@@ -78,7 +78,7 @@
               :key="cell.id"
               class="px-6 py-4 whitespace-nowrap"
             >
-              <component :is="cell.renderCell()" />
+              <component :is="cell.column.columnDef.cell(cell.getContext())" />
             </td>
           </tr>
         </tbody>
@@ -142,6 +142,7 @@
 
 <script setup>
 import { ref, computed, h } from 'vue'
+import { router } from '@inertiajs/vue3'
 import { 
   useVueTable, 
   getCoreRowModel, 
@@ -152,7 +153,11 @@ import {
 import { 
   ChevronUpDownIcon, 
   ChevronUpIcon, 
-  ChevronDownIcon 
+  ChevronDownIcon,
+  EyeIcon,
+  TrashIcon,
+  CheckCircleIcon,
+  DocumentIcon
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -163,10 +168,17 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  actionLoading: {
+    type: Object,
+    default: () => ({
+      markPaid: false,
+      delete: false
+    })
   }
 })
 
-const emit = defineEmits(['refresh', 'view-invoice', 'send-invoice', 'mark-paid'])
+const emit = defineEmits(['refresh', 'view-invoice', 'mark-paid', 'delete-invoice'])
 
 // Filters
 const filters = ref({
@@ -185,13 +197,13 @@ const filteredInvoices = computed(() => {
 
   if (filters.value.dateFrom) {
     result = result.filter(invoice => 
-      new Date(invoice.date) >= new Date(filters.value.dateFrom)
+      new Date(invoice.invoice_date) >= new Date(filters.value.dateFrom)
     )
   }
 
   if (filters.value.dateTo) {
     result = result.filter(invoice => 
-      new Date(invoice.date) <= new Date(filters.value.dateTo)
+      new Date(invoice.invoice_date) <= new Date(filters.value.dateTo)
     )
   }
 
@@ -215,11 +227,11 @@ const columns = [
     cell: info => h('div', { class: 'text-sm text-gray-900' }, info.getValue()?.name || 'N/A'),
     enableSorting: false
   }),
-  columnHelper.accessor('total_amount', {
+  columnHelper.accessor('total', {
     header: 'Amount',
     cell: info => h('div', { class: 'space-y-1' }, [
-      h('div', { class: 'text-sm font-medium text-gray-900' }, `$${formatCurrency(info.getValue())}`),
-      h('div', { class: 'text-xs text-gray-500' }, `Due: $${formatCurrency(info.getValue() - (info.row.original.paid_amount || 0))}`)
+      h('div', { class: 'text-sm font-medium text-gray-900' }, `$${info.getValue()}`),
+      h('div', { class: 'text-xs text-gray-500' }, `Outstanding: $${info.row.original.outstanding_balance}`)
     ])
   }),
   columnHelper.accessor('status', {
@@ -228,7 +240,7 @@ const columns = [
       class: `inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(info.getValue())}`
     }, formatStatus(info.getValue()))
   }),
-  columnHelper.accessor('date', {
+  columnHelper.accessor('invoice_date', {
     header: 'Date',
     cell: info => h('div', { class: 'text-sm text-gray-900' }, formatDate(info.getValue()))
   }),
@@ -241,24 +253,28 @@ const columns = [
     header: 'Actions',
     cell: ({ row }) => {
       const invoice = row.original
-      return h('div', { class: 'flex items-center space-x-2' }, [
+      return h('div', { class: 'flex items-center space-x-1' }, [
         h('button', {
-          onClick: () => emit('view-invoice', invoice),
-          class: 'text-indigo-600 hover:text-indigo-900 text-sm'
-        }, 'View'),
+          onClick: () => router.visit(`/invoices/${invoice.id}`),
+          class: 'p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded',
+          title: 'View Invoice'
+        }, h(EyeIcon, { class: 'h-4 w-4' })),
         invoice.status === 'draft' ? h('button', {
-          onClick: () => emit('send-invoice', invoice),
-          class: 'text-green-600 hover:text-green-900 text-sm'
-        }, 'Send') : null,
+          onClick: () => emit('delete-invoice', invoice),
+          class: 'p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded',
+          title: 'Delete Invoice'
+        }, h(TrashIcon, { class: 'h-4 w-4' })) : null,
         ['sent', 'overdue'].includes(invoice.status) ? h('button', {
           onClick: () => emit('mark-paid', invoice),
-          class: 'text-blue-600 hover:text-blue-900 text-sm'
-        }, 'Mark Paid') : null,
+          class: 'p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded',
+          title: 'Mark as Paid'
+        }, h(CheckCircleIcon, { class: 'h-4 w-4' })) : null,
         h('a', {
           href: `/api/billing/invoices/${invoice.id}/pdf`,
           target: '_blank',
-          class: 'text-gray-600 hover:text-gray-900 text-sm'
-        }, 'PDF')
+          class: 'p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded',
+          title: 'Download PDF'
+        }, h(DocumentIcon, { class: 'h-4 w-4' }))
       ].filter(Boolean))
     }
   })
@@ -306,12 +322,6 @@ const resetFilters = () => {
   emit('refresh')
 }
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount || 0)
-}
 
 const formatDate = (date) => {
   if (!date) return 'N/A'

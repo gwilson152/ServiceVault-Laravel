@@ -216,12 +216,13 @@ CREATE TABLE timers (
     account_id UUID REFERENCES accounts(id),
     ticket_id UUID REFERENCES tickets(id),
     billing_rate_id UUID REFERENCES billing_rates(id),
+    time_entry_id UUID REFERENCES time_entries(id),
     description TEXT NOT NULL,
     status VARCHAR(20) DEFAULT 'running',
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     paused_at TIMESTAMP,
     stopped_at TIMESTAMP,
-    duration INTEGER DEFAULT 0,
+    total_paused_duration INTEGER DEFAULT 0,
     billable BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -239,7 +240,10 @@ CREATE INDEX idx_timers_started ON timers(started_at);
 - `running`: Currently active
 - `paused`: Temporarily stopped
 - `stopped`: Completed but not committed
-- `committed`: Converted to time entry
+- `committed`: Converted to time entry (August 2025: properly updates in database)
+- `canceled`: Abandoned without creating time entry
+
+**Duration Storage**: Timer durations stored in **seconds** (calculated from start/stop times)
 
 #### time_entries
 ```sql
@@ -276,6 +280,9 @@ CREATE INDEX idx_time_entries_billable ON time_entries(billable);
 - `pending`: Awaiting approval
 - `approved`: Approved for billing
 - `rejected`: Rejected, not billable
+
+**Duration Storage**: Time entry durations stored in **minutes** (converted from timer seconds)
+**Timer Linkage**: `timer_id` links time entries back to originating timers (August 2025 enhancement)
 
 #### billing_rates
 ```sql
@@ -347,6 +354,140 @@ CREATE INDEX idx_invoice_items_invoice ON invoice_line_items(invoice_id);
 CREATE INDEX idx_invoice_items_order ON invoice_line_items(line_order);
 ```
 
+## Import System Tables
+
+### import_profiles
+```sql
+CREATE TABLE import_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) DEFAULT 'freescout-postgres',
+    host VARCHAR(255) NOT NULL,
+    port INTEGER DEFAULT 5432,
+    database VARCHAR(255) NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    password TEXT NOT NULL, -- Encrypted using Laravel Crypt
+    ssl_mode VARCHAR(20) DEFAULT 'prefer',
+    description TEXT,
+    connection_options JSONB,
+    is_active BOOLEAN DEFAULT true,
+    created_by UUID NOT NULL REFERENCES users(id),
+    last_tested_at TIMESTAMP,
+    last_test_result JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes
+CREATE INDEX idx_import_profiles_type_active ON import_profiles(type, is_active);
+CREATE INDEX idx_import_profiles_created_by ON import_profiles(created_by);
+```
+
+**Key Features**:
+- **UUID Primary Keys**: Consistent with Service Vault architecture
+- **Encrypted Passwords**: Database credentials encrypted at rest
+- **Connection Testing**: Stores last test results for validation
+- **Type Support**: Currently supports FreeScout PostgreSQL imports
+
+### import_jobs
+```sql
+CREATE TABLE import_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id UUID NOT NULL REFERENCES import_profiles(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending',
+    import_options JSONB,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    records_processed INTEGER DEFAULT 0,
+    records_imported INTEGER DEFAULT 0,
+    records_skipped INTEGER DEFAULT 0,
+    records_failed INTEGER DEFAULT 0,
+    summary JSONB,
+    errors TEXT,
+    progress_percentage INTEGER DEFAULT 0,
+    current_operation VARCHAR(255),
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes
+CREATE INDEX idx_import_jobs_profile ON import_jobs(profile_id);
+CREATE INDEX idx_import_jobs_status ON import_jobs(status);
+CREATE INDEX idx_import_jobs_created_by ON import_jobs(created_by);
+CREATE INDEX idx_import_jobs_created_at ON import_jobs(created_at DESC);
+```
+
+**Status Values**:
+- `pending` - Job queued for execution
+- `running` - Import in progress
+- `completed` - Import finished successfully
+- `failed` - Import encountered fatal errors
+- `cancelled` - Job cancelled by user
+
+**Import Options Structure**:
+```json
+{
+  "selected_tables": ["users", "customers", "conversations", "threads"],
+  "import_filters": {
+    "date_from": "2024-01-01",
+    "date_to": "2024-12-31",
+    "ticket_status": "1",
+    "limit": 1000,
+    "active_users_only": true
+  },
+  "batch_size": 100,
+  "overwrite_existing": false
+}
+```
+
+### import_mappings
+```sql
+CREATE TABLE import_mappings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id UUID NOT NULL REFERENCES import_profiles(id) ON DELETE CASCADE,
+    source_table VARCHAR(255) NOT NULL,
+    destination_table VARCHAR(255) NOT NULL,
+    field_mappings JSONB NOT NULL,
+    where_conditions TEXT,
+    transformation_rules JSONB,
+    is_active BOOLEAN DEFAULT true,
+    import_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes
+CREATE INDEX idx_import_mappings_profile_active ON import_mappings(profile_id, is_active);
+CREATE INDEX idx_import_mappings_source_dest ON import_mappings(source_table, destination_table);
+CREATE INDEX idx_import_mappings_order ON import_mappings(import_order);
+
+-- Unique constraint
+CREATE UNIQUE INDEX idx_import_mappings_unique ON import_mappings(profile_id, source_table, destination_table);
+```
+
+**Field Mappings Structure** (FreeScout Example):
+```json
+{
+  "id": {
+    "type": "integer_to_uuid",
+    "source_field": "id",
+    "prefix": "freescout_user_"
+  },
+  "first_name": {
+    "type": "combine_fields",
+    "fields": ["first_name", "last_name"],
+    "destination": "name",
+    "separator": " "
+  },
+  "email": {
+    "type": "direct_mapping",
+    "source_field": "email",
+    "destination": "email"
+  }
+}
+```
+
 ## Key Constraints & Features
 
 ### UUID Primary Keys
@@ -386,9 +527,11 @@ PostgreSQL JSONB used for:
 - Rollback capability for schema changes
 
 ### Recent Schema Changes
-- **Currency Removal**: Removed currency columns from billing_rates
+- **Import System Addition**: Added import_profiles, import_jobs, and import_mappings tables with UUID primary keys
+- **Import Profile UUID Migration**: Converted import_profiles.id from integer to UUID with foreign key updates
+- **Currency Removal**: Removed currency columns from billing_rates for simplified pricing
 - **Account Hierarchy Simplification**: Streamlined parent-child relationships
-- **Email Optional**: Made user email nullable with unique constraint
+- **Email Optional**: Made user email nullable with unique constraint for flexibility
 
 ### Best Practices
 - Always add existence checks in migrations

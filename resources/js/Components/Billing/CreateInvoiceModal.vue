@@ -43,8 +43,9 @@
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <!-- Left Column: Invoice Details -->
                   <div class="space-y-6">
+                    <!-- Basic Invoice Information -->
                     <div>
-                      <h4 class="text-sm font-medium text-gray-900 mb-4">Invoice Details</h4>
+                      <h4 class="text-sm font-medium text-gray-900 mb-4">Basic Information</h4>
                       
                       <!-- Account Selection -->
                       <div class="mb-4">
@@ -53,7 +54,7 @@
                           type="account"
                           label="Account"
                           placeholder="Select an account..."
-                          :clearable="false"
+                          :clearable="true"
                           required
                           @item-selected="onAccountSelected"
                         />
@@ -86,36 +87,77 @@
                           />
                         </div>
                       </div>
+                    </div>
 
-                      <!-- Tax Rate -->
-                      <div class="mb-4">
-                        <label for="tax_rate" class="block text-sm font-medium text-gray-700">
-                          Tax Rate (%)
-                        </label>
-                        <input
-                          id="tax_rate"
-                          v-model="form.tax_rate"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          placeholder="0.00"
-                        />
+                    <!-- Invoice Options Tabs -->
+                    <div class="border border-gray-200 rounded-lg">
+                      <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex" aria-label="Invoice options">
+                          <button
+                            @click="activeOptionsTab = 'taxes'"
+                            :class="[
+                              activeOptionsTab === 'taxes'
+                                ? 'border-indigo-500 text-indigo-600'
+                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+                              'w-1/2 border-b-2 py-2 px-1 text-center text-sm font-medium'
+                            ]"
+                          >
+                            Tax & Pricing
+                          </button>
+                          <button
+                            @click="activeOptionsTab = 'notes'"
+                            :class="[
+                              activeOptionsTab === 'notes'
+                                ? 'border-indigo-500 text-indigo-600'
+                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+                              'w-1/2 border-b-2 py-2 px-1 text-center text-sm font-medium'
+                            ]"
+                          >
+                            Notes & Settings
+                          </button>
+                        </nav>
                       </div>
 
-                      <!-- Notes -->
-                      <div>
-                        <label for="notes" class="block text-sm font-medium text-gray-700">
-                          Notes
-                        </label>
-                        <textarea
-                          id="notes"
-                          v-model="form.notes"
-                          rows="3"
-                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          placeholder="Optional invoice notes..."
-                        />
+                      <div class="p-4">
+                        <!-- Tax & Pricing Tab -->
+                        <div v-if="activeOptionsTab === 'taxes'">
+                          <div class="space-y-4">
+                            <div>
+                              <label for="tax_rate" class="block text-sm font-medium text-gray-700">
+                                Tax Rate (%)
+                              </label>
+                              <input
+                                id="tax_rate"
+                                v-model="form.tax_rate"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                placeholder="0.00"
+                              />
+                              <p class="mt-1 text-xs text-gray-500">Applied only to taxable items</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Notes & Settings Tab -->
+                        <div v-if="activeOptionsTab === 'notes'">
+                          <div class="space-y-4">
+                            <div>
+                              <label for="notes" class="block text-sm font-medium text-gray-700">
+                                Invoice Notes
+                              </label>
+                              <textarea
+                                id="notes"
+                                v-model="form.notes"
+                                rows="4"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                placeholder="Optional notes that will appear on the invoice..."
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -136,9 +178,15 @@
                           <span class="text-gray-600">Subtotal:</span>
                           <span class="font-medium">${{ formatCurrency(invoiceSubtotal) }}</span>
                         </div>
-                        <div v-if="form.tax_rate > 0" class="flex justify-between">
-                          <span class="text-gray-600">Tax ({{ form.tax_rate }}%):</span>
-                          <span class="font-medium">${{ formatCurrency(invoiceTax) }}</span>
+                        <div v-if="form.tax_rate > 0" class="space-y-1">
+                          <div class="flex justify-between text-xs">
+                            <span class="text-gray-500">Taxable Amount:</span>
+                            <span class="text-gray-600">${{ formatCurrency(taxableSubtotal) }}</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span class="text-gray-600">Tax ({{ form.tax_rate }}%):</span>
+                            <span class="font-medium">${{ formatCurrency(invoiceTax) }}</span>
+                          </div>
                         </div>
                         <div class="flex justify-between text-lg font-semibold text-gray-900 pt-2 border-t">
                           <span>Total:</span>
@@ -196,7 +244,7 @@
                       <span v-if="createInvoiceMutation.isPending.value" class="mr-2">
                         <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       </span>
-                      {{ createInvoiceMutation.isPending.value ? 'Creating Invoice...' : 'Create Invoice' }}
+                      {{ createButtonText }}
                     </button>
                   </div>
                 </div>
@@ -234,6 +282,7 @@ const emit = defineEmits(['close', 'created', 'launchApprovalWizard'])
 
 // Reactive state
 const selectedAccountName = ref('')
+const activeOptionsTab = ref('taxes')
 
 const form = reactive({
   account_id: '',
@@ -245,9 +294,20 @@ const form = reactive({
 
 // TanStack Query hooks
 const createInvoiceMutation = useCreateInvoiceMutation()
+
+// Create a stable reference for the account ID to prevent unnecessary re-renders
+const accountIdForQuery = computed(() => form.account_id)
+const queryEnabled = computed(() => !!form.account_id)
+
 const { data: unbilledData, isLoading: loadingUnbilled, refetch: refetchUnbilled } = useUnbilledItemsQuery(
-  computed(() => form.account_id), 
-  { enabled: computed(() => !!form.account_id) }
+  accountIdForQuery, 
+  { 
+    enabled: queryEnabled,
+    keepPreviousData: true,
+    staleTime: 1000 * 30, // 30 seconds
+    // Prevent refetching on window focus to avoid clearing state
+    refetchOnWindowFocus: false
+  }
 )
 
 const selectedItems = ref({
@@ -270,8 +330,22 @@ const invoiceSubtotal = computed(() => {
   return timeEntryTotal + addonTotal
 })
 
+const taxableSubtotal = computed(() => {
+  // Calculate subtotal for only taxable items
+  const timeEntryTaxable = selectedItems.value.time_entries
+    .filter(item => item.is_taxable !== false) // Time entries are taxable by default
+    .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+    
+  const addonTaxable = selectedItems.value.ticket_addons
+    .filter(item => item.is_taxable === true) // Only explicitly taxable addons
+    .reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0)
+    
+  return timeEntryTaxable + addonTaxable
+})
+
 const invoiceTax = computed(() => {
-  return invoiceSubtotal.value * (parseFloat(form.tax_rate) / 100)
+  // Apply invoice-level tax rate only to taxable items
+  return taxableSubtotal.value * (parseFloat(form.tax_rate) / 100)
 })
 
 const invoiceTotal = computed(() => {
@@ -280,14 +354,26 @@ const invoiceTotal = computed(() => {
 
 const canCreateInvoice = computed(() => {
   return form.account_id && 
-         form.invoice_date && 
-         form.due_date && 
-         hasSelectedItems.value
+         form.invoice_date
+})
+
+const createButtonText = computed(() => {
+  // Debug: Log the selected items
+  console.log('Selected items:', selectedItems.value)
+  console.log('Time entries count:', selectedItems.value.time_entries?.length || 0)
+  console.log('Ticket addons count:', selectedItems.value.ticket_addons?.length || 0)
+  console.log('hasSelectedItems:', hasSelectedItems.value)
+  
+  if (createInvoiceMutation.isPending.value) {
+    return hasSelectedItems.value ? 'Creating Invoice...' : 'Creating Blank Invoice...'
+  }
+  return hasSelectedItems.value ? 'Create Invoice' : 'Create Blank Invoice'
 })
 
 // Watch for account changes to clear selected items
-watch(() => form.account_id, (newAccountId) => {
-  if (!newAccountId) {
+watch(() => form.account_id, (newAccountId, oldAccountId) => {
+  // Only clear selected items if account actually changed (not just cleared)
+  if (oldAccountId && newAccountId !== oldAccountId) {
     selectedItems.value = { time_entries: [], ticket_addons: [] }
   }
 })
@@ -352,6 +438,7 @@ const resetForm = () => {
   })
   selectedItems.value = { time_entries: [], ticket_addons: [] }
   selectedAccountName.value = ''
+  activeOptionsTab.value = 'taxes'
 }
 
 const formatCurrency = (amount) => {

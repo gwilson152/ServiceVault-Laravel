@@ -80,6 +80,14 @@ class RoleTemplateSeeder extends Seeder
 
                 // Settings Management
                 'settings.manage',
+
+                // Import System Management
+                'system.import',
+                'system.import.configure',
+                'system.import.execute',
+                'import.profiles.manage',
+                'import.jobs.execute',
+                'import.jobs.monitor',
             ],
             'widget_permissions' => [
                 // All dashboard widgets
@@ -107,6 +115,8 @@ class RoleTemplateSeeder extends Seeder
                 'pages.reports.account',
                 'pages.billing.overview',
                 'pages.reports.billing',
+                'pages.import.manage',
+                'pages.settings.import',
             ],
         ]);
 
@@ -150,6 +160,14 @@ class RoleTemplateSeeder extends Seeder
                 'timers.write',
                 'timers.manage',
                 'timers.sync',
+
+                // Import System Management  
+                'system.import',
+                'system.import.configure',
+                'system.import.execute',
+                'import.profiles.manage',
+                'import.jobs.execute',
+                'import.jobs.monitor',
             ],
             'widget_permissions' => [
                 'widgets.dashboard.system-stats',
@@ -166,6 +184,8 @@ class RoleTemplateSeeder extends Seeder
                 'pages.tickets.manage',
                 'pages.reports.account',
                 'pages.billing.overview',
+                'pages.import.manage',
+                'pages.settings.import',
             ],
         ]);
 

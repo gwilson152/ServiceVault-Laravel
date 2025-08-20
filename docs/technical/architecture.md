@@ -90,6 +90,99 @@ WebSocket: Live updates via Laravel Reverb
 - Reduced 10+ API calls to single request
 - Redis-backed state synchronization
 
+### Unified Selector System
+
+Service Vault uses a **self-managing** `UnifiedSelector` component for consistent entity selection across the entire application. Selectors automatically handle their own data loading, search, caching, and permissions.
+
+**Supported Types**:
+- `ticket` - Ticket selection with creation support
+- `account` - Account selection with creation support  
+- `user` - User selection (customer users)
+- `agent` - Agent selection with feature-specific types (timer, ticket, time, billing)
+- `billing-rate` - Billing rate selection with hierarchy display
+- `role-template` - Role template selection for user assignment
+
+**Key Features**:
+- **Self-Managing Data**: Automatic data loading, search, and caching via TanStack Query
+- **Permission-Aware**: Built-in permission filtering based on user context
+- **Case-Insensitive Search**: Debounced search with PostgreSQL ILIKE for smooth UX
+- **Recent Items Tracking**: localStorage-based recent selections with API fallback
+- **Custom Sorting**: Configurable sort field and direction per selector
+- **Focus Preservation**: Input maintains focus during search operations
+- **Proper Dropdown Dismissal**: Fixed issue where dropdowns wouldn't close after selecting searched items
+- **Creation Support**: Built-in "Create New" options with proper modal stacking
+- **Type-Specific Configurations**: Icons, colors, badges, and behaviors per type
+- **Modal Stacking**: `nested` prop for proper z-index management
+
+**Usage Example (New Self-Managing Architecture)**:
+```vue
+<UnifiedSelector
+  v-model="selectedId"
+  type="account"
+  label="Account"
+  placeholder="Select account..."
+  sort-field="name"
+  sort-direction="asc"
+  :can-create="true"
+  :nested="true"
+  :clearable="true"
+  @item-selected="handleSelection"
+  @item-created="handleCreation"
+/>
+```
+
+**Available Props**:
+- `type` - Entity type (required)
+- `sort-field` - Custom sort field (e.g., 'name', 'created_at')
+- `sort-direction` - Sort direction ('asc' or 'desc')
+- `agent-type` - For agent selectors: 'timer', 'ticket', 'time', 'billing'
+- `filter-set` - Applied filters for context-aware results
+- `custom-items` - Override with custom dataset for special cases
+- `clearable` - Allow clearing selection (default: true)
+- `recent-items-limit` - Number of recent items to show (default: 10)
+- `search-min-length` - Minimum characters before API search (default: 2)
+
+**Migration from Old Pattern**:
+```vue
+<!-- OLD: Manual data management -->
+<UnifiedSelector :items="availableAccounts" />
+
+<!-- NEW: Self-managing (no items prop needed) -->
+<UnifiedSelector type="account" />
+```
+
+**Technical Implementation**:
+- **Query Composables**: `/resources/js/Composables/queries/useSelectorQueries.js`
+- **Search API Controller**: `/app/Http/Controllers/Api/SearchController.php`
+- **Permission Integration**: Automatic filtering based on user context and abilities
+- **TanStack Query**: Optimized caching with reactive query keys
+- **Recent Items**: localStorage persistence with `selector_recent_{type}` keys
+
+### StackedDialog Architecture
+
+Service Vault uses a native `<dialog>`-based modal system for proper stacking and accessibility:
+
+**Key Features**:
+- **Native Dialog Elements**: Uses HTML5 `<dialog>` for proper modal behavior
+- **Automatic Stacking**: Manages z-index automatically for nested modals
+- **Consistent Header**: Unified header with title and close button
+- **Vertical Expansion**: Dialogs expand to fit content without artificial height limits
+- **Teleport Support**: Proper rendering outside component tree
+
+**Usage Example**:
+```vue
+<StackedDialog
+  :show="isOpen"
+  title="Dialog Title"
+  max-width="2xl"
+  @close="closeDialog"
+>
+  <!-- Dialog content -->
+</StackedDialog>
+```
+
+**Modal Conversion**: All core modals have been converted from the old `Modal` component to `StackedDialog` for consistency and proper stacking behavior.
+
 ### Real-Time Broadcasting
 
 **WebSocket Channels**:
@@ -157,18 +250,9 @@ invoices (id, account_id, total_amount, status, due_date, ...)
 ### Component Structure
 
 **Core Components**:
-- `UnifiedSelector`: Single selector for all entity types (tickets, accounts, users, etc.)
-- `StackedDialog`: Native dialog-based modal system
-- `TimerBroadcastOverlay`: Persistent timer interface
-
-**Modal System**:
-```vue
-<!-- Old modal system (deprecated) -->
-<Modal :show="isOpen" @close="closeModal">
-
-<!-- New stacked dialog system -->
-<StackedDialog :show="isOpen" @close="closeDialog" max-width="2xl">
-```
+- `UnifiedSelector`: Self-managing selector for all entity types with automatic data loading
+- `StackedDialog`: Native dialog-based modal system with proper z-index management
+- `TimerBroadcastOverlay`: Persistent timer interface with real-time sync
 
 ### State Management
 

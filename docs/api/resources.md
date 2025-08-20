@@ -237,9 +237,41 @@ Content-Type: application/json
   "started_at": "2025-08-19T09:00:00Z",
   "ended_at": "2025-08-19T10:30:00Z",
   "duration": 5400,
-  "billable": true
+  "billable": true,
+  "timer_id": "timer-uuid",
+  "rate_override": 150.00
 }
 ```
+
+**Rate Override System** (August 2025):
+- **rate_override**: Optional decimal field for manual rate adjustments
+- **Permissions**: Requires `time.manage` or `admin.manage` permissions
+- **Amount Locking**: Calculated amounts are locked at approval time to prevent retroactive rate changes
+- **Effective Rate**: Uses rate_override if provided, otherwise falls back to rate_at_time
+
+**Timer Commit Integration** (August 2025):
+- **timer_id**: Optional UUID to link time entry to a timer
+- When provided, automatically updates timer status to "committed" 
+- Sets timer.time_entry_id to link records
+- Duration converted from seconds (timer) to minutes (time entry storage)
+- Timer must be owned by user or user must have timer management permissions
+
+### Update Time Entry
+```http
+PUT /api/time-entries/{entry_id}
+Content-Type: application/json
+
+{
+  "description": "Updated description",
+  "duration": 7200,
+  "rate_override": 135.00
+}
+```
+
+**Rate Override in Updates**:
+- **rate_override**: Can be added or modified during updates
+- **Permissions**: Requires `time.manage` or `admin.manage` permissions
+- **Status Restriction**: Only pending entries can be updated with rate overrides
 
 ### Approval Workflow
 ```http
@@ -247,9 +279,16 @@ POST /api/time-entries/{entry_id}/approve
 POST /api/time-entries/{entry_id}/reject
 
 {
-  "notes": "Approved for billing"
+  "notes": "Approved for billing",
+  "rate_override": 125.00
 }
 ```
+
+**Approval with Rate Override** (August 2025):
+- **rate_override**: Optional parameter for approval with rate adjustment
+- **Amount Locking**: Approval automatically locks the calculated amount in `approved_amount` field
+- **Permissions**: Rate override requires `time.manage` or `admin.manage` permissions
+- **Final Amount**: Once approved, uses locked `approved_amount` instead of recalculated values
 
 ### Bulk Approvals
 ```http
@@ -257,16 +296,48 @@ POST /api/time-entries/bulk/approve
 Content-Type: application/json
 
 {
-  "entry_ids": ["uuid1", "uuid2", "uuid3"],
+  "time_entry_ids": ["uuid1", "uuid2", "uuid3"],
   "notes": "Batch approval for weekly billing"
 }
 ```
+
+**Note**: Bulk approvals do not support rate overrides. Use individual approval endpoints for rate adjustments.
 
 ### Time Entry Statistics
 ```http
 GET /api/time-entries/stats/recent        # Recent statistics for dashboard
 GET /api/time-entries/stats/approvals     # Approval statistics (managers/admins)
 ```
+
+### Time Entry Response Fields
+
+**Enhanced Response Format** (August 2025):
+```json
+{
+  "data": {
+    "id": "entry-uuid",
+    "description": "Development work",
+    "duration": 120,
+    "rate_at_time": 100.00,
+    "rate_override": 125.00,
+    "effective_rate": 125.00,
+    "calculated_cost": 250.00,
+    "approved_amount": 250.00,
+    "final_amount": 250.00,
+    "status": "approved",
+    "billable": true,
+    "user": {"id": "user-uuid", "name": "John Doe"},
+    "account": {"id": "account-uuid", "name": "Client Co"},
+    "billing_rate": {"id": "rate-uuid", "rate": 100.00}
+  }
+}
+```
+
+**New Rate Override Fields**:
+- **rate_override**: Manual rate adjustment (nullable)
+- **approved_amount**: Locked amount at approval time (nullable)
+- **effective_rate**: Computed effective rate (rate_override ?? rate_at_time)
+- **final_amount**: Final billable amount (approved_amount ?? calculated_cost)
 
 ## Users API
 

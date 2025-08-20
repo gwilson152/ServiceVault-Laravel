@@ -205,6 +205,16 @@ class NavigationService
                 'group' => 'administration',
             ],
             [
+                'key' => 'import',
+                'label' => 'Import',
+                'icon' => 'ArrowDownTrayIcon',
+                'route' => 'import.index',
+                'active_patterns' => ['import.*'],
+                'permissions' => ['system.import', 'system.import.configure', 'system.import.execute'],
+                'sort_order' => 9,
+                'group' => 'administration',
+            ],
+            [
                 'key' => 'settings',
                 'label' => 'Settings',
                 'icon' => 'CogIcon',

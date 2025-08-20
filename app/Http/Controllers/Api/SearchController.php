@@ -37,7 +37,7 @@ class SearchController extends Controller
 
         // Build base query with necessary relationships
         $builder = Ticket::with(['account:id,name', 'assignedUser:id,name'])
-            ->select('id', 'ticket_number', 'title', 'status', 'priority', 'account_id', 'assigned_user_id', 'created_at');
+            ->select('id', 'ticket_number', 'title', 'status', 'priority', 'account_id', 'agent_id', 'created_at');
 
         // Apply permission-based filtering
         switch ($permissionLevel) {
@@ -51,7 +51,7 @@ class SearchController extends Controller
                 break;
             case 'assigned':
                 // Only tickets assigned to the user
-                $builder->where('assigned_user_id', $user->id);
+                $builder->where('agent_id', $user->id);
                 break;
             case 'own':
                 // Only tickets created by the user
@@ -98,7 +98,7 @@ class SearchController extends Controller
                     'priority' => $ticket->priority,
                     'account_id' => $ticket->account_id,
                     'account' => $ticket->account,
-                    'assigned_user_id' => $ticket->assigned_user_id,
+                    'agent_id' => $ticket->agent_id,
                     'assigned_user' => $ticket->assignedUser,
                     'created_at' => $ticket->created_at,
                 ];

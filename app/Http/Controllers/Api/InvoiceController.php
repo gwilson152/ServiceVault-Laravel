@@ -68,7 +68,7 @@ class InvoiceController extends Controller
         $validated = $request->validate([
             'account_id' => 'required|exists:accounts,id',
             'invoice_date' => 'required|date',
-            'due_date' => 'required|date|after:invoice_date',
+            'due_date' => 'nullable|date|after:invoice_date',
             'time_entry_ids' => 'nullable|array',
             'time_entry_ids.*' => 'exists:time_entries,id',
             'ticket_addon_ids' => 'nullable|array',
@@ -228,7 +228,7 @@ class InvoiceController extends Controller
 
         $validated = $request->validate([
             'invoice_date' => 'sometimes|date',
-            'due_date' => 'sometimes|date|after:invoice_date',
+            'due_date' => 'sometimes|nullable|date|after:invoice_date',
             'tax_rate' => 'sometimes|numeric|min:0|max:100',
             'notes' => 'nullable|string',
             'status' => 'sometimes|in:draft,sent,cancelled',
@@ -361,11 +361,11 @@ class InvoiceController extends Controller
 
         $validated = $request->validate([
             'account_id' => 'required|exists:accounts,id',
-            'include_unapproved' => 'boolean',
+            'include_unapproved' => 'sometimes|in:true,false,1,0',
         ]);
 
         $accountId = $validated['account_id'];
-        $includeUnapproved = $validated['include_unapproved'] ?? true;
+        $includeUnapproved = filter_var($validated['include_unapproved'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
         // Verify user has access to account
         if (! $user->accounts()->where('accounts.id', $accountId)->exists() &&
@@ -374,7 +374,7 @@ class InvoiceController extends Controller
         }
 
         // Get approved time entries
-        $approvedTimeEntries = TimeEntry::with(['user:id,name', 'ticket:id,ticket_number,title', 'billingRate:id,name,hourly_rate'])
+        $approvedTimeEntries = TimeEntry::with(['user:id,name', 'ticket:id,ticket_number,title', 'billingRate:id,name,rate'])
             ->where('account_id', $accountId)
             ->where('status', 'approved')
             ->where('billable', true)
@@ -394,6 +394,7 @@ class InvoiceController extends Controller
                     'ticket' => $entry->ticket,
                     'billing_rate' => $entry->billingRate,
                     'status' => $entry->status,
+                    'is_taxable' => true, // Time entries are typically taxable by default
                 ];
             });
 
@@ -419,6 +420,8 @@ class InvoiceController extends Controller
                     'ticket' => $addon->ticket,
                     'added_by' => $addon->addedBy,
                     'status' => $addon->status,
+                    'is_taxable' => $addon->is_taxable,
+                    'tax_rate' => $addon->tax_rate,
                 ];
             });
 
@@ -432,7 +435,7 @@ class InvoiceController extends Controller
         // Include unapproved items if requested
         if ($includeUnapproved) {
             // Get pending time entries
-            $pendingTimeEntries = TimeEntry::with(['user:id,name', 'ticket:id,ticket_number,title', 'billingRate:id,name,hourly_rate'])
+            $pendingTimeEntries = TimeEntry::with(['user:id,name', 'ticket:id,ticket_number,title', 'billingRate:id,name,rate'])
                 ->where('account_id', $accountId)
                 ->where('status', 'pending')
                 ->where('billable', true)
@@ -452,6 +455,7 @@ class InvoiceController extends Controller
                         'ticket' => $entry->ticket,
                         'billing_rate' => $entry->billingRate,
                         'status' => $entry->status,
+                        'is_taxable' => true, // Time entries are typically taxable by default
                     ];
                 });
 
@@ -477,6 +481,8 @@ class InvoiceController extends Controller
                         'ticket' => $addon->ticket,
                         'added_by' => $addon->addedBy,
                         'status' => $addon->status,
+                        'is_taxable' => $addon->is_taxable,
+                        'tax_rate' => $addon->tax_rate,
                     ];
                 });
 
@@ -526,5 +532,321 @@ class InvoiceController extends Controller
             'total_paid' => (clone $baseQuery)->paid()->sum('total') ?? 0,
             'outstanding_amount' => (clone $baseQuery)->whereNotIn('status', ['paid', 'cancelled'])->sum('total') ?? 0,
         ];
+    }
+
+    /**
+     * Get available items (time entries and addons) that can be added to a draft invoice
+     */
+    public function getAvailableItems(Request $request, Invoice $invoice): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check permissions
+        if (! $user->accounts()->where('accounts.id', $invoice->account_id)->exists() &&
+            ! $user->hasAnyPermission(['admin.write', 'billing.admin'])) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+
+        // Can only add items to draft invoices
+        if ($invoice->status !== 'draft') {
+            return response()->json(['error' => 'Can only add items to draft invoices.'], 422);
+        }
+
+        // Get IDs of items already in this invoice (to prevent double-adding)
+        $existingTimeEntryIds = $invoice->lineItems()
+            ->whereNotNull('time_entry_id')
+            ->pluck('time_entry_id')
+            ->toArray();
+
+        // Get approved, billable, uninvoiced time entries for this account
+        $timeEntries = TimeEntry::with(['user:id,name', 'ticket:id,ticket_number,title', 'billingRate:id,name,rate'])
+            ->where('account_id', $invoice->account_id)
+            ->where('status', 'approved')
+            ->where('billable', true)
+            ->whereNull('invoice_id') // Not already invoiced elsewhere
+            ->whereNotIn('id', $existingTimeEntryIds) // Not already in this invoice
+            ->orderBy('started_at', 'desc')
+            ->get()
+            ->map(function ($entry) {
+                return [
+                    'id' => $entry->id,
+                    'type' => 'time_entry',
+                    'description' => $entry->description,
+                    'quantity' => round($entry->duration / 60, 2), // Convert minutes to hours
+                    'unit_price' => $entry->rate_at_time ?? 0,
+                    'total_amount' => $entry->calculated_cost ?? 0,
+                    'started_at' => $entry->started_at,
+                    'user' => $entry->user,
+                    'ticket' => $entry->ticket,
+                    'billing_rate' => $entry->billingRate,
+                    'is_taxable' => true, // Time entries are typically taxable by default
+                ];
+            });
+
+        // Get IDs of ticket addons already in this invoice
+        $existingAddonIds = $invoice->lineItems()
+            ->whereNotNull('ticket_addon_id')
+            ->pluck('ticket_addon_id')
+            ->toArray();
+
+        // Get approved, billable, uninvoiced ticket addons for this account
+        $ticketAddons = TicketAddon::with(['ticket:id,ticket_number,title', 'addedBy:id,name'])
+            ->whereHas('ticket', function ($q) use ($invoice) {
+                $q->where('account_id', $invoice->account_id);
+            })
+            ->where('status', 'approved')
+            ->where('billable', true)
+            ->whereNull('invoice_id') // Not already invoiced elsewhere
+            ->whereNotIn('id', $existingAddonIds) // Not already in this invoice
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($addon) {
+                return [
+                    'id' => $addon->id,
+                    'type' => 'ticket_addon',
+                    'description' => $addon->name.($addon->description ? ' - '.$addon->description : ''),
+                    'quantity' => $addon->quantity,
+                    'unit_price' => $addon->unit_price,
+                    'total_amount' => $addon->total_amount,
+                    'created_at' => $addon->created_at,
+                    'ticket' => $addon->ticket,
+                    'added_by' => $addon->addedBy,
+                    'is_taxable' => $addon->is_taxable,
+                    'tax_rate' => $addon->tax_rate,
+                ];
+            });
+
+        return response()->json([
+            'data' => [
+                'time_entries' => $timeEntries,
+                'ticket_addons' => $ticketAddons,
+            ]
+        ]);
+    }
+
+    /**
+     * Add a line item to a draft invoice
+     */
+    public function addLineItem(Request $request, Invoice $invoice): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check permissions
+        if (! $user->accounts()->where('accounts.id', $invoice->account_id)->exists() &&
+            ! $user->hasAnyPermission(['admin.write', 'billing.admin'])) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+
+        // Can only add items to draft invoices
+        if ($invoice->status !== 'draft') {
+            return response()->json(['error' => 'Can only add items to draft invoices.'], 422);
+        }
+
+        $validated = $request->validate([
+            'item_type' => 'required|in:time_entry,ticket_addon,custom',
+            'item_id' => 'required_unless:item_type,custom|string',
+            'description' => 'required_if:item_type,custom|string|max:1000',
+            'quantity' => 'required_if:item_type,custom|numeric|min:0.01',
+            'unit_price' => 'required_if:item_type,custom|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $lineItem = null;
+
+            if ($validated['item_type'] === 'time_entry') {
+                $timeEntry = TimeEntry::where('id', $validated['item_id'])
+                    ->where('account_id', $invoice->account_id)
+                    ->where('status', 'approved')
+                    ->where('billable', true)
+                    ->whereNull('invoice_id')
+                    ->first();
+
+                if (! $timeEntry) {
+                    return response()->json(['error' => 'Time entry not found or already invoiced.'], 404);
+                }
+
+                $lineItem = InvoiceLineItem::create([
+                    'invoice_id' => $invoice->id,
+                    'time_entry_id' => $timeEntry->id,
+                    'line_type' => 'time_entry',
+                    'description' => $timeEntry->description,
+                    'quantity' => $timeEntry->duration / 60, // Convert minutes to hours
+                    'unit_price' => $timeEntry->rate_at_time ?? 0,
+                    'total_amount' => $timeEntry->calculated_cost ?? 0,
+                ]);
+
+                // Mark time entry as invoiced
+                $timeEntry->update(['invoice_id' => $invoice->id]);
+
+            } elseif ($validated['item_type'] === 'ticket_addon') {
+                $addon = TicketAddon::whereHas('ticket', function ($q) use ($invoice) {
+                    $q->where('account_id', $invoice->account_id);
+                })
+                    ->where('id', $validated['item_id'])
+                    ->where('status', 'approved')
+                    ->where('billable', true)
+                    ->whereNull('invoice_id')
+                    ->first();
+
+                if (! $addon) {
+                    return response()->json(['error' => 'Ticket addon not found or already invoiced.'], 404);
+                }
+
+                $lineItem = InvoiceLineItem::create([
+                    'invoice_id' => $invoice->id,
+                    'ticket_addon_id' => $addon->id,
+                    'line_type' => 'addon',
+                    'description' => $addon->name.($addon->description ? ' - '.$addon->description : ''),
+                    'quantity' => $addon->quantity,
+                    'unit_price' => $addon->unit_price,
+                    'discount_amount' => $addon->discount_amount ?? 0,
+                    'total_amount' => $addon->total_amount,
+                ]);
+
+                // Mark addon as invoiced
+                $addon->update(['invoice_id' => $invoice->id]);
+
+            } elseif ($validated['item_type'] === 'custom') {
+                $lineItem = InvoiceLineItem::create([
+                    'invoice_id' => $invoice->id,
+                    'line_type' => 'custom',
+                    'description' => $validated['description'],
+                    'quantity' => $validated['quantity'],
+                    'unit_price' => $validated['unit_price'],
+                    'total_amount' => $validated['quantity'] * $validated['unit_price'],
+                ]);
+            }
+
+            // Recalculate invoice totals
+            $invoice->calculateTotals();
+            $invoice->save();
+
+            DB::commit();
+
+            $lineItem->load(['timeEntry', 'ticketAddon']);
+
+            return response()->json([
+                'data' => new \App\Http\Resources\InvoiceLineItemResource($lineItem),
+                'message' => 'Line item added successfully.'
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to add line item.'], 500);
+        }
+    }
+
+    /**
+     * Remove a line item from a draft invoice
+     */
+    public function removeLineItem(Request $request, Invoice $invoice, InvoiceLineItem $lineItem): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check permissions
+        if (! $user->accounts()->where('accounts.id', $invoice->account_id)->exists() &&
+            ! $user->hasAnyPermission(['admin.write', 'billing.admin'])) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+
+        // Can only remove items from draft invoices
+        if ($invoice->status !== 'draft') {
+            return response()->json(['error' => 'Can only remove items from draft invoices.'], 422);
+        }
+
+        // Verify line item belongs to this invoice
+        if ($lineItem->invoice_id !== $invoice->id) {
+            return response()->json(['error' => 'Line item does not belong to this invoice.'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // If this line item is linked to a time entry or addon, unlink it
+            if ($lineItem->time_entry_id) {
+                TimeEntry::where('id', $lineItem->time_entry_id)->update(['invoice_id' => null]);
+            }
+            
+            if ($lineItem->ticket_addon_id) {
+                TicketAddon::where('id', $lineItem->ticket_addon_id)->update(['invoice_id' => null]);
+            }
+
+            // Delete the line item
+            $lineItem->delete();
+
+            // Recalculate invoice totals
+            $invoice->calculateTotals();
+            $invoice->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Line item removed successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to remove line item.'], 500);
+        }
+    }
+
+    /**
+     * Update a line item (custom items only)
+     */
+    public function updateLineItem(Request $request, Invoice $invoice, InvoiceLineItem $lineItem): JsonResponse
+    {
+        $user = $request->user();
+
+        // Check permissions
+        if (! $user->accounts()->where('accounts.id', $invoice->account_id)->exists() &&
+            ! $user->hasAnyPermission(['admin.write', 'billing.admin'])) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+
+        // Can only update items in draft invoices
+        if ($invoice->status !== 'draft') {
+            return response()->json(['error' => 'Can only update items in draft invoices.'], 422);
+        }
+
+        // Verify line item belongs to this invoice
+        if ($lineItem->invoice_id !== $invoice->id) {
+            return response()->json(['error' => 'Line item does not belong to this invoice.'], 422);
+        }
+
+        // Can only update custom line items (not time entries or addons)
+        if ($lineItem->line_type !== 'custom') {
+            return response()->json(['error' => 'Can only update custom line items.'], 422);
+        }
+
+        $validated = $request->validate([
+            'description' => 'sometimes|string|max:1000',
+            'quantity' => 'sometimes|numeric|min:0.01',
+            'unit_price' => 'sometimes|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $lineItem->update($validated);
+
+            // Recalculate totals if quantity or price changed
+            if (isset($validated['quantity']) || isset($validated['unit_price'])) {
+                $lineItem->total_amount = $lineItem->quantity * $lineItem->unit_price;
+                $lineItem->save();
+
+                $invoice->calculateTotals();
+                $invoice->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'data' => new \App\Http\Resources\InvoiceLineItemResource($lineItem),
+                'message' => 'Line item updated successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to update line item.'], 500);
+        }
     }
 }

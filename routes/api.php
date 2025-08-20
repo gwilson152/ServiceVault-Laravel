@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
+use App\Http\Controllers\Api\ImportJobController;
+use App\Http\Controllers\Api\ImportProfileController;
 use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
@@ -443,6 +445,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('settings.nuclear-reset');
     });
 
+
     // Billing Rate Management routes
     Route::apiResource('billing-rates', App\Http\Controllers\Api\BillingRateController::class);
 
@@ -460,6 +463,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('invoices.mark-paid');
         Route::get('invoices/{invoice}/pdf', [App\Http\Controllers\Api\InvoiceController::class, 'pdf'])
             ->name('invoices.pdf');
+        
+        // Line item management for draft invoices
+        Route::get('invoices/{invoice}/available-items', [App\Http\Controllers\Api\InvoiceController::class, 'getAvailableItems'])
+            ->name('invoices.available-items');
+        Route::post('invoices/{invoice}/line-items', [App\Http\Controllers\Api\InvoiceController::class, 'addLineItem'])
+            ->name('invoices.line-items.add');
+        Route::put('invoices/{invoice}/line-items/{lineItem}', [App\Http\Controllers\Api\InvoiceController::class, 'updateLineItem'])
+            ->name('invoices.line-items.update');
+        Route::delete('invoices/{invoice}/line-items/{lineItem}', [App\Http\Controllers\Api\InvoiceController::class, 'removeLineItem'])
+            ->name('invoices.line-items.remove');
 
         // Payment Management
         Route::apiResource('payments', App\Http\Controllers\Api\PaymentController::class);
@@ -519,6 +532,35 @@ Route::prefix('admin')->middleware(['auth:web,sanctum'])->group(function () {
         ->middleware('check_permission:admin.write')
         ->name('admin.timers.cancel');
 });
+
+    // Import System routes
+    Route::prefix('import')->middleware('check_permission:system.import')->group(function () {
+        // Import Profile Management
+        Route::apiResource('profiles', ImportProfileController::class);
+        Route::post('profiles/test-connection', [ImportProfileController::class, 'testConnection'])
+            ->name('import.profiles.test-connection');
+        Route::post('profiles/{profile}/test-connection', [ImportProfileController::class, 'testConnection'])
+            ->name('import.profiles.test-existing');
+        Route::get('profiles/{profile}/schema', [ImportProfileController::class, 'getSchema'])
+            ->name('import.profiles.schema');
+        Route::get('profiles/{profile}/introspect', [ImportProfileController::class, 'introspectSchema'])
+            ->name('import.profiles.introspect');
+        Route::get('profiles/{profile}/preview', [ImportProfileController::class, 'preview'])
+            ->name('import.profiles.preview');
+        Route::post('profiles/{profile}/preview-table', [ImportProfileController::class, 'previewTable'])
+            ->name('import.profiles.preview-table');
+
+        // Import Job Management
+        Route::apiResource('jobs', ImportJobController::class)->except(['update']);
+        Route::post('profiles/{profile}/import', [ImportJobController::class, 'execute'])
+            ->name('import.jobs.execute');
+        Route::get('jobs/{job}/status', [ImportJobController::class, 'status'])
+            ->name('import.jobs.status');
+        Route::post('jobs/{job}/cancel', [ImportJobController::class, 'cancel'])
+            ->name('import.jobs.cancel');
+        Route::get('jobs/stats', [ImportJobController::class, 'stats'])
+            ->name('import.jobs.stats');
+    });
 
 // Manager-only routes
 Route::prefix('manager')->middleware(['auth:web,sanctum'])->group(function () {

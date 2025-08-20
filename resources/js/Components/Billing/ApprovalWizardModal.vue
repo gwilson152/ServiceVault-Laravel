@@ -145,6 +145,25 @@
                                 <span v-else-if="item.added_by" class="text-gray-600">{{ item.added_by.name }}</span>
                               </div>
                             </div>
+                            
+                            <!-- Rate Override Field (Time Entries Only, Time Managers/Admins Only) -->
+                            <div v-if="item.type === 'time_entry' && canOverrideRates" class="mt-2">
+                              <label :for="`rate-override-${item.id}`" class="block text-xs font-medium text-gray-700 mb-1">
+                                Rate Override ($/hr)
+                              </label>
+                              <input
+                                :id="`rate-override-${item.id}`"
+                                v-model="rateOverrides[`${item.type}-${item.id}`]"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                :placeholder="item.unit_price"
+                                class="w-24 px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                              />
+                              <span class="ml-1 text-xs text-gray-500">
+                                (Current: ${{ item.unit_price }}/hr)
+                              </span>
+                            </div>
                           </div>
                         </div>
                         
@@ -364,6 +383,7 @@ import {
   CheckIcon, 
   CheckCircleIcon 
 } from '@heroicons/vue/24/outline'
+import { usePage } from '@inertiajs/vue3'
 
 const props = defineProps({
   show: {
@@ -382,10 +402,22 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'completed', 'createInvoice'])
 
+// User permissions
+const { props: pageProps } = usePage()
+const user = computed(() => pageProps.auth?.user)
+
+// Check if user can override rates (time managers and admins)
+const canOverrideRates = computed(() => {
+  if (!user.value) return false
+  return user.value.permissions?.includes('time.manage') || 
+         user.value.permissions?.includes('admin.manage')
+})
+
 // Reactive state
 const loading = ref(false)
 const pendingItems = ref([])
 const selectedItems = ref([])
+const rateOverrides = ref({}) // Store rate overrides by item key
 const processingItems = ref([])
 const completedCount = ref(0)
 const bulkProcessing = ref(false)
@@ -479,6 +511,16 @@ const approveItem = async (item) => {
       ? `/api/time-entries/${item.id}/approve`
       : `/api/ticket-addons/${item.id}/approve`
     
+    // Prepare request body
+    const requestBody = {
+      notes: 'Approved via billing wizard'
+    }
+    
+    // Add rate override if provided for time entries
+    if (item.type === 'time_entry' && rateOverrides.value[itemKey]) {
+      requestBody.rate_override = parseFloat(rateOverrides.value[itemKey])
+    }
+    
     const response = await fetch(endpoint, {
       method: 'POST',
       credentials: 'same-origin',
@@ -488,9 +530,7 @@ const approveItem = async (item) => {
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
         'X-Requested-With': 'XMLHttpRequest'
       },
-      body: JSON.stringify({
-        notes: 'Approved via billing wizard'
-      })
+      body: JSON.stringify(requestBody)
     })
     
     if (response.ok) {

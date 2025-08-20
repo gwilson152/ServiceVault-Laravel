@@ -111,14 +111,20 @@ export const queryKeys = {
     settings: ['billing', 'settings'],
     rates: ['billing', 'rates'],
     rateById: (id) => ['billing', 'rates', id],
-    // New billing query keys
-    invoices: ['billing', 'invoices'],
-    invoiceById: (id) => ['billing', 'invoices', id],
     dashboardStats: ['billing', 'dashboardStats'],
     unbilledItems: (accountId) => ['billing', 'unbilled-items', accountId],
     revenueReport: (params) => ['billing', 'reports', 'revenue', params],
     outstandingReport: ['billing', 'reports', 'outstanding'],
     paymentsReport: (params) => ['billing', 'reports', 'payments', params],
+  },
+
+  // Invoices (moved to separate section for better organization)
+  invoices: {
+    all: ['invoices'],
+    list: (filters) => ['invoices', 'list', filters],
+    byId: (id) => ['invoices', 'byId', id],
+    availableItems: (invoiceId) => ['invoices', 'availableItems', invoiceId],
+    lineItems: (invoiceId) => ['invoices', 'lineItems', invoiceId],
   },
   
   // Addon Templates

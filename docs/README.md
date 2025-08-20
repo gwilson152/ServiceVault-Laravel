@@ -25,11 +25,13 @@ npm run dev         # Vite dev server with HMR
 - **[Timer System](guides/timers.md)** - Multi-timer usage and features
 - **[Tickets & Billing](guides/tickets-billing.md)** - Service tickets and billing
 - **[User Management](guides/users-permissions.md)** - Users, roles, and permissions
+- **[Import System](guides/import.md)** - PostgreSQL database import and data migration
 
 ### 🔧 [API Reference](api/)
 - **[Authentication](api/auth.md)** - Login, tokens, and session management
 - **[Core Resources](api/resources.md)** - Tickets, timers, users, accounts
 - **[Billing](api/billing.md)** - Billing rates, invoices, payments
+- **[Import API](api/import.md)** - Database import profiles and job management
 
 ### ⚙️ [Technical Documentation](technical/)
 - **[System Architecture](technical/architecture.md)** - Overall system design
@@ -44,6 +46,7 @@ npm run dev         # Vite dev server with HMR
 - **🎫 Service Tickets** - Complete ticketing workflow with messaging
 - **💰 Billing Integration** - Rate management and invoice generation
 - **📱 Real-Time Updates** - WebSocket broadcasting for live updates
+- **📥 Data Import System** - PostgreSQL database connectivity with FreeScout support
 
 ## Technology Stack
 
@@ -52,13 +55,15 @@ npm run dev         # Vite dev server with HMR
 - **Real-Time**: Laravel Reverb WebSocket server
 - **Auth**: Laravel Sanctum (sessions + API tokens)
 
-## Recent Fixes (August 2025)
+## Recent Updates (August 2025)
 
+- **Enhanced Import System**: Filter-based import controls with date ranges, status filters, and record limits
+- **UUID Architecture**: Complete migration to UUID primary keys for import system tables
+- **Relationship Resolution**: Import preview now shows resolved status names and user relationships
+- **Import System Fixes**: Resolved route model binding issues and deletion functionality
 - **Timer System Fixes**: Fixed timer creation/editing - ticket_id and account_id now save properly
-- **Currency Removal**: Removed currency system from billing rates for simplified pricing
-- **Migration Stability**: Fixed duplicate migration errors with existence checks
-- **Admin Dashboard**: Fixed activity data structure for proper chronological display
+- **Migration Stability**: Fixed duplicate migration errors with existence checks and UUID conversions
 
 ---
 
-*Service Vault - B2B Service Management Platform | Last Updated: August 19, 2025*
+*Service Vault - B2B Service Management Platform | Last Updated: August 20, 2025*

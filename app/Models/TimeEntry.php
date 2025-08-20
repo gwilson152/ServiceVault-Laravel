@@ -29,6 +29,8 @@ class TimeEntry extends Model
         'billable',
         'billed_amount',
         'rate_at_time',
+        'rate_override',
+        'approved_amount',
         'status',
         'approved_by',
         'approved_at',
@@ -49,6 +51,8 @@ class TimeEntry extends Model
         'billable' => 'boolean',
         'billed_amount' => 'decimal:2',
         'rate_at_time' => 'decimal:2',
+        'rate_override' => 'decimal:2',
+        'approved_amount' => 'decimal:2',
         'metadata' => 'array',
         'duration' => 'integer',
     ];
@@ -167,17 +171,39 @@ class TimeEntry extends Model
     }
 
     /**
-     * Calculate the cost based on duration and rate (duration stored in minutes).
+     * Get the effective rate (override takes precedence over rate_at_time).
+     */
+    public function getEffectiveRateAttribute(): ?float
+    {
+        return $this->rate_override ?? $this->rate_at_time;
+    }
+
+    /**
+     * Calculate the cost based on duration and effective rate (duration stored in minutes).
      */
     public function getCalculatedCostAttribute(): ?float
     {
-        if (! $this->billable || ! $this->rate_at_time) {
+        if (! $this->billable || ! $this->effective_rate) {
             return null;
         }
 
         $hours = $this->duration / 60; // Convert minutes to hours
 
-        return round($hours * $this->rate_at_time, 2);
+        return round($hours * $this->effective_rate, 2);
+    }
+
+    /**
+     * Get the final billable amount (approved_amount if locked, otherwise calculated_cost).
+     */
+    public function getFinalAmountAttribute(): ?float
+    {
+        // If approved and amount is locked, use approved_amount
+        if ($this->isApproved() && $this->approved_amount !== null) {
+            return $this->approved_amount;
+        }
+
+        // Otherwise use calculated cost
+        return $this->calculated_cost;
     }
 
     /**
@@ -243,10 +269,18 @@ class TimeEntry extends Model
     }
 
     /**
-     * Approve the time entry.
+     * Approve the time entry and lock the calculated amount.
      */
-    public function approve(int $approvedBy, ?string $notes = null): bool
+    public function approve(string $approvedBy, ?string $notes = null, ?float $rateOverride = null): bool
     {
+        // Apply rate override if provided
+        if ($rateOverride !== null) {
+            $this->rate_override = $rateOverride;
+        }
+
+        // Lock the current calculated amount at approval time
+        $this->approved_amount = $this->calculated_cost;
+        
         $this->status = 'approved';
         $this->approved_by = $approvedBy;
         $this->approved_at = now();
@@ -258,7 +292,7 @@ class TimeEntry extends Model
     /**
      * Reject the time entry.
      */
-    public function reject(int $rejectedBy, ?string $notes = null): bool
+    public function reject(string $rejectedBy, ?string $notes = null): bool
     {
         $this->status = 'rejected';
         $this->approved_by = $rejectedBy;

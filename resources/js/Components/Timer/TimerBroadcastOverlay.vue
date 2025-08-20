@@ -1196,22 +1196,20 @@ const closeCommitDialog = () => {
 }
 
 // Handle timer commit from UnifiedTimeEntryDialog
-const handleTimerCommitted = ({ timeEntry, timerData }) => {
-  // Update the timer's status to committed and set time entry ID
-  const updatedTimer = {
-    ...timerData,
-    status: 'committed',
-    time_entry_id: timeEntry.id,
-    committed_at: new Date().toISOString()
-  }
-  
-  // Update the timer in the overlay
-  addOrUpdateTimer(updatedTimer)
-
+const handleTimerCommitted = async ({ timeEntry, timerData }) => {
   // Close the dialog
   closeCommitDialog()
 
-  console.log('Timer committed successfully:', { timeEntry, updatedTimer })
+  // Sync timers to get the updated status from backend
+  // The backend has updated the timer to 'committed' status and set time_entry_id
+  try {
+    await syncTimers()
+    console.log('Timer committed and synced successfully:', { timeEntry, timer: timerData.id })
+  } catch (error) {
+    console.error('Failed to sync timers after commit:', error)
+    // Fallback: remove timer from overlay if sync fails
+    removeTimer(timerData.id)
+  }
 }
 
 // Handle new timer started from StartTimerModal

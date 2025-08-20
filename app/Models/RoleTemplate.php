@@ -221,6 +221,14 @@ class RoleTemplate extends Model
 
             // Settings Management
             'settings.manage',
+
+            // Import System Management
+            'system.import',
+            'system.import.configure',
+            'system.import.execute',
+            'import.profiles.manage',
+            'import.jobs.execute',
+            'import.jobs.monitor',
         ];
     }
 
@@ -310,6 +318,10 @@ class RoleTemplate extends Model
             // Customer Portal
             'pages.portal.dashboard',
             'pages.portal.tickets',
+
+            // Import Management
+            'pages.import.manage',
+            'pages.settings.import',
         ];
     }
 

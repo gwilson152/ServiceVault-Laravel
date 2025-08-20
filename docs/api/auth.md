@@ -290,6 +290,85 @@ window.refreshCSRFToken();
 }
 ```
 
+## Authentication Architecture
+
+Service Vault implements a hybrid authentication system with Laravel Breeze (web sessions) + Laravel Sanctum (API tokens) for maximum flexibility and security.
+
+### Architecture Overview
+
+**Hybrid System Components**:
+- **Laravel Breeze**: Session-based web authentication with Inertia.js integration
+- **Laravel Sanctum**: Token-based API authentication with 23 granular abilities
+- **Unified Policy Support**: All policies support both authentication methods
+- **Three-Dimensional Permissions**: Functional + Widget + Page access control
+
+### Authentication Flow
+
+**Session Authentication (Web)**:
+1. User logs in via `/login` endpoint
+2. Laravel creates encrypted session cookie
+3. Subsequent requests authenticated via session
+4. CSRF token automatically managed and refreshed
+
+**Token Authentication (API)**:
+1. User/app creates API token via `/api/auth/tokens`
+2. Token includes specific abilities for fine-grained access
+3. API requests include `Authorization: Bearer {token}` header
+4. Abilities checked on each request
+
+### Policy Integration Pattern
+
+```php
+// Unified authentication checking in policies
+public function view(User $user, Ticket $ticket): bool
+{
+    // Check if using API token
+    if ($user->currentAccessToken()) {
+        return $user->tokenCan('tickets:read') && $this->canAccessTicket($user, $ticket);
+    }
+    
+    // Session-based permission checking
+    return $user->hasPermission('tickets.view') && $this->canAccessTicket($user, $ticket);
+}
+```
+
+### CSRF Token Management
+
+**Advanced CSRF Protection**:
+- Automatic refresh on 419 errors with proactive 10-minute intervals
+- Global `window.refreshCSRFToken()` function available
+- Seamless retry mechanism without page refresh
+- Integrated with Axios interceptors for automatic handling
+
+```javascript
+// CSRF token automatically refreshed
+// Available globally for manual refresh
+window.refreshCSRFToken();
+
+// Automatic 419 error handling with retry
+// Proactive refresh every 10 minutes
+// No manual page refresh required
+```
+
+### Three-Dimensional Permission System
+
+Service Vault extends traditional role-based access control with three permission dimensions:
+
+**Permission Dimensions**:
+1. **Functional**: What users can DO (`tickets.create`, `timers.start`)
+2. **Widget**: What they SEE on dashboard (`widgets.dashboard.tickets`)
+3. **Page**: What pages they can ACCESS (`pages.tickets.manage`)
+
+**Permission Checking**:
+```php
+// Check permission across all dimensions
+$user->hasPermission('tickets.view.account');      // Functional
+$user->hasPermission('widgets.dashboard.tickets'); // Widget  
+$user->hasPermission('pages.tickets.manage');      // Page Access
+```
+
+**Storage**: Role templates store three separate arrays (`permissions`, `widget_permissions`, `page_permissions`) with unified checking via `hasPermission()` method.
+
 ## Security Best Practices
 
 ### Token Security

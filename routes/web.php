@@ -118,6 +118,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Billing/Index');
     })->name('billing.index');
 
+    // Invoice Detail View
+    Route::get('/invoices/{invoice}', function ($invoice) {
+        return Inertia::render('Invoices/Show', [
+            'invoiceId' => $invoice
+        ]);
+    })->name('invoices.show');
+
     // Account Management
     Route::get('/accounts', function () {
         return Inertia::render('Accounts/Index');
@@ -143,6 +150,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/roles/create', function () {
         return Inertia::render('Roles/Create');
     })->name('roles.create');
+
+    // Import Management
+    Route::get('/import', function () {
+        return Inertia::render('Import/Index');
+    })->name('import.index');
 });
 
 Route::middleware('auth')->group(function () {

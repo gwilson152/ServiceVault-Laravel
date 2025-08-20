@@ -298,6 +298,31 @@
                                 />
                             </div>
 
+                            <!-- Rate Override (Time Managers/Admins Only) -->
+                            <div v-if="canOverrideRates">
+                                <label
+                                    for="rate-override"
+                                    class="block text-sm font-medium text-gray-700 mb-1"
+                                >
+                                    Rate Override ($/hr)
+                                </label>
+                                <input
+                                    id="rate-override"
+                                    v-model="form.rateOverride"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    :placeholder="selectedBillingRate?.rate || '0.00'"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Leave empty to use selected billing rate
+                                    <span v-if="selectedBillingRate">
+                                        (${{ selectedBillingRate.rate }}/hr)
+                                    </span>
+                                </p>
+                            </div>
+
                             <!-- Billable Status -->
                             <div class="flex items-center">
                                 <input
@@ -438,6 +463,7 @@ import { usePage } from "@inertiajs/vue3";
 import StackedDialog from "@/Components/StackedDialog.vue";
 import UnifiedSelector from "@/Components/UI/UnifiedSelector.vue";
 import { useTimerSettings } from "@/Composables/useTimerSettings.js";
+import { useTimeEntriesQuery } from "@/Composables/queries/useTimeEntriesQuery.js";
 import axios from "axios";
 
 // Props
@@ -486,6 +512,16 @@ const {
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
 
+// TanStack Query mutations
+const { createTimeEntry, updateTimeEntry, isCreatingTimeEntry, isUpdatingTimeEntry } = useTimeEntriesQuery();
+
+// Check if user can override rates (time managers and admins)
+const canOverrideRates = computed(() => {
+  if (!user.value) return false
+  return user.value.permissions?.includes('time.manage') || 
+         user.value.permissions?.includes('admin.manage')
+});
+
 // State
 const form = ref({
     description: "",
@@ -493,6 +529,7 @@ const form = ref({
     ticketId: null,
     userId: null,
     billingRateId: null,
+    rateOverride: null,
     billable: true,
     date: new Date().toISOString().split("T")[0],
     startTime: new Date().toTimeString().slice(0, 5),
@@ -504,7 +541,7 @@ const form = ref({
 });
 
 const errors = ref({});
-const isSubmitting = ref(false);
+const isSubmitting = computed(() => isCreatingTimeEntry.value || isUpdatingTimeEntry.value);
 
 // Data loading states
 const availableAccounts = ref([]);
@@ -612,7 +649,6 @@ const canSubmit = computed(() => {
     return (
         form.value.description.trim() &&
         form.value.accountId &&
-        form.value.ticketId &&
         totalDurationSeconds.value > 0 &&
         durationValidationErrors.value.length === 0 &&
         !isSubmitting.value
@@ -716,7 +752,7 @@ const loadAgentsForAccount = async (accountId) => {
     }
 };
 
-const handleAccountSelected = (account) => {
+const handleAccountSelected = async (account) => {
     // Clear dependent selections
     form.value.ticketId = null;
     form.value.billingRateId = null;
@@ -727,6 +763,9 @@ const handleAccountSelected = (account) => {
         if (canAssignToOthers.value) {
             loadAgentsForAccount(account.id);
         }
+        
+        // Auto-select billing rate using hierarchy: account default → global default
+        await autoSelectBillingRate(account.id);
     } else {
         availableTickets.value = [];
         availableAgents.value = [];
@@ -759,6 +798,48 @@ const handleAgentSelected = (agent) => {
     // Additional logic if needed
 };
 
+// Auto-select billing rate using hierarchy: account default → global default
+const autoSelectBillingRate = async (accountId) => {
+    if (!accountId || form.value.billingRateId) {
+        return; // Don't override existing selection
+    }
+    
+    try {
+        // Fetch billing rates for the account (includes account + global rates)
+        const response = await axios.get(`/api/billing-rates?account_id=${accountId}`);
+        const rates = response.data?.data || response.data || [];
+        
+        if (rates.length === 0) {
+            return; // No rates available
+        }
+        
+        // Find account default rate first
+        let defaultRate = rates.find(rate => 
+            rate.account_id === accountId && rate.is_default === true
+        );
+        
+        // If no account default, find global default
+        if (!defaultRate) {
+            defaultRate = rates.find(rate => 
+                !rate.account_id && rate.is_default === true
+            );
+        }
+        
+        // If no defaults found, take the first available rate
+        if (!defaultRate && rates.length > 0) {
+            defaultRate = rates[0];
+        }
+        
+        // Set the selected rate
+        if (defaultRate) {
+            form.value.billingRateId = defaultRate.id;
+            console.log('Auto-selected billing rate:', defaultRate.name, 'ID:', defaultRate.id);
+        }
+    } catch (error) {
+        console.error('Error auto-selecting billing rate:', error);
+    }
+};
+
 const calculateBillingAmount = () => {
     if (
         form.value.billable &&
@@ -776,7 +857,6 @@ const submitTimeEntry = async () => {
     if (!canSubmit.value) return;
 
     errors.value = {};
-    isSubmitting.value = true;
 
     try {
         let duration = Math.round(totalDurationSeconds.value / 60); // Convert seconds to minutes
@@ -789,6 +869,7 @@ const submitTimeEntry = async () => {
             ticket_id: form.value.ticketId,
             user_id: form.value.userId || user.value.id,
             billing_rate_id: form.value.billingRateId || null,
+            rate_override: form.value.rateOverride || null,
             billable: form.value.billable,
             billed_amount: form.value.billingAmount,
             duration: duration,
@@ -802,17 +883,29 @@ const submitTimeEntry = async () => {
             payload.timer_id = props.timerData.id;
         }
 
-        let response;
+        let result;
         if (props.mode === "edit" && props.timeEntry) {
-            response = await axios.put(
-                `/api/time-entries/${props.timeEntry.id}`,
-                payload
-            );
+            // Use TanStack Query mutation for update
+            result = await new Promise((resolve, reject) => {
+                updateTimeEntry(
+                    { id: props.timeEntry.id, ...payload },
+                    {
+                        onSuccess: (data) => resolve(data),
+                        onError: (error) => reject(error)
+                    }
+                );
+            });
         } else {
-            response = await axios.post("/api/time-entries", payload);
+            // Use TanStack Query mutation for create
+            result = await new Promise((resolve, reject) => {
+                createTimeEntry(payload, {
+                    onSuccess: (data) => resolve(data),
+                    onError: (error) => reject(error)
+                });
+            });
         }
 
-        const timeEntry = response.data.data;
+        const timeEntry = result.data;
 
         if (props.mode === "timer-commit") {
             emit("timer-committed", {
@@ -836,8 +929,6 @@ const submitTimeEntry = async () => {
                 error.response?.data?.message ||
                 "An error occurred while saving the time entry";
         }
-    } finally {
-        isSubmitting.value = false;
     }
 };
 
@@ -990,6 +1081,7 @@ const initializeForm = async () => {
         form.value.ticketId = props.timeEntry.ticket_id || props.timeEntry.ticket?.id;
         form.value.userId = props.timeEntry.user_id || props.timeEntry.user?.id;
         form.value.billingRateId = props.timeEntry.billing_rate_id || props.timeEntry.billing_rate?.id;
+        form.value.rateOverride = props.timeEntry.rate_override || null;
         
         form.value.billable = props.timeEntry.billable;
         form.value.billingAmount = props.timeEntry.billed_amount || 0;

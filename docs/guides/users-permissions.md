@@ -41,9 +41,9 @@ Service Vault supports multiple user types for different roles:
 - Password set manually by admin
 - Useful for temporary or service accounts
 
-## Permission System
+## Three-Dimensional Permission System
 
-Service Vault uses a **Three-Dimensional Permission System**:
+Service Vault uses a unique **Three-Dimensional Permission System**: **Functional** (what users can DO) + **Widget** (what they SEE on dashboard) + **Page** (what pages they can ACCESS).
 
 ### 1. Functional Permissions (What users can DO)
 
@@ -96,24 +96,71 @@ Page-level access control:
 - `pages.billing.rates` - Access billing rate management
 - `pages.reports.financial` - Access financial reports
 
-### Feature-Specific Agent Permissions
+### Key Development Pattern
 
-**Granular Agent Assignment Control**:
+```php
+// Check permission across all dimensions
+$user->hasPermission('tickets.view.account');      // Functional
+$user->hasPermission('widgets.dashboard.tickets'); // Widget  
+$user->hasPermission('pages.tickets.manage');      // Page Access
+```
 
-Service Vault provides feature-specific agent permissions for precise control over who can act as agents for different system features:
+**Permission Storage**: Role templates store three separate arrays (`permissions`, `widget_permissions`, `page_permissions`) with unified checking via `hasPermission()` method.
 
-**Agent Permission Types**:
-- `timers.act_as_agent` - Can be assigned timers and create timers for others
-- `tickets.act_as_agent` - Can be assigned tickets and handle ticket work
-- `time.act_as_agent` - Can create time entries for others and be assigned time work
-- `billing.act_as_agent` - Can be assigned billing responsibility and handle financial tasks
+**Centralized Permission Service**: Use `App\Services\PermissionService` for all agent filtering and permission logic to ensure consistency across the application.
 
-**Multi-Layer Agent Determination**:
-1. **Primary**: Users with `user_type = 'agent'` (traditional agents)
-2. **Secondary**: Users with specific `*.act_as_agent` permissions (feature-specific agents)  
-3. **Tertiary**: Internal account users with relevant admin permissions (fallback agents)
+## Feature-Specific Agent Permission System
 
-This system allows fine-grained control - for example, a user could be authorized to handle timers (`timers.act_as_agent`) but not tickets, or handle billing (`billing.act_as_agent`) but not time tracking.
+Service Vault implements a comprehensive feature-specific agent permission system that provides granular control over which users can act as agents for different system features.
+
+### Core Agent Permissions
+
+- `timers.act_as_agent` - Timer creation and assignment
+- `tickets.act_as_agent` - Ticket assignment and management  
+- `time.act_as_agent` - Time entry creation and assignment
+- `billing.act_as_agent` - Billing responsibility assignment
+
+### Multi-Layer Agent Determination
+
+1. **Primary**: Users with `user_type = 'agent'`
+2. **Secondary**: Users with feature-specific `*.act_as_agent` permissions
+3. **Tertiary**: Internal account users with relevant fallback permissions
+
+### API Integration
+
+```bash
+# Feature-specific agent endpoints
+GET /api/users/agents?agent_type=timer          # Timer agents
+GET /api/users/agents?agent_type=time           # Time entry agents  
+GET /api/users/assignable                       # Ticket agents (uses tickets.act_as_agent)
+GET /api/users/billing-agents                   # Billing agents
+```
+
+### Component Integration
+
+```vue
+<!-- StartTimerModal uses timer agent type -->
+<UnifiedSelector type="agent" agent-type="timer" />
+
+<!-- UnifiedTimeEntryDialog uses time agent type -->
+<UnifiedSelector type="agent" agent-type="time" />
+```
+
+### Permission Helper Methods
+
+```php
+// In UserController
+private function getRequiredAgentPermission(string $agentType): string
+{
+    return match($agentType) {
+        'timer' => 'timers.act_as_agent',
+        'ticket' => 'tickets.act_as_agent',
+        'time' => 'time.act_as_agent', 
+        'billing' => 'billing.act_as_agent',
+        default => 'timers.act_as_agent'
+    };
+}
+```
 
 ## Role Templates
 
