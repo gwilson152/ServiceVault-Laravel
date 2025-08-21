@@ -387,7 +387,7 @@ CREATE INDEX idx_import_profiles_created_by ON import_profiles(created_by);
 - **UUID Primary Keys**: Consistent with Service Vault architecture
 - **Encrypted Passwords**: Database credentials encrypted at rest
 - **Connection Testing**: Stores last test results for validation
-- **Type Support**: Currently supports FreeScout PostgreSQL imports
+- **Universal Database Support**: Supports any PostgreSQL database with template-based configuration
 
 ### import_jobs
 ```sql
@@ -541,12 +541,12 @@ PostgreSQL JSONB used for:
 - Rollback capability for schema changes
 
 ### Recent Schema Changes
-- **Complete Field Mapping System**: Enhanced import_mappings table with comprehensive field transformation support
-- **PostgreSQL Schema Introspection**: Fixed stdClass object handling in schema queries for reliable database inspection
-- **Import System API Enhancement**: Added field mapping endpoints and missing job status methods
-- **Import Profile UUID Architecture**: Complete UUID migration with deterministic conversion for consistent data integrity
-- **Filter-Based Import Controls**: Enhanced import job options structure with comprehensive filtering capabilities
-- **Production Stability Fixes**: Resolved API route binding issues and controller method inconsistencies
+- **Universal Import System**: Complete overhaul from FreeScout-specific to template-based universal database import system
+- **Template Architecture**: Added support for platform-specific templates (FreeScout, Custom) with JSON-based configuration storage
+- **Visual Query Builder**: Database schema introspection support for TableSelector, JoinBuilder, FieldMapper, and FilterBuilder components
+- **Simplified Workflow**: Separated database connection creation from template configuration for improved user experience
+- **PostgreSQL Schema Introspection**: Enhanced database metadata queries for visual query builder components
+- **Production Stability**: Resolved API inconsistencies and improved error handling throughout the import system
 
 ### Best Practices
 - Always add existence checks in migrations

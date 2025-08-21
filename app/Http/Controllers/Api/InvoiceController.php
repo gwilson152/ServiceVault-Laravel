@@ -438,6 +438,18 @@ class InvoiceController extends Controller
             return response()->json(['error' => 'You do not have access to this account.'], 403);
         }
 
+        // Get effective tax application mode for this account
+        $taxService = app(\App\Services\TaxService::class);
+        $effectiveTaxApplicationMode = $taxService->getEffectiveTaxApplicationMode($accountId);
+
+        // Determine if time entries should be taxable based on effective tax application mode
+        $timeEntryTaxable = match($effectiveTaxApplicationMode) {
+            'all_items' => true,           // Time entries are taxable by default
+            'non_service_items' => false,  // Time entries are never taxed
+            'custom' => false,             // Only explicitly marked items are taxable
+            default => true                // Default to all items behavior
+        };
+
         // Get approved time entries
         $approvedTimeEntries = TimeEntry::with(['user:id,name', 'ticket:id,ticket_number,title', 'billingRate:id,name,rate'])
             ->where('account_id', $accountId)
@@ -446,7 +458,7 @@ class InvoiceController extends Controller
             ->whereNull('invoice_id')
             ->orderBy('started_at', 'desc')
             ->get()
-            ->map(function ($entry) {
+            ->map(function ($entry) use ($timeEntryTaxable) {
                 return [
                     'id' => $entry->id,
                     'type' => 'time_entry',
@@ -459,7 +471,7 @@ class InvoiceController extends Controller
                     'ticket' => $entry->ticket,
                     'billing_rate' => $entry->billingRate,
                     'status' => $entry->status,
-                    'is_taxable' => true, // Time entries are typically taxable by default
+                    'is_taxable' => $timeEntryTaxable, // Based on effective tax application mode
                 ];
             });
 
@@ -507,7 +519,7 @@ class InvoiceController extends Controller
                 ->whereNull('invoice_id')
                 ->orderBy('started_at', 'desc')
                 ->get()
-                ->map(function ($entry) {
+                ->map(function ($entry) use ($timeEntryTaxable) {
                     return [
                         'id' => $entry->id,
                         'type' => 'time_entry',
@@ -520,7 +532,7 @@ class InvoiceController extends Controller
                         'ticket' => $entry->ticket,
                         'billing_rate' => $entry->billingRate,
                         'status' => $entry->status,
-                        'is_taxable' => true, // Time entries are typically taxable by default
+                        'is_taxable' => $timeEntryTaxable, // Based on effective tax application mode
                     ];
                 });
 

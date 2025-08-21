@@ -14,11 +14,19 @@
                 Manage invoices, payments, and billing configuration
               </p>
             </div>
-            <div class="mt-4 flex md:ml-4 md:mt-0">
+            <div class="mt-4 flex md:ml-4 md:mt-0 space-x-3">
+              <button
+                @click="showAccountSelector = true"
+                type="button"
+                class="inline-flex items-center rounded-md bg-yellow-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-yellow-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-600"
+              >
+                <CheckCircleIcon class="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+                Approval Wizard
+              </button>
               <button
                 @click="showCreateInvoiceModal = true"
                 type="button"
-                class="ml-3 inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
               >
                 <PlusIcon class="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
                 Create Invoice
@@ -192,6 +200,74 @@
       @close="showViewInvoiceModal = false"
     />
     
+    <!-- Account Selector Modal for Approval Wizard -->
+    <StackedDialog
+      :show="showAccountSelector"
+      title="Select Account for Approval Review"
+      max-width="lg"
+      :allow-dropdowns="true"
+      @close="showAccountSelector = false"
+    >
+      <template #header-subtitle>
+        <p class="mt-1 text-sm text-gray-600">
+          Choose an account to review and approve pending time entries and addons, or select "All Accounts" to review items across all accounts.
+        </p>
+      </template>
+
+      <div class="space-y-6">
+        <!-- All Accounts Option -->
+        <div>
+          <button
+            @click="selectAllAccounts"
+            class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            All Accounts
+          </button>
+        </div>
+        
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300" />
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white text-gray-500">or select specific account</span>
+          </div>
+        </div>
+        
+        <div>
+          <UnifiedSelector
+            v-model="selectedAccountId"
+            type="account"
+            label="Specific Account"
+            placeholder="Select an account..."
+            :clearable="true"
+            @item-selected="onAccountSelectedForApproval"
+          />
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end space-x-3">
+          <button
+            @click="showAccountSelector = false"
+            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Cancel
+          </button>
+          <button
+            @click="launchApprovalWizard"
+            :disabled="!selectedAccountForApproval"
+            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Launch Approval Wizard
+          </button>
+        </div>
+      </template>
+    </StackedDialog>
+
     <!-- Approval Wizard Modal -->
     <ApprovalWizardModal
       :show="showApprovalWizard"
@@ -227,6 +303,8 @@ import BillingSettings from '@/Components/Billing/BillingSettings.vue'
 import CreateInvoiceModal from '@/Components/Billing/CreateInvoiceModal.vue'
 import ViewInvoiceModal from '@/Components/Billing/ViewInvoiceModal.vue'
 import ApprovalWizardModal from '@/Components/Billing/ApprovalWizardModal.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import {
   PlusIcon,
   CurrencyDollarIcon,
@@ -256,6 +334,11 @@ const showViewInvoiceModal = ref(false)
 const selectedInvoice = ref(null)
 const showApprovalWizard = ref(false)
 const approvalWizardData = ref({ accountId: '', accountName: '' })
+
+// Account selector for approval wizard
+const showAccountSelector = ref(false)
+const selectedAccountForApproval = ref(null)
+const selectedAccountId = ref('')
 
 // Computed properties for loading states
 const loading = computed(() => {
@@ -333,9 +416,37 @@ const handleLaunchApprovalWizard = (data) => {
   showApprovalWizard.value = true
 }
 
+const onAccountSelectedForApproval = (account) => {
+  selectedAccountForApproval.value = account
+}
+
+const selectAllAccounts = () => {
+  selectedAccountForApproval.value = { 
+    id: '', 
+    name: 'All Accounts' 
+  }
+  selectedAccountId.value = ''
+  // Clear any cached selection to ensure "All Accounts" behavior
+}
+
+const launchApprovalWizard = () => {
+  if (!selectedAccountForApproval.value) return
+  
+  approvalWizardData.value = {
+    accountId: selectedAccountForApproval.value.id,
+    accountName: selectedAccountForApproval.value.name
+  }
+  
+  showAccountSelector.value = false
+  showApprovalWizard.value = true
+}
+
 const closeApprovalWizard = () => {
   showApprovalWizard.value = false
   approvalWizardData.value = { accountId: '', accountName: '' }
+  // Reset account selector state
+  selectedAccountForApproval.value = null
+  selectedAccountId.value = ''
 }
 
 const onApprovalWizardCompleted = () => {

@@ -1,454 +1,402 @@
-# Import System Guide
+# Universal Import System Guide
 
-Complete guide to Service Vault's PostgreSQL database import system with specialized FreeScout support.
+Complete guide to Service Vault's **universal database import system** supporting any PostgreSQL database with platform-specific templates and visual query builder.
 
 ## Overview
 
-The import system allows administrators to migrate data from external PostgreSQL databases into Service Vault. It features connection testing, data preview, and real-time import progress tracking.
+The universal import system enables administrators to migrate data from any PostgreSQL database into Service Vault using:
+- **Template-Based Configuration** with pre-built platform support (FreeScout, etc.)
+- **Visual Query Builder** for custom database structures
+- **Advanced JOIN Support** for complex multi-table relationships
+- **Real-Time Progress Tracking** with WebSocket updates
 
 ## Key Features
 
-- **PostgreSQL Database Connectivity** with SSL support and connection testing
-- **Visual Field Mapping Configuration** with multiple transformation types (direct, combine, static, UUID conversion, transforms)
-- **Comprehensive Filter Builder** - Configure date ranges, status filters, record limits, and data type selection
-- **FreeScout Import Profile** with specialized mappings and deterministic UUID conversion
-- **Real-Time Import Progress** tracking and monitoring with WebSocket updates
-- **Enhanced Import Preview** with tabbed interface, relationship resolution, and filter indicators
-- **Permission-Based Access Control** with comprehensive three-dimensional authorization
-- **UUID-Based Primary Keys** for consistent data architecture with deterministic generation
-- **Production-Ready Stability** with comprehensive error handling and API reliability
+- **✅ Universal Database Support** - Any PostgreSQL database with intelligent schema introspection
+- **🎯 Platform Templates** - Pre-configured import patterns for FreeScout, custom platforms
+- **🔧 Visual Query Builder** - Drag-and-drop interface for table JOINs, field mapping, and filters
+- **📊 Real-Time Monitoring** - Live progress tracking and error reporting
+- **🔐 Permission-Based Access** - Three-dimensional authorization with granular controls
+- **💾 Template System** - Reusable configurations with JSON-based storage
+- **⏱️ Time Entry Support** - Comprehensive time tracking data migration
+- **🛡️ Production-Ready** - Comprehensive error handling and stability
 
 ## Getting Started
 
 ### Prerequisites
 
-1. **Admin/Super Admin Role** with import permissions
-2. **PostgreSQL Source Database** with accessible credentials
-3. **Network Connectivity** between Service Vault and source database
+1. **System.Import Permission** - Required for accessing import functionality
+2. **PostgreSQL Source Database** - Target database for data migration  
+3. **Network Connectivity** - Access between Service Vault and source database
 
 ### Required Permissions
 
 ```php
-// System-level import permissions
-'system.import'              // View import system
-'system.import.configure'    // Create/edit import profiles
-'system.import.execute'      // Execute import jobs
+// Core import permissions
+'system.import'           // Access import system
+'system.configure'        // Manage templates (Super Admin only)
 
-// Granular permissions
-'import.profiles.manage'     // Manage import profiles
-'import.jobs.execute'       // Execute import jobs
-'import.jobs.monitor'       // Monitor import progress
-
-// Page permissions
-'pages.import.manage'       // Access import page
-'pages.settings.import'     // Access import settings
+// Page access
+'pages.import.manage'     // Access /import page
 ```
 
-## Import Profiles
+## Universal Import Workflow
 
-### Creating an Import Profile
+### Step 1: Create Database Connection
 
-1. **Navigate to Import Management**
-   - Go to `/import` in your Service Vault installation
-   - Click "Create Import Profile"
-
-2. **Basic Information**
+1. **Navigate to Import Management** (`/import`)
+2. **Click "Create Import Profile"**
+3. **Configure Connection**:
    ```
-   Profile Name: FreeScout Production
-   Import Type: FreeScout PostgreSQL
-   Description: Production FreeScout database import
-   ```
-
-3. **Database Connection**
-   ```
+   Profile Name: Production Database  
+   Database Type: PostgreSQL
    Host: your-database-host.com
    Port: 5432
-   Database: freescout_production
+   Database: your_database_name
    Username: database_user
    Password: ••••••••••
-   SSL Mode: prefer (or require for secure connections)
+   SSL Mode: prefer
+   Notes: Production import connection
    ```
+4. **Test Connection** - Verify database accessibility
+5. **Save Profile** - Connection stored for configuration
 
-4. **Test Connection**
-   - Click "Test Connection" to validate database access
-   - Verify connection success before saving
+### Step 2: Apply Template or Build Custom Query
 
-### FreeScout Import Profile
+After creating the connection, choose your configuration approach:
 
-The FreeScout profile includes predefined mappings for:
+#### Option A: Apply Platform Template
 
-- **Users** → Service Vault Users (staff members)
-- **Customers** → Service Vault Accounts + Users
-- **Conversations** → Service Vault Tickets
-- **Threads** → Service Vault Comments
+**Pre-Built Templates:**
+- **FreeScout Platform** - Optimized for FreeScout help desk migration
+- **Custom Database** - Starting point for manual configuration
 
-#### Data Mappings and UUID Conversion
+**Apply Template:**
+1. Click **"Apply Template"** on profile card
+2. Select template (FreeScout or Custom)
+3. Review pre-configured queries and field mappings
+4. Customize as needed
 
-Service Vault uses UUID primary keys while FreeScout uses integer IDs. The import system automatically converts all integer IDs to deterministic UUIDs using UUID v5 generation.
+#### Option B: Build Custom Query
 
-**FreeScout Users → Service Vault Users:**
-```php
-'id' → UUID (deterministic conversion: freescout_user_123 → uuid)
-'first_name' + 'last_name' → 'name'
-'email' → 'email'
-'role' → 'user_type' (Admin/User → agent, others → employee)
-'created_at' → 'created_at' (timestamp preserved)
-'updated_at' → 'updated_at' (timestamp preserved)
+**Visual Query Builder Components:**
+- **Table Selector** - Choose base table and browse schema
+- **JOIN Builder** - Configure table relationships with suggested joins
+- **Field Mapper** - Map source fields to Service Vault fields with transformations
+- **Filter Builder** - Add WHERE conditions for data selection
+
+**Build Custom:**
+1. Click **"Build Custom Query"** on profile card
+2. Use visual components to construct import query
+3. Preview data and validate configuration
+4. Save custom configuration
+
+### Step 3: Preview and Execute
+
+1. **Preview Import Data** - Review transformed data before import
+2. **Validate Configuration** - Check field mappings and relationships
+3. **Execute Import** - Run import job with progress tracking
+
+## Platform Templates
+
+### FreeScout Template
+
+**Pre-configured for FreeScout help desk platform:**
+
+**Customer Account Users Import:**
+```sql
+SELECT 
+  customers.id as external_id,
+  CONCAT(customers.first_name, ' ', customers.last_name) as name,
+  emails.email,
+  customers.company,
+  customers.phone,
+  customers.created_at,
+  customers.updated_at
+FROM customers
+LEFT JOIN emails ON emails.customer_id = customers.id 
+WHERE emails.type = 'work'
 ```
 
-**FreeScout Customers → Service Vault Accounts + Users:**
-```php
-// Account Creation
-'id' → UUID (deterministic: freescout_customer_123 → uuid)
-'company' || 'first_name + last_name' → Account 'name'
-'account_type' → 'customer'
-
-// User Creation  
-'id' → UUID (linked to customer account)
-'first_name' + 'last_name' → User 'name'
-'email' → 'email'
-'user_type' → 'account_user'
+**Support Tickets Import:**
+```sql
+SELECT 
+  conversations.id as external_id,
+  conversations.subject as title,
+  conversations.body as description,
+  CASE 
+    WHEN conversations.status = 1 THEN 'open'
+    WHEN conversations.status = 2 THEN 'pending'
+    WHEN conversations.status = 3 THEN 'closed'
+    ELSE 'open'
+  END as status,
+  customers.id as customer_external_id,
+  users.id as assigned_user_external_id,
+  conversations.created_at,
+  conversations.updated_at
+FROM conversations
+LEFT JOIN customers ON customers.id = conversations.customer_id
+LEFT JOIN users ON users.id = conversations.user_id
 ```
 
-**FreeScout Conversations → Service Vault Tickets:**
-```php
-'id' → UUID (deterministic: freescout_conversation_123 → uuid)
-'subject' → 'title'
-'status' → 'status' (1→open, 2→pending, 3→closed)
-'customer_id' → 'account_id' (UUID lookup from converted customer)
-'user_id' → 'assigned_user_id' (UUID lookup from converted user)
-'created_at' → 'created_at' (timestamp preserved)
+**Time Tracking Entries:**
+```sql
+SELECT 
+  time_logs.id as external_id,
+  time_logs.description,
+  ROUND(time_logs.time_spent / 60) as duration,
+  time_logs.date as started_at,
+  time_logs.user_id as user_external_id,
+  time_logs.conversation_id as ticket_external_id,
+  COALESCE(time_logs.billable, true) as billable,
+  time_logs.rate_amount as rate_override,
+  time_logs.created_at,
+  time_logs.updated_at
+FROM time_logs
+LEFT JOIN conversations ON conversations.id = time_logs.conversation_id
+LEFT JOIN users ON users.id = time_logs.user_id
 ```
 
-**FreeScout Threads → Service Vault Comments:**
-```php
-'id' → UUID (deterministic: freescout_thread_123 → uuid)
-'body' → 'comment'
-'type' → 'is_internal' (1→false/customer, 2→false/message, 3→true/note)
-'conversation_id' → 'ticket_id' (UUID lookup from converted conversation)
-'person_id' → 'user_id' (UUID lookup from converted user)
-'created_at' → 'created_at' (timestamp preserved)
+### Custom Template
+
+**Flexible starting point for any database:**
+- Empty query configuration
+- All Service Vault target types available
+- Full visual query builder access
+- Extensible for any PostgreSQL schema
+
+## Visual Query Builder
+
+### Table Selector
+
+**Features:**
+- **Schema Introspection** - Browse all tables and columns
+- **Table Metadata** - Row counts, column types, primary/foreign keys
+- **Search & Filter** - Find tables by name or column content
+- **Visual Selection** - Click to select base table for query
+
+**Usage:**
+1. Select profile → "Build Custom Query"
+2. Browse available tables in source database
+3. Click table to select as base for import query
+4. Review table structure and sample data
+
+### JOIN Builder
+
+**Features:**
+- **Automatic Suggestions** - Detects potential relationships
+- **JOIN Types** - INNER, LEFT, RIGHT, FULL OUTER JOIN support
+- **Visual Configuration** - Drag-and-drop relationship building
+- **Condition Support** - Additional WHERE conditions per JOIN
+
+**JOIN Configuration:**
+```sql
+-- Example: Customer emails JOIN
+LEFT JOIN emails ON emails.customer_id = customers.id 
+  AND emails.type = 'work'
+
+-- Example: Ticket assignment JOIN  
+LEFT JOIN users ON users.id = conversations.user_id
 ```
 
-## Field Mapping Configuration
+**Suggested Joins:**
+- Based on naming patterns (`customer_id`, `user_id`, etc.)
+- Foreign key detection from schema
+- Confidence scoring for join suggestions
 
-### Visual Field Mapping Interface
+### Field Mapper
 
-The field mapping configuration provides a comprehensive visual interface to customize how source database fields map to Service Vault fields. Access this through the **"Configure Field Mappings"** option in the import profile menu.
+**Mapping Types:**
 
-#### Key Components
-
-**Data Type Selection** (Left Sidebar):
-- **Staff Users** - FreeScout users → Service Vault users
-- **Customer Accounts** - FreeScout customers → Service Vault accounts + users
-- **Tickets** - FreeScout conversations → Service Vault tickets  
-- **Comments** - FreeScout threads → Service Vault comments
-
-Each data type shows its configuration status:
-- 🔴 **Not Configured** - No mappings defined
-- 🟡 **Partial** - Some fields mapped (< 3 mappings)
-- 🟢 **Complete** - Well-configured (3+ mappings)
-
-#### Field Mapping Types
-
-**1. Direct Mapping**
-```php
-// One-to-one field mapping
-source: "email" → destination: "email"
+**1. Direct Field Mapping**
+```
+Source: customers.email → Target: email
 ```
 
-**2. Combine Fields**
-```php
-// Merge multiple fields with separator
-sources: ["first_name", "last_name"] 
-separator: " "
-destination: "name"
-// Result: "John Doe"
+**2. Field Concatenation**
+```
+Sources: [first_name, last_name] → Target: name
+Result: "John Doe"
 ```
 
-**3. Static Value**
-```php
-// Set fixed value for all records
-static_value: "agent"
-destination: "user_type"
+**3. Conditional Mapping (CASE)**
+```sql
+CASE 
+  WHEN status = 1 THEN 'open'
+  WHEN status = 2 THEN 'pending'
+  ELSE 'closed'
+END → status
 ```
 
-**4. Integer → UUID**
-```php
-// Convert FreeScout integer IDs to UUIDs
-source: "id"
-prefix: "freescout_user_"
-destination: "id"
-// Result: freescout_user_123 → deterministic UUID
+**4. Data Transformations**
+```sql
+ROUND(duration_seconds / 60) → duration  -- Convert seconds to minutes
+UPPER(status) → status                   -- Text transformation
+TO_CHAR(date, 'YYYY-MM-DD') → date      -- Date formatting
 ```
 
-**5. Transform Functions**
-```php
-// Apply data transformations
-source: "EMAIL"
-transform: "lowercase"
-destination: "email"
-// Result: "EMAIL" → "email"
+**Target Types:**
+- **Customer Users** - Account users and customers
+- **Tickets** - Support tickets and service requests
+- **Time Entries** - Time tracking with duration conversion
+- **Agents** - Staff users and agents
+- **Accounts** - Customer accounts and organizations
+
+### Filter Builder
+
+**Filter Types:**
+
+**Comparison Filters:**
+```sql
+created_at >= '2024-01-01'          -- Date range
+status != 'deleted'                 -- Exclude deleted
+customer_id IS NOT NULL             -- Require relationships
 ```
 
-**Available Transforms:**
-- `lowercase` - Convert to lowercase
-- `uppercase` - Convert to uppercase  
-- `trim` - Remove whitespace
-- `date_format` - Format date strings
-- `boolean_convert` - Convert to boolean
-
-#### Configuration Workflow
-
-1. **Select Data Type** from the left sidebar
-2. **Review Source Fields** - Shows available fields from actual database schema
-3. **Add Field Mappings** using the "Add Field Mapping" button
-4. **Configure Each Mapping**:
-   - Choose destination Service Vault field
-   - Select mapping type
-   - Configure source field(s) or static values
-5. **Preview Mapping** - See live preview of transformation
-6. **Save Configuration** - Store mappings for import execution
-
-#### Default and Sample Configurations
-
-**Load Defaults** - Applies sensible default mappings for common FreeScout fields:
-- Staff Users: Combine first_name + last_name → name, email → email
-- Customer Accounts: company → name, combine name fields
-- Tickets: subject → title, number → ticket_number
-- Comments: body → comment
-
-**Load Sample Config** - Comprehensive example showing all mapping types for learning and testing
-
-#### Mapping Validation
-
-- **Real-time validation** ensures only complete, valid mappings can be saved
-- **Source field detection** from actual database schema
-- **Type compatibility checking** between source and destination fields
-- **Preview functionality** shows transformation results before execution
-
-## Filter Configuration
-
-### Comprehensive Filter Builder
-
-The filter builder provides precise control over which data is imported. Access through **"Configure Filters"** in the import profile menu.
-
-#### Filter Options
-
-**Data Type Selection**
-- Choose which tables to import: users, customers, conversations, threads
-- Visual checkboxes with descriptions for each data type
-
-**Date Range Filtering**
-- **Enable Date Filter** - Toggle to apply date restrictions
-- **From Date** - Import records created after this date
-- **To Date** - Import records created before this date
-- Leave blank to import all dates
-
-**Ticket Status Filtering**
-- **Enable Status Filter** - Toggle for conversation status filtering
-- **Status Options**:
-  - Active (Open) - Status 1
-  - Pending - Status 2  
-  - Closed - Status 3
-- Leave unselected to import all statuses
-
-**Record Limits**
-- **Enable Record Limit** - Toggle for testing with smaller datasets
-- **Maximum Records** - Number per data type (useful for testing)
-- Helps with iterative testing and validation
-
-**Active Users Only**
-- **Checkbox** - Skip disabled or inactive user accounts
-- Improves data quality by excluding obsolete accounts
-
-#### Filter Presets
-
-**Testing Preset** - Pre-configured for development:
-- Users + Conversations only
-- 100 record limit per type
-- Active users only
-- Perfect for initial testing and validation
-
-#### Filter Application Workflow
-
-1. **Configure Filters** through the filter builder interface
-2. **Apply Filters & Preview** - See filtered data in preview modal
-3. **Visual Filter Indicators** - Active filters shown in amber boxes
-4. **Execute Import** - Filters applied automatically during import
-
-**Filter Summary Display:**
-```
-Active Import Filters
-✓ Data Types: users, conversations
-✓ Date Range: 2024-01-01 to 2024-12-31  
-✓ Ticket Status: Active (Open)
-✓ Record Limit: 1000 per type
-✓ Users: Active only
+**Text Filters:**
+```sql
+email ILIKE '%@company.com'         -- Domain filtering
+subject NOT LIKE '%spam%'           -- Content exclusion
+name ~ '^[A-Z]'                     -- Pattern matching
 ```
 
-## Import Execution
-
-### Preview and Configure Import
-
-1. **Select Import Profile**
-2. **Click "Preview Data"**
-3. **Review Sample Data** (Tabbed Interface)
-   - **Staff**: FreeScout users → Service Vault users
-   - **Customers**: Customer accounts and users
-   - **Tickets**: Conversations with resolved status names and user relationships
-   - **Comments**: Thread messages with proper categorization
-
-4. **Configure Import Filters** (Optional)
-   ```
-   Data Types: Select which data types to import
-   Date Range: From/to date filtering (e.g., last 6 months only)
-   Status Filter: Import only specific ticket statuses
-   Record Limit: Maximum records per data type (useful for testing)
-   Active Users: Import only active users (exclude disabled accounts)
-   ```
-
-5. **Verify Configuration**
-   - Check record counts per data type
-   - Review applied filters in preview
-   - Validate field mappings and relationships
-   - Ensure data integrity
-
-### Execute Import
-
-1. **From Preview Modal**: Click "Execute Import"
-2. **From Profile Card**: Click "Execute Import" action
-3. **Monitor Progress**: Real-time updates every 10 seconds
-
-### Import Job Monitoring
-
-**Real-Time Statistics:**
-- Records Imported (green)
-- Records Failed (red)  
-- Records Skipped (yellow)
-- Records Processed (blue)
-
-**Progress Tracking:**
-- Overall percentage complete
-- Current operation status
-- Estimated completion time
-- Duration tracking
-
-## Import Job Management
-
-### Job Statuses
-
-- **Pending**: Job queued for execution
-- **Running**: Import in progress
-- **Completed**: Import finished successfully
-- **Failed**: Import encountered fatal errors
-- **Cancelled**: Job cancelled by user
-
-### Job Actions
-
-**Running Jobs:**
-- Cancel import execution
-- View real-time progress
-- Monitor error logs
-
-**Completed Jobs:**
-- View detailed results
-- Download import reports
-- Review error logs (if any)
-
-**Failed Jobs:**
-- Retry import execution
-- View error details
-- Troubleshoot issues
-
-## Troubleshooting
-
-### Connection Issues
-
-**SSL Connection Problems:**
-```bash
-# Try different SSL modes
-SSL Mode: disable    # No SSL
-SSL Mode: prefer     # SSL if available
-SSL Mode: require    # Force SSL
+**List Filters:**
+```sql
+status IN ('open', 'pending')       -- Multiple values
+type NOT IN ('spam', 'deleted')     -- Exclusion lists
 ```
 
-**Network Connectivity:**
-```bash
-# Test PostgreSQL connection manually
-psql -h hostname -p 5432 -U username -d database
+**Date/Time Filters:**
+```sql
+created_at BETWEEN '2024-01-01' AND '2024-12-31'
+DATE_TRUNC('month', created_at) = '2024-01-01'
 ```
 
-**Firewall/Access:**
-- Ensure PostgreSQL accepts connections from Service Vault server
-- Check `pg_hba.conf` for access permissions
-- Verify database user has SELECT permissions on required tables
+**Suggested Filters:**
+- **Recent Records** - Last 6 months, 1 year, etc.
+- **Active Only** - Exclude deleted/inactive records
+- **Billable Only** - For time entries
+- **Status Filters** - Specific ticket statuses
 
-### Import Failures
+## Import Execution & Monitoring
+
+### Import Process
+
+1. **Query Generation** - Build final SQL from visual configuration
+2. **Data Validation** - Verify field mappings and relationships
+3. **Batch Processing** - Process data in configurable chunks
+4. **Progress Tracking** - Real-time updates via WebSocket
+5. **Error Handling** - Comprehensive error logging and recovery
+
+### Real-Time Monitoring
+
+**Progress Indicators:**
+```
+Import Progress: 75% (1,500 / 2,000 records)
+Current Operation: Processing Time Entries
+Duration: 00:05:23
+Records Imported: 1,425 ✅
+Records Failed: 25 ❌  
+Records Skipped: 50 ⚠️
+```
+
+**Job Statuses:**
+- **Pending** - Queued for execution
+- **Running** - Active import in progress
+- **Completed** - Successfully finished
+- **Failed** - Error occurred during import
+- **Cancelled** - User-initiated cancellation
+
+### Error Handling
 
 **Common Issues:**
-1. **Missing Tables**: FreeScout schema differences
-2. **Permission Errors**: Insufficient database access
-3. **Data Constraints**: Duplicate keys or constraint violations
-4. **Memory Limits**: Large datasets exceeding PHP limits
+1. **Connection Timeouts** - Large dataset processing
+2. **Data Constraints** - Foreign key violations
+3. **Schema Mismatches** - Source field type incompatibility
+4. **Permission Errors** - Database access restrictions
 
-**Resolution Steps:**
-1. **Check Error Logs**: View job error details
-2. **Validate Schema**: Use "Get Schema" to inspect database
-3. **Test Permissions**: Ensure database user has proper access
-4. **Retry Import**: Use retry functionality for transient errors
+**Resolution Strategies:**
+- **Automatic Retry** - Transient connection issues
+- **Batch Size Adjustment** - Memory optimization
+- **Data Validation** - Pre-import constraint checking
+- **Detailed Logging** - Error tracking and diagnosis
 
-### Performance Optimization
+## Template Management
 
-**Large Dataset Imports:**
+### Creating Custom Templates
+
+**Super Admin Only:**
 ```php
-// Import options for large datasets
-'batch_size' => 100          // Process in smaller batches
-'memory_limit' => '512M'     // Increase PHP memory
-'max_execution_time' => 3600 // Extended timeout
+// Template structure
+{
+  "name": "Custom Platform",
+  "platform": "custom_platform",
+  "database_type": "postgresql",
+  "configuration": {
+    "queries": {
+      "users": {
+        "name": "Platform Users",
+        "base_table": "users",
+        "fields": ["id", "name", "email"],
+        "target_type": "customer_users"
+      }
+    },
+    "priority_order": ["users", "tickets"],
+    "suggested_filters": {
+      "users": {
+        "active_only": "status = 'active'"
+      }
+    }
+  }
+}
 ```
 
-**Database Optimization:**
-- Add indexes on frequently queried columns
-- Optimize PostgreSQL connection pooling
-- Consider importing during off-peak hours
-
-## Security Considerations
-
-### Database Credentials
-
-- **Encrypted Storage**: Passwords encrypted using Laravel's Crypt facade
-- **Limited Access**: Only users with import permissions can view profiles
-- **Audit Trail**: All import activities logged with user tracking
-
-### Data Validation
-
-- **Schema Validation**: Automatic validation of FreeScout database structure
-- **Data Sanitization**: Input validation and sanitization during import
-- **Integrity Checks**: Relationship validation and constraint enforcement
-
-### Permission Control
-
-```php
-// Three-dimensional permission checking
-$user->hasPermission('system.import');           // Functional
-$user->hasPermission('pages.import.manage');     // Page Access  
-$user->hasPermission('import.profiles.manage');  // Granular
-```
-
-## API Integration
-
-### Import Profile API
+### Template API
 
 ```bash
-# List import profiles
-GET /api/import/profiles
+# List available templates
+GET /api/import/templates
 
-# Create import profile
+# Get template details
+GET /api/import/templates/{id}
+
+# Apply template to profile
+PUT /api/import/profiles/{id}/template
+{
+  "template_id": "uuid"
+}
+```
+
+## API Reference
+
+### Import Profiles
+
+```bash
+# Database connection management
 POST /api/import/profiles
+{
+  "name": "Production DB",
+  "database_type": "postgresql",
+  "host": "db.example.com",
+  "port": 5432,
+  "database": "production",
+  "username": "user",
+  "password": "pass",
+  "ssl_mode": "prefer",
+  "notes": "Production import connection"
+}
 
-# Test connection
+# Test database connection
 POST /api/import/profiles/test-connection
+{
+  "database_type": "postgresql",
+  "host": "db.example.com",
+  "port": 5432,
+  "database": "production", 
+  "username": "user",
+  "password": "pass",
+  "ssl_mode": "prefer"
+}
 
 # Get database schema
 GET /api/import/profiles/{id}/schema
@@ -457,63 +405,176 @@ GET /api/import/profiles/{id}/schema
 GET /api/import/profiles/{id}/preview
 ```
 
-### Import Job API
+### Query Builder
 
 ```bash
-# List import jobs
-GET /api/import/jobs
+# Save custom query configuration
+POST /api/import/profiles/{id}/queries
+{
+  "base_table": "customers",
+  "joins": [
+    {
+      "type": "LEFT",
+      "table": "emails", 
+      "on": "emails.customer_id = customers.id",
+      "condition": "emails.type = 'work'"
+    }
+  ],
+  "fields": [
+    {
+      "source": "customers.id",
+      "target": "external_id",
+      "transformation": null
+    },
+    {
+      "source": "CONCAT(customers.first_name, ' ', customers.last_name)",
+      "target": "name", 
+      "transformation": "custom"
+    }
+  ],
+  "filters": [
+    {
+      "field": "customers.created_at",
+      "operator": ">=",
+      "value": "2024-01-01"
+    }
+  ],
+  "target_type": "customer_users"
+}
+```
 
-# Execute import with filters
+### Import Jobs
+
+```bash
+# Execute import with configuration
 POST /api/import/jobs
 {
   "profile_id": "uuid",
   "options": {
-    "selected_tables": ["users", "customers", "conversations"],
-    "import_filters": {
-      "date_from": "2024-01-01",
-      "date_to": "2024-12-31", 
-      "ticket_status": "1",
-      "limit": 1000,
-      "active_users_only": true
-    },
     "batch_size": 100,
-    "overwrite_existing": false
+    "timeout": 3600
   }
 }
 
-# Get job status
+# Monitor job progress
 GET /api/import/jobs/{id}/status
 
-# Cancel job  
+# Cancel running job
 POST /api/import/jobs/{id}/cancel
-
-# Get job statistics
-GET /api/import/jobs/stats
 ```
 
 ## Best Practices
 
 ### Pre-Import Planning
 
-1. **Backup Service Vault Database**: Always backup before major imports
-2. **Test with Sample Data**: Use staging environment for initial testing
-3. **Validate Source Data**: Check for data quality issues beforehand
-4. **Plan for Downtime**: Schedule imports during maintenance windows
+1. **Schema Analysis** - Understand source database structure
+2. **Test Connections** - Verify database accessibility  
+3. **Data Quality Review** - Check for inconsistencies
+4. **Backup Strategy** - Backup Service Vault before import
+5. **Performance Planning** - Consider batch sizes and timing
 
-### During Import
+### Template Selection
 
-1. **Monitor Progress**: Watch for errors and performance issues
-2. **Database Performance**: Monitor both source and destination databases
-3. **User Communication**: Inform users of ongoing import activities
-4. **Error Handling**: Be prepared to cancel and retry if issues arise
+**Choose FreeScout Template If:**
+- Source is FreeScout help desk platform
+- Standard customer → account mapping needed
+- Time tracking data requires conversion
+- Email relationship resolution needed
 
-### Post-Import Verification
+**Choose Custom Template If:**
+- Non-standard database schema
+- Complex multi-table relationships required
+- Custom field transformations needed
+- Unique business logic must be applied
 
-1. **Data Integrity**: Verify imported records match source data
-2. **Relationship Validation**: Check that foreign keys are properly linked
-3. **User Testing**: Have users validate imported data in their workflows
-4. **Performance Check**: Monitor system performance after large imports
+### Performance Optimization
+
+**Large Dataset Strategies:**
+```json
+{
+  "batch_size": 50,          // Smaller batches for memory
+  "timeout": 7200,           // Extended timeout
+  "concurrent_jobs": 1       // Single job to reduce load
+}
+```
+
+**Database Optimization:**
+- Add indexes on JOIN columns
+- Optimize source database queries
+- Schedule imports during off-peak hours
+- Monitor both source and destination performance
+
+### Security Considerations
+
+**Connection Security:**
+- Use SSL connections (`ssl_mode: 'require'`)
+- Rotate database credentials regularly
+- Limit database user permissions to SELECT only
+- Monitor connection access logs
+
+**Data Protection:**
+- Validate data transformations in staging
+- Implement data retention policies
+- Ensure GDPR/privacy compliance
+- Audit import activities
+
+## Troubleshooting
+
+### Connection Issues
+
+**SSL Problems:**
+```bash
+# Test different SSL modes
+ssl_mode: 'disable'   # No SSL (development only)
+ssl_mode: 'prefer'    # SSL if available  
+ssl_mode: 'require'   # Force SSL (recommended)
+```
+
+**Network Connectivity:**
+```bash
+# Manual connection test
+psql -h hostname -p 5432 -U username -d database
+
+# Check firewall rules
+telnet hostname 5432
+```
+
+### Query Builder Issues
+
+**JOIN Problems:**
+- Verify table relationships in source schema
+- Check column name case sensitivity
+- Validate JOIN conditions with sample data
+- Use table aliases for complex queries
+
+**Field Mapping Errors:**
+- Ensure source fields exist in database
+- Validate data type compatibility
+- Test transformations with sample data
+- Check for NULL value handling
+
+### Import Failures
+
+**Memory Issues:**
+```json
+{
+  "batch_size": 25,     // Reduce batch size
+  "timeout": 1800       // Shorter timeout intervals
+}
+```
+
+**Data Constraint Violations:**
+- Review foreign key relationships
+- Validate unique constraints
+- Check required field mappings
+- Test with small dataset first
+
+**Performance Problems:**
+- Add database indexes on filtered columns
+- Optimize complex JOIN operations
+- Consider importing during off-hours
+- Monitor system resource usage
 
 ---
 
-*Import System Guide | Service Vault Documentation | Updated: August 20, 2025*
+*Universal Import System Guide | Service Vault Documentation | Updated: August 21, 2025*

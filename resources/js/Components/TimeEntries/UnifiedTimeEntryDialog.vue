@@ -637,6 +637,11 @@ watch(() => form.value.billingRateId, async (rateId) => {
     }
 }, { immediate: true });
 
+// Watch for selectedBillingRate changes and recalculate billing amount
+watch(selectedBillingRate, () => {
+    calculateBillingAmount();
+});
+
 const totalBillingAmount = computed(() => {
     return form.value.billable ? form.value.billingAmount : 0;
 });

@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             TicketCategorySeeder::class,
             TicketPrioritySeeder::class,
             TicketSeeder::class,  // Sample tickets for demonstration
+            ImportTemplateSeeder::class,  // Import system templates
         ]);
     }
 }

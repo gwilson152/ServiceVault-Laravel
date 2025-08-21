@@ -143,13 +143,35 @@ Duration × Hourly Rate = Billable Amount
 - Approved entries included in invoicing
 - Rejected entries excluded from billing
 
+### Time & Addons Management Interface
+
+**Unified Management Page**: Access via navigation menu "Time & Addons" (formerly "Time Entries")
+
+**Three-Tab Interface**:
+1. **Time Entries Tab**: Complete time entry management with filtering, editing, and approval
+2. **Ticket Addons Tab**: Manage additional billable items added to tickets  
+3. **Active Timers Tab**: View and manage currently running timers
+
+**Enhanced Approval Workflow Access**:
+- **Direct Launch**: "Launch Approval Wizard" button in page header
+- **Account Selection Modal**: Choose specific account or "All Accounts" for comprehensive review
+- **Visual Account Selection**: 
+  - All Accounts button with icon for system-wide review
+  - Separator line with clear "or select specific account" guidance
+  - Unified account selector for focused review
+
+**Integration with Billing**:
+- Seamless transition from time/addon management to billing workflow
+- Approval wizard maintains context across both interfaces
+- Consistent account selection experience
+
 ### Invoice Generation & Approval Workflow
 
 **Enhanced Invoice Creation Process**:
 Service Vault features a comprehensive invoice generation system with integrated approval workflow:
 
 **Step 1: Account Selection & Item Discovery**
-- Select target account for invoice generation
+- Select target account for invoice generation OR select "All Accounts" for comprehensive review
 - System automatically discovers unbilled items:
   - Approved time entries (ready to invoice)
   - Pending time entries (require approval)
@@ -164,12 +186,15 @@ Service Vault features a comprehensive invoice generation system with integrated
 - **Smart Selection**: Only approved items can be invoiced
 - **Real-time Totals**: Dynamic calculation as items are selected/deselected
 
-**Step 3: Approval Wizard Integration**
-- **Launch from Billing Page**: Quick access to bulk approval workflow
-- **Launch from Time Entries**: Review mode with account filtering
-- **Step-through Process**: Review each pending item individually
+**Step 3: Enhanced Approval Wizard Integration**
+- **Launch from Billing Page**: Quick access to bulk approval workflow with account selection
+- **Launch from Time & Addons Page**: Direct access from renamed management interface
+- **All Accounts Support**: Review pending items across all accounts simultaneously
+- **Account-Specific Review**: Focus on individual account's pending items
+- **Step-through Process**: Review each pending item individually with enhanced editing
 - **Bulk Operations**: Approve/reject multiple items simultaneously
 - **Progress Tracking**: Visual indicators of approval workflow completion
+- **StackedDialog Architecture**: Proper z-index management prevents UI clipping issues
 
 **Step 4: Invoice Configuration**
 - **Manual Date Setting**: Custom invoice and due dates

@@ -87,12 +87,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tickets/{ticket}/{tab?}', [App\Http\Controllers\Api\TicketController::class, 'showView'])->name('tickets.show')
         ->where('tab', '(messages|time|addons|activity|billing)');
 
-    // Placeholder routes for navigation (to be implemented later)
-    Route::get('/time-entries/{tab?}', function ($tab = null) {
+    // Time and Addons Management
+    Route::get('/time-and-addons/{tab?}', function ($tab = null) {
         return Inertia::render('TimeEntries/Index', [
             'activeTab' => $tab ?: 'time-entries',
         ]);
-    })->name('time-entries.index')->where('tab', '(time-entries|timers)');
+    })->name('time-and-addons.index')->where('tab', '(time-entries|addons|timers)');
 
     Route::get('/reports', function () {
         return Inertia::render('Reports/Index');

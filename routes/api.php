@@ -582,6 +582,12 @@ Route::prefix('admin')->middleware(['auth:web,sanctum'])->group(function () {
             ->name('import.jobs.cancel');
         Route::get('jobs/stats', [ImportJobController::class, 'stats'])
             ->name('import.jobs.stats');
+
+        // Import Template Management
+        Route::get('templates', [ImportTemplateController::class, 'index'])
+            ->name('import.templates.index');
+        Route::get('templates/{template}', [ImportTemplateController::class, 'show'])
+            ->name('import.templates.show');
     });
 
 // Manager-only routes

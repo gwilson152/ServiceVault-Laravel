@@ -32,9 +32,9 @@ class ImportProfileController extends Controller
             $q->latest()->take(3); // Get last 3 jobs for each profile
         }]);
 
-        // Filter by type if specified
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
+        // Filter by database type if specified
+        if ($request->filled('database_type')) {
+            $query->where('database_type', $request->database_type);
         }
 
         // Filter by active status
@@ -61,7 +61,7 @@ class ImportProfileController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:import_profiles,name',
-            'type' => 'required|string|in:freescout-postgres,custom-postgres',
+            'database_type' => 'required|string|in:postgresql,mysql,sqlite',
             'host' => 'required|string|max:255',
             'port' => 'required|integer|between:1,65535',
             'database' => 'required|string|max:255',
@@ -69,6 +69,7 @@ class ImportProfileController extends Controller
             'password' => 'required|string',
             'ssl_mode' => 'required|string|in:disable,allow,prefer,require,verify-ca,verify-full',
             'description' => 'nullable|string',
+            'notes' => 'nullable|string',
             'connection_options' => 'nullable|array',
             'is_active' => 'boolean',
         ]);
@@ -82,6 +83,7 @@ class ImportProfileController extends Controller
 
         // Test connection before saving
         $connectionConfig = [
+            'database_type' => $request->database_type,
             'host' => $request->host,
             'port' => $request->port,
             'database' => $request->database,
@@ -102,7 +104,7 @@ class ImportProfileController extends Controller
         // Create the profile
         $profile = ImportProfile::create([
             'name' => $request->name,
-            'type' => $request->type,
+            'database_type' => $request->database_type,
             'host' => $request->host,
             'port' => $request->port,
             'database' => $request->database,
@@ -110,6 +112,7 @@ class ImportProfileController extends Controller
             'password' => $request->password, // Will be encrypted by the model
             'ssl_mode' => $request->ssl_mode,
             'description' => $request->description,
+            'notes' => $request->notes,
             'connection_options' => $request->connection_options,
             'is_active' => $request->boolean('is_active', true),
             'created_by' => Auth::id(),
@@ -146,7 +149,7 @@ class ImportProfileController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255', Rule::unique('import_profiles', 'name')->ignore($profile->id)],
-            'type' => 'required|string|in:freescout-postgres,custom-postgres',
+            'database_type' => 'required|string|in:postgresql,mysql,sqlite',
             'host' => 'required|string|max:255',
             'port' => 'required|integer|between:1,65535',
             'database' => 'required|string|max:255',
@@ -154,6 +157,7 @@ class ImportProfileController extends Controller
             'password' => 'nullable|string', // Optional on update - keep existing if not provided
             'ssl_mode' => 'required|string|in:disable,allow,prefer,require,verify-ca,verify-full',
             'description' => 'nullable|string',
+            'notes' => 'nullable|string',
             'connection_options' => 'nullable|array',
             'is_active' => 'boolean',
         ]);
@@ -168,13 +172,14 @@ class ImportProfileController extends Controller
         // Prepare update data
         $updateData = [
             'name' => $request->name,
-            'type' => $request->type,
+            'database_type' => $request->database_type,
             'host' => $request->host,
             'port' => $request->port,
             'database' => $request->database,
             'username' => $request->username,
             'ssl_mode' => $request->ssl_mode,
             'description' => $request->description,
+            'notes' => $request->notes,
             'connection_options' => $request->connection_options,
             'is_active' => $request->boolean('is_active', true),
         ];
@@ -230,6 +235,7 @@ class ImportProfileController extends Controller
             $connectionConfig = $profile->getConnectionConfig();
         } else {
             $validator = Validator::make($request->all(), [
+                'database_type' => 'required|string|in:postgresql,mysql,sqlite',
                 'host' => 'required|string|max:255',
                 'port' => 'required|integer|between:1,65535',
                 'database' => 'required|string|max:255',
@@ -246,6 +252,7 @@ class ImportProfileController extends Controller
             }
 
             $connectionConfig = [
+                'database_type' => $request->database_type,
                 'host' => $request->host,
                 'port' => $request->port,
                 'database' => $request->database,

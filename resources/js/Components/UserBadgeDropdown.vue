@@ -93,7 +93,7 @@
           <!-- Time Entries Link -->
           <MenuItem v-slot="{ active }" v-if="canAccessTimeEntries">
             <Link
-              :href="route('time-entries.index')"
+              :href="route('time-and-addons.index')"
               :class="[
                 active ? 'bg-gray-50 text-gray-900' : 'text-gray-700',
                 'group flex items-center px-4 py-2 text-sm transition-colors duration-150'

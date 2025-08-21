@@ -16,6 +16,15 @@ class PostgreSQLConnectionService
      */
     public function testConnection(array $config): array
     {
+        // Only handle PostgreSQL connections for now
+        if (isset($config['database_type']) && $config['database_type'] !== 'postgresql') {
+            return [
+                'success' => false,
+                'message' => 'Unsupported database type',
+                'error' => "Database type '{$config['database_type']}' is not supported yet. Only PostgreSQL is currently supported.",
+            ];
+        }
+        
         try {
             $dsn = $this->buildDsn($config);
             $pdo = new PDO($dsn, $config['username'], $config['password'], [

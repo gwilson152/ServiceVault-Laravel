@@ -2,8 +2,8 @@
   <StackedDialog 
     :show="show" 
     @close="$emit('close')"
-    title="Import Profile"
-    max-width="2xl"
+    :title="getStepTitle()"
+    max-width="3xl"
   >
     <form @submit.prevent="handleSubmit" class="space-y-6">
       <!-- Basic Information -->
@@ -22,31 +22,52 @@
         </div>
 
         <div>
-          <label for="type" class="block text-sm font-medium text-gray-700">Import Type</label>
+          <label for="database_type" class="block text-sm font-medium text-gray-700">Database Type</label>
           <select
-            id="type"
-            v-model="form.type"
+            id="database_type"
+            v-model="form.database_type"
             required
             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           >
-            <option value="">Select import type...</option>
-            <option value="freescout-postgres">FreeScout PostgreSQL</option>
-            <option value="custom-postgres">Custom PostgreSQL</option>
+            <option value="">Select database type...</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="mysql">MySQL (Coming Soon)</option>
+            <option value="sqlite">SQLite (Coming Soon)</option>
           </select>
-          <p v-if="errors.type" class="mt-1 text-sm text-red-600">{{ errors.type }}</p>
+          <p class="mt-1 text-sm text-gray-500">
+            Database engine type for this connection
+          </p>
+          <p v-if="errors.database_type" class="mt-1 text-sm text-red-600">{{ errors.database_type }}</p>
         </div>
       </div>
 
-      <div>
-        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-        <textarea
-          id="description"
-          v-model="form.description"
-          rows="3"
-          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          placeholder="Optional description of this import profile..."
-        />
-        <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            id="description"
+            v-model="form.description"
+            rows="3"
+            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            placeholder="Optional description of this import profile..."
+          />
+          <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
+        </div>
+
+        <div>
+          <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
+          <textarea
+            id="notes"
+            v-model="form.notes"
+            rows="3"
+            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            placeholder="Internal notes, connection details, etc..."
+          />
+          <p class="mt-1 text-sm text-gray-500">
+            Internal notes for this connection (not visible in imports)
+          </p>
+          <p v-if="errors.notes" class="mt-1 text-sm text-red-600">{{ errors.notes }}</p>
+        </div>
       </div>
 
       <!-- Database Connection -->
@@ -212,11 +233,11 @@
           </button>
           <button
             type="submit"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || !canFinish"
             class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="isSubmitting" class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-            {{ isSubmitting ? 'Saving...' : 'Save Profile' }}
+            {{ isSubmitting ? 'Saving...' : (props.profile ? 'Update Profile' : 'Create Profile') }}
           </button>
         </div>
       </div>
@@ -227,7 +248,11 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import StackedDialog from '@/Components/StackedDialog.vue'
-import { ServerIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
+import { 
+  ServerIcon, 
+  CheckCircleIcon, 
+  XCircleIcon
+} from '@heroicons/vue/24/outline'
 import { useImportQueries } from '@/Composables/queries/useImportQueries.js'
 
 const props = defineProps({
@@ -241,13 +266,19 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved'])
 
 // Composables
-const { createProfile, updateProfile, testConnection: testConnectionMutation, isTestingConnection } = useImportQueries()
+const { 
+  createProfile, 
+  updateProfile, 
+  testConnection: testConnectionMutation, 
+  isTestingConnection
+} = useImportQueries()
 
 // Form state
 const form = reactive({
   name: '',
-  type: '',
+  database_type: '',
   description: '',
+  notes: '',
   host: '',
   port: 5432,
   database: '',
@@ -260,12 +291,15 @@ const errors = ref({})
 const isSubmitting = ref(false)
 const connectionTest = ref(null)
 
+// Remove multi-step state - now just a single form
+
 // Methods
 const resetForm = () => {
   Object.assign(form, {
     name: '',
-    type: '',
+    database_type: '',
     description: '',
+    notes: '',
     host: '',
     port: 5432,
     database: '',
@@ -282,13 +316,27 @@ const canTestConnection = computed(() => {
   return form.host && form.port && form.database && form.username && form.password
 })
 
+// Computed properties
+const canFinish = computed(() => {
+  // Can finish when connection test is successful
+  return connectionTest.value?.success === true
+})
+
+// Step navigation methods
+const getStepTitle = () => {
+  return props.profile ? 'Edit Import Profile' : 'Create Import Profile'
+}
+
+// Removed multi-step methods - now just a single connection form
+
 // Watch for profile prop changes (editing mode)
 watch(() => props.profile, (profile) => {
   if (profile) {
     Object.assign(form, {
       name: profile.name || '',
-      type: profile.type || '',
+      database_type: profile.database_type || '',
       description: profile.description || '',
+      notes: profile.notes || '',
       host: profile.host || '',
       port: profile.port || 5432,
       database: profile.database || '',
@@ -316,6 +364,7 @@ const testConnection = async () => {
     errors.value = {}
     
     const result = await testConnectionMutation({
+      database_type: form.database_type,
       host: form.host,
       port: form.port,
       database: form.database,

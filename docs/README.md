@@ -23,7 +23,7 @@ npm run dev         # Vite dev server with HMR
 ### 📚 [User & Developer Guides](guides/)
 - **[Setup Guide](guides/setup.md)** - Installation and configuration
 - **[Timer System](guides/timers.md)** - Multi-timer usage and features
-- **[Tickets & Billing](guides/tickets-billing.md)** - Service tickets and billing
+- **[Tickets & Billing](guides/tickets-billing.md)** - Service tickets, billing, and Time & Addons management
 - **[User Management](guides/users-permissions.md)** - Users, roles, and permissions
 - **[Import System](guides/import.md)** - PostgreSQL database import and data migration
 
@@ -46,7 +46,7 @@ npm run dev         # Vite dev server with HMR
 - **🎫 Service Tickets** - Complete ticketing workflow with messaging
 - **💰 Billing Integration** - Rate management and invoice generation
 - **📱 Real-Time Updates** - WebSocket broadcasting for live updates
-- **📥 Data Import System** - PostgreSQL database connectivity with FreeScout support
+- **📥 Universal Import System** - PostgreSQL database connectivity with template-based configuration and visual query builder
 
 ## Technology Stack
 
@@ -70,14 +70,14 @@ npm run dev         # Vite dev server with HMR
 - **Separator Line Items**: Add section headers/separators to organize invoice items
 - **Enhanced Tax Display**: Individual line item tax amounts and totals with clear status indicators
 
-### Import System Enhancements  
-- **Complete Field Mapping System**: Visual field mapping configuration with multiple transformation types (direct, combine, static, UUID conversion, transforms)
-- **Enhanced Filter Configuration**: Comprehensive filter builder with date ranges, status filters, record limits, and data type selection
-- **UUID Architecture**: Complete migration to UUID primary keys for import system tables with deterministic conversion
-- **API Stability Fixes**: Resolved missing API methods, route binding issues, and PostgreSQL schema introspection errors
-- **Relationship Resolution**: Import preview shows resolved status names, user relationships, and applied filter indicators
-- **Production-Ready Import System**: Complete PostgreSQL database import with specialized FreeScout support
+### Universal Import System Enhancements  
+- **Template-Based Configuration**: Pre-built platform templates (FreeScout, Custom) with automatic query generation
+- **Visual Query Builder**: Drag-and-drop interface with TableSelector, JoinBuilder, FieldMapper, and FilterBuilder components
+- **Database-Agnostic Architecture**: Supports any PostgreSQL database with intelligent schema introspection
+- **Advanced JOIN Support**: Visual configuration of complex multi-table relationships with suggested joins
+- **Real-Time Preview**: Live data preview with field mapping validation and transformation testing
+- **Simplified Workflow**: Separated connection creation from template configuration for improved user experience
 
 ---
 
-*Service Vault - B2B Service Management Platform | Last Updated: August 20, 2025*
+*Service Vault - B2B Service Management Platform | Last Updated: August 21, 2025*

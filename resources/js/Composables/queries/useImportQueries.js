@@ -218,22 +218,47 @@ export function useImportQueries() {
         return response.data
     }
 
+    // Templates Query
+    const {
+        data: templates,
+        isLoading: templatesLoading,
+        error: templatesError,
+        refetch: refetchTemplates
+    } = useQuery({
+        queryKey: ['import-templates'],
+        queryFn: async () => {
+            const response = await axios.get('/api/import/templates')
+            return response.data.data || response.data
+        },
+        staleTime: 10 * 60 * 1000, // 10 minutes - templates don't change often
+    })
+
+    // Get Template by ID
+    const getTemplate = async (templateId) => {
+        const response = await axios.get(`/api/import/templates/${templateId}`)
+        return response.data
+    }
+
     return {
         // Data
         profiles,
         jobs,
+        templates,
         
         // Loading states
         profilesLoading,
         jobsLoading,
+        templatesLoading,
         
         // Errors
         profilesError,
         jobsError,
+        templatesError,
         
         // Refresh functions
         refreshProfiles,
         refreshJobs,
+        refetchTemplates,
         
         // Mutation functions
         createProfile,
@@ -246,6 +271,7 @@ export function useImportQueries() {
         cancelJob,
         getFieldMappings,
         saveFieldMappings,
+        getTemplate,
         
         // Mutation states
         isCreatingProfile: createProfileMutation.isPending,

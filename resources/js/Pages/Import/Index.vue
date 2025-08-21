@@ -65,7 +65,7 @@
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-gray-900 truncate">{{ profile.name }}</p>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide">{{ profile.type }}</p>
+                    <p class="text-xs text-gray-500 uppercase tracking-wide">{{ profile.database_type }}</p>
                   </div>
                 </div>
                 
@@ -80,27 +80,47 @@
                   
                   <div
                     v-if="activeProfileMenu === profile.id"
-                    class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10"
+                    class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10"
                   >
                     <div class="py-1">
+                      <!-- Template Configuration -->
+                      <div class="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        Template Configuration
+                      </div>
+                      <button
+                        @click="openTemplateSelector(profile)"
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <DocumentTextIcon class="inline w-4 h-4 mr-2" />
+                        Apply Template
+                      </button>
+                      <button
+                        @click="openQueryBuilder(profile)"
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <CogIcon class="inline w-4 h-4 mr-2" />
+                        Build Custom Query
+                      </button>
+                      
+                      <!-- Divider -->
+                      <div class="border-t border-gray-100 my-1"></div>
+                      
+                      <!-- Import Actions -->
+                      <div class="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        Import Actions
+                      </div>
                       <button
                         @click="openImportWizard(profile)"
                         class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        <CogIcon class="inline w-4 h-4 mr-2" />
-                        Configure & Preview Import
-                      </button>
-                      <button
-                        v-if="profile.type === 'freescout-postgres'"
-                        @click="introspectEmails(profile)"
-                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <MagnifyingGlassIcon class="inline w-4 h-4 mr-2" />
-                        Debug Email Structure
+                        <EyeIcon class="inline w-4 h-4 mr-2" />
+                        Preview Import Data
                       </button>
                       <button
                         @click="executeImport(profile)"
-                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        :disabled="!profile.template_id && !profile.has_custom_queries"
+                        class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        :class="profile.template_id || profile.has_custom_queries ? 'text-gray-700' : 'text-gray-400'"
                       >
                         <PlayIcon class="inline w-4 h-4 mr-2" />
                         Execute Import
@@ -272,9 +292,9 @@ import {
   PencilIcon,
   TrashIcon,
   ServerIcon,
-  ClockIcon,
   CogIcon,
-  MagnifyingGlassIcon,
+  EyeIcon,
+  DocumentTextIcon,
 } from '@heroicons/vue/24/outline'
 import { useImportQueries } from '@/Composables/queries/useImportQueries.js'
 
@@ -363,6 +383,56 @@ const introspectEmails = async (profile) => {
   }
 }
 
+const introspectTimeTracking = async (profile) => {
+  try {
+    console.log('Starting time tracking introspection for profile:', profile.name)
+    const response = await fetch(`/api/import/profiles/${profile.id}/introspect-time-tracking`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      }
+    })
+    
+    const result = await response.json()
+    
+    if (response.ok) {
+      console.log('Time tracking introspection results:', result)
+      
+      // Display results in browser console for debugging
+      console.log('=== TIME TRACKING TABLES FOUND ===')
+      Object.entries(result.time_tables || {}).forEach(([tableName, tableData]) => {
+        console.log(`Table: ${tableName} (${tableData.confidence} confidence)`)
+        console.log(`  Time columns:`, tableData.time_columns)
+        console.log(`  Duration columns:`, tableData.duration_columns.map(col => col.name))
+        console.log(`  User related:`, tableData.user_related)
+        console.log(`  Conversation related:`, tableData.conversation_related)
+        console.log(`  Row count:`, tableData.row_count)
+        console.log(`  Sample data:`, tableData.sample_data.slice(0, 2))
+      })
+      
+      console.log('=== FOREIGN KEYS ===')
+      result.foreign_keys?.forEach(fk => {
+        console.log(`${fk.table_name}.${fk.column_name} → ${fk.foreign_table_name}.${fk.foreign_column_name}`)
+      })
+      
+      console.log('=== ANALYSIS ===')
+      result.analysis?.recommendations?.forEach(rec => console.log(`• ${rec}`))
+      
+      if (result.analysis?.likely_time_table) {
+        console.log('Most likely time table:', result.analysis.likely_time_table)
+        console.log('Suggested field mappings:', result.analysis.suggested_mappings)
+      }
+      
+    } else {
+      console.error('Time tracking introspection failed:', result)
+    }
+  } catch (error) {
+    console.error('Error during time tracking introspection:', error)
+  }
+}
+
 const executeImport = async (profile) => {
   // Direct import execution
   try {
@@ -372,6 +442,18 @@ const executeImport = async (profile) => {
     console.error('Import execution failed:', error)
   }
   activeProfileMenu.value = null
+}
+
+const openTemplateSelector = (profile) => {
+  activeProfileMenu.value = null
+  // TODO: Open template selection modal for this profile
+  console.log('Opening template selector for profile:', profile.id)
+}
+
+const openQueryBuilder = (profile) => {
+  activeProfileMenu.value = null
+  // TODO: Open visual query builder for this profile
+  console.log('Opening query builder for profile:', profile.id)
 }
 
 const editProfile = (profile) => {

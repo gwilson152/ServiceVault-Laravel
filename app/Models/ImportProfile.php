@@ -16,7 +16,6 @@ class ImportProfile extends Model
 
     protected $fillable = [
         'name',
-        'type',
         'template_id',
         'database_type',
         'host',
@@ -96,8 +95,18 @@ class ImportProfile extends Model
      */
     public function getConnectionConfig(): array
     {
+        // Map our database_type to Laravel's driver names
+        $driverMap = [
+            'postgresql' => 'pgsql',
+            'mysql' => 'mysql',
+            'sqlite' => 'sqlite',
+        ];
+        
+        $driver = $driverMap[$this->database_type] ?? 'pgsql';
+        
         return [
-            'driver' => 'pgsql',
+            'database_type' => $this->database_type,
+            'driver' => $driver,
             'url' => null,
             'host' => $this->host,
             'port' => $this->port,

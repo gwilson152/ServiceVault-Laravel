@@ -183,6 +183,13 @@ Service Vault uses a native `<dialog>`-based modal system for proper stacking an
 
 **Modal Conversion**: All core modals have been converted from the old `Modal` component to `StackedDialog` for consistency and proper stacking behavior.
 
+**Enhanced Approval Wizard Integration** (August 2025):
+The ApprovalWizardModal has been converted to use StackedDialog architecture:
+- **Proper Z-Index Management**: Eliminates dropdown clipping issues in account selection
+- **Consistent UI**: Unified header with title and subtitle for account context
+- **StackedDialog Components**: All billing and approval workflows use native dialog elements
+- **Nested Modal Support**: Approval wizard can launch from both Time & Addons and Billing pages without z-index conflicts
+
 ### Real-Time Broadcasting
 
 **WebSocket Channels**:

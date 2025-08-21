@@ -1,10 +1,10 @@
-# Import API Reference
+# Universal Import API Reference
 
-Complete API documentation for Service Vault's PostgreSQL database import system.
+Complete API documentation for Service Vault's **universal database import system** supporting any PostgreSQL database with template-based configuration and visual query builder.
 
 ## Overview
 
-The Import API provides endpoints for managing PostgreSQL database connections, creating import profiles, and executing data migration jobs with real-time monitoring.
+The Import API provides endpoints for managing PostgreSQL database connections, applying platform templates, configuring custom queries, and executing data migration jobs with real-time monitoring.
 
 ## Authentication
 
@@ -21,13 +21,12 @@ Authorization: Bearer {api_token}
 ## Required Permissions
 
 ```php
-// System-level permissions
-'system.import'              // Basic import access
-'system.import.configure'    // Manage import profiles
-'system.import.execute'      // Execute import jobs
-'import.profiles.manage'     // Profile CRUD operations
-'import.jobs.execute'        // Job execution
-'import.jobs.monitor'        // Job monitoring
+// Core import permissions
+'system.import'           // Access import system
+'system.configure'        // Manage templates (Super Admin only)
+
+// Page access
+'pages.import.manage'     // Access /import page
 ```
 
 ## Import Profiles
@@ -39,8 +38,8 @@ GET /api/import/profiles
 ```
 
 **Query Parameters:**
-- `type` (string): Filter by profile type (`freescout-postgres`)
-- `active` (boolean): Filter by active status
+- `database_type` (string): Filter by database type (`postgresql`)
+- `status` (string): Filter by connection status
 - `search` (string): Search by profile name
 - `per_page` (integer): Results per page (default: 15)
 
@@ -50,26 +49,32 @@ GET /api/import/profiles
   "data": [
     {
       "id": "uuid",
-      "name": "FreeScout Production",
-      "type": "freescout-postgres",
+      "name": "Production Database",
+      "database_type": "postgresql",
       "host": "database.example.com",
       "port": 5432,
-      "database": "freescout_prod",
+      "database": "production_db",
       "username": "db_user",
       "ssl_mode": "prefer",
-      "description": "Production FreeScout database",
-      "is_active": true,
+      "description": "Production database import connection",
+      "notes": "Main production database",
       "created_by": {
         "id": "uuid",
         "name": "Admin User"
       },
       "last_tested_at": "2025-08-20T10:30:00Z",
+      "template_id": "uuid",
+      "template": {
+        "id": "uuid",
+        "name": "FreeScout Platform",
+        "platform": "freescout"
+      },
       "last_test_result": {
         "success": true,
         "message": "Connection successful",
         "database_info": {
           "version": "PostgreSQL 14.9",
-          "database": "freescout_prod",
+          "database": "production_db",
           "table_count": 45
         }
       },
@@ -94,17 +99,16 @@ POST /api/import/profiles
 **Request Body:**
 ```json
 {
-  "name": "FreeScout Production",
-  "type": "freescout-postgres",
+  "name": "Production Database",
+  "database_type": "postgresql",
   "host": "database.example.com", 
   "port": 5432,
-  "database": "freescout_prod",
+  "database": "production_db",
   "username": "db_user",
   "password": "secure_password",
   "ssl_mode": "prefer",
-  "description": "Production FreeScout database import",
-  "connection_options": {},
-  "is_active": true
+  "description": "Production database import connection",
+  "notes": "Main production system"
 }
 ```
 
@@ -114,7 +118,7 @@ POST /api/import/profiles
   "message": "Import profile created successfully",
   "profile": {
     "id": "uuid",
-    "name": "FreeScout Production",
+    "name": "Production Database",
     // ... profile data
   }
 }
@@ -130,23 +134,31 @@ GET /api/import/profiles/{profile_id}
 ```json
 {
   "id": "uuid",
-  "name": "FreeScout Production",
-  // ... full profile data with relationships
+  "name": "Production Database",
+  "database_type": "postgresql",
+  "template_id": "uuid",
+  "template": {
+    "id": "uuid",
+    "name": "FreeScout Platform",
+    "platform": "freescout"
+  },
+  "configuration": {
+    "queries": {
+      "customer_users": {
+        "name": "Customer Users Import",
+        "base_table": "customers",
+        "joins": [...],
+        "fields": [...],
+        "filters": [...]
+      }
+    }
+  },
   "import_jobs": [
     {
       "id": "uuid", 
       "status": "completed",
       "records_imported": 1250,
       "started_at": "2025-08-20T10:00:00Z"
-    }
-  ],
-  "import_mappings": [
-    {
-      "id": "uuid",
-      "source_table": "users",
-      "destination_table": "users",
-      "field_mappings": {...},
-      "transformation_rules": {...}
     }
   ]
 }
@@ -202,9 +214,10 @@ POST /api/import/profiles/test-connection
 **Request Body:**
 ```json
 {
+  "database_type": "postgresql",
   "host": "database.example.com",
   "port": 5432,
-  "database": "freescout_prod",
+  "database": "production_db",
   "username": "db_user", 
   "password": "secure_password",
   "ssl_mode": "prefer"
@@ -219,7 +232,7 @@ POST /api/import/profiles/test-connection
     "message": "Connection successful",
     "database_info": {
       "version": "PostgreSQL 14.9",
-      "database": "freescout_prod", 
+      "database": "production_db", 
       "table_count": 45,
       "size": "250 MB"
     }
@@ -294,6 +307,120 @@ GET /api/import/profiles/{profile_id}/schema
 }
 ```
 
+## Templates
+
+### List Available Templates
+
+```bash
+GET /api/import/templates
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "FreeScout Platform",
+      "platform": "freescout",
+      "database_type": "postgresql",
+      "description": "Pre-configured import for FreeScout help desk platform",
+      "supported_types": ["customer_users", "tickets", "time_entries", "agents"],
+      "is_system": true,
+      "created_at": "2025-08-20T09:00:00Z"
+    },
+    {
+      "id": "uuid",
+      "name": "Custom Database",
+      "platform": "custom",
+      "database_type": "postgresql",
+      "description": "Flexible template for custom database structures",
+      "supported_types": ["customer_users", "tickets", "time_entries", "agents", "accounts"],
+      "is_system": true,
+      "created_at": "2025-08-20T09:00:00Z"
+    }
+  ]
+}
+```
+
+### Apply Template to Profile
+
+```bash
+PUT /api/import/profiles/{profile_id}/template
+```
+
+**Request Body:**
+```json
+{
+  "template_id": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Template applied successfully",
+  "profile": {
+    "id": "uuid",
+    "template_id": "uuid",
+    "configuration": {
+      "queries": {
+        "customer_users": {
+          "name": "Customer Users Import",
+          "base_table": "customers",
+          "joins": [...],
+          "fields": [...],
+          "target_type": "customer_users"
+        }
+      }
+    }
+  }
+}
+```
+
+## Query Builder
+
+### Save Custom Query Configuration
+
+```bash
+POST /api/import/profiles/{profile_id}/queries
+```
+
+**Request Body:**
+```json
+{
+  "base_table": "customers",
+  "joins": [
+    {
+      "type": "LEFT",
+      "table": "emails", 
+      "on": "emails.customer_id = customers.id",
+      "condition": "emails.type = 'work'"
+    }
+  ],
+  "fields": [
+    {
+      "source": "customers.id",
+      "target": "external_id",
+      "transformation": null
+    },
+    {
+      "source": "CONCAT(customers.first_name, ' ', customers.last_name)",
+      "target": "name", 
+      "transformation": "custom"
+    }
+  ],
+  "filters": [
+    {
+      "field": "customers.created_at",
+      "operator": ">=",
+      "value": "2024-01-01"
+    }
+  ],
+  "target_type": "customer_users"
+}
+```
+
 ## Import Preview
 
 ### Preview Import Data
@@ -302,260 +429,147 @@ GET /api/import/profiles/{profile_id}/schema
 GET /api/import/profiles/{profile_id}/preview
 ```
 
-**Response (FreeScout Profile):**
+**Query Parameters:**
+- `query_type` (string): Type of query to preview (`customer_users`, `tickets`, etc.)
+- `limit` (integer): Number of records to preview (default: 10)
+
+**Response:**
 ```json
 {
-  "users": {
-    "title": "FreeScout Staff → Service Vault Users",
-    "description": "Admin and user accounts will become Service Vault agent users",
+  "customer_users": {
+    "query": {
+      "sql": "SELECT customers.id as external_id, CONCAT(customers.first_name, ' ', customers.last_name) as name...",
+      "estimated_count": 250
+    },
     "sample_data": [
       {
-        "id": 1,
-        "first_name": "John",
-        "last_name": "Doe", 
-        "email": "john@company.com",
-        "role": 1,
-        "created_at": "2024-03-15T10:30:00Z"
-      }
-    ],
-    "total_count": 15
-  },
-  "customers": {
-    "title": "FreeScout Customers → Service Vault Accounts + Users",
-    "description": "Each customer becomes an account with a user record",
-    "sample_data": [
-      {
-        "id": 1,
-        "first_name": "Jane",
-        "last_name": "Smith",
+        "external_id": 1,
+        "name": "Jane Smith",
         "email": "jane@client.com",
         "company": "Client Corp"
       }
     ],
-    "total_count": 250
-  },
-  "conversations": {
-    "title": "FreeScout Conversations → Service Vault Tickets", 
-    "description": "Support conversations become tickets with status mapping and resolved relationships",
-    "sample_data": [
-      {
-        "id": 1,
-        "number": 1001,
-        "subject": "Login Issue",
-        "status": 1,
-        "status_name": "Active (Open)",
-        "customer_id": 1,
-        "user_id": 1,
-        "user_name": "John Doe",
-        "created_at": "2024-03-20T14:15:00Z"
-      }
-    ],
-    "total_count": 1200
-  },
-  "threads": {
-    "title": "FreeScout Threads → Service Vault Comments",
-    "description": "Conversation messages and notes become ticket comments", 
-    "sample_data": [
-      {
-        "id": 1,
-        "conversation_id": 1,
-        "type": 1,
-        "body": "I'm having trouble logging in...",
-        "user_id": null,
-        "customer_id": 1
-      }
-    ],
-    "total_count": 3500
+    "field_mapping": {
+      "external_id": "customers.id",
+      "name": "CONCAT(customers.first_name, ' ', customers.last_name)",
+      "email": "emails.email",
+      "company": "customers.company"
+    },
+    "applied_filters": [
+      "created_at >= '2024-01-01'",
+      "emails.type = 'work'"
+    ]
   }
 }
 ```
 
-## Field Mapping Management
+## Visual Query Builder Components
 
-### Get Import Profile Field Mappings
+### Get Table Schema for Builder
 
 ```bash
-GET /api/import/profiles/{profile_id}/mappings
+GET /api/import/profiles/{profile_id}/builder/tables
 ```
 
 **Response:**
 ```json
-[
-  {
-    "id": "uuid",
-    "profile_id": "uuid",
-    "source_table": "users",
-    "destination_table": "users",
-    "field_mappings": {
-      "name": {
-        "type": "combine_fields",
-        "fields": ["first_name", "last_name"],
-        "separator": " "
-      },
-      "email": {
-        "type": "direct_mapping",
-        "source_field": "email"
-      },
-      "user_type": {
-        "type": "static_value",
-        "static_value": "agent"
-      },
-      "id": {
-        "type": "integer_to_uuid",
-        "source_field": "id",
-        "prefix": "freescout_user_"
-      }
-    },
-    "import_order": 1,
-    "is_active": true,
-    "created_at": "2025-08-20T12:00:00Z",
-    "updated_at": "2025-08-20T12:00:00Z"
-  },
-  {
-    "id": "uuid",
-    "profile_id": "uuid",
-    "source_table": "conversations",
-    "destination_table": "tickets",
-    "field_mappings": {
-      "title": {
-        "type": "direct_mapping",
-        "source_field": "subject"
-      },
-      "ticket_number": {
-        "type": "integer_to_uuid",
-        "source_field": "number",
-        "prefix": "FS"
-      },
-      "status": {
-        "type": "transform_function",
-        "source_field": "status",
-        "transform_function": "status_mapping"
-      }
-    },
-    "import_order": 3,
-    "is_active": true,
-    "created_at": "2025-08-20T12:00:00Z",
-    "updated_at": "2025-08-20T12:00:00Z"
-  }
-]
-```
-
-### Save Field Mappings
-
-```bash
-POST /api/import/profiles/{profile_id}/mappings
-```
-
-**Request Body:**
-```json
 {
-  "mappings": [
+  "tables": [
     {
-      "source_table": "users",
-      "destination_table": "users",
-      "field_mappings": {
-        "name": {
-          "type": "combine_fields",
-          "fields": ["first_name", "last_name"],
-          "separator": " "
+      "name": "customers",
+      "row_count": 250,
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "primary_key": true
         },
-        "email": {
-          "type": "direct_mapping",
-          "source_field": "email"
-        },
-        "user_type": {
-          "type": "static_value",
-          "static_value": "agent"
+        {
+          "name": "first_name",
+          "type": "character varying(255)",
+          "nullable": true
         }
-      },
-      "import_order": 1
-    },
+      ]
+    }
+  ],
+  "suggested_joins": [
     {
-      "source_table": "conversations",
-      "destination_table": "tickets", 
-      "field_mappings": {
-        "title": {
-          "type": "direct_mapping",
-          "source_field": "subject"
-        },
-        "description": {
-          "type": "transform_function",
-          "source_field": "preview",
-          "transform_function": "trim"
-        }
-      },
-      "import_order": 3
+      "from_table": "customers",
+      "to_table": "emails",
+      "join_condition": "emails.customer_id = customers.id",
+      "confidence": 0.95
     }
   ]
 }
 ```
 
+### Validate Query Configuration
+
+```bash
+POST /api/import/profiles/{profile_id}/builder/validate
+```
+
+**Request Body:**
+```json
+{
+  "base_table": "customers",
+  "joins": [...],
+  "fields": [...],
+  "filters": [...]
+}
+```
+
 **Response:**
 ```json
 {
-  "message": "Field mappings saved successfully",
-  "mappings": [
-    // ... array of created mapping objects
-  ]
+  "valid": true,
+  "generated_sql": "SELECT customers.id as external_id, CONCAT(customers.first_name, ' ', customers.last_name) as name...",
+  "estimated_records": 250,
+  "warnings": [],
+  "errors": []
 }
 ```
 
-### Field Mapping Types
+### Field Transformation Types
 
-The field mapping system supports multiple transformation types:
+The visual field mapper supports multiple transformation types:
 
-#### 1. Direct Mapping
+#### 1. Direct Field Mapping
 ```json
 {
-  "type": "direct_mapping",
-  "source_field": "email"
+  "source": "customers.email",
+  "target": "email",
+  "transformation": "direct"
 }
 ```
-Maps one source field directly to destination field.
 
-#### 2. Combine Fields  
+#### 2. Field Concatenation
 ```json
 {
-  "type": "combine_fields",
-  "fields": ["first_name", "last_name"],
-  "separator": " "
+  "source": "CONCAT(customers.first_name, ' ', customers.last_name)",
+  "target": "name",
+  "transformation": "custom"
 }
 ```
-Combines multiple source fields with a separator.
 
-#### 3. Static Value
+#### 3. Conditional Mapping (CASE)
 ```json
 {
-  "type": "static_value",
-  "static_value": "agent"
+  "source": "CASE WHEN status = 1 THEN 'open' WHEN status = 2 THEN 'pending' ELSE 'closed' END",
+  "target": "status",
+  "transformation": "case_when"
 }
 ```
-Sets a fixed value for all records.
 
-#### 4. Integer to UUID
+#### 4. Data Transformations
 ```json
 {
-  "type": "integer_to_uuid",
-  "source_field": "id",
-  "prefix": "freescout_user_"
+  "source": "ROUND(duration_seconds / 60)",
+  "target": "duration",
+  "transformation": "math"
 }
 ```
-Converts integer IDs to deterministic UUIDs with prefix.
-
-#### 5. Transform Functions
-```json
-{
-  "type": "transform_function",
-  "source_field": "email_address",
-  "transform_function": "lowercase"
-}
-```
-Applies data transformations. Available functions:
-- `lowercase` - Convert to lowercase
-- `uppercase` - Convert to uppercase  
-- `trim` - Remove whitespace
-- `date_format` - Format date strings
-- `boolean_convert` - Convert to boolean
 
 ## Import Jobs
 
@@ -581,8 +595,8 @@ GET /api/import/jobs
       "id": "uuid",
       "profile": {
         "id": "uuid",
-        "name": "FreeScout Production",
-        "type": "freescout-postgres"
+        "name": "Production Database",
+        "database_type": "postgresql"
       },
       "status": "completed",
       "progress_percentage": 100,
@@ -600,10 +614,10 @@ GET /api/import/jobs
       "errors": null,
       "metadata": {
         "source_counts": {
-          "users": 15,
-          "customers": 250, 
-          "conversations": 1200,
-          "threads": 3500
+          "customer_users": 250,
+          "tickets": 1200,
+          "time_entries": 850,
+          "agents": 15
         }
       },
       "created_by": {
@@ -627,16 +641,13 @@ POST /api/import/jobs
 {
   "profile_id": "uuid",
   "options": {
-    "overwrite_existing": false,
-    "skip_validation": false,
     "batch_size": 100,
-    "selected_tables": ["users", "customers", "conversations", "threads"],
+    "timeout": 3600,
+    "selected_types": ["customer_users", "tickets", "time_entries"],
     "import_filters": {
       "date_from": "2024-01-01",
       "date_to": "2024-12-31",
-      "ticket_status": "1",
-      "limit": 1000,
-      "active_users_only": true
+      "limit": 1000
     }
   }
 }
@@ -645,9 +656,8 @@ POST /api/import/jobs
 **Import Filter Options:**
 - `date_from` (string): Import only records created after this date (YYYY-MM-DD)
 - `date_to` (string): Import only records created before this date (YYYY-MM-DD)  
-- `ticket_status` (string): For conversations - filter by status ("1"=active, "2"=pending, "3"=closed)
 - `limit` (integer): Maximum records per data type (useful for testing)
-- `active_users_only` (boolean): Import only active users (exclude disabled accounts)
+- Custom filters defined in query configuration
 
 **Response:**
 ```json
@@ -756,7 +766,7 @@ GET /api/import/jobs/stats
   "recent_jobs": [
     {
       "id": "uuid",
-      "profile_name": "FreeScout Production",
+      "profile_name": "Production Database",
       "status": "completed",
       "records_imported": 4850,
       "records_failed": 25,
@@ -812,6 +822,8 @@ Import API endpoints are rate limited:
 
 - **Profile Management**: 60 requests per minute
 - **Connection Testing**: 10 requests per minute (to prevent abuse)
+- **Query Builder**: 30 requests per minute
+- **Template Operations**: 20 requests per minute
 - **Job Monitoring**: 120 requests per minute (for real-time updates)
 
 ## WebSocket Integration
@@ -823,16 +835,25 @@ Real-time job updates are available via Laravel Echo:
 Echo.private(`import.job.${jobId}`)
   .listen('ImportJobUpdated', (event) => {
     console.log('Job progress:', event.progress_percentage);
+    console.log('Current operation:', event.current_operation);
+  });
+
+// Subscribe to profile events
+Echo.private(`import.profile.${profileId}`)
+  .listen('ImportProfileUpdated', (event) => {
+    console.log('Profile configuration updated');
   });
 ```
 
 **Available Events:**
 - `ImportJobStarted` - Job execution began
-- `ImportJobUpdated` - Progress update
+- `ImportJobUpdated` - Progress update with current operation
 - `ImportJobCompleted` - Job finished successfully  
 - `ImportJobFailed` - Job encountered errors
 - `ImportJobCancelled` - Job was cancelled
+- `ImportProfileUpdated` - Profile configuration changed
+- `ImportTemplateApplied` - Template applied to profile
 
 ---
 
-*Import API Reference | Service Vault Documentation | Updated: August 20, 2025*
+*Universal Import API Reference | Service Vault Documentation | Updated: August 21, 2025*

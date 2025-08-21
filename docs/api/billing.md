@@ -269,6 +269,96 @@ Content-Type: application/json
 }
 ```
 
+## Unbilled Items & Approval Workflow
+
+### Get Unbilled Items
+```http
+GET /api/billing/unbilled-items?account_id={id}&include_unapproved=true
+```
+
+**Query Parameters**:
+- `account_id`: Filter items for specific account (optional - omit for all accounts)
+- `include_unapproved`: Include pending approval items
+- `type`: Filter by item type (time_entry, ticket_addon)
+
+**Enhanced All Accounts Support** (August 2025):
+- **Omit account_id**: Returns unbilled items across all accounts
+- **Account-specific filtering**: Provide account_id for focused review
+- **Permission-aware**: Results filtered by user's account access permissions
+
+**Response**:
+```json
+{
+  "data": {
+    "approved": {
+      "time_entries": [
+        {
+          "id": "entry-uuid",
+          "description": "Development work",
+          "duration": 480,
+          "billing_rate": "125.00",
+          "amount": "1000.00",
+          "status": "approved",
+          "account": {
+            "id": "account-uuid",
+            "name": "Company Account"
+          }
+        }
+      ],
+      "ticket_addons": [
+        {
+          "id": "addon-uuid", 
+          "description": "Server setup",
+          "quantity": 1,
+          "unit_price": "500.00",
+          "amount": "500.00",
+          "status": "approved",
+          "account": {
+            "id": "account-uuid",
+            "name": "Company Account"
+          }
+        }
+      ]
+    },
+    "unapproved": {
+      "time_entries": [],
+      "ticket_addons": []
+    },
+    "totals": {
+      "approved_amount": "1500.00",
+      "pending_amount": "0.00",
+      "total_amount": "1500.00"
+    },
+    "account_breakdown": [
+      {
+        "account_id": "account-uuid",
+        "account_name": "Company Account",
+        "approved_amount": "1500.00",
+        "pending_amount": "0.00"
+      }
+    ]
+  }
+}
+```
+
+**New Fields**:
+- `account`: Account information included with each item for all-accounts view
+- `account_breakdown`: Summary by account when viewing all accounts
+
+### Enhanced Approval Wizard API
+
+**Access Points**:
+- **Time & Addons Page**: `/time-and-addons` with "Launch Approval Wizard" button
+- **Billing Page**: `/billing` with integrated approval workflow access
+- **Account Selection**: Choose specific account or "All Accounts" for comprehensive review
+
+**All Accounts Approval Workflow**:
+```http
+GET /api/billing/unbilled-items?include_unapproved=true
+```
+
+Response includes items from all accounts user has access to, with account context for each item.
+
 ## Payment Tracking API
 
 ### Record Payment

@@ -370,6 +370,116 @@ class TemplateService
                     ],
                     'import_order' => 2,
                     'is_active' => true
+                ],
+                [
+                    'name' => 'Time Entries',
+                    'description' => 'Import FreeScout time tracking data as Service Vault time entries (if available)',
+                    'base_table' => 'time_logs', // Common time tracking table name
+                    'joins' => [
+                        [
+                            'table' => 'conversations',
+                            'type' => 'LEFT JOIN',
+                            'on' => 'time_logs.conversation_id = conversations.id',
+                            'alias' => 'ticket'
+                        ],
+                        [
+                            'table' => 'users',
+                            'type' => 'LEFT JOIN',
+                            'on' => 'time_logs.user_id = users.id',
+                            'alias' => 'agent'
+                        ],
+                        [
+                            'table' => 'customers',
+                            'type' => 'LEFT JOIN',
+                            'on' => 'conversations.customer_id = customers.id',
+                            'alias' => 'customer'
+                        ]
+                    ],
+                    'select_fields' => [
+                        'time_logs.id',
+                        'time_logs.user_id',
+                        'time_logs.conversation_id',
+                        'time_logs.description',
+                        'time_logs.start_time',
+                        'time_logs.end_time',
+                        'time_logs.duration',
+                        'time_logs.billable',
+                        'time_logs.rate',
+                        'time_logs.created_at',
+                        'time_logs.updated_at',
+                        'conversations.subject as ticket_title',
+                        'customers.id as customer_id'
+                    ],
+                    'where_conditions' => 'time_logs.duration > 0 AND time_logs.user_id IS NOT NULL',
+                    'destination_table' => 'time_entries',
+                    'field_mappings' => [
+                        'time_logs.id' => 'id',
+                        'time_logs.user_id' => 'user_id',
+                        'time_logs.conversation_id' => 'ticket_id',
+                        'time_logs.description' => 'description',
+                        'time_logs.start_time' => 'started_at',
+                        'time_logs.end_time' => 'ended_at',
+                        'time_logs.duration' => 'duration',
+                        'time_logs.billable' => 'billable',
+                        'time_logs.rate' => 'rate_at_time',
+                        'time_logs.created_at' => 'created_at',
+                        'time_logs.updated_at' => 'updated_at'
+                    ],
+                    'transformation_rules' => [
+                        'id' => [
+                            'type' => 'uuid_convert',
+                            'prefix' => 'freescout_time_'
+                        ],
+                        'user_id' => [
+                            'type' => 'uuid_convert',
+                            'prefix' => 'freescout_user_'
+                        ],
+                        'ticket_id' => [
+                            'type' => 'uuid_convert',
+                            'prefix' => 'freescout_ticket_'
+                        ],
+                        'duration' => [
+                            'type' => 'time_to_minutes'
+                        ],
+                        'account_id' => [
+                            'type' => 'account_from_ticket'
+                        ],
+                        'billing_rate_id' => [
+                            'type' => 'billing_rate_lookup'
+                        ],
+                        'status' => [
+                            'type' => 'static',
+                            'value' => 'approved'
+                        ],
+                        'billable' => [
+                            'type' => 'static',
+                            'value' => true
+                        ]
+                    ],
+                    'validation_rules' => [
+                        'user_id' => [
+                            ['type' => 'required'],
+                            ['type' => 'user_exists']
+                        ],
+                        'duration' => [
+                            ['type' => 'required'],
+                            ['type' => 'duration_range', 'min_minutes' => 1, 'max_minutes' => 1440]
+                        ],
+                        'started_at' => [
+                            ['type' => 'required']
+                        ],
+                        'ticket_id' => [
+                            ['type' => 'ticket_exists']
+                        ],
+                        'time_range' => [
+                            ['type' => 'time_range_valid', 'start_field' => 'started_at', 'end_field' => 'ended_at', 'max_hours' => 24]
+                        ],
+                        'no_duplicates' => [
+                            ['type' => 'no_duplicate_time']
+                        ]
+                    ],
+                    'import_order' => 3,
+                    'is_active' => false // Disabled by default - user can enable if time tracking exists
                 ]
             ]
         ];
