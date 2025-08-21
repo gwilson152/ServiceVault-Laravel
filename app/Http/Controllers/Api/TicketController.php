@@ -88,7 +88,11 @@ class TicketController extends Controller
                 }
             }
         })->when($request->priority, function ($q, $priority) {
-            $q->where('priority', $priority);
+            if (is_array($priority)) {
+                $q->whereIn('priority', $priority);
+            } else {
+                $q->where('priority', $priority);
+            }
         })->when($request->category, function ($q, $category) {
             $q->where('category', $category);
         })->when($request->agent_id, function ($q, $agentId) {

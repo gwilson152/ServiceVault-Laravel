@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
+use App\Http\Controllers\Api\ImportAnalyticsController;
 use App\Http\Controllers\Api\ImportJobController;
 use App\Http\Controllers\Api\ImportProfileController;
+use App\Http\Controllers\Api\ImportTemplateController;
 use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
@@ -159,6 +161,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('time-entries/{timeEntry}/reject', [TimeEntryController::class, 'reject'])
         ->name('time-entries.reject');
 
+    Route::post('time-entries/{timeEntry}/unapprove', [TimeEntryController::class, 'unapprove'])
+        ->name('time-entries.unapprove');
+
     Route::post('time-entries/bulk/approve', [TimeEntryController::class, 'bulkApprove'])
         ->name('time-entries.bulk-approve');
 
@@ -294,6 +299,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('ticket-addons/{ticketAddon}/reject', [App\Http\Controllers\Api\TicketAddonController::class, 'reject'])
         ->name('ticket-addons.reject');
+
+    Route::post('ticket-addons/{ticketAddon}/unapprove', [App\Http\Controllers\Api\TicketAddonController::class, 'unapprove'])
+        ->name('ticket-addons.unapprove');
 
     // Bulk addon approval
     Route::post('ticket-addons/bulk/approve', [App\Http\Controllers\Api\TicketAddonController::class, 'bulkApprove'])
@@ -559,6 +567,8 @@ Route::prefix('admin')->middleware(['auth:web,sanctum'])->group(function () {
             ->name('import.profiles.preview');
         Route::post('profiles/{profile}/preview-table', [ImportProfileController::class, 'previewTable'])
             ->name('import.profiles.preview-table');
+        Route::post('profiles/{profile}/preview-query', [ImportProfileController::class, 'previewQuery'])
+            ->name('import.profiles.preview-query');
         
         // Field Mapping Management
         Route::get('profiles/{profile}/mappings', [ImportProfileController::class, 'getMappings'])
@@ -583,11 +593,41 @@ Route::prefix('admin')->middleware(['auth:web,sanctum'])->group(function () {
         Route::get('jobs/stats', [ImportJobController::class, 'stats'])
             ->name('import.jobs.stats');
 
+        // Template Application
+        Route::put('profiles/{profile}/template', [ImportProfileController::class, 'applyTemplate'])
+            ->name('import.profiles.apply-template');
+
+        // Query Builder API
+        Route::post('profiles/{profile}/builder/validate', [ImportProfileController::class, 'validateQuery'])
+            ->name('import.profiles.validate-query');
+        Route::post('profiles/{profile}/queries', [ImportProfileController::class, 'saveQuery'])
+            ->name('import.profiles.save-query');
+        Route::post('profiles/{profile}/builder/analyze-joins', [ImportProfileController::class, 'analyzeJoins'])
+            ->name('import.profiles.analyze-joins');
+
         // Import Template Management
         Route::get('templates', [ImportTemplateController::class, 'index'])
             ->name('import.templates.index');
         Route::get('templates/{template}', [ImportTemplateController::class, 'show'])
             ->name('import.templates.show');
+            
+        // Import Analytics and Reporting
+        Route::prefix('analytics')->group(function () {
+            Route::get('dashboard', [ImportAnalyticsController::class, 'dashboard'])
+                ->name('import.analytics.dashboard');
+            Route::get('profiles/{profile}/stats', [ImportAnalyticsController::class, 'profileStats'])
+                ->name('import.analytics.profile-stats');
+            Route::get('jobs/{job}/details', [ImportAnalyticsController::class, 'jobDetails'])
+                ->name('import.analytics.job-details');
+            Route::get('records', [ImportAnalyticsController::class, 'records'])
+                ->name('import.analytics.records');
+            Route::get('duplicate-analysis', [ImportAnalyticsController::class, 'duplicateAnalysis'])
+                ->name('import.analytics.duplicate-analysis');
+            Route::get('performance-metrics', [ImportAnalyticsController::class, 'performanceMetrics'])
+                ->name('import.analytics.performance-metrics');
+            Route::get('trends', [ImportAnalyticsController::class, 'trends'])
+                ->name('import.analytics.trends');
+        });
     });
 
 // Manager-only routes

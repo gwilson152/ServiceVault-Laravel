@@ -132,10 +132,21 @@ When creating new features or modifying existing ones, ensure documentation is u
 # DELETE /api/time-entries/{id}          # Delete time entry
 # POST   /api/time-entries/{id}/approve  # Approve time entry (managers/admins)
 # POST   /api/time-entries/{id}/reject   # Reject time entry (managers/admins)
+# POST   /api/time-entries/{id}/unapprove # Unapprove time entry (not invoiced only)
 # POST   /api/time-entries/bulk/approve  # Bulk approve time entries
 # POST   /api/time-entries/bulk/reject   # Bulk reject time entries
 # GET    /api/time-entries/stats/recent  # Recent statistics for dashboard
 # GET    /api/time-entries/stats/approvals # Approval statistics (managers/admins)
+
+# Ticket Addons API (Service Items and Products)
+# GET    /api/ticket-addons              # List ticket addons with filtering
+# POST   /api/ticket-addons              # Create new ticket addon
+# GET    /api/ticket-addons/{id}         # Show specific ticket addon
+# PUT    /api/ticket-addons/{id}         # Update ticket addon
+# DELETE /api/ticket-addons/{id}         # Delete ticket addon
+# POST   /api/ticket-addons/{id}/approve # Approve ticket addon (managers/admins)
+# POST   /api/ticket-addons/{id}/reject  # Reject ticket addon (managers/admins)
+# POST   /api/ticket-addons/{id}/unapprove # Unapprove ticket addon (not invoiced only)
 
 # Authentication & Token Management
 # GET    /api/auth/tokens                # List user's API tokens
@@ -218,11 +229,33 @@ For comprehensive technical details, refer to the **streamlined documentation** 
 - **[Database Schema](docs/technical/database.md)** - PostgreSQL schema, relationships, indexes, migrations
 - **[Development Guide](docs/technical/development.md)** - Coding standards, testing, deployment, troubleshooting
 
+### **UI Components & Layout System**
+- **[UI Components Guide](docs/technical/ui-components.md)** - Complete component library reference including StandardPageLayout, MultiSelect, and StackedDialog systems
+
 ### **Documentation Index**
 - **[Master Documentation Index](docs/README.md)** - Complete overview with quick start and recent fixes
 
 This CLAUDE.md file focuses on essential development context. For detailed implementation guides, API specifications, and system architecture, always refer to the streamlined documentation structure in `/docs/`.
 
+## Layout System Quick Reference
+
+**Standard Page Layout**: Use `StandardPageLayout` for all list/index pages:
+```vue
+<StandardPageLayout :title="pageTitle" :show-sidebar="true" :show-filters="true">
+  <template #header-actions><!-- Action buttons --></template>
+  <template #filters><FilterSection><!-- Filters --></FilterSection></template>
+  <template #main-content><!-- Primary content --></template>
+  <template #sidebar><!-- Stats and widgets --></template>
+</StandardPageLayout>
+```
+
+**Multi-Select Filters**: Use `MultiSelect` for filter arrays with user persistence:
+```vue
+<MultiSelect v-model="selectedStatuses" :options="ticketStatuses" value-key="key" label-key="name" />
+```
+
+**Component Standards**: Always use `StackedDialog` for modals, `UnifiedSelector` for entity selection, and implement responsive mobile-first design. See [complete documentation](docs/technical/ui-components.md) for full component reference.
+
 ---
 
-*Last Updated: August 20, 2025 - Enhanced Time Entry Management & API Consistency: Implemented automatic billing rate selection (account default → global default) in time entry dialogs. Fixed critical duration calculation bugs throughout the system for consistent minutes-based storage. Made ticket selection optional for flexible time tracking. Standardized API parameter naming from `assigned_user_id` to `agent_id` for better clarity. Resolved database query issues and UnifiedSelector initialization problems causing 500 errors. Improved error handling and component architecture for smoother UI interactions across all selector components.*
+*Last Updated: August 21, 2025 - StandardPageLayout System & Enhanced Filtering: Implemented reusable StandardPageLayout component with configurable slots. Added intelligent multi-select filtering with user-specific persistence (excludes all closed-type statuses by default). Fixed critical filter bugs including backend array handling and frontend/backend parameter alignment. Created comprehensive UI component library. Improved responsive design with full-width desktop experience.*

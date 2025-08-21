@@ -361,6 +361,63 @@ export function useTimeEntriesQuery() {
         },
     });
 
+    const unapproveTimeEntryMutation = useMutation({
+        mutationFn: async ({ timeEntryId, notes }) => {
+            const response = await axios.post(
+                `/api/time-entries/${timeEntryId}/unapprove`,
+                { notes }
+            );
+            return response.data;
+        },
+        onMutate: async ({ timeEntryId }) => {
+            // Optimistically update the time entry status
+            await queryClient.cancelQueries({
+                queryKey: queryKeys.timeEntries.byId(timeEntryId),
+            });
+
+            const previousTimeEntry = queryClient.getQueryData(
+                queryKeys.timeEntries.byId(timeEntryId)
+            );
+
+            if (previousTimeEntry) {
+                queryClient.setQueryData(
+                    queryKeys.timeEntries.byId(timeEntryId),
+                    {
+                        ...previousTimeEntry,
+                        status: "pending",
+                        approved_by: null,
+                        approved_at: null,
+                        approved_amount: null,
+                    }
+                );
+            }
+
+            return { previousTimeEntry };
+        },
+        onError: (error, { timeEntryId }, context) => {
+            // Rollback optimistic update on error
+            if (context?.previousTimeEntry) {
+                queryClient.setQueryData(
+                    queryKeys.timeEntries.byId(timeEntryId),
+                    context.previousTimeEntry
+                );
+            }
+            console.error("Failed to unapprove time entry:", error);
+        },
+        onSuccess: () => {
+            // Invalidate list queries to reflect the status change
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.timeEntries.all,
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.timeEntries.stats(),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.timeEntries.approvalStats(),
+            });
+        },
+    });
+
     // Computed properties
     const timeEntriesStats = computed(() => timeEntriesStatsData.value || {});
 
@@ -383,6 +440,7 @@ export function useTimeEntriesQuery() {
         deleteTimeEntry: deleteTimeEntryMutation.mutate,
         approveTimeEntry: approveTimeEntryMutation.mutate,
         rejectTimeEntry: rejectTimeEntryMutation.mutate,
+        unapproveTimeEntry: unapproveTimeEntryMutation.mutate,
         bulkApproveTimeEntries: bulkApproveTimeEntriesMutation.mutate,
         bulkRejectTimeEntries: bulkRejectTimeEntriesMutation.mutate,
 
@@ -392,6 +450,7 @@ export function useTimeEntriesQuery() {
         isDeletingTimeEntry: deleteTimeEntryMutation.isPending,
         isApprovingTimeEntry: approveTimeEntryMutation.isPending,
         isRejectingTimeEntry: rejectTimeEntryMutation.isPending,
+        isUnapprovingTimeEntry: unapproveTimeEntryMutation.isPending,
         isBulkApproving: bulkApproveTimeEntriesMutation.isPending,
         isBulkRejecting: bulkRejectTimeEntriesMutation.isPending,
 

@@ -76,15 +76,8 @@ class TimeEntryResource extends JsonResource
             'approved_at' => $this->approved_at,
 
             // Invoice information
-            'invoice_id' => $this->invoice_id,
-            'invoice' => $this->whenLoaded('invoice', function () {
-                return [
-                    'id' => $this->invoice->id,
-                    'invoice_number' => $this->invoice->invoice_number,
-                    'status' => $this->invoice->status,
-                ];
-            }),
-            'is_invoiced' => !is_null($this->invoice_id),
+            'is_invoiced' => $this->isInvoiced(),
+            'can_unapprove' => $this->canUnapprove(),
 
             // Calculated fields
             'hours' => round($this->duration / 60, 2), // Convert minutes to hours

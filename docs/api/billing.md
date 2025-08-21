@@ -269,6 +269,66 @@ Content-Type: application/json
 }
 ```
 
+## Ticket Addons API
+
+### List Ticket Addons
+```http
+GET /api/ticket-addons?status=approved&category=service&ticket_id={id}
+```
+
+**Query Parameters**:
+- `status`: pending, approved, rejected
+- `category`: product, service, expense, license, hardware, software, other  
+- `ticket_id`: Filter by specific ticket
+- `account_id`: Filter by account
+- `page`, `per_page`: Pagination
+
+### Ticket Addon Approval Workflow
+```http
+POST /api/ticket-addons/{addon_id}/approve
+POST /api/ticket-addons/{addon_id}/reject
+POST /api/ticket-addons/{addon_id}/unapprove
+
+{
+  "notes": "Approved for billing"
+}
+```
+
+**Unapproval System** (August 2025):
+- **Unapprove Endpoint**: `POST /api/ticket-addons/{addon_id}/unapprove` with optional notes
+- **Invoice Protection**: Only approved addons not yet invoiced can be unapproved  
+- **Status Reset**: Returns addon to "pending" status and clears approval metadata
+- **Permission Required**: Same permissions as approval workflow
+- **API Response Fields**: Includes `is_invoiced` and `can_unapprove` boolean fields
+
+**Enhanced Response Format**:
+```json
+{
+  "data": {
+    "id": "addon-uuid",
+    "name": "Server Setup Fee",
+    "description": "Initial server configuration",
+    "category": "service",
+    "unit_price": "500.00",
+    "quantity": "1.00", 
+    "total_amount": "500.00",
+    "status": "approved",
+    "billable": true,
+    "is_invoiced": false,
+    "can_unapprove": true,
+    "ticket": {
+      "id": "ticket-uuid",
+      "ticket_number": "TKT-1001",
+      "title": "Server Setup"
+    },
+    "added_by": {
+      "id": "user-uuid",
+      "name": "John Doe"
+    }
+  }
+}
+```
+
 ## Unbilled Items & Approval Workflow
 
 ### Get Unbilled Items

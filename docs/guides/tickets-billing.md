@@ -4,6 +4,30 @@ Complete guide to Service Vault's ticketing system with integrated billing and t
 
 ## Ticket Management
 
+### Enhanced Ticket Filtering (August 2025)
+
+Service Vault now features an intelligent multi-select filtering system that makes finding tickets faster and more intuitive:
+
+**Smart Default Filters**:
+- **Status Filter**: Automatically excludes "closed" tickets to show only active work
+- **Priority Filter**: Shows all priorities by default for comprehensive view
+- **User-Specific Persistence**: Your filter preferences are remembered across sessions
+
+**Multi-Select Capabilities**:
+- **Status**: Select multiple statuses (e.g., "Open" + "In Progress") for focused views
+- **Priority**: Filter by multiple priority levels simultaneously
+- **Visual Interface**: Checkbox dropdowns with "Select All" and "Clear All" options
+
+**Filter Interface**:
+1. **Search Bar**: Full-text search across ticket titles, descriptions, and numbers
+2. **Status Multi-Select**: Choose one or more ticket statuses
+3. **Priority Multi-Select**: Filter by priority levels
+4. **Assignment Filter**: View "My Tickets", "Unassigned", or all tickets
+5. **Account Filter**: Service providers can filter by specific client accounts
+6. **Reset to Defaults**: Quickly return to smart default settings
+
+**Responsive Design**: Filters collapse on mobile devices with toggle button for clean interface.
+
 ### Creating Tickets
 
 **From Main Interface**:
@@ -48,7 +72,15 @@ Each ticket has a real-time comment system:
 Add billable items beyond time tracking:
 - **Fixed-Price Items**: One-time charges (setup fees, licenses, etc.)
 - **Quantity-Based Items**: Items with variable quantities
+- **Taxable Control**: Mark items as taxable or non-taxable via checkbox
+- **Centralized Tax Rates**: Tax rates applied at invoice level, not per addon
 - **Automatic Billing**: Integrates with invoice generation
+
+**Tax Handling**:
+- Addons can be marked as taxable/non-taxable using a simple checkbox
+- Tax rates are determined at the invoice/account/global level, not per addon
+- When creating addons, users see informational note about tax calculation at invoice level
+- This ensures consistent tax application across all billable items
 
 ## Tax Configuration System
 

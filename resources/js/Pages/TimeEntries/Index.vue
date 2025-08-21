@@ -1,38 +1,294 @@
 <template>
-    <!-- Page Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2
-                        class="font-semibold text-xl text-gray-800 leading-tight"
-                    >
-                        Time & Addons Management
-                    </h2>
-                    <p class="text-sm text-gray-600 mt-1">
-                        View and manage time entries, ticket addons, and active timers.
-                    </p>
+    <StandardPageLayout
+        title="Time & Addons Management"
+        subtitle="View and manage time entries, ticket addons, and active timers."
+        :show-sidebar="false"
+        :show-filters="false"
+    >
+        <template #header-actions>
+            <!-- Approval Wizard Button -->
+            <button
+                v-if="canApprove"
+                @click="showAccountSelector = true"
+                class="inline-flex items-center px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+            >
+                <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Approval Wizard
+            </button>
+            
+            <button
+                v-if="activeTab === 'time-entries'"
+                @click="showCreateModal = true"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+                <svg
+                    class="-ml-1 mr-2 h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"
+                    />
+                </svg>
+                Add Time Entry
+            </button>
+        </template>
+
+        <template #tabs>
+            <TabNavigation
+                v-model="activeTab"
+                :tabs="navigationTabs"
+                variant="underline"
+                @tab-change="handleTabChange"
+            />
+        </template>
+
+        <template #main-content>
+            <!-- Time Entries Tab -->
+            <div v-if="activeTab === 'time-entries'">
+                <!-- Statistics Grid -->
+                <div v-if="stats" class="mb-8">
+                    <StatsGrid 
+                        :stats="timeEntriesStatsForGrid" 
+                        :columns="4"
+                        :show-icons="true"
+                    />
                 </div>
-                <div class="flex space-x-3">
-                    <!-- Approval Wizard Button -->
-                    <button
-                        v-if="canApprove"
-                        @click="showAccountSelector = true"
-                        class="inline-flex items-center px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                    >
-                        <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Approval Wizard
-                    </button>
-                    
-                    <button
-                        v-if="activeTab === 'time-entries'"
-                        @click="showCreateModal = true"
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
+
+                <!-- Filters -->
+                <div class="bg-white shadow rounded-lg mb-6">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">Filters</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                            
+                            <div>
+                                <label
+                                    class="block text-sm font-medium text-gray-700 mb-2"
+                                    >Status</label
+                                >
+                                <select
+                                    v-model="filters.status"
+                                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                >
+                                    <option value="">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-sm font-medium text-gray-700 mb-2"
+                                    >Billable</label
+                                >
+                                <select
+                                    v-model="filters.billable"
+                                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                >
+                                    <option value="">All Entries</option>
+                                    <option value="true">Billable Only</option>
+                                    <option value="false">Non-billable Only</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-sm font-medium text-gray-700 mb-2"
+                                    >Date From</label
+                                >
+                                <input
+                                    v-model="filters.date_from"
+                                    type="date"
+                                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-sm font-medium text-gray-700 mb-2"
+                                    >Date To</label
+                                >
+                                <input
+                                    v-model="filters.date_to"
+                                    type="date"
+                                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex justify-end space-x-3">
+                            <button
+                                @click="clearFilters"
+                                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                                Clear Filters
+                            </button>
+                            <button
+                                v-if="selectedEntries.length > 0 && canApprove"
+                                @click="showBulkApprovalModal = true"
+                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            >
+                                Approve Selected ({{ selectedEntries.length }})
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Entries Table -->
+                <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">
+                            Time Entries
+                        </h3>
+                        <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                            {{ timeEntries.total || 0 }} total entries
+                            <span
+                                v-if="timeEntries.total !== (timeEntries.data?.length || 0)"
+                            >
+                                (showing {{ timeEntries.data?.length || 0 }})
+                            </span>
+                        </p>
+                    </div>
+
+                    <div v-if="loading" class="flex justify-center py-12">
                         <svg
-                            class="-ml-1 mr-2 h-4 w-4"
+                            class="animate-spin h-8 w-8 text-indigo-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                    </div>
+
+                    <ul
+                        v-else-if="timeEntries.data?.length > 0"
+                        class="divide-y divide-gray-200"
+                    >
+                        <li
+                            v-for="entry in timeEntries.data"
+                            :key="entry.id"
+                            class="px-4 py-4 sm:px-6 hover:bg-gray-50"
+                        >
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center min-w-0">
+                                    <input
+                                        v-if="
+                                            canApprove && entry.status === 'pending'
+                                        "
+                                        v-model="selectedEntries"
+                                        :value="entry.id"
+                                        type="checkbox"
+                                        class="mr-4 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    />
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center">
+                                            <p
+                                                class="text-sm font-medium text-gray-900 truncate"
+                                            >
+                                                {{ entry.description }}
+                                            </p>
+                                            <span
+                                                :class="[
+                                                    'ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                                                    entry.status === 'approved'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : entry.status ===
+                                                          'rejected'
+                                                        ? 'bg-red-100 text-red-800'
+                                                        : 'bg-yellow-100 text-yellow-800',
+                                                ]"
+                                            >
+                                                {{ entry.status }}
+                                            </span>
+                                            <span
+                                                v-if="entry.billable"
+                                                class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                            >
+                                                Billable
+                                            </span>
+                                        </div>
+                                        <div
+                                            class="mt-1 flex items-center text-sm text-gray-500"
+                                        >
+                                            <p>
+                                                {{ entry.duration_formatted }} •
+                                                {{ formatDate(entry.started_at) }}
+                                            </p>
+                                            <span v-if="entry.account" class="mx-2"
+                                                >•</span
+                                            >
+                                            <p v-if="entry.account">
+                                                {{ entry.account.name }}
+                                            </p>
+                                            <span
+                                                v-if="entry.calculated_cost"
+                                                class="mx-2"
+                                                >•</span
+                                            >
+                                            <p
+                                                v-if="entry.calculated_cost"
+                                                class="font-medium"
+                                            >
+                                                ${{ entry.calculated_cost }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button
+                                        v-if="entry.can_edit"
+                                        @click="editEntry(entry)"
+                                        class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        v-if="
+                                            canApprove && entry.status === 'pending'
+                                        "
+                                        @click="approveEntryHandler(entry)"
+                                        class="text-green-600 hover:text-green-900 text-sm font-medium"
+                                    >
+                                        Approve
+                                    </button>
+                                    <button
+                                        v-if="
+                                            canApprove && entry.status === 'pending'
+                                        "
+                                        @click="rejectEntryHandler(entry)"
+                                        class="text-red-600 hover:text-red-900 text-sm font-medium"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div v-else class="text-center py-12">
+                        <svg
+                            class="mx-auto h-12 w-12 text-gray-400"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -41,561 +297,113 @@
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M12 4v16m8-8H4"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                             />
                         </svg>
-                        Add Time Entry
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Navigation Tabs -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="border-b border-gray-200 mb-6">
-            <nav class="-mb-px flex space-x-8">
-                <Link
-                    :href="route('time-and-addons.index', 'time-entries')"
-                    :class="[
-                        activeTab === 'time-entries'
-                            ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                        'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm',
-                    ]"
-                >
-                    Time Entries
-                </Link>
-                <Link
-                    :href="route('time-and-addons.index', 'addons')"
-                    :class="[
-                        activeTab === 'addons'
-                            ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                        'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm',
-                    ]"
-                >
-                    Ticket Addons
-                </Link>
-                <Link
-                    :href="route('time-and-addons.index', 'timers')"
-                    :class="[
-                        activeTab === 'timers'
-                            ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                        'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm',
-                    ]"
-                >
-                    Active Timers
-                </Link>
-            </nav>
-        </div>
-    </div>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <!-- Time Entries Tab -->
-        <div v-if="activeTab === 'time-entries'">
-            <!-- Statistics Cards -->
-            <div
-                v-if="stats"
-                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-            >
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg
-                                    class="h-6 w-6 text-gray-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt
-                                        class="text-sm font-medium text-gray-500 truncate"
-                                    >
-                                        Total Hours (30d)
-                                    </dt>
-                                    <dd
-                                        class="text-lg font-medium text-gray-900"
-                                    >
-                                        {{
-                                            formatHours(stats.total_hours_month)
-                                        }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg
-                                    class="h-6 w-6 text-green-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt
-                                        class="text-sm font-medium text-gray-500 truncate"
-                                    >
-                                        Entries (30d)
-                                    </dt>
-                                    <dd
-                                        class="text-lg font-medium text-gray-900"
-                                    >
-                                        {{ stats.entries_count_month }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg
-                                    class="h-6 w-6 text-yellow-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt
-                                        class="text-sm font-medium text-gray-500 truncate"
-                                    >
-                                        Pending Approval
-                                    </dt>
-                                    <dd
-                                        class="text-lg font-medium text-gray-900"
-                                    >
-                                        {{ stats.pending_approval_count }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg
-                                    class="h-6 w-6 text-indigo-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                                    />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt
-                                        class="text-sm font-medium text-gray-500 truncate"
-                                    >
-                                        Avg/Entry
-                                    </dt>
-                                    <dd
-                                        class="text-lg font-medium text-gray-900"
-                                    >
-                                        {{
-                                            formatHours(
-                                                stats.entries_count_month > 0
-                                                    ? stats.total_hours_month /
-                                                          stats.entries_count_month
-                                                    : 0
-                                            )
-                                        }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <div class="bg-white shadow rounded-lg mb-6">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">Filters</h3>
-                </div>
-                <div class="p-6">
-                    <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                        
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
-                                >Status</label
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">
+                            No time entries
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-500">
+                            Get started by adding your first time entry.
+                        </p>
+                        <div class="mt-6">
+                            <button
+                                @click="showCreateModal = true"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                             >
-                            <select
-                                v-model="filters.status"
-                                class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            >
-                                <option value="">All Statuses</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
-                                >Billable</label
-                            >
-                            <select
-                                v-model="filters.billable"
-                                class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            >
-                                <option value="">All Entries</option>
-                                <option value="true">Billable Only</option>
-                                <option value="false">Non-billable Only</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
-                                >Date From</label
-                            >
-                            <input
-                                v-model="filters.date_from"
-                                type="date"
-                                class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            />
-                        </div>
-
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
-                                >Date To</label
-                            >
-                            <input
-                                v-model="filters.date_to"
-                                type="date"
-                                class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            />
+                                Add Time Entry
+                            </button>
                         </div>
                     </div>
 
-                    <div class="mt-4 flex justify-end space-x-3">
-                        <button
-                            @click="clearFilters"
-                            class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            Clear Filters
-                        </button>
-                        <button
-                            v-if="selectedEntries.length > 0 && canApprove"
-                            @click="showBulkApprovalModal = true"
-                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                        >
-                            Approve Selected ({{ selectedEntries.length }})
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Time Entries Table -->
-            <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">
-                        Time Entries
-                    </h3>
-                    <p class="mt-1 max-w-2xl text-sm text-gray-500">
-                        {{ timeEntries.total || 0 }} total entries
-                        <span
-                            v-if="timeEntries.total !== (timeEntries.data?.length || 0)"
-                        >
-                            (showing {{ timeEntries.data?.length || 0 }})
-                        </span>
-                    </p>
-                </div>
-
-                <div v-if="loading" class="flex justify-center py-12">
-                    <svg
-                        class="animate-spin h-8 w-8 text-indigo-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                    >
-                        <circle
-                            class="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            stroke-width="4"
-                        ></circle>
-                        <path
-                            class="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                    </svg>
-                </div>
-
-                <ul
-                    v-else-if="timeEntries.data?.length > 0"
-                    class="divide-y divide-gray-200"
-                >
-                    <li
-                        v-for="entry in timeEntries.data"
-                        :key="entry.id"
-                        class="px-4 py-4 sm:px-6 hover:bg-gray-50"
+                    <!-- Pagination -->
+                    <div
+                        v-if="timeEntries.data?.length > 0"
+                        class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6"
                     >
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center min-w-0">
-                                <input
-                                    v-if="
-                                        canApprove && entry.status === 'pending'
-                                    "
-                                    v-model="selectedEntries"
-                                    :value="entry.id"
-                                    type="checkbox"
-                                    class="mr-4 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                />
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-center">
-                                        <p
-                                            class="text-sm font-medium text-gray-900 truncate"
-                                        >
-                                            {{ entry.description }}
-                                        </p>
-                                        <span
-                                            :class="[
-                                                'ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                                                entry.status === 'approved'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : entry.status ===
-                                                      'rejected'
-                                                    ? 'bg-red-100 text-red-800'
-                                                    : 'bg-yellow-100 text-yellow-800',
-                                            ]"
-                                        >
-                                            {{ entry.status }}
-                                        </span>
-                                        <span
-                                            v-if="entry.billable"
-                                            class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                                        >
-                                            Billable
-                                        </span>
-                                    </div>
-                                    <div
-                                        class="mt-1 flex items-center text-sm text-gray-500"
-                                    >
-                                        <p>
-                                            {{ entry.duration_formatted }} •
-                                            {{ formatDate(entry.started_at) }}
-                                        </p>
-                                        <span v-if="entry.account" class="mx-2"
-                                            >•</span
-                                        >
-                                        <p v-if="entry.account">
-                                            {{ entry.account.name }}
-                                        </p>
-                                        <span
-                                            v-if="entry.calculated_cost"
-                                            class="mx-2"
-                                            >•</span
-                                        >
-                                        <p
-                                            v-if="entry.calculated_cost"
-                                            class="font-medium"
-                                        >
-                                            ${{ entry.calculated_cost }}
-                                        </p>
-                                    </div>
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <button
+                                    v-if="timeEntries.prev_page_url"
+                                    @click="loadPage(timeEntries.current_page - 1)"
+                                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    v-if="timeEntries.next_page_url"
+                                    @click="loadPage(timeEntries.current_page + 1)"
+                                    class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                            <div
+                                class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between"
+                            >
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        Showing
+                                        <span class="font-medium">{{
+                                            timeEntries.from
+                                        }}</span>
+                                        to
+                                        <span class="font-medium">{{
+                                            timeEntries.to
+                                        }}</span>
+                                        of
+                                        <span class="font-medium">{{
+                                            timeEntries.total
+                                        }}</span>
+                                        results
+                                    </p>
                                 </div>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <button
-                                    v-if="entry.can_edit"
-                                    @click="editEntry(entry)"
-                                    class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    v-if="
-                                        canApprove && entry.status === 'pending'
-                                    "
-                                    @click="approveEntryHandler(entry)"
-                                    class="text-green-600 hover:text-green-900 text-sm font-medium"
-                                >
-                                    Approve
-                                </button>
-                                <button
-                                    v-if="
-                                        canApprove && entry.status === 'pending'
-                                    "
-                                    @click="rejectEntryHandler(entry)"
-                                    class="text-red-600 hover:text-red-900 text-sm font-medium"
-                                >
-                                    Reject
-                                </button>
-                            </div>
-                        </div>
-                    </li>
-                </ul>
-
-                <div v-else class="text-center py-12">
-                    <svg
-                        class="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">
-                        No time entries
-                    </h3>
-                    <p class="mt-1 text-sm text-gray-500">
-                        Get started by adding your first time entry.
-                    </p>
-                    <div class="mt-6">
-                        <button
-                            @click="showCreateModal = true"
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            Add Time Entry
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Pagination -->
-                <div
-                    v-if="timeEntries.data?.length > 0"
-                    class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6"
-                >
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1 flex justify-between sm:hidden">
-                            <button
-                                v-if="timeEntries.prev_page_url"
-                                @click="loadPage(timeEntries.current_page - 1)"
-                                class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                            >
-                                Previous
-                            </button>
-                            <button
-                                v-if="timeEntries.next_page_url"
-                                @click="loadPage(timeEntries.current_page + 1)"
-                                class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                            >
-                                Next
-                            </button>
-                        </div>
-                        <div
-                            class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between"
-                        >
-                            <div>
-                                <p class="text-sm text-gray-700">
-                                    Showing
-                                    <span class="font-medium">{{
-                                        timeEntries.from
-                                    }}</span>
-                                    to
-                                    <span class="font-medium">{{
-                                        timeEntries.to
-                                    }}</span>
-                                    of
-                                    <span class="font-medium">{{
-                                        timeEntries.total
-                                    }}</span>
-                                    results
-                                </p>
-                            </div>
-                            <div>
-                                <nav
-                                    class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                                    aria-label="Pagination"
-                                >
-                                    <button
-                                        v-if="timeEntries.prev_page_url"
-                                        @click="
-                                            loadPage(
-                                                timeEntries.current_page - 1
-                                            )
-                                        "
-                                        class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                                <div>
+                                    <nav
+                                        class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                                        aria-label="Pagination"
                                     >
-                                        Previous
-                                    </button>
-                                    <button
-                                        v-if="timeEntries.next_page_url"
-                                        @click="
-                                            loadPage(
-                                                timeEntries.current_page + 1
-                                            )
-                                        "
-                                        class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                                    >
-                                        Next
-                                    </button>
-                                </nav>
+                                        <button
+                                            v-if="timeEntries.prev_page_url"
+                                            @click="
+                                                loadPage(
+                                                    timeEntries.current_page - 1
+                                                )
+                                            "
+                                            class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                                        >
+                                            Previous
+                                        </button>
+                                        <button
+                                            v-if="timeEntries.next_page_url"
+                                            @click="
+                                                loadPage(
+                                                    timeEntries.current_page + 1
+                                                )
+                                            "
+                                            class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                                        >
+                                            Next
+                                        </button>
+                                    </nav>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Addons Tab -->
-        <div v-else-if="activeTab === 'addons'">
-            <AddonsTab />
-        </div>
+            <!-- Addons Tab -->
+            <div v-else-if="activeTab === 'addons'">
+                <AddonsTab />
+            </div>
 
-        <!-- Timers Tab -->
-        <div v-else-if="activeTab === 'timers'">
-            <TimersTab @timer-committed="onTimerCommitted" />
-        </div>
-    </div>
+            <!-- Timers Tab -->
+            <div v-else-if="activeTab === 'timers'">
+                <TimersTab @timer-committed="onTimerCommitted" />
+            </div>
+        </template>
+    </StandardPageLayout>
 
     <!-- Unified Time Entry Dialog -->
     <UnifiedTimeEntryDialog
@@ -746,6 +554,9 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import AppLayout from "@/Layouts/AppLayout.vue";
+import StandardPageLayout from "@/Layouts/StandardPageLayout.vue";
+import TabNavigation from "@/Components/Layout/TabNavigation.vue";
+import StatsGrid from "@/Components/Layout/StatsGrid.vue";
 import { usePage, Link, router } from "@inertiajs/vue3";
 import TimersTab from "@/Components/TimeEntries/TimersTab.vue";
 import AddonsTab from "@/Components/TimeEntries/AddonsTab.vue";
@@ -765,8 +576,27 @@ const props = defineProps({
 
 // Define persistent layout
 defineOptions({
-    layout: AppLayout,
+    layout: (h, page) => h(AppLayout, () => page),
 });
+
+// Navigation tabs configuration
+const navigationTabs = computed(() => [
+    {
+        id: 'time-entries',
+        name: 'Time Entries',
+        icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
+    },
+    {
+        id: 'addons',
+        name: 'Ticket Addons',
+        icon: 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
+    },
+    {
+        id: 'timers',
+        name: 'Active Timers',
+        icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
+    }
+]);
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
@@ -780,6 +610,7 @@ const {
     refetchStats,
     approveTimeEntry,
     rejectTimeEntry,
+    unapproveTimeEntry,
     bulkApproveTimeEntries,
     isBulkApproving,
     createTimeEntryError,
@@ -794,6 +625,50 @@ const showBulkApprovalModal = ref(false);
 const editingEntry = ref(null);
 const bulkApprovalNotes = ref("");
 const currentPage = ref(1);
+
+// Tab change handler
+const handleTabChange = (tabId) => {
+    router.visit(route('time-and-addons.index', tabId), {
+        preserveState: true,
+        preserveScroll: true
+    });
+};
+
+// Statistics data for StatsGrid component
+const timeEntriesStatsForGrid = computed(() => {
+    if (!stats.value) return [];
+    
+    return [
+        {
+            label: 'Total Hours (30d)',
+            value: formatHours(stats.value.total_hours_month),
+            icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+            color: 'gray'
+        },
+        {
+            label: 'Entries (30d)',
+            value: stats.value.entries_count_month,
+            icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+            color: 'green'
+        },
+        {
+            label: 'Pending Approval',
+            value: stats.value.pending_approval_count,
+            icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+            color: 'yellow'
+        },
+        {
+            label: 'Avg/Entry',
+            value: formatHours(
+                stats.value.entries_count_month > 0
+                    ? stats.value.total_hours_month / stats.value.entries_count_month
+                    : 0
+            ),
+            icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
+            color: 'indigo'
+        }
+    ];
+});
 
 // Approval wizard state
 const showApprovalWizard = ref(false);

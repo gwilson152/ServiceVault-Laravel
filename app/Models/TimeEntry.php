@@ -301,4 +301,46 @@ class TimeEntry extends Model
 
         return $this->save();
     }
+
+    /**
+     * Check if the time entry is associated with any invoice.
+     */
+    public function isInvoiced(): bool
+    {
+        return $this->invoiceLineItems()->exists();
+    }
+
+    /**
+     * Check if the time entry can be unapproved.
+     */
+    public function canUnapprove(): bool
+    {
+        return $this->status === 'approved' && !$this->isInvoiced();
+    }
+
+    /**
+     * Unapprove the time entry (only if not invoiced).
+     */
+    public function unapprove(string $unapprovedBy, ?string $notes = null): bool
+    {
+        if (!$this->canUnapprove()) {
+            return false;
+        }
+
+        $this->status = 'pending';
+        $this->approved_by = null;
+        $this->approved_at = null;
+        $this->approved_amount = null;
+        $this->approval_notes = $notes;
+
+        return $this->save();
+    }
+
+    /**
+     * Get the invoice line items for this time entry.
+     */
+    public function invoiceLineItems()
+    {
+        return $this->hasMany(InvoiceLineItem::class);
+    }
 }

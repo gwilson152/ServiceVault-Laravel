@@ -99,6 +99,7 @@
               v-model="filter.value"
               :type="getInputType(filter)"
               :placeholder="getValuePlaceholder(filter)"
+              @input="updateModelValue"
               class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             />
             
@@ -108,12 +109,14 @@
                 v-model="filter.value"
                 :type="getInputType(filter)"
                 placeholder="Start value"
+                @input="updateModelValue"
                 class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               />
               <input
                 v-model="filter.value2"
                 :type="getInputType(filter)"
                 placeholder="End value"
+                @input="updateModelValue"
                 class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               />
             </div>
@@ -191,11 +194,11 @@
       </div>
     </div>
 
-    <!-- Complete WHERE Clause Preview -->
+    <!-- Complete SELECT Statement Preview -->
     <div v-if="validFilters.length > 0" class="mt-6">
-      <h4 class="text-sm font-medium text-gray-900 mb-2">Complete WHERE Clause</h4>
+      <h4 class="text-sm font-medium text-gray-900 mb-2">Complete SELECT Statement</h4>
       <div class="p-4 bg-gray-50 rounded-md">
-        <pre class="text-xs text-gray-700 whitespace-pre-wrap">{{ completeWhereClause }}</pre>
+        <pre class="text-xs text-gray-700 whitespace-pre-wrap">{{ completeSelectStatement }}</pre>
       </div>
       <div class="mt-2 flex items-center text-xs text-gray-600">
         <InformationCircleIcon class="w-4 h-4 mr-1" />
@@ -206,7 +209,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, reactive } from 'vue'
 import {
   PlusIcon,
   TrashIcon,
@@ -222,6 +225,10 @@ const props = defineProps({
     default: null
   },
   joins: {
+    type: Array,
+    default: () => []
+  },
+  fields: {
     type: Array,
     default: () => []
   },
@@ -242,7 +249,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'filters-changed'])
 
 // State
-const filters = ref([...props.modelValue])
+const filters = ref(props.modelValue.map(filter => reactive({ ...filter })))
 
 // Computed
 const availableFields = computed(() => {
@@ -276,11 +283,39 @@ const validFilters = computed(() => {
   return filters.value.filter(filter => isValidFilter(filter))
 })
 
-const completeWhereClause = computed(() => {
+const completeSelectStatement = computed(() => {
   if (validFilters.value.length === 0) return ''
   
+  // Build basic SELECT statement
+  let sql = 'SELECT '
+  
+  // Use fields from field mapping if available, otherwise use *
+  if (props.fields && props.fields.length > 0) {
+    const fieldList = props.fields.map(field => `${field.source} AS ${field.target}`)
+    sql += fieldList.join(',\n  ')
+  } else {
+    sql += '*'
+  }
+  
+  // FROM clause with base table
+  sql += `\nFROM ${props.baseTable?.name || 'base_table'}`
+  
+  // Add JOINs if available
+  if (props.joins && props.joins.length > 0) {
+    props.joins.forEach(join => {
+      const joinType = join.type || 'LEFT'
+      sql += `\n${joinType} JOIN ${join.table} ON ${join.on}`
+      if (join.condition) {
+        sql += ` AND ${join.condition}`
+      }
+    })
+  }
+  
+  // Add WHERE clause with filters
   const clauses = validFilters.value.map(filter => formatFilterSQL(filter))
-  return `WHERE ${clauses.join('\n  AND ')}`
+  sql += `\nWHERE ${clauses.join('\n  AND ')}`
+  
+  return sql
 })
 
 const suggestedFilters = computed(() => {
@@ -365,12 +400,12 @@ const suggestedFilters = computed(() => {
 
 // Methods
 const addFilter = () => {
-  filters.value.push({
+  filters.value.push(reactive({
     field: '',
     operator: '',
     value: '',
     value2: '' // For BETWEEN operations
-  })
+  }))
   updateModelValue()
 }
 
@@ -395,12 +430,14 @@ const onFieldChange = (filter) => {
   filter.operator = ''
   filter.value = ''
   filter.value2 = ''
+  updateModelValue()
 }
 
 const onOperatorChange = (filter) => {
   // Reset values when operator changes
   filter.value = ''
   filter.value2 = ''
+  updateModelValue()
 }
 
 const isValidFilter = (filter) => {
@@ -567,7 +604,7 @@ const applySuggestedFilter = (suggestion) => {
 
 // Watchers
 watch(() => props.modelValue, (newValue) => {
-  filters.value = [...newValue]
+  filters.value = newValue.map(filter => reactive({ ...filter }))
 }, { deep: true })
 
 watch(filters, () => {

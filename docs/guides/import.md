@@ -14,12 +14,16 @@ The universal import system enables administrators to migrate data from any Post
 
 - **✅ Universal Database Support** - Any PostgreSQL database with intelligent schema introspection
 - **🎯 Platform Templates** - Pre-configured import patterns for FreeScout, custom platforms
-- **🔧 Visual Query Builder** - Drag-and-drop interface for table JOINs, field mapping, and filters
-- **📊 Real-Time Monitoring** - Live progress tracking and error reporting
+- **🔧 Visual Query Builder** - Drag-and-drop interface with table hover tooltips and detailed column information
+- **📊 Real-Time Monitoring** - WebSocket-based live progress tracking with floating job monitor
+- **🔍 Advanced Duplicate Detection** - Configurable matching strategies with confidence scoring
+- **⚙️ Import Mode Configuration** - Create-only, update-only, or upsert modes with smart handling
+- **📈 Comprehensive Analytics** - Import statistics, trend analysis, and performance metrics
+- **🔄 Record Management** - Complete audit trails with UUID-based tracking and rollback capabilities
 - **🔐 Permission-Based Access** - Three-dimensional authorization with granular controls
 - **💾 Template System** - Reusable configurations with JSON-based storage
 - **⏱️ Time Entry Support** - Comprehensive time tracking data migration
-- **🛡️ Production-Ready** - Comprehensive error handling and stability
+- **🛡️ Production-Ready** - Enterprise-level error handling and stability
 
 ## Getting Started
 
@@ -91,11 +95,24 @@ After creating the connection, choose your configuration approach:
 3. Preview data and validate configuration
 4. Save custom configuration
 
-### Step 3: Preview and Execute
+### Step 3: Configure Import Modes
 
-1. **Preview Import Data** - Review transformed data before import
-2. **Validate Configuration** - Check field mappings and relationships
-3. **Execute Import** - Run import job with progress tracking
+**Import Mode Selection:**
+- **Create Only** - Only create new records, skip existing ones
+- **Update Only** - Only update existing records, skip new ones
+- **Create or Update (Upsert)** - Smart handling of both new and existing records
+
+**Duplicate Detection Configuration:**
+1. **Detection Strategy** - Exact match, case-insensitive, or fuzzy matching
+2. **Matching Fields** - Primary and secondary field selection for duplicate detection
+3. **Source Identifier** - Field to use for tracking imported records
+4. **Confidence Threshold** - Minimum similarity score for fuzzy matching
+
+### Step 4: Preview and Execute
+
+1. **Preview Import Data** - Review transformed data with impact assessment
+2. **Validate Configuration** - Check field mappings, modes, and relationships
+3. **Execute Import** - Run import job with real-time progress tracking
 
 ## Platform Templates
 
@@ -172,14 +189,23 @@ LEFT JOIN users ON users.id = time_logs.user_id
 **Features:**
 - **Schema Introspection** - Browse all tables and columns
 - **Table Metadata** - Row counts, column types, primary/foreign keys
+- **Interactive Hover Tooltips** - Detailed table and column information on hover
 - **Search & Filter** - Find tables by name or column content
 - **Visual Selection** - Click to select base table for query
+
+**Enhanced Hover Information:**
+- Complete column list with data types
+- Primary key and foreign key indicators
+- Nullable status and default values
+- Table size and row count statistics
+- Schema and additional metadata
 
 **Usage:**
 1. Select profile → "Build Custom Query"
 2. Browse available tables in source database
-3. Click table to select as base for import query
-4. Review table structure and sample data
+3. Hover over tables to see detailed column information
+4. Click table to select as base for import query
+5. Review table structure and sample data
 
 ### JOIN Builder
 
@@ -278,34 +304,244 @@ DATE_TRUNC('month', created_at) = '2024-01-01'
 - **Billable Only** - For time entries
 - **Status Filters** - Specific ticket statuses
 
-## Import Execution & Monitoring
+## Advanced Import Execution & Real-Time Monitoring
 
-### Import Process
+### Enhanced Import Process
 
-1. **Query Generation** - Build final SQL from visual configuration
-2. **Data Validation** - Verify field mappings and relationships
-3. **Batch Processing** - Process data in configurable chunks
-4. **Progress Tracking** - Real-time updates via WebSocket
-5. **Error Handling** - Comprehensive error logging and recovery
+1. **Mode Configuration Application** - Apply import modes and duplicate detection rules
+2. **Query Generation** - Build final SQL from visual configuration
+3. **Data Validation** - Verify field mappings, modes, and relationships
+4. **Duplicate Detection** - Apply configured matching strategies with confidence scoring
+5. **Batch Processing** - Process data in configurable chunks with smart record handling
+6. **Real-Time Broadcasting** - WebSocket updates via Laravel Reverb
+7. **Comprehensive Logging** - Complete audit trails with rollback capabilities
 
-### Real-Time Monitoring
+### Real-Time Job Monitor
 
-**Progress Indicators:**
+**Floating Job Monitor Features:**
+- **Minimizable Interface** - Compact view when not actively monitoring
+- **Live Progress Updates** - Real-time progress bars and statistics
+- **Multi-Job Tracking** - Monitor multiple concurrent imports
+- **Job Control** - Cancel running jobs directly from monitor
+- **Connection Status** - WebSocket connection health indicator
+
+**Enhanced Progress Indicators:**
 ```
 Import Progress: 75% (1,500 / 2,000 records)
-Current Operation: Processing Time Entries
+Current Operation: Processing duplicate detection for Time Entries
 Duration: 00:05:23
-Records Imported: 1,425 ✅
-Records Failed: 25 ❌  
-Records Skipped: 50 ⚠️
+Records Created: 1,200 ✅
+Records Updated: 225 🔄
+Records Skipped: 50 ⚠️ (duplicates)
+Records Failed: 25 ❌
+Duplicate Confidence: 95% average
 ```
 
-**Job Statuses:**
+**Advanced Job Statuses:**
 - **Pending** - Queued for execution
-- **Running** - Active import in progress
-- **Completed** - Successfully finished
-- **Failed** - Error occurred during import
+- **Running** - Active import with real-time updates
+- **Completed** - Successfully finished with statistics
+- **Failed** - Error occurred with detailed logging
 - **Cancelled** - User-initiated cancellation
+
+### Import Analytics & Reporting
+
+**Dashboard Analytics:**
+- **Job Performance Metrics** - Success rates, duration trends, throughput analysis
+- **Profile Statistics** - Per-profile import history and performance
+- **Duplicate Analysis** - Matching effectiveness and confidence distributions
+- **Trend Analysis** - Historical import patterns and growth metrics
+
+**Record Management:**
+- **Comprehensive Audit Trails** - UUID-based tracking with full lineage
+- **Import Record Operations** - Bulk approve, retry, or delete operations
+- **Rollback Capabilities** - Undo failed imports with data integrity preservation
+- **Impact Assessment** - Preview import effects before execution
+
+## Advanced Import Features
+
+### Import Mode Configuration
+
+**Three Import Modes Available:**
+
+#### Create Only Mode
+```
+✅ Creates new records only
+⏭️ Skips existing records (based on duplicate detection)
+🚫 Never updates existing data
+📊 Tracks skip statistics for reporting
+```
+
+**Best For:**
+- Initial data seeding
+- Append-only workflows
+- When data integrity requires no updates
+
+#### Update Only Mode
+```
+🔄 Updates existing records only
+⏭️ Skips new records that don't exist
+✅ Preserves all existing relationships
+📊 Tracks update success rates
+```
+
+**Best For:**
+- Data synchronization
+- Bulk updates to existing records
+- When new record creation is controlled elsewhere
+
+#### Create or Update (Upsert) Mode
+```
+✅ Creates new records when not found
+🔄 Updates existing records when found
+🎯 Intelligent duplicate detection
+📊 Comprehensive statistics for both operations
+```
+
+**Best For:**
+- Full data synchronization
+- Production data imports
+- Most flexible approach for ongoing operations
+
+### Duplicate Detection System
+
+**Detection Strategies:**
+
+#### Exact Match
+```sql
+-- Perfect field-by-field matching
+WHERE source_field = target_field
+```
+- Fastest performance
+- 100% accuracy for identical data
+- Best for UUID or unique identifier fields
+
+#### Case-Insensitive Match
+```sql  
+-- Case-insensitive comparison
+WHERE LOWER(source_field) = LOWER(target_field)
+```
+- Handles case variations (John vs JOHN vs john)
+- Good for email addresses and names
+- Moderate performance impact
+
+#### Fuzzy Match (Levenshtein Distance)
+```sql
+-- Similarity-based matching with confidence scoring
+WHERE LEVENSHTEIN(source_field, target_field) <= threshold
+```
+- Handles typos and variations
+- Configurable similarity threshold (0-100%)
+- Higher performance cost but maximum flexibility
+
+**Matching Field Configuration:**
+- **Primary Fields** - High-priority matching (email, external_id)
+- **Secondary Fields** - Additional context (name, phone)
+- **Confidence Scoring** - Weighted combination of field matches
+- **Threshold Control** - Minimum confidence for duplicate detection
+
+**Smart Duplicate Handling:**
+```
+Record Processing Flow:
+1. Calculate primary field matches (80% weight)
+2. Calculate secondary field matches (20% weight)  
+3. Combine into confidence score (0-100%)
+4. Apply threshold filter (default: 85%)
+5. Execute import action based on mode configuration
+6. Log decision with full audit trail
+```
+
+### Real-Time Monitoring System
+
+**WebSocket Integration:**
+```javascript
+// Automatic connection via Laravel Reverb
+Echo.private(`import.job.${jobId}`)
+  .listen('.import.progress.updated', (event) => {
+    // Live progress updates
+    updateProgressBar(event.progress_percentage);
+    updateStats(event.records_imported, event.records_updated);
+  })
+  .listen('.import.job.status.changed', (event) => {
+    // Status change notifications
+    showNotification(event.event_type, event.status);
+  });
+```
+
+**Multi-Channel Broadcasting:**
+- **Job-Specific Channels** - `import.job.{job_id}` for individual job updates
+- **Profile Channels** - `import.profile.{profile_id}` for profile-related events  
+- **User Channels** - `user.{user_id}` for personal notifications
+- **Global Channels** - `import.global` for admin oversight (permission-based)
+
+**Real-Time Features:**
+- **Live Progress Bars** - Smooth animations with current operation display
+- **Instant Status Updates** - Job state changes broadcast immediately
+- **Error Notifications** - Real-time error reporting with detailed messages
+- **Completion Alerts** - Success notifications with import statistics
+
+### Import Record Management
+
+**UUID-Based Tracking:**
+```json
+{
+  "import_record": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "import_job_id": "job-uuid",
+    "import_profile_id": "profile-uuid",
+    "source_table": "customers",
+    "source_identifier": "12345",
+    "source_hash": "sha256-hash-of-source-data",
+    "target_type": "customer_users",
+    "target_id": "target-uuid",
+    "import_action": "created|updated|skipped|failed",
+    "import_mode": "upsert",
+    "matching_rules": {...},
+    "matching_fields": {...},
+    "duplicate_of": "duplicate-record-uuid",
+    "error_message": null,
+    "field_mappings": {...},
+    "created_at": "2025-08-21T10:00:00Z"
+  }
+}
+```
+
+**Comprehensive Audit Trail:**
+- **Source Data Preservation** - Complete original record storage
+- **Transformation Tracking** - All field mapping and transformation rules
+- **Relationship Mapping** - Links between source and target records
+- **Error Logging** - Detailed failure reasons with stack traces
+- **Performance Metrics** - Execution time and resource usage per record
+
+**Bulk Operations:**
+```bash
+# Approve pending records
+POST /api/import/records/bulk/approve
+{
+  "record_ids": ["uuid1", "uuid2", ...],
+  "criteria": {
+    "job_id": "job-uuid",
+    "import_action": "skipped"
+  }
+}
+
+# Retry failed records
+POST /api/import/records/bulk/retry
+{
+  "record_ids": ["uuid1", "uuid2", ...],
+  "retry_options": {
+    "mode": "create",
+    "skip_duplicates": true
+  }
+}
+
+# Delete records with rollback
+DELETE /api/import/records/bulk
+{
+  "record_ids": ["uuid1", "uuid2", ...],
+  "rollback_target": true
+}
+```
 
 ### Error Handling
 

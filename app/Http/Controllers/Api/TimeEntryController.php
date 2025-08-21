@@ -431,6 +431,64 @@ class TimeEntryController extends Controller
     }
 
     /**
+     * Unapprove a time entry (only if not invoiced)
+     */
+    public function unapprove(Request $request, TimeEntry $timeEntry): JsonResponse
+    {
+        $user = $request->user();
+
+        // Verify unapproval permissions - same as approval permissions
+        if (!($user->user_type === 'service_provider' ||
+              $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write']))) {
+            return response()->json(['error' => 'Insufficient permissions to unapprove time entries.'], 403);
+        }
+
+        // Check if the time entry can be unapproved
+        if (!$timeEntry->canUnapprove()) {
+            if ($timeEntry->isInvoiced()) {
+                return response()->json(['error' => 'Cannot unapprove time entry that has been invoiced.'], 422);
+            }
+            if ($timeEntry->status !== 'approved') {
+                return response()->json(['error' => 'Time entry is not approved.'], 422);
+            }
+        }
+
+        // Verify manager has access to this account
+        if (!$user->hasPermission('admin.manage')) {
+            $managedAccountIds = $user->accounts()
+                ->whereHas('users', function ($userQuery) use ($user) {
+                    $userQuery->where('users.id', $user->id);
+                })
+                ->pluck('accounts.id');
+
+            if (!$managedAccountIds->contains($timeEntry->account_id)) {
+                return response()->json(['error' => 'You cannot unapprove time entries for this account.'], 403);
+            }
+        }
+
+        $validated = $request->validate([
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        // Use the model's unapprove method
+        $success = $timeEntry->unapprove(
+            $user->id,
+            $validated['notes'] ?? 'Unapproved and returned to pending status'
+        );
+
+        if (!$success) {
+            return response()->json(['error' => 'Failed to unapprove time entry.'], 422);
+        }
+
+        $timeEntry->load(['user:id,name', 'account:id,name']);
+
+        return response()->json([
+            'data' => new TimeEntryResource($timeEntry),
+            'message' => 'Time entry unapproved successfully and returned to pending status.',
+        ]);
+    }
+
+    /**
      * Bulk approval of time entries
      */
     public function bulkApprove(Request $request): JsonResponse

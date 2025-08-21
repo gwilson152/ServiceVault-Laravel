@@ -240,6 +240,78 @@ const form = reactive({
 })
 ```
 
+### Layout Standards (August 2025)
+
+**Page Layout**: All pages should use `StandardPageLayout` for consistency:
+
+```vue
+<template>
+  <StandardPageLayout
+    :title="pageTitle"
+    subtitle="Page description"
+    :show-sidebar="true"
+    :show-filters="true"
+  >
+    <template #header-actions>
+      <button class="btn-primary">New Item</button>
+    </template>
+    
+    <template #filters>
+      <FilterSection>
+        <!-- Filter controls -->
+      </FilterSection>
+    </template>
+    
+    <template #main-content>
+      <!-- Primary content -->
+    </template>
+    
+    <template #sidebar>
+      <!-- Stats and widgets -->
+    </template>
+  </StandardPageLayout>
+</template>
+```
+
+**Multi-Select Filters**: Use `MultiSelect` component for filter arrays:
+
+```vue
+<MultiSelect
+  v-model="selectedStatuses"
+  :options="availableStatuses"
+  value-key="key"
+  label-key="name"
+  placeholder="Select statuses..."
+/>
+```
+
+**Filter Persistence**: Implement user-specific filter persistence:
+
+```javascript
+// User-scoped localStorage keys
+const getStorageKey = (key) => `${pageName}-filters-${user.id}-${key}`
+
+// Save filters automatically
+watch([searchQuery, statusFilter], () => {
+  localStorage.setItem(getStorageKey('search'), searchQuery.value)
+  localStorage.setItem(getStorageKey('status'), JSON.stringify(statusFilter.value))
+}, { deep: true })
+```
+
+**Component Guidelines**:
+- Use `StandardPageLayout` for all list/index pages
+- Use `StackedDialog` for all modal dialogs
+- Use `UnifiedSelector` for entity selection
+- Use `MultiSelect` for multi-value filters
+- Implement responsive design with mobile-first approach
+
+**API Parameter Alignment**: Ensure frontend filter parameters match backend expectations:
+- `agent_id` for assignment filters (not `assignment`)
+- Array parameters sent as `status[]`, `priority[]`
+- Backend must handle both single values and arrays for filter fields
+
+**Documentation**: See `/docs/technical/ui-components.md` for complete component reference.
+
 ## Testing Standards
 
 ### Backend Testing

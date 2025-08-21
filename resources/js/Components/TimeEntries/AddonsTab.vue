@@ -186,6 +186,14 @@
                     >
                       <XMarkIcon class="h-4 w-4" />
                     </button>
+                    <button
+                      v-if="addon.status === 'approved' && addon.can_unapprove"
+                      @click="unapproveAddon(addon)"
+                      class="text-yellow-600 hover:text-yellow-900"
+                      title="Unapprove addon"
+                    >
+                      <ArrowPathIcon class="h-4 w-4" />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -260,6 +268,7 @@ import {
   PencilIcon, 
   CheckIcon, 
   XMarkIcon,
+  ArrowPathIcon,
   ExclamationTriangleIcon 
 } from '@heroicons/vue/24/outline'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
@@ -382,6 +391,25 @@ const rejectAddon = async (addon) => {
     }
   } catch (error) {
     console.error('Error rejecting addon:', error)
+  }
+}
+
+const unapproveAddon = async (addon) => {
+  try {
+    const response = await fetch(`/api/ticket-addons/${addon.id}/unapprove`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+      }
+    })
+
+    if (response.ok) {
+      loadAddons(pagination.value.current_page)
+    }
+  } catch (error) {
+    console.error('Error unapproving addon:', error)
   }
 }
 

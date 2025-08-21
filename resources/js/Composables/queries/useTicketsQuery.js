@@ -13,8 +13,24 @@ export function useTicketsQuery(filters = {}) {
 
             // Add filter parameters
             if (currentFilters.search) params.append("search", currentFilters.search);
-            if (currentFilters.status) params.append("status", currentFilters.status);
-            if (currentFilters.priority) params.append("priority", currentFilters.priority);
+            
+            // Handle array filters (status and priority)
+            if (currentFilters.status) {
+                if (Array.isArray(currentFilters.status)) {
+                    currentFilters.status.forEach(status => params.append("status[]", status));
+                } else {
+                    params.append("status", currentFilters.status);
+                }
+            }
+            
+            if (currentFilters.priority) {
+                if (Array.isArray(currentFilters.priority)) {
+                    currentFilters.priority.forEach(priority => params.append("priority[]", priority));
+                } else {
+                    params.append("priority", currentFilters.priority);
+                }
+            }
+            
             if (currentFilters.assignment)
                 params.append("assignment", currentFilters.assignment);
             if (currentFilters.account_id)

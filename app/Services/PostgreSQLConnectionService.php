@@ -718,6 +718,113 @@ class PostgreSQLConnectionService
     }
 
     /**
+     * Get estimated record count for a query or table.
+     */
+    public function getEstimatedRecordCount(string $connectionName, string $baseTable, array $joins = [], array $filters = []): int
+    {
+        try {
+            // Start with a simple count query
+            $query = "SELECT COUNT(*) as count FROM {$baseTable}";
+            $params = [];
+            
+            // Add JOIN clauses if provided
+            if (!empty($joins)) {
+                foreach ($joins as $join) {
+                    $joinType = $join['type'] ?? 'INNER';
+                    $query .= " {$joinType} JOIN {$join['table']} ON {$join['condition']}";
+                }
+            }
+            
+            // Add WHERE clauses if provided
+            if (!empty($filters)) {
+                $whereClauses = [];
+                foreach ($filters as $filter) {
+                    $whereClauses[] = $filter['condition'];
+                    if (isset($filter['value'])) {
+                        $params[] = $filter['value'];
+                    }
+                }
+                if (!empty($whereClauses)) {
+                    $query .= " WHERE " . implode(' AND ', $whereClauses);
+                }
+            }
+            
+            $result = DB::connection($connectionName)->selectOne($query, $params);
+            return (int) $result->count;
+            
+        } catch (Exception $e) {
+            // If exact count fails, try to get table statistics estimate
+            try {
+                $result = DB::connection($connectionName)->selectOne(
+                    "SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname = ?",
+                    [$baseTable]
+                );
+                return $result ? (int) $result->estimate : 0;
+            } catch (Exception $e2) {
+                return 0;
+            }
+        }
+    }
+
+    /**
+     * Execute a query and return sample results.
+     */
+    public function executeQuerySample(string $connectionName, string $sql, array $params = [], int $limit = 10): array
+    {
+        try {
+            // Add LIMIT to the query if not already present
+            if (stripos($sql, 'LIMIT') === false) {
+                $sql .= " LIMIT {$limit}";
+            }
+            
+            return DB::connection($connectionName)->select($sql, $params);
+        } catch (Exception $e) {
+            throw new Exception("Query execution failed: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Validate and analyze a SQL query.
+     */
+    public function validateQuery(string $connectionName, string $sql): array
+    {
+        try {
+            // Try to prepare the query with EXPLAIN to validate syntax
+            $explainQuery = "EXPLAIN " . $sql;
+            $result = DB::connection($connectionName)->select($explainQuery);
+            
+            // Count the number of JOINs
+            $joinCount = preg_match_all('/\bJOIN\b/i', $sql);
+            
+            // Estimate complexity
+            $complexity = 'low';
+            if ($joinCount >= 3) {
+                $complexity = 'high';
+            } elseif ($joinCount >= 1) {
+                $complexity = 'medium';
+            }
+            
+            return [
+                'is_valid' => true,
+                'execution_plan' => $result,
+                'join_count' => $joinCount,
+                'complexity' => $complexity,
+                'warnings' => []
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'is_valid' => false,
+                'error' => $e->getMessage(),
+                'execution_plan' => null,
+                'join_count' => 0,
+                'complexity' => 'unknown',
+                'warnings' => []
+            ];
+        }
+    }
+
+    /**
      * Analyze the email structure and provide recommendations.
      */
     private function analyzeEmailStructure(array $emailTables, array $foreignKeys): array

@@ -1,84 +1,38 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Page Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-              {{ pageTitle }}
-            </h2>
-            <p class="text-sm text-gray-600 mt-1 hidden sm:block">
-              Manage tickets, track time, and monitor progress
-            </p>
-          </div>
-          
-          <!-- Actions -->
-          <div class="flex items-center gap-2">
-            <button
-              @click="showCreateModal = true"
-              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
-            >
-              <svg class="w-4 h-4 inline mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span class="hidden sm:inline">New Ticket</span>
-              <span class="sm:hidden">New</span>
-            </button>
-            
-            <button
-              @click="refreshTickets"
-              :disabled="isLoading"
-              class="p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
-            >
-              <svg class="w-4 h-4" :class="{ 'animate-spin': isLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            
-            <!-- Mobile sidebar toggle -->
-            <button
-              @click="showMobileSidebar = !showMobileSidebar"
-              class="lg:hidden p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
-      <!-- Mobile Filters Toggle -->
-      <div class="lg:hidden mb-4">
-        <button
-          @click="showMobileFilters = !showMobileFilters"
-          class="w-full flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3"
-        >
-          <span class="font-medium text-gray-900">Filters & Search</span>
-          <svg 
-            class="w-5 h-5 text-gray-400 transition-transform"
-            :class="{ 'rotate-180': showMobileFilters }"
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </div>
-
-      <!-- Filters Section (Collapsible on mobile) -->
-      <div 
-        v-show="showMobileFilters || !isMobile"
-        class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 lg:mb-6"
+  <StandardPageLayout
+    :title="pageTitle"
+    subtitle="Manage tickets, track time, and monitor progress"
+    :show-sidebar="true"
+    :show-filters="true"
+  >
+    <!-- Header Actions -->
+    <template #header-actions>
+      <button
+        @click="showCreateModal = true"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
       >
-        <div class="p-4 border-b border-gray-200 hidden lg:block">
-          <h3 class="text-lg font-semibold text-gray-900">Filters & Search</h3>
-        </div>
-        <div class="p-4 space-y-4">
+        <svg class="w-4 h-4 inline mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        <span class="hidden sm:inline">New Ticket</span>
+        <span class="sm:hidden">New</span>
+      </button>
+      
+      <button
+        @click="refreshTickets"
+        :disabled="isLoading"
+        class="p-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+      >
+        <svg class="w-4 h-4" :class="{ 'animate-spin': isLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </template>
+
+    <!-- Filters -->
+    <template #filters>
+      <FilterSection>
+        <div class="space-y-4">
           <!-- Search Bar -->
           <div class="relative">
             <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,241 +47,234 @@
           </div>
           
           <!-- Filter Pills - Responsive Grid -->
-          <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <!-- Status Filter -->
-            <select
-              v-model="statusFilter"
-              class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">All Statuses</option>
-              <option 
-                v-for="status in ticketStatuses" 
-                :key="status.key" 
-                :value="status.key"
-              >
-                {{ status.name }}
-              </option>
-            </select>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <MultiSelect
+                v-model="statusFilter"
+                :options="ticketStatuses"
+                value-key="key"
+                label-key="name"
+                placeholder="Select statuses..."
+                :max-display-items="2"
+              />
+            </div>
             
             <!-- Priority Filter -->
-            <select
-              v-model="priorityFilter"
-              class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">All Priorities</option>
-              <option 
-                v-for="priority in ticketPriorities" 
-                :key="priority.key" 
-                :value="priority.key"
-              >
-                {{ priority.name }}
-              </option>
-            </select>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Priority</label>
+              <MultiSelect
+                v-model="priorityFilter"
+                :options="ticketPriorities"
+                value-key="key"
+                label-key="name"
+                placeholder="Select priorities..."
+                :max-display-items="2"
+              />
+            </div>
             
             <!-- Assignment Filter -->
-            <select
-              v-model="assignmentFilter"
-              class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">All Assignments</option>
-              <option value="mine">My Tickets</option>
-              <option value="unassigned">Unassigned</option>
-            </select>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Assignment</label>
+              <select
+                v-model="assignmentFilter"
+                class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+              >
+                <option value="">All Assignments</option>
+                <option value="mine">My Tickets</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </div>
             
             <!-- Account Filter (if service provider) -->
-            <select
-              v-if="canViewAllAccounts"
-              v-model="accountFilter"
-              class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">All Accounts</option>
-              <option 
-                v-for="account in availableAccounts" 
-                :key="account.id" 
-                :value="account.id"
+            <div v-if="canViewAllAccounts">
+              <label class="block text-xs font-medium text-gray-700 mb-1">Account</label>
+              <select
+                v-model="accountFilter"
+                class="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
               >
-                {{ account.name }}
-              </option>
-            </select>
-            
-            <!-- Clear Filters -->
+                <option value="">All Accounts</option>
+                <option 
+                  v-for="account in availableAccounts" 
+                  :key="account.id" 
+                  :value="account.id"
+                >
+                  {{ account.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Clear Filters Button -->
+          <div v-if="hasActiveFilters" class="mt-4 flex justify-end">
             <button
-              v-if="hasActiveFilters"
               @click="clearFilters"
-              class="col-span-2 sm:col-span-1 text-sm text-red-600 hover:text-red-700 font-medium bg-red-50 px-3 py-2 rounded-lg"
+              class="text-sm text-red-600 hover:text-red-700 font-medium bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg transition-colors"
             >
-              Clear Filters
+              Reset to Defaults
             </button>
           </div>
         </div>
-      </div>
+      </FilterSection>
+    </template>
 
-      <!-- Main Layout - Responsive Grid -->
-      <div class="lg:grid lg:grid-cols-12 lg:gap-6">
-        <!-- Main Content Area -->
-        <div class="lg:col-span-8 xl:col-span-9">
-          <!-- Tickets Container -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="p-4 border-b border-gray-200">
-              <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">
-                  Tickets
-                  <span class="text-sm font-normal text-gray-500 ml-2">
-                    ({{ filteredTickets.length }} of {{ tickets?.length || 0 }})
-                  </span>
-                </h3>
-                
-                <!-- Controls -->
-                <div class="flex items-center space-x-4">
-                  <!-- Sort Dropdown -->
-                  <SortDropdown :table="table" />
-                  
-                  <!-- Column Visibility -->
-                  <ColumnVisibilitySelector
-                    :available-columns="availableColumns.filter(col => !col.required)"
-                    :is-column-visible="isColumnVisible"
-                    @toggle-column="toggleColumn"
-                    @reset-columns="resetVisibility"
-                  />
-                  
-                  <!-- Table Density Toggle -->
-                  <div class="flex items-center space-x-2">
-                    <span class="text-sm text-gray-500">Density:</span>
-                    <div class="flex items-center space-x-1">
-                      <button
-                        @click="tableDensity = 'comfortable'"
-                        :class="[
-                          'px-2 py-1 rounded text-xs font-medium transition-colors',
-                          tableDensity === 'comfortable' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
-                        ]"
-                        title="Comfortable spacing"
-                      >
-                        Comfortable
-                      </button>
-                      <button
-                        @click="tableDensity = 'compact'"
-                        :class="[
-                          'px-2 py-1 rounded text-xs font-medium transition-colors',
-                          tableDensity === 'compact' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
-                        ]"
-                        title="Compact spacing for maximum data density"
-                      >
-                        Compact
-                      </button>
-                    </div>
-                  </div>
+    <!-- Main Content -->
+    <template #main-content>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="p-4 border-b border-gray-200">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">
+              Tickets
+              <span class="text-sm font-normal text-gray-500 ml-2">
+                ({{ filteredTickets.length }} of {{ tickets?.length || 0 }})
+              </span>
+            </h3>
+            
+            <!-- Controls -->
+            <div class="flex items-center space-x-4">
+              <!-- Sort Dropdown -->
+              <SortDropdown :table="table" />
+              
+              <!-- Column Visibility -->
+              <ColumnVisibilitySelector
+                :available-columns="availableColumns.filter(col => !col.required)"
+                :is-column-visible="isColumnVisible"
+                @toggle-column="toggleColumn"
+                @reset-columns="resetVisibility"
+              />
+              
+              <!-- Table Density Toggle -->
+              <div class="flex items-center space-x-2">
+                <span class="text-sm text-gray-500">Density:</span>
+                <div class="flex items-center space-x-1">
+                  <button
+                    @click="tableDensity = 'comfortable'"
+                    :class="[
+                      'px-2 py-1 rounded text-xs font-medium transition-colors',
+                      tableDensity === 'comfortable' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                    ]"
+                    title="Comfortable spacing"
+                  >
+                    Comfortable
+                  </button>
+                  <button
+                    @click="tableDensity = 'compact'"
+                    :class="[
+                      'px-2 py-1 rounded text-xs font-medium transition-colors',
+                      tableDensity === 'compact' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                    ]"
+                    title="Compact spacing for maximum data density"
+                  >
+                    Compact
+                  </button>
                 </div>
               </div>
             </div>
-            
-            <!-- Ticket List -->
-            <TicketList
-              :tickets="filteredTickets"
-              :table="table"
-              :user="user"
-              :is-loading="isLoading"
-              :error="error"
-              error-message="Failed to load tickets. Please try again."
-              :density="tableDensity"
-              empty-title="No tickets found"
-              :empty-message="hasActiveFilters ? 'Try adjusting your filters' : 'Get started by creating a new ticket'"
-              :show-create-button="!hasActiveFilters"
-              create-button-text="Create New Ticket"
-              :show-retry-button="true"
-              @retry="refetchTickets"
-              @create-ticket="showCreateModal = true"
-              @open-manual-time-entry="openManualTimeEntry"
-              @open-ticket-addon="openTicketAddon"
-            />
-            
           </div>
         </div>
         
-        <!-- Sidebar - Hidden on mobile, shown on desktop -->
-        <div 
-          :class="[
-            'lg:col-span-4 xl:col-span-3 space-y-4 mt-4 lg:mt-0',
-            showMobileSidebar ? 'block' : 'hidden lg:block'
-          ]"
-        >
-          <!-- Quick Stats Widget -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Quick Stats</h3>
+        <!-- Ticket List -->
+        <TicketList
+          :tickets="filteredTickets"
+          :table="table"
+          :user="user"
+          :is-loading="isLoading"
+          :error="error"
+          error-message="Failed to load tickets. Please try again."
+          :density="tableDensity"
+          empty-title="No tickets found"
+          :empty-message="hasActiveFilters ? 'Try adjusting your filters' : 'Get started by creating a new ticket'"
+          :show-create-button="!hasActiveFilters"
+          create-button-text="Create New Ticket"
+          :show-retry-button="true"
+          @retry="refetchTickets"
+          @create-ticket="showCreateModal = true"
+          @open-manual-time-entry="openManualTimeEntry"
+          @open-ticket-addon="openTicketAddon"
+        />
+      </div>
+    </template>
+
+    <!-- Sidebar -->
+    <template #sidebar>
+      <!-- Quick Stats Widget -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="p-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Quick Stats</h3>
+        </div>
+        <div class="p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Total Tickets</span>
+            <span class="text-lg font-semibold text-gray-900">{{ tickets?.length || 0 }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Open</span>
+            <span class="text-lg font-semibold text-blue-600">{{ getStatusCount('open') }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">In Progress</span>
+            <span class="text-lg font-semibold text-yellow-600">{{ getStatusCount('in_progress') }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">My Tickets</span>
+            <span class="text-lg font-semibold text-green-600">{{ getMyTicketsCount() }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Active Timers Widget -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="p-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Active Timers</h3>
+        </div>
+        <div class="p-4">
+          <div v-if="activeTimers.length === 0" class="text-center text-gray-500 text-sm">
+            No active timers
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="timer in activeTimers.slice(0, 5)"
+              :key="timer.id"
+              class="flex items-center justify-between text-sm p-2 bg-gray-50 rounded"
+            >
+              <span class="truncate">{{ timer.ticket_number || 'No Ticket' }}</span>
+              <span class="font-mono text-green-600 ml-2">{{ formatDuration(timer.duration) }}</span>
             </div>
-            <div class="p-4 space-y-3">
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Total Tickets</span>
-                <span class="text-lg font-semibold text-gray-900">{{ tickets?.length || 0 }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">Open</span>
-                <span class="text-lg font-semibold text-blue-600">{{ getStatusCount('open') }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">In Progress</span>
-                <span class="text-lg font-semibold text-yellow-600">{{ getStatusCount('in_progress') }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">My Tickets</span>
-                <span class="text-lg font-semibold text-green-600">{{ getMyTicketsCount() }}</span>
-              </div>
+            <div v-if="activeTimers.length > 5" class="text-xs text-gray-500 text-center pt-1">
+              And {{ activeTimers.length - 5 }} more...
             </div>
           </div>
-          
-          <!-- Active Timers Widget -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Active Timers</h3>
-            </div>
-            <div class="p-4">
-              <div v-if="activeTimers.length === 0" class="text-center text-gray-500 text-sm">
-                No active timers
-              </div>
-              <div v-else class="space-y-2">
-                <div
-                  v-for="timer in activeTimers.slice(0, 5)"
-                  :key="timer.id"
-                  class="flex items-center justify-between text-sm p-2 bg-gray-50 rounded"
-                >
-                  <span class="truncate">{{ timer.ticket_number || 'No Ticket' }}</span>
-                  <span class="font-mono text-green-600 ml-2">{{ formatDuration(timer.duration) }}</span>
-                </div>
-                <div v-if="activeTimers.length > 5" class="text-xs text-gray-500 text-center pt-1">
-                  And {{ activeTimers.length - 5 }} more...
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Recent Activity Widget -->
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
-            </div>
-            <div class="p-4">
-              <div class="space-y-3 text-sm">
-                <div
-                  v-for="activity in recentActivity.slice(0, 5)"
-                  :key="activity.id"
-                  class="flex items-start space-x-2"
-                >
-                  <div :class="getActivityIcon(activity.type)" class="w-2 h-2 rounded-full mt-2 flex-shrink-0"></div>
-                  <div class="min-w-0 flex-1">
-                    <p class="text-gray-900 truncate">{{ activity.description }}</p>
-                    <p class="text-gray-500 text-xs">{{ formatDate(activity.created_at) }}</p>
-                  </div>
-                </div>
+        </div>
+      </div>
+      
+      <!-- Recent Activity Widget -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="p-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
+        </div>
+        <div class="p-4">
+          <div class="space-y-3 text-sm">
+            <div
+              v-for="activity in recentActivity.slice(0, 5)"
+              :key="activity.id"
+              class="flex items-start space-x-2"
+            >
+              <div :class="getActivityIcon(activity.type)" class="w-2 h-2 rounded-full mt-2 flex-shrink-0"></div>
+              <div class="min-w-0 flex-1">
+                <p class="text-gray-900 truncate">{{ activity.description }}</p>
+                <p class="text-gray-500 text-xs">{{ formatDate(activity.created_at) }}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </template>
+  </StandardPageLayout>
     
     <!-- Create Ticket Modal -->
     <CreateTicketModalTabbed
@@ -353,13 +300,15 @@
       @close="showAddonModal = false"
       @addon-created="handleAddonSaved"
     />
-  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import StandardPageLayout from '@/Layouts/StandardPageLayout.vue'
+import FilterSection from '@/Components/Layout/FilterSection.vue'
+import MultiSelect from '@/Components/UI/MultiSelect.vue'
 import CreateTicketModalTabbed from '@/Components/Modals/CreateTicketModalTabbed.vue'
 import TicketList from '@/Components/Tickets/TicketList.vue'
 import UnifiedTimeEntryDialog from '@/Components/TimeEntries/UnifiedTimeEntryDialog.vue'
@@ -395,6 +344,27 @@ const props = defineProps({
   permissions: {
     type: Object,
     default: () => ({})
+  },
+  // Accept additional props passed by Inertia
+  errors: {
+    type: Object,
+    default: () => ({})
+  },
+  auth: {
+    type: Object,
+    default: () => ({})
+  },
+  settings: {
+    type: Object,
+    default: () => ({})
+  },
+  csrf_token: {
+    type: String,
+    default: ''
+  },
+  stats: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -413,30 +383,64 @@ const tableDensity = ref(localStorage.getItem('tickets-table-density') || 'compa
 watch(tableDensity, (newDensity) => {
   localStorage.setItem('tickets-table-density', newDensity)
 }, { immediate: false })
-const showMobileFilters = ref(false)
-const showMobileSidebar = ref(false)
-const isMobile = ref(window.innerWidth < 1024)
 
 // Ticket configuration data for dropdowns
 const ticketStatuses = ref([])
 const ticketPriorities = ref([])
 const workflowTransitions = ref({})
 
-// Filters
+// Initialize filters from localStorage with user-specific keys
+const getStorageKey = (key) => `tickets-filters-${user.value?.id || 'guest'}-${key}`
+
+// Helper to get default statuses (all except closed types)
+const getDefaultStatuses = () => {
+  return ticketStatuses.value
+    .filter(status => !status.is_closed)
+    .map(status => status.key)
+}
+
+// Helper to get default priorities (all)
+const getDefaultPriorities = () => {
+  return ticketPriorities.value.map(priority => priority.key)
+}
+
+// Load saved filters or use defaults
+const loadSavedFilter = (key, defaultValue) => {
+  try {
+    const saved = localStorage.getItem(getStorageKey(key))
+    return saved ? JSON.parse(saved) : defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
+// Filters - will be initialized after ticket config loads
 const searchQuery = ref('')
-const statusFilter = ref('')
-const priorityFilter = ref('')
+const statusFilter = ref([])
+const priorityFilter = ref([])
 const assignmentFilter = ref('')
 const accountFilter = ref('')
 
 // TanStack Query for tickets
-const ticketFilters = computed(() => ({
-  search: searchQuery.value,
-  status: statusFilter.value,
-  priority: priorityFilter.value,
-  assignment: assignmentFilter.value,
-  account_id: accountFilter.value
-}))
+const ticketFilters = computed(() => {
+  const filters = {
+    search: searchQuery.value,
+    agent_id: assignmentFilter.value,
+    account_id: accountFilter.value
+  }
+  
+  // Only include status filter if there are statuses selected
+  if (statusFilter.value.length > 0) {
+    filters.status = statusFilter.value
+  }
+  
+  // Only include priority filter if there are priorities selected
+  if (priorityFilter.value.length > 0) {
+    filters.priority = priorityFilter.value
+  }
+  
+  return filters
+})
 
 const { data: tickets, isLoading, error, refetch: refetchTickets } = useTicketsQuery(ticketFilters)
 
@@ -469,7 +473,13 @@ const pageTitle = computed(() => {
 })
 
 const hasActiveFilters = computed(() => {
-  return !!(searchQuery.value || statusFilter.value || priorityFilter.value || assignmentFilter.value || accountFilter.value)
+  return !!(
+    searchQuery.value || 
+    (statusFilter.value.length > 0 && statusFilter.value.length < ticketStatuses.value.length) ||
+    (priorityFilter.value.length > 0 && priorityFilter.value.length < ticketPriorities.value.length) ||
+    assignmentFilter.value || 
+    accountFilter.value
+  )
 })
 
 // Sync search query with TanStack global filter
@@ -586,6 +596,9 @@ const loadTicketConfig = async () => {
       ticketStatuses.value = data.data.statuses || []
       ticketPriorities.value = data.data.priorities || []
       workflowTransitions.value = data.data.workflow_transitions || {}
+      
+      // Initialize filters after config is loaded
+      initializeFilters()
     }
   } catch (error) {
     if (import.meta.env.DEV) {
@@ -594,13 +607,39 @@ const loadTicketConfig = async () => {
   }
 }
 
+// Save filters to localStorage
+const saveFiltersToStorage = () => {
+  if (!user.value?.id) return
+  
+  localStorage.setItem(getStorageKey('search'), searchQuery.value)
+  localStorage.setItem(getStorageKey('status'), JSON.stringify(statusFilter.value))
+  localStorage.setItem(getStorageKey('priority'), JSON.stringify(priorityFilter.value))
+  localStorage.setItem(getStorageKey('assignment'), assignmentFilter.value)
+  localStorage.setItem(getStorageKey('account'), accountFilter.value)
+}
+
+// Watch filters and save to localStorage
+watch([searchQuery, statusFilter, priorityFilter, assignmentFilter, accountFilter], () => {
+  saveFiltersToStorage()
+}, { deep: true })
+
 const clearFilters = () => {
   searchQuery.value = ''
-  statusFilter.value = ''
-  priorityFilter.value = ''
+  statusFilter.value = getDefaultStatuses()
+  priorityFilter.value = getDefaultPriorities()
   assignmentFilter.value = ''
   accountFilter.value = ''
   clearAllFilters()
+  saveFiltersToStorage()
+}
+
+// Initialize filters after config loads
+const initializeFilters = () => {
+  searchQuery.value = loadSavedFilter('search', '')
+  statusFilter.value = loadSavedFilter('status', getDefaultStatuses())
+  priorityFilter.value = loadSavedFilter('priority', getDefaultPriorities())
+  assignmentFilter.value = loadSavedFilter('assignment', '')
+  accountFilter.value = loadSavedFilter('account', '')
 }
 
 const getStatusClasses = (status) => {
@@ -718,14 +757,7 @@ const handleAddonSaved = () => {
   refetchTickets()
 }
 
-// Handle window resize
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 1024
-  if (!isMobile.value) {
-    showMobileFilters.value = false
-    showMobileSidebar.value = false
-  }
-}
+// Note: Mobile state management now handled by StandardPageLayout
 
 // Lifecycle
 onMounted(() => {
@@ -734,9 +766,6 @@ onMounted(() => {
   
   // Load ticket configuration for dropdowns
   loadTicketConfig()
-  
-  // Add resize listener
-  window.addEventListener('resize', handleResize)
   
   // Set up periodic refresh with unified function
   const timerInterval = setInterval(() => {
@@ -749,7 +778,6 @@ onMounted(() => {
     if (timerRefreshDebounce) {
       clearTimeout(timerRefreshDebounce)
     }
-    window.removeEventListener('resize', handleResize)
   })
 })
 </script>

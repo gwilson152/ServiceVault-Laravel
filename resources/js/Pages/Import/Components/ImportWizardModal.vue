@@ -88,7 +88,32 @@
           />
         </div>
 
-        <!-- Step 3: Preview -->
+        <!-- Step 3: Import Modes -->
+        <div v-if="currentStep === 'modes'" class="space-y-6">
+          <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <CogIcon class="h-5 w-5 text-orange-400" />
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-orange-800">Configure Import Modes</h3>
+                <div class="mt-2 text-sm text-orange-700">
+                  <p>Set up how to handle duplicates and record creation/update behavior during import.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Import Mode Configuration Component -->
+          <ImportModeConfiguration
+            v-if="profile"
+            :config="currentModeConfig"
+            :available-fields="availableFieldsFromMappings"
+            @update:config="handleModeConfigChanged"
+          />
+        </div>
+
+        <!-- Step 4: Preview -->
         <div v-if="currentStep === 'preview'" class="space-y-6">
           <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div class="flex">
@@ -107,7 +132,7 @@
           <!-- Active Configuration Summary -->
           <div class="bg-gray-50 rounded-lg p-4">
             <h4 class="text-sm font-medium text-gray-900 mb-3">Active Configuration</h4>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-3 gap-4">
               <div>
                 <h5 class="text-xs font-medium text-gray-700 mb-2">Import Filters</h5>
                 <div v-if="hasActiveFilters" class="space-y-1">
@@ -135,6 +160,22 @@
                   </div>
                 </div>
                 <div v-else class="text-xs text-gray-500">Using default field mappings</div>
+              </div>
+
+              <div>
+                <h5 class="text-xs font-medium text-gray-700 mb-2">Import Modes</h5>
+                <div v-if="currentModeConfig?.import_mode" class="space-y-1">
+                  <div class="text-xs text-gray-600">
+                    🔧 Mode: {{ currentModeConfig.import_mode }}
+                  </div>
+                  <div v-if="currentModeConfig?.duplicate_detection?.enabled" class="text-xs text-gray-600">
+                    🔍 Duplicate Detection: {{ currentModeConfig.duplicate_detection.strategy }}
+                  </div>
+                  <div v-if="currentModeConfig?.source_identifier_field" class="text-xs text-gray-600">
+                    🏷️ ID Field: {{ currentModeConfig.source_identifier_field }}
+                  </div>
+                </div>
+                <div v-else class="text-xs text-gray-500">Using default import mode (upsert)</div>
               </div>
             </div>
           </div>
@@ -202,6 +243,7 @@ import StackedDialog from '@/Components/StackedDialog.vue'
 import ImportFilterBuilderContent from './ImportFilterBuilderContent.vue'
 import ImportFieldMapperContent from './ImportFieldMapperContent.vue'
 import ImportPreviewContent from './ImportPreviewContent.vue'
+import ImportModeConfiguration from '@/Components/Import/ImportModeConfiguration.vue'
 import {
   CheckIcon,
   AdjustmentsHorizontalIcon,
@@ -210,6 +252,7 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   PlayIcon,
+  CogIcon,
 } from '@heroicons/vue/24/outline'
 
 // Props
@@ -231,12 +274,14 @@ const emit = defineEmits(['close', 'execute-import'])
 const currentStep = ref('filters')
 const currentFilters = ref({})
 const currentMappings = ref({})
+const currentModeConfig = ref({})
 const previewLoaded = ref(false)
 
 // Steps configuration
 const steps = ref([
   { key: 'filters', name: 'Import Filters', completed: false },
   { key: 'mappings', name: 'Field Mappings', completed: false },
+  { key: 'modes', name: 'Import Modes', completed: false },
   { key: 'preview', name: 'Preview Data', completed: false }
 ])
 
@@ -251,6 +296,8 @@ const canProceedToNext = computed(() => {
       return true // Filters are always optional
     case 'mappings':
       return true // Mappings are optional (can use defaults)
+    case 'modes':
+      return true // Import modes are always valid (defaults exist)
     case 'preview':
       return previewLoaded.value
     default:
@@ -271,6 +318,27 @@ const hasActiveMappings = computed(() => {
   )
 })
 
+const availableFieldsFromMappings = computed(() => {
+  // Extract available fields from field mappings for use in import mode configuration
+  const fields = new Set()
+  
+  // Add common identifier fields
+  fields.add('id')
+  fields.add('email')
+  fields.add('external_id')
+  fields.add('created_at')
+  fields.add('updated_at')
+  
+  // Extract fields from current mappings
+  Object.values(currentMappings.value || {}).forEach(tableMappings => {
+    Object.keys(tableMappings || {}).forEach(sourceField => {
+      fields.add(sourceField)
+    })
+  })
+  
+  return Array.from(fields).sort()
+})
+
 // Watch for modal open/close
 watch(() => props.show, (show) => {
   if (show) {
@@ -278,6 +346,7 @@ watch(() => props.show, (show) => {
     currentStep.value = 'filters'
     currentFilters.value = {}
     currentMappings.value = {}
+    currentModeConfig.value = {}
     previewLoaded.value = false
     steps.value.forEach(step => step.completed = false)
   }
@@ -324,6 +393,10 @@ const handleMappingsChanged = (mappings) => {
   currentMappings.value = mappings
 }
 
+const handleModeConfigChanged = (modeConfig) => {
+  currentModeConfig.value = modeConfig
+}
+
 const handlePreviewLoaded = (success) => {
   previewLoaded.value = success
 }
@@ -332,7 +405,8 @@ const executeImport = () => {
   emit('execute-import', {
     profile: props.profile,
     filters: currentFilters.value,
-    mappings: currentMappings.value
+    mappings: currentMappings.value,
+    modeConfig: currentModeConfig.value
   })
 }
 </script>

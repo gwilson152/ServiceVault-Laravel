@@ -264,9 +264,9 @@
             <span>After Discount:</span>
             <span>${{ afterDiscount.toFixed(2) }}</span>
           </div>
-          <div v-if="form.is_taxable && form.tax_rate > 0" class="flex justify-between text-blue-600">
-            <span>Tax ({{ (parseFloat(form.tax_rate || 0) * 100).toFixed(2) }}%):</span>
-            <span>${{ taxAmount.toFixed(2) }}</span>
+          <div v-if="form.is_taxable" class="flex justify-between text-blue-600">
+            <span>Tax:</span>
+            <span>Applied at invoice level</span>
           </div>
           <div class="flex justify-between font-medium text-lg border-t pt-1">
             <span>Total:</span>
@@ -332,7 +332,6 @@ const form = reactive({
   unit_price: '',
   quantity: 1,
   discount_amount: 0,
-  tax_rate: 0,
   billable: true,
   is_taxable: true,
   billing_category: 'addon'
@@ -353,13 +352,9 @@ const afterDiscount = computed(() => {
   return Math.max(0, subtotal.value - parseFloat(form.discount_amount || 0))
 })
 
-const taxAmount = computed(() => {
-  if (!form.is_taxable || !form.tax_rate) return 0
-  return afterDiscount.value * parseFloat(form.tax_rate || 0)
-})
-
 const totalAmount = computed(() => {
-  return afterDiscount.value + taxAmount.value
+  // Tax will be calculated at invoice level, so total here is just after discount
+  return afterDiscount.value
 })
 
 const canEditBasicFields = computed(() => {
@@ -378,8 +373,7 @@ const resetForm = () => {
     unit_price: '',
     quantity: 1,
     discount_amount: 0,
-    tax_rate: 0,
-    billable: true,
+      billable: true,
     is_taxable: true,
     billing_category: 'addon'
   })
@@ -398,7 +392,6 @@ const populateForm = (addon) => {
     unit_price: addon.unit_price || '',
     quantity: addon.quantity || 1,
     discount_amount: addon.discount_amount || 0,
-    tax_rate: addon.tax_rate || 0,
     billable: addon.billable !== undefined ? addon.billable : true,
     is_taxable: addon.is_taxable !== undefined ? addon.is_taxable : true,
     billing_category: addon.billing_category || 'addon'

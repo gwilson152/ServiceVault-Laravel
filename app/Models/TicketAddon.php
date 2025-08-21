@@ -22,7 +22,6 @@ class TicketAddon extends Model
         'unit_price',
         'quantity',
         'discount_amount',
-        'tax_rate',
         'total_amount',
         'billable',
         'is_taxable',
@@ -39,7 +38,6 @@ class TicketAddon extends Model
         'unit_price' => 'decimal:2',
         'quantity' => 'decimal:2',
         'discount_amount' => 'decimal:2',
-        'tax_rate' => 'decimal:4',
         'total_amount' => 'decimal:2',
         'billable' => 'boolean',
         'is_taxable' => 'boolean',
@@ -53,7 +51,11 @@ class TicketAddon extends Model
         'is_taxable' => true,
         'quantity' => 1,
         'discount_amount' => 0,
-        'tax_rate' => 0,
+    ];
+
+    protected $appends = [
+        'can_unapprove',
+        'is_invoiced',
     ];
 
     /**
@@ -69,19 +71,13 @@ class TicketAddon extends Model
     }
 
     /**
-     * Calculate the total amount based on unit price, quantity, discount, and tax
+     * Calculate the total amount based on unit price, quantity, and discount
+     * Note: Tax is calculated at the invoice level, not per addon
      */
     public function calculateTotal(): void
     {
         $subtotal = $this->unit_price * $this->quantity;
-        $afterDiscount = $subtotal - $this->discount_amount;
-
-        $taxAmount = 0;
-        if ($this->is_taxable && $this->tax_rate > 0) {
-            $taxAmount = $afterDiscount * $this->tax_rate;
-        }
-
-        $this->total_amount = $afterDiscount + $taxAmount;
+        $this->total_amount = $subtotal - $this->discount_amount;
     }
 
     /**
@@ -208,5 +204,66 @@ class TicketAddon extends Model
         return Attribute::make(
             get: fn () => '$'.number_format($this->unit_price, 2)
         );
+    }
+
+    /**
+     * Get can_unapprove attribute for API responses
+     */
+    protected function canUnapproveAttribute(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->canUnapprove()
+        );
+    }
+
+    /**
+     * Get is_invoiced attribute for API responses
+     */
+    protected function isInvoicedAttribute(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->isInvoiced()
+        );
+    }
+
+    /**
+     * Check if the addon is associated with any invoice.
+     */
+    public function isInvoiced(): bool
+    {
+        return $this->invoiceLineItems()->exists();
+    }
+
+    /**
+     * Check if the addon can be unapproved.
+     */
+    public function canUnapprove(): bool
+    {
+        return $this->status === 'approved' && !$this->isInvoiced();
+    }
+
+    /**
+     * Unapprove the addon (only if not invoiced).
+     */
+    public function unapprove(User $unapprover, ?string $notes = null): bool
+    {
+        if (!$this->canUnapprove()) {
+            return false;
+        }
+
+        $this->status = 'pending';
+        $this->approved_by_user_id = null;
+        $this->approved_at = null;
+        $this->approval_notes = $notes;
+
+        return $this->save();
+    }
+
+    /**
+     * Get the invoice line items for this addon.
+     */
+    public function invoiceLineItems()
+    {
+        return $this->hasMany(InvoiceLineItem::class, 'ticket_addon_id');
     }
 }

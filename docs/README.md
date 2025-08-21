@@ -46,7 +46,7 @@ npm run dev         # Vite dev server with HMR
 - **🎫 Service Tickets** - Complete ticketing workflow with messaging
 - **💰 Billing Integration** - Rate management and invoice generation
 - **📱 Real-Time Updates** - WebSocket broadcasting for live updates
-- **📥 Universal Import System** - PostgreSQL database connectivity with template-based configuration and visual query builder
+- **📥 Universal Import System** - Advanced PostgreSQL database connectivity with real-time monitoring, duplicate detection, and comprehensive analytics
 
 ## Technology Stack
 
@@ -57,7 +57,23 @@ npm run dev         # Vite dev server with HMR
 
 ## Recent Updates (August 2025)
 
-### Tax Management System (Latest)
+### Standardized Layout System & Enhanced Filtering (Latest)
+- **StandardPageLayout Component**: New reusable layout system with configurable slots for header, filters, content, and sidebar
+- **Enhanced Multi-Select Filters**: Intelligent ticket filtering with defaults (excludes closed tickets) and multi-select for status/priority
+- **User-Specific Filter Persistence**: Per-user filter preferences saved to localStorage with automatic restoration
+- **Responsive Design Improvements**: Mobile-first layout with collapsible sidebars and optimized filter interfaces
+- **Full-Width Desktop Experience**: Removed artificial width constraints for better space utilization on large screens
+- **Component Architecture**: Reusable FilterSection, PageHeader, PageSidebar, and MultiSelect components
+
+### Addon Management & Approval System
+- **Enhanced Approval Wizard**: Logical separation of time entries and addons with unified workflow
+- **Type-Specific Selection Controls**: Granular selection for time entries and addons with visual separation
+- **Improved Time Entry Dialog**: Fixed billing amount calculation when billing rate changes
+- **Centralized Tax Management**: Removed per-addon tax rates in favor of invoice-level tax calculation
+- **Tax Consistency**: Addon tax rates now determined at invoice/account/global level for consistent application
+- **StackedDialog Improvements**: Fixed dropdown clipping issues in approval wizard modals
+
+### Tax Management System
 - **Complete Tax Configuration**: System-wide tax settings configurable during setup and in settings
 - **3-State Taxable Controls**: Per-line-item tax override (taxable/not taxable/inherit) with visual indicators
 - **Tax Application Modes**: All items, products only, or custom per-item taxation
@@ -71,12 +87,16 @@ npm run dev         # Vite dev server with HMR
 - **Enhanced Tax Display**: Individual line item tax amounts and totals with clear status indicators
 
 ### Universal Import System Enhancements  
+- **Advanced Record Management**: Create-only, update-only, and upsert modes with sophisticated duplicate detection
+- **Real-Time Monitoring**: WebSocket-based job tracking with floating progress monitor and live statistics
+- **Intelligent Duplicate Detection**: Configurable strategies (exact, fuzzy, case-insensitive) with confidence scoring
+- **Visual Query Builder**: Enhanced interface with table hover tooltips showing detailed column information
+- **Comprehensive Analytics**: Import dashboard with trend analysis, performance metrics, and duplicate effectiveness
 - **Template-Based Configuration**: Pre-built platform templates (FreeScout, Custom) with automatic query generation
-- **Visual Query Builder**: Drag-and-drop interface with TableSelector, JoinBuilder, FieldMapper, and FilterBuilder components
 - **Database-Agnostic Architecture**: Supports any PostgreSQL database with intelligent schema introspection
 - **Advanced JOIN Support**: Visual configuration of complex multi-table relationships with suggested joins
-- **Real-Time Preview**: Live data preview with field mapping validation and transformation testing
-- **Simplified Workflow**: Separated connection creation from template configuration for improved user experience
+- **Enterprise Audit Trails**: UUID-based tracking with complete lineage and rollback capabilities
+- **Bulk Operations**: Approve, retry, and delete operations with comprehensive record management
 
 ---
 

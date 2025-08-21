@@ -107,38 +107,36 @@
 
         <!-- Page content -->
         <main class="flex-1 overflow-y-auto focus:outline-none">
-          <div class="py-6">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <!-- Flash messages -->
-              <div v-if="$page.props.flash?.success" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
-                <div class="flex">
-                  <div class="flex-shrink-0">
-                    <CheckCircleIcon class="h-5 w-5 text-green-400" />
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-sm font-medium text-green-800">
-                      {{ $page.props.flash?.success }}
-                    </p>
-                  </div>
+          <div class="py-6 px-4 sm:px-6">
+            <!-- Flash messages -->
+            <div v-if="$page.props.flash?.success" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4 max-w-7xl mx-auto">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <CheckCircleIcon class="h-5 w-5 text-green-400" />
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-green-800">
+                    {{ $page.props.flash?.success }}
+                  </p>
                 </div>
               </div>
-
-              <div v-if="$page.props.flash?.error" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
-                <div class="flex">
-                  <div class="flex-shrink-0">
-                    <XCircleIcon class="h-5 w-5 text-red-400" />
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-sm font-medium text-red-800">
-                      {{ $page.props.flash?.error }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Page content slot -->
-              <slot />
             </div>
+
+            <div v-if="$page.props.flash?.error" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4 max-w-7xl mx-auto">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <XCircleIcon class="h-5 w-5 text-red-400" />
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm font-medium text-red-800">
+                    {{ $page.props.flash?.error }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Page content slot -->
+            <slot />
           </div>
         </main>
       </div>

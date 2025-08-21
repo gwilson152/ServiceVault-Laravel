@@ -13,22 +13,39 @@ use Illuminate\Support\Facades\Auth;
 class ImportService
 {
     protected PostgreSQLConnectionService $connectionService;
+    protected DuplicateDetectionService $duplicateService;
     
-    public function __construct(PostgreSQLConnectionService $connectionService)
-    {
+    public function __construct(
+        PostgreSQLConnectionService $connectionService,
+        DuplicateDetectionService $duplicateService
+    ) {
         $this->connectionService = $connectionService;
+        $this->duplicateService = $duplicateService;
     }
 
     /**
      * Start an import job for a profile.
      */
-    public function startImport(ImportProfile $profile, array $options = []): ImportJob
+    public function startImport(ImportProfile $profile, array $options = [], array $modeConfig = []): ImportJob
     {
+        // Update profile with new mode configuration if provided
+        if (!empty($modeConfig)) {
+            $profile->update([
+                'import_mode' => $modeConfig['import_mode'] ?? 'upsert',
+                'duplicate_detection' => $modeConfig['duplicate_detection'] ?? null,
+                'skip_duplicates' => $modeConfig['skip_duplicates'] ?? false,
+                'update_duplicates' => $modeConfig['update_duplicates'] ?? true,
+                'source_identifier_field' => $modeConfig['source_identifier_field'] ?? null,
+                'matching_strategy' => $modeConfig['matching_strategy'] ?? null,
+            ]);
+        }
+
         // Create import job
         $job = ImportJob::create([
             'profile_id' => $profile->id,
             'status' => 'pending',
             'import_options' => $options,
+            'mode_config' => $modeConfig,
             'created_by' => Auth::id(),
         ]);
 
@@ -59,6 +76,17 @@ class ImportService
 
             // Finalize import
             $job->updateProgress(95, 'Finalizing import...');
+            
+            // Update profile statistics
+            $stats = [
+                'total' => $job->records_processed,
+                'created' => $job->records_imported,
+                'updated' => $job->records_updated ?? 0,
+                'skipped' => $job->records_skipped ?? 0,
+                'failed' => $job->records_failed ?? 0,
+            ];
+            $profile->updateImportStats($stats);
+            
             $job->markAsCompleted();
             
             // Clean up connection
@@ -68,6 +96,7 @@ class ImportService
                 'job_id' => $job->id,
                 'profile_id' => $profile->id,
                 'records_imported' => $job->records_imported,
+                'import_stats' => $stats,
             ]);
 
         } catch (Exception $e) {
@@ -293,19 +322,19 @@ class ImportService
     }
 
     /**
-     * Import a single record using the mapping configuration.
+     * Import a single record using the mapping configuration with duplicate detection.
      */
     protected function importRecord(array $sourceRecord, ImportMapping $mapping, ImportJob $job): void
     {
+        $profile = $job->profile;
         $sourceId = $sourceRecord['id'] ?? null;
         
         if (!$sourceId) {
             throw new Exception("Source record must have an 'id' field for tracking");
         }
 
+        // Apply field transformations
         $destinationData = [];
-        
-        // Map fields according to the mapping configuration
         foreach ($mapping->field_mappings as $sourceField => $destinationField) {
             if (isset($sourceRecord[$sourceField])) {
                 $value = $sourceRecord[$sourceField];
@@ -323,47 +352,110 @@ class ImportService
         $destinationData['created_at'] = now();
         $destinationData['updated_at'] = now();
 
-        // Check if this record has been imported before
-        $existingImportRecord = ImportRecord::findBySource($mapping->source_table, (string)$sourceId);
-        
-        $importStatus = 'imported';
-        $destinationId = null;
-        
-        if ($existingImportRecord && $existingImportRecord->wasImported()) {
-            // Update existing record in destination
-            unset($destinationData['created_at']); // Don't update created_at
-            \DB::table($mapping->destination_table)
-                ->where('id', $existingImportRecord->destination_id)
-                ->update($destinationData);
-            
-            $destinationId = $existingImportRecord->destination_id;
-            $importStatus = 'updated';
-            $job->records_skipped++; // Count as skipped since it was an update
-        } else {
-            // Insert new record
-            if ($mapping->destination_table === 'users' || 
-                $mapping->destination_table === 'accounts' || 
-                $mapping->destination_table === 'tickets') {
-                // For UUID tables, generate UUID and insert
-                $destinationId = \Illuminate\Support\Str::uuid();
-                $destinationData['id'] = $destinationId;
+        // Perform duplicate detection
+        $duplicateResult = $this->duplicateService->detectDuplicates($sourceRecord, $profile);
+        $importDecision = $this->duplicateService->shouldProceedWithImport($duplicateResult, $profile);
+
+        // Generate source hash for tracking
+        $sourceHash = ImportRecord::generateHash(
+            $sourceRecord, 
+            $profile->getDefaultDuplicateDetection()['fields'] ?? []
+        );
+
+        $importAction = 'failed';
+        $targetId = null;
+        $errorMessage = null;
+        $duplicateOfRecord = null;
+
+        try {
+            if (!$importDecision['proceed']) {
+                // Skip this record
+                $importAction = 'skipped';
+                $job->records_skipped++;
+                
+                if ($duplicateResult['is_duplicate'] && !empty($duplicateResult['matches'])) {
+                    $bestMatch = $duplicateResult['matches'][0];
+                    $duplicateOfRecord = $bestMatch['record']['id'] ?? null;
+                }
+            } else {
+                // Proceed with import based on action
+                switch ($importDecision['action']) {
+                    case 'create':
+                        $targetId = $this->createDestinationRecord($destinationData, $mapping);
+                        $importAction = 'created';
+                        $job->records_imported++;
+                        break;
+
+                    case 'update':
+                        $existingRecord = $importDecision['duplicate_record'] ?? null;
+                        if ($existingRecord && isset($existingRecord['target_id'])) {
+                            $this->updateDestinationRecord($destinationData, $mapping, $existingRecord['target_id']);
+                            $targetId = $existingRecord['target_id'];
+                            $importAction = 'updated';
+                            $job->records_updated++;
+                        } else {
+                            throw new Exception('Update action specified but no existing record found');
+                        }
+                        break;
+
+                    default:
+                        throw new Exception("Unknown import action: {$importDecision['action']}");
+                }
             }
-            
-            $result = \DB::table($mapping->destination_table)->insertGetId($destinationData);
-            $destinationId = $destinationId ?: $result;
+        } catch (Exception $e) {
+            $importAction = 'failed';
+            $errorMessage = $e->getMessage();
+            $job->records_failed++;
         }
 
-        // Create import record for tracking
+        // Create comprehensive import record for tracking
         ImportRecord::create([
-            'job_id' => $job->id,
-            'mapping_id' => $mapping->id,
+            'import_job_id' => $job->id,
+            'import_profile_id' => $profile->id,
             'source_table' => $mapping->source_table,
-            'source_id' => (string)$sourceId,
-            'destination_table' => $mapping->destination_table,
-            'destination_id' => (string)$destinationId,
-            'source_data' => $sourceRecord, // Store original data for reference
-            'import_status' => $importStatus,
+            'source_data' => $sourceRecord,
+            'source_identifier' => (string)$sourceId,
+            'source_hash' => $sourceHash,
+            'target_type' => $mapping->destination_table,
+            'target_id' => $targetId,
+            'import_action' => $importAction,
+            'import_mode' => $profile->import_mode ?? 'upsert',
+            'matching_rules' => $duplicateResult['detection_strategy'] ?? null,
+            'matching_fields' => $duplicateResult['matches'][0]['matching_fields'] ?? null,
+            'duplicate_of' => $duplicateOfRecord,
+            'error_message' => $errorMessage,
+            'field_mappings' => $mapping->field_mappings,
         ]);
+    }
+
+    /**
+     * Create a new destination record
+     */
+    protected function createDestinationRecord(array $data, ImportMapping $mapping): string
+    {
+        // For UUID tables, generate UUID
+        if (in_array($mapping->destination_table, ['users', 'accounts', 'tickets', 'time_entries'])) {
+            $id = \Illuminate\Support\Str::uuid();
+            $data['id'] = $id;
+            \DB::table($mapping->destination_table)->insert($data);
+            return $id;
+        } else {
+            // For auto-increment tables
+            return \DB::table($mapping->destination_table)->insertGetId($data);
+        }
+    }
+
+    /**
+     * Update an existing destination record
+     */
+    protected function updateDestinationRecord(array $data, ImportMapping $mapping, string $targetId): void
+    {
+        // Don't update created_at timestamp
+        unset($data['created_at']);
+        
+        \DB::table($mapping->destination_table)
+            ->where('id', $targetId)
+            ->update($data);
     }
 
     /**

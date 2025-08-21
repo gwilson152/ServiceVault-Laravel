@@ -630,7 +630,7 @@ GET /api/import/jobs
 }
 ```
 
-### Create Import Job
+### Create Import Job with Advanced Configuration
 
 ```bash
 POST /api/import/jobs
@@ -649,9 +649,31 @@ POST /api/import/jobs
       "date_to": "2024-12-31",
       "limit": 1000
     }
+  },
+  "mode_config": {
+    "import_mode": "upsert",
+    "duplicate_detection": {
+      "enabled": true,
+      "strategy": "fuzzy",
+      "primary_fields": ["email", "external_id"],
+      "secondary_fields": ["name", "phone"],
+      "confidence_threshold": 85
+    },
+    "skip_duplicates": false,
+    "update_duplicates": true,
+    "source_identifier_field": "id",
+    "matching_strategy": "weighted_fields"
   }
 }
 ```
+
+**Mode Configuration Options:**
+- `import_mode`: `"create"`, `"update"`, or `"upsert"`
+- `duplicate_detection`: Detection strategy configuration
+- `skip_duplicates`: Skip records when duplicates found
+- `update_duplicates`: Update existing records when duplicates found
+- `source_identifier_field`: Field for tracking imported records
+- `matching_strategy`: Algorithm for duplicate detection
 
 **Import Filter Options:**
 - `date_from` (string): Import only records created after this date (YYYY-MM-DD)
@@ -667,8 +689,22 @@ POST /api/import/jobs
     "id": "uuid",
     "status": "running", 
     "progress_percentage": 0,
-    "current_operation": "Initializing import...",
-    // ... job details
+    "current_operation": "Initializing import with duplicate detection...",
+    "records_processed": 0,
+    "records_imported": 0,
+    "records_updated": 0,
+    "records_skipped": 0,
+    "records_failed": 0,
+    "mode_config": {
+      "import_mode": "upsert",
+      "duplicate_detection": {...}
+    },
+    "estimated_total": 5000,
+    "started_at": "2025-08-21T10:00:00Z",
+    "profile": {
+      "id": "uuid",
+      "name": "Production Database"
+    }
   }
 }
 ```
@@ -826,33 +862,343 @@ Import API endpoints are rate limited:
 - **Template Operations**: 20 requests per minute
 - **Job Monitoring**: 120 requests per minute (for real-time updates)
 
-## WebSocket Integration
+## Advanced WebSocket Integration
 
-Real-time job updates are available via Laravel Echo:
+Real-time job monitoring via Laravel Reverb with multi-channel broadcasting:
 
 ```javascript
-// Subscribe to job updates
+// Job-specific progress updates
 Echo.private(`import.job.${jobId}`)
-  .listen('ImportJobUpdated', (event) => {
-    console.log('Job progress:', event.progress_percentage);
-    console.log('Current operation:', event.current_operation);
+  .listen('.import.progress.updated', (event) => {
+    console.log('Progress:', event.progress_percentage);
+    console.log('Operation:', event.current_operation);
+    console.log('Records imported:', event.records_imported);
+    console.log('Records updated:', event.records_updated);
+    console.log('Records skipped:', event.records_skipped);
+    console.log('Records failed:', event.records_failed);
+  })
+  .listen('.import.job.status.changed', (event) => {
+    console.log('Status changed:', event.status);
+    console.log('Event type:', event.event_type);
+    if (event.event_type === 'job_completed') {
+      showSuccessNotification(event);
+    }
   });
 
-// Subscribe to profile events
+// User-specific notifications
+Echo.private(`user.${userId}`)
+  .listen('.import.progress.updated', handleUserImportUpdate)
+  .listen('.import.job.status.changed', handleUserImportStatus);
+
+// Profile-wide events
 Echo.private(`import.profile.${profileId}`)
-  .listen('ImportProfileUpdated', (event) => {
-    console.log('Profile configuration updated');
+  .listen('.import.profile.updated', (event) => {
+    console.log('Profile configuration changed');
   });
 ```
 
-**Available Events:**
-- `ImportJobStarted` - Job execution began
-- `ImportJobUpdated` - Progress update with current operation
-- `ImportJobCompleted` - Job finished successfully  
-- `ImportJobFailed` - Job encountered errors
-- `ImportJobCancelled` - Job was cancelled
-- `ImportProfileUpdated` - Profile configuration changed
-- `ImportTemplateApplied` - Template applied to profile
+**Enhanced Event System:**
+- `import.progress.updated` - Real-time progress with comprehensive statistics
+- `import.job.status.changed` - Status transitions with event context
+- `import.profile.updated` - Profile configuration changes
+- `import.template.applied` - Template application events
+
+**Multi-Channel Broadcasting:**
+- **Job Channels** - `import.job.{job_id}` for specific job updates
+- **Profile Channels** - `import.profile.{profile_id}` for profile events
+- **User Channels** - `user.{user_id}` for personal notifications
+- **Global Channels** - `import.global` for admin oversight
+
+## Import Analytics & Reporting
+
+### Get Analytics Dashboard
+
+```bash
+GET /api/import/analytics/dashboard
+```
+
+**Query Parameters:**
+- `date_from` (date): Analytics from date
+- `date_to` (date): Analytics to date
+- `profile_id` (string): Filter by specific profile
+
+**Response:**
+```json
+{
+  "dashboard": {
+    "overview": {
+      "total_jobs": 156,
+      "total_records_processed": 2500000,
+      "total_records_imported": 2375000,
+      "total_records_updated": 95000,
+      "total_records_skipped": 25000,
+      "total_records_failed": 5000,
+      "average_success_rate": 95.2,
+      "average_duration": 3420
+    },
+    "trends": {
+      "daily_jobs": [...],
+      "success_rates": [...],
+      "performance_metrics": [...]
+    },
+    "top_profiles": [
+      {
+        "profile": {...},
+        "job_count": 45,
+        "success_rate": 98.5,
+        "total_records": 850000
+      }
+    ]
+  }
+}
+```
+
+### Get Profile Statistics
+
+```bash
+GET /api/import/analytics/profiles/{profile_id}/stats
+```
+
+**Response:**
+```json
+{
+  "profile_stats": {
+    "total_jobs": 25,
+    "success_rate": 96.8,
+    "average_duration": 2840,
+    "total_records_imported": 125000,
+    "duplicate_detection_effectiveness": 89.2,
+    "recent_performance": {
+      "last_7_days": {...},
+      "last_30_days": {...}
+    },
+    "record_breakdown": {
+      "customer_users": 45000,
+      "tickets": 60000,
+      "time_entries": 20000
+    }
+  }
+}
+```
+
+### Get Duplicate Analysis
+
+```bash
+GET /api/import/analytics/duplicate-analysis
+```
+
+**Query Parameters:**
+- `strategy` (string): Filter by detection strategy
+- `confidence_min` (integer): Minimum confidence threshold
+- `date_from` (date): Analysis from date
+
+**Response:**
+```json
+{
+  "duplicate_analysis": {
+    "detection_strategies": {
+      "exact": {
+        "total_matches": 15000,
+        "average_confidence": 100,
+        "false_positive_rate": 0.1
+      },
+      "fuzzy": {
+        "total_matches": 8500,
+        "average_confidence": 87.3,
+        "false_positive_rate": 2.8
+      }
+    },
+    "confidence_distribution": [
+      {"range": "90-100%", "count": 12000},
+      {"range": "80-89%", "count": 8500},
+      {"range": "70-79%", "count": 3000}
+    ],
+    "effectiveness_metrics": {
+      "true_positives": 95.2,
+      "false_positives": 2.8,
+      "false_negatives": 2.0
+    }
+  }
+}
+```
+
+## Import Record Management
+
+### List Import Records
+
+```bash
+GET /api/import/analytics/records
+```
+
+**Query Parameters:**
+- `job_id` (string): Filter by import job
+- `import_action` (string): Filter by action (`created`, `updated`, `skipped`, `failed`)
+- `target_type` (string): Filter by target record type
+- `has_duplicates` (boolean): Filter records with/without duplicates
+- `confidence_min` (integer): Minimum duplicate confidence
+- `per_page` (integer): Results per page
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "import_job_id": "uuid",
+      "import_profile_id": "uuid",
+      "source_table": "customers",
+      "source_identifier": "12345",
+      "source_hash": "sha256-hash",
+      "target_type": "customer_users",
+      "target_id": "uuid",
+      "import_action": "created",
+      "import_mode": "upsert",
+      "matching_rules": {
+        "strategy": "fuzzy",
+        "primary_fields": ["email"],
+        "confidence_threshold": 85
+      },
+      "matching_fields": {
+        "email": {
+          "confidence": 92.5,
+          "matched_value": "john.doe@company.com"
+        }
+      },
+      "duplicate_of": null,
+      "error_message": null,
+      "field_mappings": {...},
+      "created_at": "2025-08-21T10:15:30Z"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "per_page": 25,
+    "total": 5000
+  }
+}
+```
+
+### Bulk Operations on Import Records
+
+#### Bulk Approve Records
+
+```bash
+POST /api/import/records/bulk/approve
+```
+
+**Request Body:**
+```json
+{
+  "record_ids": ["uuid1", "uuid2", "uuid3"],
+  "criteria": {
+    "job_id": "job-uuid",
+    "import_action": "skipped",
+    "confidence_min": 80
+  },
+  "options": {
+    "create_missing_targets": true,
+    "update_existing_targets": false
+  }
+}
+```
+
+#### Bulk Retry Failed Records
+
+```bash
+POST /api/import/records/bulk/retry
+```
+
+**Request Body:**
+```json
+{
+  "record_ids": ["uuid1", "uuid2"],
+  "retry_options": {
+    "import_mode": "create",
+    "skip_duplicates": true,
+    "batch_size": 50
+  }
+}
+```
+
+#### Bulk Delete with Rollback
+
+```bash
+DELETE /api/import/records/bulk
+```
+
+**Request Body:**
+```json
+{
+  "record_ids": ["uuid1", "uuid2"],
+  "rollback_options": {
+    "rollback_target_records": true,
+    "preserve_relationships": false,
+    "create_audit_log": true
+  }
+}
+```
+
+## Import Rollback Functionality
+
+### Create Rollback Job
+
+```bash
+POST /api/import/jobs/{job_id}/rollback
+```
+
+**Request Body:**
+```json
+{
+  "rollback_options": {
+    "target_actions": ["created", "updated"],
+    "preserve_relationships": true,
+    "batch_size": 100,
+    "dry_run": false
+  },
+  "confirmation": {
+    "understood_consequences": true,
+    "backup_created": true
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Rollback job created successfully",
+  "rollback_job": {
+    "id": "uuid",
+    "original_job_id": "uuid",
+    "status": "pending",
+    "estimated_records": 2500,
+    "rollback_options": {...},
+    "created_at": "2025-08-21T11:00:00Z"
+  }
+}
+```
+
+### Get Rollback Status
+
+```bash
+GET /api/import/rollback/{rollback_job_id}/status
+```
+
+**Response:**
+```json
+{
+  "rollback_job": {
+    "id": "uuid",
+    "status": "running",
+    "progress_percentage": 35,
+    "current_operation": "Rolling back customer_users records",
+    "records_processed": 875,
+    "records_rolled_back": 850,
+    "records_failed": 25,
+    "started_at": "2025-08-21T11:00:00Z",
+    "estimated_completion": "2025-08-21T11:15:00Z"
+  }
+}
+```
 
 ---
 

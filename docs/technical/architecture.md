@@ -187,8 +187,93 @@ Service Vault uses a native `<dialog>`-based modal system for proper stacking an
 The ApprovalWizardModal has been converted to use StackedDialog architecture:
 - **Proper Z-Index Management**: Eliminates dropdown clipping issues in account selection
 - **Consistent UI**: Unified header with title and subtitle for account context
-- **StackedDialog Components**: All billing and approval workflows use native dialog elements
-- **Nested Modal Support**: Approval wizard can launch from both Time & Addons and Billing pages without z-index conflicts
+
+### StandardPageLayout System
+
+Service Vault implements a unified layout architecture for consistent page structure across the entire application:
+
+**Core Components**:
+- **`StandardPageLayout.vue`**: Main layout wrapper with configurable slots
+- **`FilterSection.vue`**: Standardized filter container with collapsible mobile behavior
+- **`PageHeader.vue`**: Consistent page headers with title and action areas
+- **`PageSidebar.vue`**: Sidebar wrapper with automatic spacing
+
+**Layout Structure**:
+```vue
+<StandardPageLayout
+  :title="pageTitle"
+  subtitle="Page description"
+  :show-sidebar="true"
+  :show-filters="true"
+>
+  <template #header-actions>
+    <!-- Action buttons -->
+  </template>
+  <template #filters>
+    <!-- Filter components -->
+  </template>
+  <template #main-content>
+    <!-- Primary content -->
+  </template>
+  <template #sidebar>
+    <!-- Stats, widgets, etc. -->
+  </template>
+</StandardPageLayout>
+```
+
+**Key Features**:
+- **Responsive Design**: Mobile-first with automatic sidebar/filter collapsing
+- **Full-Width Support**: No artificial width constraints on desktop
+- **Configurable Slots**: Flexible content areas for different page types
+- **Mobile Toggle Controls**: Automatic mobile sidebar and filter toggles
+- **Consistent Spacing**: Standardized padding and margins across all pages
+
+**Implementation Benefits**:
+- **Code Consistency**: All pages follow same layout patterns
+- **Maintainability**: Centralized layout logic reduces duplication
+- **Responsive UX**: Unified mobile behavior across all pages
+- **Developer Experience**: Easy to implement new pages with standard structure
+
+**Current Implementation**: Initially deployed on tickets page (`/resources/js/Pages/Tickets/Index.vue`) with plans to extend to other pages once validated.
+
+### Enhanced Filtering System
+
+Service Vault features an intelligent multi-select filtering system with user-specific persistence:
+
+**MultiSelect Component** (`/resources/js/Components/UI/MultiSelect.vue`):
+- **Dropdown Interface**: Visual multi-select with checkboxes and "Select All/Clear All" options
+- **Smart Display**: Shows selected count or individual items based on selection size
+- **Keyboard Navigation**: Full accessibility support with proper focus management
+- **Click Outside**: Automatic dropdown closing with event management
+
+**Filter Persistence Architecture**:
+```javascript
+// User-specific localStorage keys
+const getStorageKey = (key) => `tickets-filters-${user.id}-${key}`
+
+// Default filter logic
+const getDefaultStatuses = () => {
+  return ticketStatuses.filter(status => status.key !== 'closed')
+}
+```
+
+**Key Features**:
+- **Smart Defaults**: Excludes closed tickets on initial load for better user experience
+- **Multi-Select Arrays**: Status and priority filters support multiple selection values
+- **Per-User Persistence**: Filter preferences saved uniquely per user in localStorage
+- **Automatic Restoration**: Filters restore on page reload with fallback to smart defaults
+- **Array Parameter Handling**: Backend API supports both single values and arrays (`status[]`, `priority[]`)
+
+**API Integration**:
+- **Query Parameters**: `useTicketsQuery.js` handles both string and array filter values
+- **Backward Compatibility**: Supports legacy single-value filters while enabling multi-select
+- **TanStack Query**: Reactive query keys ensure proper cache invalidation on filter changes
+
+**Implementation Benefits**:
+- **Better UX**: Users see relevant tickets (non-closed) by default
+- **Flexible Filtering**: Multi-select enables complex filtering scenarios
+- **Stateful Experience**: Remembers user preferences across sessions
+- **Performance**: Efficient localStorage with user-scoped keys prevents conflicts
 
 ### Real-Time Broadcasting
 

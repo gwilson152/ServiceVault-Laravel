@@ -10,6 +10,14 @@ const props = defineProps({
         type: String,
         default: '2xl',
     },
+    fullscreen: {
+        type: Boolean,
+        default: false,
+    },
+    fullscreenPadding: {
+        type: String,
+        default: '4rem', // Default 64px from each edge for desktop fullscreen
+    },
     closeable: {
         type: Boolean,
         default: true,
@@ -59,6 +67,10 @@ const zIndex = computed(() => {
 })
 
 const maxWidthClass = computed(() => {
+    if (props.fullscreen) {
+        return '' // No max-width restrictions for fullscreen
+    }
+    
     return {
         sm: 'sm:max-w-sm',
         md: 'sm:max-w-md',
@@ -71,6 +83,19 @@ const maxWidthClass = computed(() => {
         '6xl': 'sm:max-w-6xl',
         '7xl': 'sm:max-w-7xl',
     }[props.maxWidth]
+})
+
+const fullscreenStyles = computed(() => {
+    if (!props.fullscreen) {
+        return {}
+    }
+    
+    return {
+        width: `calc(100vw - ${props.fullscreenPadding} - ${props.fullscreenPadding})`,
+        maxWidth: `calc(100vw - ${props.fullscreenPadding} - ${props.fullscreenPadding})`,
+        height: `calc(100vh - ${props.fullscreenPadding} - ${props.fullscreenPadding})`,
+        maxHeight: `calc(100vh - ${props.fullscreenPadding} - ${props.fullscreenPadding})`,
+    }
 })
 
 const backdropOpacity = computed(() => {
@@ -247,8 +272,10 @@ onUnmounted(() => {
                     class="mb-6 transform rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full flex flex-col"
                     :class="[
                         allowDropdowns ? 'overflow-visible' : 'overflow-hidden',
-                        maxWidthClass
+                        maxWidthClass,
+                        { 'mb-0': fullscreen }
                     ]"
+                    :style="fullscreenStyles"
                     @click.stop
                 >
                     <!-- Header -->

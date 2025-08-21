@@ -45,12 +45,14 @@
     </div>
 
     <!-- Tables List -->
-    <div v-else-if="filteredTables.length > 0" class="space-y-2 max-h-96 overflow-y-auto">
+    <div v-else-if="filteredTables.length > 0" class="space-y-2">
       <div
         v-for="table in filteredTables"
         :key="table.name"
         @click="selectTable(table)"
-        class="group cursor-pointer border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:bg-indigo-50 transition-all"
+        @mouseenter="showTableTooltip(table, $event)"
+        @mouseleave="hideTableTooltip(table)"
+        class="group cursor-pointer border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:bg-indigo-50 transition-all relative"
         :class="{
           'border-indigo-500 bg-indigo-50': selectedTable?.name === table.name
         }"
@@ -129,6 +131,68 @@
         </div>
       </div>
     </div>
+
+    <!-- Table Details Tooltip -->
+    <div
+      v-if="tooltipVisible && tooltipTable"
+      ref="tooltip"
+      class="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-md"
+      :style="tooltipStyle"
+      @mouseenter="keepTooltipVisible"
+      @mouseleave="hideTableTooltip"
+    >
+      <div class="space-y-3">
+        <!-- Table Header -->
+        <div class="border-b border-gray-200 pb-2">
+          <div class="flex items-center">
+            <TableCellsIcon class="w-5 h-5 text-gray-400 mr-2" />
+            <h3 class="text-sm font-semibold text-gray-900">{{ tooltipTable.name }}</h3>
+          </div>
+          <p v-if="tooltipTable.comment" class="text-xs text-gray-600 mt-1">{{ tooltipTable.comment }}</p>
+        </div>
+
+        <!-- Table Stats -->
+        <div class="grid grid-cols-2 gap-4 text-xs">
+          <div>
+            <span class="font-medium text-gray-700">Columns:</span>
+            <span class="text-gray-900 ml-1">{{ tooltipTable.columns?.length || 0 }}</span>
+          </div>
+          <div>
+            <span class="font-medium text-gray-700">Rows:</span>
+            <span class="text-gray-900 ml-1">{{ formatRowCount(tooltipTable.row_count) }}</span>
+          </div>
+        </div>
+
+        <!-- Column Details -->
+        <div v-if="tooltipTable.columns && tooltipTable.columns.length > 0">
+          <h4 class="text-xs font-medium text-gray-700 mb-2">Columns:</h4>
+          <div class="max-h-40 overflow-y-auto space-y-1">
+            <div
+              v-for="column in tooltipTable.columns"
+              :key="column.name"
+              class="flex items-center justify-between text-xs py-1"
+            >
+              <div class="flex items-center flex-1">
+                <span class="font-medium text-gray-900">{{ column.name }}</span>
+                <span class="ml-2 text-gray-500">{{ column.type }}</span>
+                <span v-if="column.is_primary_key" class="ml-1 text-blue-600" title="Primary Key">🔑</span>
+                <span v-if="column.is_foreign_key" class="ml-1 text-green-600" title="Foreign Key">🔗</span>
+                <span v-if="!column.is_nullable" class="ml-1 text-orange-600" title="Not Null">*</span>
+              </div>
+              <div v-if="column.default_value" class="text-gray-400 ml-2 truncate max-w-20" :title="column.default_value">
+                {{ column.default_value }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional Info -->
+        <div v-if="tooltipTable.schema || tooltipTable.size_pretty" class="border-t border-gray-200 pt-2 text-xs text-gray-600">
+          <div v-if="tooltipTable.schema" class="mb-1">Schema: {{ tooltipTable.schema }}</div>
+          <div v-if="tooltipTable.size_pretty">Size: {{ tooltipTable.size_pretty }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -145,7 +209,7 @@ import {
 const props = defineProps({
   profileId: {
     type: String,
-    required: true
+    default: null
   },
   modelValue: {
     type: Object,
@@ -153,7 +217,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'table-selected'])
+const emit = defineEmits(['update:modelValue', 'table-selected', 'schema-loaded'])
 
 // State
 const tables = ref([])
@@ -161,6 +225,14 @@ const selectedTable = ref(props.modelValue)
 const searchQuery = ref('')
 const isLoading = ref(false)
 const error = ref(null)
+
+// Tooltip state
+const tooltipVisible = ref(false)
+const tooltipTable = ref(null)
+const tooltipStyle = ref({})
+const tooltip = ref(null)
+const tooltipHideTimer = ref(null)
+const currentHoveredTable = ref(null)
 
 // Computed
 const filteredTables = computed(() => {
@@ -182,7 +254,9 @@ const selectTable = (table) => {
 }
 
 const refreshTables = async () => {
-  if (!props.profileId) return
+  if (!props.profileId) {
+    return
+  }
   
   isLoading.value = true
   error.value = null
@@ -201,7 +275,18 @@ const refreshTables = async () => {
     
     if (response.ok) {
       const data = await response.json()
-      tables.value = data.tables || []
+      
+      // Handle different response formats
+      if (data.schema?.tables) {
+        tables.value = data.schema.tables
+        emit('schema-loaded', { tables: data.schema.tables })
+      } else if (data.tables) {
+        tables.value = data.tables
+        emit('schema-loaded', { tables: data.tables })
+      } else {
+        tables.value = []
+        emit('schema-loaded', { tables: [] })
+      }
     } else {
       const errorData = await response.json()
       error.value = errorData.message || 'Failed to load database schema'
@@ -217,6 +302,90 @@ const viewTableDetails = () => {
   if (selectedTable.value) {
     // Could emit an event or open a modal with detailed table information
     emit('view-table-details', selectedTable.value)
+  }
+}
+
+const showTableTooltip = (table, event) => {
+  // Cancel any pending hide operation
+  if (tooltipHideTimer.value) {
+    clearTimeout(tooltipHideTimer.value)
+    tooltipHideTimer.value = null
+  }
+  
+  // Track current hovered table
+  currentHoveredTable.value = table.name
+  tooltipTable.value = table
+  tooltipVisible.value = true
+  
+  // Position tooltip at top right of the table item
+  const rect = event.currentTarget.getBoundingClientRect()
+  const tooltipWidth = 384 // max-w-md = 24rem = 384px
+  const tooltipHeight = 320 // estimated max height
+  const spacing = 8
+  
+  // Position at top right of the table item
+  let left = rect.right + spacing
+  let top = rect.top
+  
+  // Check if tooltip would go off right edge of screen
+  if (left + tooltipWidth > window.innerWidth) {
+    // Position to the left of the table item instead
+    left = rect.left - tooltipWidth - spacing
+  }
+  
+  // Check if tooltip would go off bottom edge of screen
+  if (top + tooltipHeight > window.innerHeight) {
+    // Align bottom of tooltip with bottom of visible area
+    top = window.innerHeight - tooltipHeight - spacing
+  }
+  
+  // Ensure tooltip doesn't go off top edge
+  if (top < spacing) {
+    top = spacing
+  }
+  
+  // Ensure tooltip doesn't go off left edge (fallback)
+  if (left < spacing) {
+    left = spacing
+  }
+  
+  tooltipStyle.value = {
+    left: `${left}px`,
+    top: `${top}px`
+  }
+}
+
+const hideTableTooltip = (table = null) => {
+  // If we're moving to another table, don't hide - just change immediately
+  if (table && currentHoveredTable.value !== table.name) {
+    return
+  }
+  
+  // Clear current hovered table
+  currentHoveredTable.value = null
+  
+  // Clear any existing timer
+  if (tooltipHideTimer.value) {
+    clearTimeout(tooltipHideTimer.value)
+  }
+  
+  // Add delay to allow mouse to move to tooltip or another table
+  tooltipHideTimer.value = setTimeout(() => {
+    // Only hide if we're not hovering over another table
+    if (!currentHoveredTable.value) {
+      tooltipVisible.value = false
+      tooltipTable.value = null
+    }
+    tooltipHideTimer.value = null
+  }, 100)
+}
+
+
+const keepTooltipVisible = () => {
+  // Cancel any pending hide when mouse enters tooltip
+  if (tooltipHideTimer.value) {
+    clearTimeout(tooltipHideTimer.value)
+    tooltipHideTimer.value = null
   }
 }
 

@@ -277,6 +277,7 @@ Content-Type: application/json
 ```http
 POST /api/time-entries/{entry_id}/approve
 POST /api/time-entries/{entry_id}/reject
+POST /api/time-entries/{entry_id}/unapprove
 
 {
   "notes": "Approved for billing",
@@ -289,6 +290,13 @@ POST /api/time-entries/{entry_id}/reject
 - **Amount Locking**: Approval automatically locks the calculated amount in `approved_amount` field
 - **Permissions**: Rate override requires `time.manage` or `admin.manage` permissions
 - **Final Amount**: Once approved, uses locked `approved_amount` instead of recalculated values
+
+**Unapproval System** (August 2025):
+- **Unapprove Endpoint**: `POST /api/time-entries/{entry_id}/unapprove` with optional notes
+- **Invoice Protection**: Only approved entries not yet invoiced can be unapproved
+- **Status Reset**: Returns entry to "pending" status and clears approval metadata
+- **Permission Required**: Same permissions as approval workflow (`time.manage` or equivalent)
+- **API Response Fields**: Includes `is_invoiced` and `can_unapprove` boolean fields
 
 ### Bulk Approvals
 ```http
@@ -326,6 +334,8 @@ GET /api/time-entries/stats/approvals     # Approval statistics (managers/admins
     "final_amount": 250.00,
     "status": "approved",
     "billable": true,
+    "is_invoiced": false,
+    "can_unapprove": true,
     "user": {"id": "user-uuid", "name": "John Doe"},
     "account": {"id": "account-uuid", "name": "Client Co"},
     "billing_rate": {"id": "rate-uuid", "rate": 100.00}
@@ -338,6 +348,10 @@ GET /api/time-entries/stats/approvals     # Approval statistics (managers/admins
 - **approved_amount**: Locked amount at approval time (nullable)
 - **effective_rate**: Computed effective rate (rate_override ?? rate_at_time)
 - **final_amount**: Final billable amount (approved_amount ?? calculated_cost)
+
+**Unapproval System Fields**:
+- **is_invoiced**: Boolean indicating if entry is associated with an invoice
+- **can_unapprove**: Boolean indicating if entry can be unapproved (approved + not invoiced)
 
 ## Users API
 

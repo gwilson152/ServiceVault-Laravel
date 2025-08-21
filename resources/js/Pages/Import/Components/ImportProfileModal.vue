@@ -6,6 +6,21 @@
     max-width="3xl"
   >
     <form @submit.prevent="handleSubmit" class="space-y-6">
+      <!-- General Error Display -->
+      <div v-if="errors.general" class="rounded-md bg-red-50 p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <XCircleIcon class="h-5 w-5 text-red-400" />
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Error</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <p>{{ errors.general }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Basic Information -->
       <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
@@ -406,8 +421,15 @@ const handleSubmit = async () => {
     
     emit('saved')
   } catch (error) {
-    if (error.data?.errors) {
+    console.error('Form submission error:', error)
+    
+    // Handle TanStack Query mutation errors (axios errors wrapped by TanStack Query)
+    if (error.response?.data?.errors) {
+      errors.value = error.response.data.errors
+    } else if (error.data?.errors) {
       errors.value = error.data.errors
+    } else if (error.response?.data?.message) {
+      errors.value = { general: error.response.data.message }
     } else {
       errors.value = { general: error.message || 'An error occurred' }
     }

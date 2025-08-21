@@ -2,105 +2,223 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ImportRecord extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
-        'job_id',
-        'mapping_id',
+        'import_job_id',
+        'import_profile_id',
         'source_table',
-        'source_id',
-        'destination_table',
-        'destination_id',
         'source_data',
-        'import_status',
+        'source_identifier',
+        'source_hash',
+        'target_type',
+        'target_id',
+        'import_action',
+        'import_mode',
+        'matching_rules',
+        'matching_fields',
+        'duplicate_of',
         'error_message',
+        'validation_errors',
+        'field_mappings',
+        'transformations',
     ];
 
     protected $casts = [
         'source_data' => 'array',
+        'matching_rules' => 'array',
+        'matching_fields' => 'array',
+        'validation_errors' => 'array',
+        'field_mappings' => 'array',
+        'transformations' => 'array',
     ];
 
     /**
-     * Get the import job this record belongs to.
+     * The import job this record belongs to
      */
-    public function job(): BelongsTo
+    public function importJob(): BelongsTo
     {
-        return $this->belongsTo(ImportJob::class, 'job_id');
+        return $this->belongsTo(ImportJob::class);
     }
 
     /**
-     * Get the import mapping this record used.
+     * The import profile used for this record
      */
-    public function mapping(): BelongsTo
+    public function importProfile(): BelongsTo
     {
-        return $this->belongsTo(ImportMapping::class, 'mapping_id');
+        return $this->belongsTo(ImportProfile::class);
     }
 
     /**
-     * Check if the record was successfully imported.
+     * The original import record this is a duplicate of
      */
-    public function wasImported(): bool
+    public function duplicateOf(): BelongsTo
     {
-        return in_array($this->import_status, ['imported', 'updated']);
+        return $this->belongsTo(ImportRecord::class, 'duplicate_of');
     }
 
     /**
-     * Check if the record failed to import.
+     * Records that are duplicates of this record
      */
-    public function hasFailed(): bool
+    public function duplicates()
     {
-        return $this->import_status === 'failed';
+        return $this->hasMany(ImportRecord::class, 'duplicate_of');
     }
 
     /**
-     * Scope to get records for a specific job.
+     * Get the target record (polymorphic relationship)
      */
-    public function scopeForJob($query, int $jobId)
+    public function target()
     {
-        return $query->where('job_id', $jobId);
+        return $this->morphTo('target', 'target_type', 'target_id');
     }
 
     /**
-     * Scope to get imported records.
+     * Generate a hash for duplicate detection
      */
-    public function scopeImported($query)
+    public static function generateHash(array $data, array $matchingFields = []): string
     {
-        return $query->whereIn('import_status', ['imported', 'updated']);
+        // Use specific fields if provided, otherwise use all data
+        $hashData = empty($matchingFields) ? $data : array_intersect_key($data, array_flip($matchingFields));
+        
+        // Sort to ensure consistent hashing
+        ksort($hashData);
+        
+        return hash('sha256', serialize($hashData));
     }
 
     /**
-     * Scope to get failed records.
+     * Check if this record was successfully imported
+     */
+    public function isSuccessful(): bool
+    {
+        return in_array($this->import_action, ['created', 'updated']);
+    }
+
+    /**
+     * Check if this record failed to import
+     */
+    public function isFailed(): bool
+    {
+        return $this->import_action === 'failed';
+    }
+
+    /**
+     * Check if this record was skipped
+     */
+    public function isSkipped(): bool
+    {
+        return $this->import_action === 'skipped';
+    }
+
+    /**
+     * Check if this record is a duplicate
+     */
+    public function isDuplicate(): bool
+    {
+        return !is_null($this->duplicate_of);
+    }
+
+    /**
+     * Get formatted error information
+     */
+    public function getFormattedErrors(): array
+    {
+        $errors = [];
+        
+        if ($this->error_message) {
+            $errors['general'] = $this->error_message;
+        }
+        
+        if ($this->validation_errors) {
+            $errors['validation'] = $this->validation_errors;
+        }
+        
+        return $errors;
+    }
+
+    /**
+     * Scope to filter by import action
+     */
+    public function scopeByAction($query, string $action)
+    {
+        return $query->where('import_action', $action);
+    }
+
+    /**
+     * Scope to filter by import mode
+     */
+    public function scopeByMode($query, string $mode)
+    {
+        return $query->where('import_mode', $mode);
+    }
+
+    /**
+     * Scope to filter by target type
+     */
+    public function scopeByTargetType($query, string $targetType)
+    {
+        return $query->where('target_type', $targetType);
+    }
+
+    /**
+     * Scope to get successful imports
+     */
+    public function scopeSuccessful($query)
+    {
+        return $query->whereIn('import_action', ['created', 'updated']);
+    }
+
+    /**
+     * Scope to get failed imports
      */
     public function scopeFailed($query)
     {
-        return $query->where('import_status', 'failed');
+        return $query->where('import_action', 'failed');
     }
 
     /**
-     * Find existing import record by source reference.
+     * Scope to get skipped imports
      */
-    public static function findBySource(string $sourceTable, string $sourceId): ?self
+    public function scopeSkipped($query)
+    {
+        return $query->where('import_action', 'skipped');
+    }
+
+    /**
+     * Scope to get duplicates
+     */
+    public function scopeDuplicates($query)
+    {
+        return $query->whereNotNull('duplicate_of');
+    }
+
+    /**
+     * Find existing import record by source reference
+     */
+    public static function findBySource(string $sourceTable, string $sourceIdentifier): ?self
     {
         return static::where('source_table', $sourceTable)
-                    ->where('source_id', $sourceId)
+                    ->where('source_identifier', $sourceIdentifier)
                     ->orderBy('created_at', 'desc')
                     ->first();
     }
 
     /**
-     * Check if a source record has been imported before.
+     * Check if a source record has been imported before
      */
-    public static function hasBeenImported(string $sourceTable, string $sourceId): bool
+    public static function hasBeenImported(string $sourceTable, string $sourceIdentifier): bool
     {
         return static::where('source_table', $sourceTable)
-                    ->where('source_id', $sourceId)
-                    ->where('import_status', '!=', 'failed')
+                    ->where('source_identifier', $sourceIdentifier)
+                    ->where('import_action', '!=', 'failed')
                     ->exists();
     }
 }

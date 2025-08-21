@@ -15,10 +15,12 @@ class ImportJob extends Model
         'profile_id',
         'status',
         'import_options',
+        'mode_config',
         'started_at',
         'completed_at',
         'records_processed',
         'records_imported',
+        'records_updated',
         'records_skipped',
         'records_failed',
         'summary',
@@ -30,11 +32,13 @@ class ImportJob extends Model
 
     protected $casts = [
         'import_options' => 'array',
+        'mode_config' => 'array',
         'summary' => 'array',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'records_processed' => 'integer',
         'records_imported' => 'integer',
+        'records_updated' => 'integer',
         'records_skipped' => 'integer',
         'records_failed' => 'integer',
         'progress_percentage' => 'integer',
@@ -118,6 +122,8 @@ class ImportJob extends Model
             'started_at' => now(),
             'progress_percentage' => 0,
         ]);
+        
+        $this->broadcastStatusChange('job_started');
     }
 
     /**
@@ -131,6 +137,8 @@ class ImportJob extends Model
             'progress_percentage' => 100,
             'current_operation' => null,
         ]);
+        
+        $this->broadcastStatusChange('job_completed');
     }
 
     /**
@@ -144,10 +152,12 @@ class ImportJob extends Model
             'errors' => $error ? ($this->errors ? $this->errors . "\n" . $error : $error) : $this->errors,
             'current_operation' => null,
         ]);
+        
+        $this->broadcastStatusChange('job_failed');
     }
 
     /**
-     * Update job progress.
+     * Update job progress with real-time broadcasting.
      */
     public function updateProgress(int $percentage, string $operation = null): void
     {
@@ -158,5 +168,16 @@ class ImportJob extends Model
         }
         
         $this->update($updateData);
+        
+        // Broadcast progress update in real-time
+        broadcast(new \App\Events\ImportProgressUpdated($this))->toOthers();
+    }
+    
+    /**
+     * Broadcast job status change.
+     */
+    public function broadcastStatusChange(string $event = 'status_changed'): void
+    {
+        broadcast(new \App\Events\ImportJobStatusChanged($this, $event))->toOthers();
     }
 }

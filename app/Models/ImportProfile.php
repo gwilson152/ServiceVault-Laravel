@@ -31,12 +31,24 @@ class ImportProfile extends Model
         'created_by',
         'last_tested_at',
         'last_test_result',
+        'import_mode',
+        'duplicate_detection',
+        'skip_duplicates',
+        'update_duplicates',
+        'source_identifier_field',
+        'matching_strategy',
+        'import_stats',
     ];
 
     protected $casts = [
         'connection_options' => 'array',
         'last_test_result' => 'array',
+        'duplicate_detection' => 'array',
+        'matching_strategy' => 'array',
+        'import_stats' => 'array',
         'is_active' => 'boolean',
+        'skip_duplicates' => 'boolean',
+        'update_duplicates' => 'boolean',
         'port' => 'integer',
         'last_tested_at' => 'datetime',
     ];
@@ -59,6 +71,14 @@ class ImportProfile extends Model
     public function importJobs(): HasMany
     {
         return $this->hasMany(ImportJob::class, 'profile_id');
+    }
+
+    /**
+     * Get the import records for this profile.
+     */
+    public function importRecords(): HasMany
+    {
+        return $this->hasMany(ImportRecord::class);
     }
 
     /**
@@ -166,5 +186,78 @@ class ImportProfile extends Model
     public function mappings()
     {
         return $this->hasMany(ImportMapping::class, 'profile_id');
+    }
+
+    /**
+     * Get the default duplicate detection configuration
+     */
+    public function getDefaultDuplicateDetection(): array
+    {
+        return $this->duplicate_detection ?? [
+            'enabled' => true,
+            'fields' => [$this->source_identifier_field ?? 'id'],
+            'strategy' => 'exact_match',
+            'case_sensitive' => false,
+        ];
+    }
+
+    /**
+     * Get the default matching strategy
+     */
+    public function getDefaultMatchingStrategy(): array
+    {
+        return $this->matching_strategy ?? [
+            'primary_fields' => [$this->source_identifier_field ?? 'id'],
+            'secondary_fields' => ['email'],
+            'fuzzy_matching' => false,
+            'similarity_threshold' => 0.8,
+        ];
+    }
+
+    /**
+     * Check if the profile should skip duplicates
+     */
+    public function shouldSkipDuplicates(): bool
+    {
+        return $this->skip_duplicates;
+    }
+
+    /**
+     * Check if the profile should update duplicates
+     */
+    public function shouldUpdateDuplicates(): bool
+    {
+        return $this->update_duplicates;
+    }
+
+    /**
+     * Get import mode configuration
+     */
+    public function getImportModeConfig(): array
+    {
+        return [
+            'mode' => $this->import_mode ?? 'upsert',
+            'skip_duplicates' => $this->shouldSkipDuplicates(),
+            'update_duplicates' => $this->shouldUpdateDuplicates(),
+            'source_identifier_field' => $this->source_identifier_field,
+            'duplicate_detection' => $this->getDefaultDuplicateDetection(),
+            'matching_strategy' => $this->getDefaultMatchingStrategy(),
+        ];
+    }
+
+    /**
+     * Update import statistics
+     */
+    public function updateImportStats(array $stats): void
+    {
+        $this->import_stats = array_merge($this->import_stats ?? [], [
+            'last_import' => now()->toISOString(),
+            'total_records' => $stats['total'] ?? 0,
+            'created' => $stats['created'] ?? 0,
+            'updated' => $stats['updated'] ?? 0,
+            'skipped' => $stats['skipped'] ?? 0,
+            'failed' => $stats['failed'] ?? 0,
+        ]);
+        $this->save();
     }
 }

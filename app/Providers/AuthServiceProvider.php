@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\DomainMapping;
 use App\Models\ImportJob;
 use App\Models\ImportProfile;
+use App\Models\ImportTemplate;
 use App\Models\Ticket;
 use App\Models\TimeEntry;
 use App\Models\Timer;
@@ -13,6 +14,7 @@ use App\Policies\AccountPolicy;
 use App\Policies\DomainMappingPolicy;
 use App\Policies\ImportJobPolicy;
 use App\Policies\ImportProfilePolicy;
+use App\Policies\ImportTemplatePolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\TimeEntryPolicy;
 use App\Policies\TimerPolicy;
@@ -31,6 +33,7 @@ class AuthServiceProvider extends ServiceProvider
         DomainMapping::class => DomainMappingPolicy::class,
         ImportJob::class => ImportJobPolicy::class,
         ImportProfile::class => ImportProfilePolicy::class,
+        ImportTemplate::class => ImportTemplatePolicy::class,
         Ticket::class => TicketPolicy::class,
         TimeEntry::class => TimeEntryPolicy::class,
         Timer::class => TimerPolicy::class,

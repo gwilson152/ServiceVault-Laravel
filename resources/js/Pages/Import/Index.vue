@@ -257,6 +257,7 @@
     <!-- Create Profile Modal -->
     <ImportProfileModal
       :show="showCreateProfile"
+      :profile="selectedProfile"
       @close="showCreateProfile = false"
       @saved="handleProfileSaved"
     />
@@ -269,21 +270,57 @@
       @execute-import="handleWizardExecuteImport"
     />
     
+    <!-- Real-time Job Monitor -->
+    <ImportJobMonitor
+      :auto-show="true"
+      @job-details="handleJobDetails"
+      @monitor-closed="handleMonitorClosed"
+    />
+    
     <!-- Job Details Modal -->
     <ImportJobDetailsModal
       :show="showJobDetails"
       :job="selectedJob"
       @close="showJobDetails = false"
     />
+
+    <!-- Query Builder Modal -->
+    <QueryBuilderModal
+      :show="showQueryBuilder"
+      :profile="selectedProfile"
+      @close="showQueryBuilder = false"
+      @query-saved="handleQuerySaved"
+    />
+
+    <!-- Template Selector Modal -->
+    <TemplateSelector
+      :show="showTemplateSelector"
+      :profile="selectedProfile"
+      @close="showTemplateSelector = false"
+      @template-applied="handleTemplateApplied"
+    />
+
+    <!-- Success Notification -->
+    <SuccessNotification
+      :show="showSuccessNotification"
+      :title="successNotification.title"
+      :message="successNotification.message"
+      @dismiss="showSuccessNotification = false"
+    />
   </AppLayout>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import axios from 'axios'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import ImportProfileModal from './Components/ImportProfileModal.vue'
 import ImportWizardModal from './Components/ImportWizardModal.vue'
 import ImportJobDetailsModal from './Components/ImportJobDetailsModal.vue'
+import QueryBuilderModal from '@/Components/Import/QueryBuilderModal.vue'
+import TemplateSelector from '@/Components/Import/TemplateSelector.vue'
+import SuccessNotification from '@/Components/SuccessNotification.vue'
+import ImportJobMonitor from '@/Components/Import/ImportJobMonitor.vue'
 import {
   ArrowDownTrayIcon,
   CircleStackIcon,
@@ -295,6 +332,7 @@ import {
   CogIcon,
   EyeIcon,
   DocumentTextIcon,
+  ClockIcon,
 } from '@heroicons/vue/24/outline'
 import { useImportQueries } from '@/Composables/queries/useImportQueries.js'
 
@@ -302,9 +340,16 @@ import { useImportQueries } from '@/Composables/queries/useImportQueries.js'
 const showCreateProfile = ref(false)
 const showImportWizard = ref(false)
 const showJobDetails = ref(false)
+const showQueryBuilder = ref(false)
+const showTemplateSelector = ref(false)
+const showSuccessNotification = ref(false)
 const selectedProfile = ref(null)
 const selectedJob = ref(null)
 const activeProfileMenu = ref(null)
+const successNotification = ref({
+  title: '',
+  message: ''
+})
 
 // Use import queries composable
 const { 
@@ -445,15 +490,15 @@ const executeImport = async (profile) => {
 }
 
 const openTemplateSelector = (profile) => {
+  selectedProfile.value = profile
+  showTemplateSelector.value = true
   activeProfileMenu.value = null
-  // TODO: Open template selection modal for this profile
-  console.log('Opening template selector for profile:', profile.id)
 }
 
 const openQueryBuilder = (profile) => {
+  selectedProfile.value = profile
+  showQueryBuilder.value = true
   activeProfileMenu.value = null
-  // TODO: Open visual query builder for this profile
-  console.log('Opening query builder for profile:', profile.id)
 }
 
 const editProfile = (profile) => {
@@ -494,6 +539,28 @@ const handleProfileSaved = () => {
   refreshProfiles()
 }
 
+const showSuccessMessage = (title, message) => {
+  successNotification.value = { title, message }
+  showSuccessNotification.value = true
+}
+
+const handleQuerySaved = (result) => {
+  showQueryBuilder.value = false
+  selectedProfile.value = null
+  refreshProfiles()
+  showSuccessMessage('Query Saved', 'Your custom query configuration has been saved successfully!')
+}
+
+const handleTemplateApplied = ({ profile, template }) => {
+  showTemplateSelector.value = false
+  selectedProfile.value = null
+  refreshProfiles()
+  showSuccessMessage(
+    'Template Applied', 
+    `Template "${template.name}" has been applied to profile "${profile.name}"`
+  )
+}
+
 const handleWizardExecuteImport = async ({ profile, filters, mappings }) => {
   showImportWizard.value = false
   selectedProfile.value = null
@@ -511,6 +578,16 @@ const handleWizardExecuteImport = async ({ profile, filters, mappings }) => {
   } catch (error) {
     console.error('Import execution failed:', error)
   }
+}
+
+// Job monitor event handlers
+const handleJobDetails = (job) => {
+  viewJobDetails(job)
+}
+
+const handleMonitorClosed = () => {
+  // Optional: Could track monitor state if needed
+  console.log('Import job monitor closed')
 }
 
 // Helper methods

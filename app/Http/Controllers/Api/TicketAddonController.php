@@ -74,7 +74,6 @@ class TicketAddonController extends Controller
             'unit_price' => 'required|numeric|min:0|max:999999.99',
             'quantity' => 'required|numeric|min:0.01|max:99999.99',
             'discount_amount' => 'nullable|numeric|min:0|max:999999.99',
-            'tax_rate' => 'nullable|numeric|min:0|max:1',
             'billable' => 'boolean',
             'is_taxable' => 'boolean',
             'billing_category' => 'required|string|in:addon,expense,product,service',
@@ -91,7 +90,6 @@ class TicketAddonController extends Controller
 
         // Set defaults
         $validated['discount_amount'] = $validated['discount_amount'] ?? 0.00;
-        $validated['tax_rate'] = $validated['tax_rate'] ?? 0.0000;
         $validated['billable'] = $validated['billable'] ?? true;
         $validated['is_taxable'] = $validated['is_taxable'] ?? true;
 
@@ -149,7 +147,6 @@ class TicketAddonController extends Controller
             'unit_price' => 'sometimes|numeric|min:0|max:999999.99',
             'quantity' => 'sometimes|numeric|min:0.01|max:99999.99',
             'discount_amount' => 'nullable|numeric|min:0|max:999999.99',
-            'tax_rate' => 'nullable|numeric|min:0|max:1',
             'billable' => 'boolean',
             'is_taxable' => 'boolean',
             'billing_category' => 'sometimes|string|in:addon,expense,product,service',
@@ -265,6 +262,55 @@ class TicketAddonController extends Controller
 
         return response()->json([
             'message' => 'Failed to reject addon',
+        ], 422);
+    }
+
+    /**
+     * Unapprove an addon (only if not invoiced)
+     */
+    public function unapprove(Request $request, TicketAddon $ticketAddon): JsonResponse
+    {
+        $user = $request->user();
+        $this->authorize('update', $ticketAddon->ticket);
+
+        // Check if user has approval permissions
+        if (!$user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
+            return response()->json([
+                'message' => 'Insufficient permissions to unapprove addons',
+            ], 403);
+        }
+
+        // Check if the addon can be unapproved
+        if (!$ticketAddon->canUnapprove()) {
+            if ($ticketAddon->isInvoiced()) {
+                return response()->json([
+                    'message' => 'Cannot unapprove addon that has been invoiced',
+                ], 422);
+            }
+            if ($ticketAddon->status !== 'approved') {
+                return response()->json([
+                    'message' => 'Addon is not approved',
+                ], 422);
+            }
+        }
+
+        $validated = $request->validate([
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $success = $ticketAddon->unapprove($user, $validated['notes'] ?? 'Unapproved and returned to pending status');
+
+        if ($success) {
+            $ticketAddon->load(['addedBy:id,name', 'approvedBy:id,name']);
+
+            return response()->json([
+                'data' => $ticketAddon,
+                'message' => 'Addon unapproved successfully and returned to pending status',
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Failed to unapprove addon',
         ], 422);
     }
 
