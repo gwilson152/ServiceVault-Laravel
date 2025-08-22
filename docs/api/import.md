@@ -504,7 +504,7 @@ GET /api/import/profiles/{profile_id}/builder/tables
 }
 ```
 
-### Validate Query Configuration
+### Validate Query Configuration (Production-Ready)
 
 ```bash
 POST /api/import/profiles/{profile_id}/builder/validate
@@ -524,12 +524,65 @@ POST /api/import/profiles/{profile_id}/builder/validate
 ```json
 {
   "valid": true,
-  "generated_sql": "SELECT customers.id as external_id, CONCAT(customers.first_name, ' ', customers.last_name) as name...",
+  "generated_sql": "SELECT customers.id as external_id, CONCAT(customers.first_name, ' ', customers.last_name) as name FROM customers LEFT JOIN emails ON emails.customer_id = customers.id WHERE customers.created_at >= '2024-01-01'",
   "estimated_records": 250,
   "warnings": [],
   "errors": []
 }
 ```
+
+### Preview Query with Sample Data (Enhanced)
+
+```bash
+POST /api/import/profiles/{profile_id}/preview-query
+```
+
+**Request Body:**
+```json
+{
+  "base_table": "customers",
+  "joins": [...],
+  "fields": [
+    {
+      "source": "customers.id",
+      "target": "external_id"
+    },
+    {
+      "source": "customers.name", 
+      "target": "name"
+    }
+  ],
+  "filters": [
+    {
+      "field": "customers.name",
+      "operator": "=",
+      "value": "Test Customer"
+    }
+  ],
+  "limit": 20
+}
+```
+
+**Response:**
+```json
+{
+  "sample_data": [
+    {
+      "external_id": 123,
+      "name": "Test Customer"
+    }
+  ],
+  "estimated_records": 1,
+  "generated_query": "SELECT customers.id AS external_id, customers.name AS name FROM customers WHERE customers.name = 'Test Customer'",
+  "columns": ["external_id", "name"]
+}
+```
+
+**Key Features:**
+- ✅ **Consistent SQL Generation**: Uses same `generateSQL` method as validation endpoint
+- ✅ **Real-Time Filtering**: Sample data respects all filter conditions
+- ✅ **Field Aliases**: Proper `source AS target` mapping in generated SQL
+- ✅ **Live Preview**: Immediate feedback as query configuration changes
 
 ### Field Transformation Types
 
@@ -1202,4 +1255,4 @@ GET /api/import/rollback/{rollback_job_id}/status
 
 ---
 
-*Universal Import API Reference | Service Vault Documentation | Updated: August 21, 2025*
+*Universal Import API Reference | Service Vault Documentation | Updated: August 22, 2025*

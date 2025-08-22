@@ -22,13 +22,13 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->uuid('created_by')->nullable();
             $table->timestamps();
-            
+
             // Indexes
             $table->index('platform');
             $table->index('database_type');
             $table->index(['is_system', 'is_active']);
             $table->index('created_by');
-            
+
             // Foreign key constraint
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
         });

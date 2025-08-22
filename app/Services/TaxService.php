@@ -24,7 +24,7 @@ class TaxService
                 ->where('account_id', $accountId)
                 ->where('key', 'tax.default_rate')
                 ->first();
-            
+
             if ($accountTaxRate && $accountTaxRate->value !== null) {
                 return (float) $accountTaxRate->value;
             }
@@ -54,7 +54,7 @@ class TaxService
                 ->where('account_id', $accountId)
                 ->where('key', 'tax.default_application_mode')
                 ->first();
-            
+
             if ($accountTaxMode && $accountTaxMode->value) {
                 return $accountTaxMode->value;
             }
@@ -85,7 +85,7 @@ class TaxService
      */
     public function isAccountTaxExempt(?string $accountId = null): bool
     {
-        if (!$accountId) {
+        if (! $accountId) {
             return false;
         }
 
@@ -109,7 +109,6 @@ class TaxService
             'tax_exempt' => $this->isAccountTaxExempt($accountId),
         ];
     }
-
 
     /**
      * Set system default tax settings
@@ -153,17 +152,17 @@ class TaxService
     public function calculateTaxAmount(
         float $subtotal,
         float $taxableSubtotal,
-        string $accountId = null,
-        float $invoiceTaxRate = null,
-        string $invoiceTaxApplicationMode = null
+        ?string $accountId = null,
+        ?float $invoiceTaxRate = null,
+        ?string $invoiceTaxApplicationMode = null
     ): float {
         // Check if tax system is enabled and account is not exempt
-        if (!$this->isTaxEnabled() || $this->isAccountTaxExempt($accountId)) {
+        if (! $this->isTaxEnabled() || $this->isAccountTaxExempt($accountId)) {
             return 0.0;
         }
 
         $effectiveTaxRate = $this->getEffectiveTaxRate($accountId, $invoiceTaxRate);
-        
+
         if ($effectiveTaxRate <= 0) {
             return 0.0;
         }
@@ -178,7 +177,8 @@ class TaxService
     public function getFormattedTaxRate(?string $accountId = null, ?float $invoiceTaxRate = null): string
     {
         $rate = $this->getEffectiveTaxRate($accountId, $invoiceTaxRate);
-        return number_format($rate, 2) . '%';
+
+        return number_format($rate, 2).'%';
     }
 
     /**

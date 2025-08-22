@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('invoices', function (Blueprint $table) {
             $table->boolean('override_tax')->default(false)->after('tax_application_mode')
-                  ->comment('Whether this invoice overrides inherited tax settings');
+                ->comment('Whether this invoice overrides inherited tax settings');
         });
     }
 

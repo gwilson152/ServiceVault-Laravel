@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\ImportProfile;
 use App\Models\ImportMapping;
-use Illuminate\Support\Facades\DB;
+use App\Models\ImportProfile;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class FreeScoutImportService
 {
@@ -59,7 +59,7 @@ class FreeScoutImportService
                     'default' => 'employee',
                 ],
             ],
-            'where_conditions' => "role IN (1, 2)", // Only import admin/user roles
+            'where_conditions' => 'role IN (1, 2)', // Only import admin/user roles
             'import_order' => 1,
             'is_active' => true,
         ]);
@@ -108,7 +108,7 @@ class FreeScoutImportService
             'field_mappings' => [
                 'id' => 'id', // Will be converted from integer to UUID (separate from account UUID)
                 'first_name' => 'name',
-                'last_name' => 'name', 
+                'last_name' => 'name',
                 'email' => 'email',
                 'phone' => 'phone',
                 'timezone' => 'timezone',
@@ -245,7 +245,7 @@ class FreeScoutImportService
                             'source_prefix' => 'freescout_user_',
                         ],
                         [
-                            'if_field' => 'customer_id', 
+                            'if_field' => 'customer_id',
                             'if_not_null' => true,
                             'lookup_table' => 'users',
                             'lookup_field' => 'id',
@@ -288,7 +288,7 @@ class FreeScoutImportService
     {
         $tables = ['users', 'customers', 'conversations', 'threads'];
         $columns = [];
-        
+
         foreach ($tables as $table) {
             try {
                 $tableColumns = DB::connection($connectionName)
@@ -298,7 +298,7 @@ class FreeScoutImportService
                 $columns[$table] = [];
             }
         }
-        
+
         return $columns;
     }
 
@@ -308,23 +308,23 @@ class FreeScoutImportService
     private function selectAvailableColumns(array $availableColumns, array $desiredColumns): array
     {
         $selectedColumns = [];
-        
+
         foreach ($desiredColumns as $column) {
             if (in_array($column, $availableColumns)) {
                 $selectedColumns[] = $column;
             }
         }
-        
+
         // If no desired columns are available, fall back to 'id' and any available columns
         if (empty($selectedColumns)) {
             if (in_array('id', $availableColumns)) {
                 $selectedColumns[] = 'id';
             }
-            
+
             // Add first few available columns as fallback
             $selectedColumns = array_merge($selectedColumns, array_slice($availableColumns, 0, 3));
         }
-        
+
         return array_unique($selectedColumns);
     }
 
@@ -392,7 +392,7 @@ class FreeScoutImportService
             $existingTableNames = array_column($existingTables, 'table_name');
 
             foreach ($requiredTables as $table) {
-                if (!in_array($table, $existingTableNames)) {
+                if (! in_array($table, $existingTableNames)) {
                     $validation['errors'][] = "Required table '{$table}' not found";
                     $validation['is_valid'] = false;
                 }
@@ -435,7 +435,7 @@ class FreeScoutImportService
 
         } catch (Exception $e) {
             $validation['is_valid'] = false;
-            $validation['errors'][] = 'Database validation failed: ' . $e->getMessage();
+            $validation['errors'][] = 'Database validation failed: '.$e->getMessage();
         }
 
         return $validation;
@@ -447,18 +447,18 @@ class FreeScoutImportService
     public function getImportPreview(ImportProfile $profile, int $limit = 5): array
     {
         $connectionName = app(PostgreSQLConnectionService::class)->createConnection($profile);
-        
+
         try {
             $preview = [];
-            
+
             // Get available columns for each table to make queries flexible
             $availableColumns = $this->getTableColumns($connectionName);
-            
+
             // Preview customer users (MOST IMPORTANT) - flexible column selection
-            $customerColumns = $this->selectAvailableColumns($availableColumns['customers'] ?? [], 
+            $customerColumns = $this->selectAvailableColumns($availableColumns['customers'] ?? [],
                 ['id', 'first_name', 'last_name', 'email', 'company', 'phone']);
             $customerUsers = DB::connection($connectionName)
-                ->select("SELECT " . implode(', ', $customerColumns) . " FROM customers LIMIT ?", [$limit]);
+                ->select('SELECT '.implode(', ', $customerColumns).' FROM customers LIMIT ?', [$limit]);
             $preview['customer_users'] = [
                 'title' => 'FreeScout Customers → Service Vault Customer Users',
                 'description' => 'Customer contacts become account_user type users (MOST IMPORTANT IMPORT)',
@@ -467,10 +467,10 @@ class FreeScoutImportService
             ];
 
             // Preview customer accounts - flexible column selection
-            $customerAccountColumns = $this->selectAvailableColumns($availableColumns['customers'] ?? [], 
+            $customerAccountColumns = $this->selectAvailableColumns($availableColumns['customers'] ?? [],
                 ['id', 'company', 'first_name', 'last_name', 'email']);
             $customerAccounts = DB::connection($connectionName)
-                ->select("SELECT " . implode(', ', $customerAccountColumns) . " FROM customers WHERE company IS NOT NULL AND company != '' LIMIT ?", [$limit]);
+                ->select('SELECT '.implode(', ', $customerAccountColumns)." FROM customers WHERE company IS NOT NULL AND company != '' LIMIT ?", [$limit]);
             $preview['customer_accounts'] = [
                 'title' => 'FreeScout Customers → Service Vault Accounts',
                 'description' => 'Customer company records become account structures (optional if users exist)',
@@ -478,11 +478,11 @@ class FreeScoutImportService
                 'total_count' => DB::connection($connectionName)->selectOne("SELECT COUNT(*) as count FROM customers WHERE company IS NOT NULL AND company != ''")->count ?? 0,
             ];
 
-            // Preview staff users - flexible column selection  
-            $userColumns = $this->selectAvailableColumns($availableColumns['users'] ?? [], 
+            // Preview staff users - flexible column selection
+            $userColumns = $this->selectAvailableColumns($availableColumns['users'] ?? [],
                 ['id', 'first_name', 'last_name', 'email', 'role']);
             $staffUsers = DB::connection($connectionName)
-                ->select("SELECT " . implode(', ', $userColumns) . " FROM users WHERE role IN (1, 2) LIMIT ?", [$limit]);
+                ->select('SELECT '.implode(', ', $userColumns).' FROM users WHERE role IN (1, 2) LIMIT ?', [$limit]);
             $preview['staff_users'] = [
                 'title' => 'FreeScout Staff → Service Vault Agent Users',
                 'description' => 'Admin and user accounts will become Service Vault agent users',
@@ -491,34 +491,34 @@ class FreeScoutImportService
             ];
 
             // Preview conversations - flexible column selection with resolved relationships
-            $conversationColumns = $this->selectAvailableColumns($availableColumns['conversations'] ?? [], 
+            $conversationColumns = $this->selectAvailableColumns($availableColumns['conversations'] ?? [],
                 ['id', 'number', 'subject', 'status', 'customer_id', 'user_id', 'created_at']);
-            
+
             // Build query with JOINs to resolve relationships
-            $conversationQuery = "
+            $conversationQuery = '
                 SELECT 
-                    c." . implode(', c.', $conversationColumns) . ",
-                    " . (in_array('customer_id', $conversationColumns) ? "
+                    c.'.implode(', c.', $conversationColumns).',
+                    '.(in_array('customer_id', $conversationColumns) ? "
                         CASE 
                             WHEN cust.company IS NOT NULL AND cust.company != '' THEN cust.company
                             ELSE CONCAT(COALESCE(cust.first_name, ''), ' ', COALESCE(cust.last_name, ''))
-                        END as customer_name," : "") . "
-                    " . (in_array('user_id', $conversationColumns) ? "
-                        CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as user_name," : "") . "
-                    " . (in_array('status', $conversationColumns) ? "
+                        END as customer_name," : '').'
+                    '.(in_array('user_id', $conversationColumns) ? "
+                        CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as user_name," : '').'
+                    '.(in_array('status', $conversationColumns) ? "
                         CASE 
                             WHEN c.status = 1 THEN 'Active (Open)'
                             WHEN c.status = 2 THEN 'Pending'
                             WHEN c.status = 3 THEN 'Closed'
                             WHEN c.status = 4 THEN 'Spam'
                             ELSE CONCAT('Status ', c.status)
-                        END as status_name" : "") . "
+                        END as status_name" : '').'
                 FROM conversations c
-                " . (in_array('customer_id', $conversationColumns) ? "LEFT JOIN customers cust ON c.customer_id = cust.id" : "") . "
-                " . (in_array('user_id', $conversationColumns) ? "LEFT JOIN users u ON c.user_id = u.id" : "") . "
+                '.(in_array('customer_id', $conversationColumns) ? 'LEFT JOIN customers cust ON c.customer_id = cust.id' : '').'
+                '.(in_array('user_id', $conversationColumns) ? 'LEFT JOIN users u ON c.user_id = u.id' : '').'
                 LIMIT ?
-            ";
-            
+            ';
+
             $conversations = DB::connection($connectionName)->select($conversationQuery, [$limit]);
             $preview['conversations'] = [
                 'title' => 'FreeScout Conversations → Service Vault Tickets',
@@ -528,46 +528,46 @@ class FreeScoutImportService
             ];
 
             // Preview threads - flexible column selection with resolved relationships
-            $threadColumns = $this->selectAvailableColumns($availableColumns['threads'] ?? [], 
+            $threadColumns = $this->selectAvailableColumns($availableColumns['threads'] ?? [],
                 ['id', 'conversation_id', 'type', 'body', 'user_id', 'customer_id', 'created_at']);
-            
+
             // Build query with JOINs to resolve relationships
-            $threadQuery = "
+            $threadQuery = '
                 SELECT 
-                    t." . implode(', t.', $threadColumns) . ",
+                    t.'.implode(', t.', $threadColumns).',
                     c.subject as conversation_subject,
-                    " . (in_array('user_id', $threadColumns) ? "
-                        CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as user_name," : "") . "
-                    " . (in_array('customer_id', $threadColumns) ? "
+                    '.(in_array('user_id', $threadColumns) ? "
+                        CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as user_name," : '').'
+                    '.(in_array('customer_id', $threadColumns) ? "
                         CASE 
                             WHEN cust.company IS NOT NULL AND cust.company != '' THEN cust.company
                             ELSE CONCAT(COALESCE(cust.first_name, ''), ' ', COALESCE(cust.last_name, ''))
-                        END as customer_name," : "") . "
-                    " . (in_array('type', $threadColumns) ? "
+                        END as customer_name," : '').'
+                    '.(in_array('type', $threadColumns) ? "
                         CASE 
                             WHEN t.type = 1 THEN 'Message (Customer)'
                             WHEN t.type = 2 THEN 'Note (Internal)'
                             WHEN t.type = 3 THEN 'Reply (Agent)'
                             ELSE CONCAT('Type ', t.type)
-                        END as type_name" : "") . "
+                        END as type_name" : '').'
                 FROM threads t
                 LEFT JOIN conversations c ON t.conversation_id = c.id
-                " . (in_array('user_id', $threadColumns) ? "LEFT JOIN users u ON t.user_id = u.id" : "") . "
-                " . (in_array('customer_id', $threadColumns) ? "LEFT JOIN customers cust ON t.customer_id = cust.id" : "") . "
+                '.(in_array('user_id', $threadColumns) ? 'LEFT JOIN users u ON t.user_id = u.id' : '').'
+                '.(in_array('customer_id', $threadColumns) ? 'LEFT JOIN customers cust ON t.customer_id = cust.id' : '').'
                 WHERE t.body IS NOT NULL 
                 LIMIT ?
-            ";
-            
+            ';
+
             $threads = DB::connection($connectionName)->select($threadQuery, [$limit]);
             $preview['threads'] = [
                 'title' => 'FreeScout Threads → Service Vault Comments',
                 'description' => 'Conversation messages and notes become ticket comments',
                 'sample_data' => $threads,
-                'total_count' => DB::connection($connectionName)->selectOne("SELECT COUNT(*) as count FROM threads WHERE body IS NOT NULL")->count,
+                'total_count' => DB::connection($connectionName)->selectOne('SELECT COUNT(*) as count FROM threads WHERE body IS NOT NULL')->count,
             ];
 
             return $preview;
-            
+
         } finally {
             app(PostgreSQLConnectionService::class)->closeConnection($connectionName);
         }

@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 return new class extends Migration
@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         // First, check if import_profiles table exists and has data
-        if (!Schema::hasTable('import_profiles')) {
+        if (! Schema::hasTable('import_profiles')) {
             return;
         }
 
@@ -23,7 +23,7 @@ return new class extends Migration
 
         if ($hasRecords) {
             // If there are records, we need to handle the conversion carefully
-            
+
             // 1. Add a new UUID column
             Schema::table('import_profiles', function (Blueprint $table) {
                 $table->uuid('new_id')->nullable();
@@ -39,7 +39,7 @@ return new class extends Migration
 
             // 3. Update foreign key references in all dependent tables
             $dependentTables = ['import_jobs', 'import_mappings'];
-            
+
             foreach ($dependentTables as $tableName) {
                 if (Schema::hasTable($tableName)) {
                     // Add new UUID foreign key column
@@ -49,8 +49,8 @@ return new class extends Migration
 
                     // Update the foreign key references
                     $records = DB::table($tableName)
-                        ->join('import_profiles', $tableName . '.profile_id', '=', 'import_profiles.id')
-                        ->select($tableName . '.id as record_id', 'import_profiles.new_id as new_profile_id')
+                        ->join('import_profiles', $tableName.'.profile_id', '=', 'import_profiles.id')
+                        ->select($tableName.'.id as record_id', 'import_profiles.new_id as new_profile_id')
                         ->get();
 
                     foreach ($records as $record) {
@@ -103,7 +103,7 @@ return new class extends Migration
 
             // Update foreign keys in dependent tables
             $dependentTables = ['import_jobs', 'import_mappings'];
-            
+
             foreach ($dependentTables as $tableName) {
                 if (Schema::hasTable($tableName)) {
                     Schema::table($tableName, function (Blueprint $table) {

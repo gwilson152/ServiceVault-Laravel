@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
 use App\Models\ImportProfile;
 use App\Models\ImportRecord;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class ImportAnalyticsController extends Controller
 {
@@ -27,16 +26,16 @@ class ImportAnalyticsController extends Controller
 
         // Calculate date range
         $dateFrom = $this->getDateFromPeriod($period);
-        
+
         // Base queries with optional profile filtering
         $jobsQuery = ImportJob::query();
         $recordsQuery = ImportRecord::query();
-        
+
         if ($profileId) {
             $jobsQuery->where('profile_id', $profileId);
             $recordsQuery->where('import_profile_id', $profileId);
         }
-        
+
         if ($dateFrom) {
             $jobsQuery->where('created_at', '>=', $dateFrom);
             $recordsQuery->where('created_at', '>=', $dateFrom);
@@ -59,7 +58,7 @@ class ImportAnalyticsController extends Controller
     public function jobDetails(ImportJob $job)
     {
         $job->load(['profile', 'creator']);
-        
+
         // Get record breakdown
         $recordStats = ImportRecord::where('import_job_id', $job->id)
             ->selectRaw('
@@ -123,10 +122,14 @@ class ImportAnalyticsController extends Controller
 
         $profiles = ImportProfile::withCount([
             'importJobs' => function ($query) use ($dateFrom) {
-                if ($dateFrom) $query->where('created_at', '>=', $dateFrom);
-            }
+                if ($dateFrom) {
+                    $query->where('created_at', '>=', $dateFrom);
+                }
+            },
         ])->with(['importJobs' => function ($query) use ($dateFrom) {
-            if ($dateFrom) $query->where('created_at', '>=', $dateFrom);
+            if ($dateFrom) {
+                $query->where('created_at', '>=', $dateFrom);
+            }
             $query->selectRaw('
                 profile_id,
                 COUNT(*) as total_jobs,
@@ -144,6 +147,7 @@ class ImportAnalyticsController extends Controller
         return response()->json([
             'profiles' => $profiles->map(function ($profile) {
                 $jobStats = $profile->importJobs->first();
+
                 return [
                     'id' => $profile->id,
                     'name' => $profile->name,
@@ -237,7 +241,7 @@ class ImportAnalyticsController extends Controller
         $totalJobs = $jobsQuery->count();
         $successfulJobs = $jobsQuery->where('status', 'completed')->count();
         $runningJobs = $jobsQuery->where('status', 'running')->count();
-        
+
         $recordCounts = $recordsQuery->selectRaw('
             COUNT(*) as total,
             COUNT(CASE WHEN import_action = "created" THEN 1 END) as created,
@@ -384,7 +388,7 @@ class ImportAnalyticsController extends Controller
      */
     private function getDateFromPeriod($period)
     {
-        return match($period) {
+        return match ($period) {
             '7d' => Carbon::now()->subDays(7),
             '30d' => Carbon::now()->subDays(30),
             '90d' => Carbon::now()->subDays(90),

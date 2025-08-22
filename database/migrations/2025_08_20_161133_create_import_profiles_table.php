@@ -28,7 +28,7 @@ return new class extends Migration
             $table->timestamp('last_tested_at')->nullable();
             $table->json('last_test_result')->nullable(); // Connection test results
             $table->timestamps();
-            
+
             // Indexes
             $table->index(['type', 'is_active']);
             $table->index('created_by');

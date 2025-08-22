@@ -28,7 +28,7 @@ class ImportProfileController extends Controller
     {
         $this->authorize('viewAny', ImportProfile::class);
 
-        $query = ImportProfile::with(['creator', 'importJobs' => function($q) {
+        $query = ImportProfile::with(['creator', 'importJobs' => function ($q) {
             $q->latest()->take(3); // Get last 3 jobs for each profile
         }]);
 
@@ -44,7 +44,7 @@ class ImportProfileController extends Controller
 
         // Search by name
         if ($request->filled('search')) {
-            $query->where('name', 'ILIKE', '%' . $request->search . '%');
+            $query->where('name', 'ILIKE', '%'.$request->search.'%');
         }
 
         $profiles = $query->orderBy('name')->paginate($request->get('per_page', 15));
@@ -93,8 +93,8 @@ class ImportProfileController extends Controller
         ];
 
         $testResult = $this->connectionService->testConnection($connectionConfig);
-        
-        if (!$testResult['success']) {
+
+        if (! $testResult['success']) {
             return response()->json([
                 'message' => 'Connection test failed',
                 'connection_error' => $testResult,
@@ -208,7 +208,7 @@ class ImportProfileController extends Controller
 
         // Check if profile has any running jobs
         $runningJobs = $profile->importJobs()->where('status', 'running')->count();
-        
+
         if ($runningJobs > 0) {
             return response()->json([
                 'message' => 'Cannot delete profile with running import jobs',
@@ -226,7 +226,7 @@ class ImportProfileController extends Controller
     /**
      * Test connection for an import profile.
      */
-    public function testConnection(Request $request, ImportProfile $profile = null): JsonResponse
+    public function testConnection(Request $request, ?ImportProfile $profile = null): JsonResponse
     {
         $this->authorize('testConnection', ImportProfile::class);
 
@@ -284,21 +284,21 @@ class ImportProfileController extends Controller
     {
         // Find the profile explicitly
         $importProfile = ImportProfile::findOrFail($importProfileId);
-        
+
         $this->authorize('view', $importProfile);
 
         try {
             $connectionName = $this->connectionService->createConnection($importProfile);
-            
+
             // Get all tables in the database
             $allTables = DB::connection($connectionName)
                 ->select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name");
-            
+
             $schema = [];
-            
+
             foreach ($allTables as $table) {
                 $tableName = $table->table_name;
-                
+
                 // Get columns for each table
                 $columns = DB::connection($connectionName)
                     ->select("
@@ -312,7 +312,7 @@ class ImportProfileController extends Controller
                         WHERE table_name = ? AND table_schema = 'public'
                         ORDER BY ordinal_position
                     ", [$tableName]);
-                
+
                 // Get row count
                 try {
                     $rowCount = DB::connection($connectionName)
@@ -320,7 +320,7 @@ class ImportProfileController extends Controller
                 } catch (\Exception $e) {
                     $rowCount = 0;
                 }
-                
+
                 // Get sample data (first 3 rows)
                 try {
                     $sampleData = DB::connection($connectionName)
@@ -328,21 +328,21 @@ class ImportProfileController extends Controller
                 } catch (\Exception $e) {
                     $sampleData = [];
                 }
-                
+
                 $schema[$tableName] = [
                     'columns' => $columns,
                     'row_count' => $rowCount,
                     'sample_data' => $sampleData,
                 ];
             }
-            
+
             $this->connectionService->closeConnection($connectionName);
-            
+
             return response()->json([
                 'schema' => $schema,
                 'total_tables' => count($schema),
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to introspect database schema',
@@ -363,7 +363,7 @@ class ImportProfileController extends Controller
             $schemaInfo = $this->connectionService->getSchemaInfo($connectionName);
             $serverInfo = $this->connectionService->getServerInfo($connectionName);
             $this->connectionService->closeConnection($connectionName);
-            
+
             // Transform schema info to expected format for frontend
             $tables = [];
             foreach ($schemaInfo as $tableName => $tableData) {
@@ -420,7 +420,7 @@ class ImportProfileController extends Controller
 
             return response()->json([
                 'schema' => [
-                    'tables' => $tables
+                    'tables' => $tables,
                 ],
                 'server_info' => $serverInfo,
             ]);
@@ -439,7 +439,7 @@ class ImportProfileController extends Controller
     {
         // Find the profile explicitly
         $importProfile = ImportProfile::findOrFail($importProfileId);
-        
+
         $this->authorize('preview', $importProfile);
 
         // Debug: Log the profile data
@@ -452,7 +452,7 @@ class ImportProfileController extends Controller
             'database' => $importProfile->database,
             'username' => $importProfile->username,
             'ssl_mode' => $importProfile->ssl_mode,
-            'loaded_correctly' => !is_null($importProfile->host),
+            'loaded_correctly' => ! is_null($importProfile->host),
         ]);
 
         try {
@@ -480,24 +480,24 @@ class ImportProfileController extends Controller
     private function getGenericPreview(ImportProfile $profile): array
     {
         $connectionName = $this->connectionService->createConnection($profile);
-        
+
         try {
             // Get list of tables directly
             $tables = $this->connectionService->getTables($connectionName);
-            
+
             $preview = [];
-            
+
             // Get preview data for each table
             foreach ($tables as $table) {
                 $tableName = $table->table_name ?? $table['table_name'];
-                
+
                 try {
                     // Get row count for this table
                     $rowCount = $this->connectionService->getRowCount($connectionName, $tableName);
-                    
+
                     // Get sample data (first 5 rows)
                     $sampleData = $this->connectionService->previewTableData($connectionName, $tableName, 5);
-                    
+
                     $preview[$tableName] = [
                         'title' => ucfirst(str_replace('_', ' ', $tableName)),
                         'description' => "Table: {$tableName} ({$rowCount} records)",
@@ -515,7 +515,7 @@ class ImportProfileController extends Controller
                     ];
                 }
             }
-            
+
             return $preview;
         } finally {
             $this->connectionService->closeConnection($connectionName);
@@ -593,10 +593,10 @@ class ImportProfileController extends Controller
 
         try {
             $connectionName = $this->connectionService->createConnection($profile);
-            
-            // Build the query based on configuration
-            $query = $this->buildPreviewQuery($request->all());
-            
+
+            // Build the query based on configuration - use same method as validateQuery
+            $query = $this->generateSQL($request->all());
+
             // Execute query for sample data
             $sampleData = $this->connectionService->executeQuerySample(
                 $connectionName,
@@ -604,7 +604,7 @@ class ImportProfileController extends Controller
                 [],
                 $request->get('limit', 10)
             );
-            
+
             // Get estimated record count
             $estimatedCount = $this->connectionService->getEstimatedRecordCount(
                 $connectionName,
@@ -612,14 +612,14 @@ class ImportProfileController extends Controller
                 $request->get('joins', []),
                 $request->get('filters', [])
             );
-            
+
             $this->connectionService->closeConnection($connectionName);
 
             return response()->json([
                 'sample_data' => $sampleData,
                 'estimated_records' => $estimatedCount,
                 'generated_query' => $query,
-                'columns' => !empty($sampleData) ? array_keys((array) $sampleData[0]) : [],
+                'columns' => ! empty($sampleData) ? array_keys((array) $sampleData[0]) : [],
             ]);
 
         } catch (Exception $e) {
@@ -630,51 +630,7 @@ class ImportProfileController extends Controller
         }
     }
 
-    /**
-     * Build a preview query from configuration.
-     */
-    private function buildPreviewQuery(array $config): string
-    {
-        $baseTable = $config['base_table'];
-        $joins = $config['joins'] ?? [];
-        $fields = $config['fields'] ?? [];
-        $filters = $config['filters'] ?? [];
-
-        // Build SELECT clause
-        if (!empty($fields)) {
-            $selectFields = array_map(function ($field) {
-                return $field['source'] ?? '*';
-            }, $fields);
-            $selectClause = implode(', ', $selectFields);
-        } else {
-            $selectClause = '*';
-        }
-
-        $query = "SELECT {$selectClause} FROM {$baseTable}";
-
-        // Add JOINs
-        foreach ($joins as $join) {
-            if (!empty($join['table']) && !empty($join['leftColumn']) && !empty($join['rightColumn'])) {
-                $joinType = $join['type'] ?? 'LEFT';
-                $query .= " {$joinType} JOIN {$join['table']} ON {$join['leftColumn']} = {$join['table']}.{$join['rightColumn']}";
-            }
-        }
-
-        // Add WHERE clauses
-        if (!empty($filters)) {
-            $whereClauses = [];
-            foreach ($filters as $filter) {
-                if (!empty($filter['condition'])) {
-                    $whereClauses[] = $filter['condition'];
-                }
-            }
-            if (!empty($whereClauses)) {
-                $query .= " WHERE " . implode(' AND ', $whereClauses);
-            }
-        }
-
-        return $query;
-    }
+    // buildPreviewQuery method removed - now uses generateSQL for consistency
 
     /**
      * Get field mappings for an import profile.
@@ -756,7 +712,7 @@ class ImportProfileController extends Controller
             return response()->json($result);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to introspect database: ' . $e->getMessage()
+                'error' => 'Failed to introspect database: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -776,7 +732,7 @@ class ImportProfileController extends Controller
             return response()->json($result);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to introspect time tracking: ' . $e->getMessage()
+                'error' => 'Failed to introspect time tracking: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -800,7 +756,7 @@ class ImportProfileController extends Controller
         }
 
         $template = \App\Models\ImportTemplate::findOrFail($request->template_id);
-        
+
         // Update the profile with the template
         $profile->update([
             'template_id' => $template->id,
@@ -850,15 +806,15 @@ class ImportProfileController extends Controller
 
         try {
             $connectionName = $this->connectionService->createConnection($profile);
-            
+
             // Generate SQL
             $sql = $this->generateSQL($request->all());
-            
+
             // Estimate record count
             $estimatedRecords = $this->connectionService->getEstimatedRecordCount(
-                $connectionName, 
-                $request->base_table, 
-                $request->joins ?? [], 
+                $connectionName,
+                $request->base_table,
+                $request->joins ?? [],
                 $request->filters ?? []
             );
 
@@ -875,7 +831,7 @@ class ImportProfileController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'valid' => false,
-                'errors' => ['Query validation failed: ' . $e->getMessage()],
+                'errors' => ['Query validation failed: '.$e->getMessage()],
                 'warnings' => [],
             ], 400);
         }
@@ -925,10 +881,10 @@ class ImportProfileController extends Controller
 
         try {
             $connectionName = $this->connectionService->createConnection($profile);
-            
+
             $joinAnalysis = [];
             $joins = $request->joins ?? [];
-            
+
             foreach ($joins as $join) {
                 $analysis = [
                     'join_table' => $join['table'],
@@ -941,28 +897,28 @@ class ImportProfileController extends Controller
                 try {
                     $baseTable = $request->base_table;
                     $joinCondition = $join['on'];
-                    
+
                     // Simple query to estimate join impact
                     $query = "SELECT COUNT(*) as count FROM {$baseTable} {$join['type']} JOIN {$join['table']} ON {$joinCondition}";
-                    if (!empty($join['condition'])) {
+                    if (! empty($join['condition'])) {
                         $query .= " AND {$join['condition']}";
                     }
-                    
+
                     $result = $this->connectionService->executeQuery($connectionName, $query);
                     $analysis['matched_records'] = $result[0]['count'] ?? 0;
-                    
+
                     // Determine impact based on record count
                     if ($analysis['matched_records'] > 10000) {
                         $analysis['impact'] = 'high';
                     } elseif ($analysis['matched_records'] > 1000) {
                         $analysis['impact'] = 'medium';
                     }
-                    
+
                 } catch (\Exception $e) {
                     // If we can't analyze, that's ok - we'll use defaults
                     $analysis['description'] .= ' (Unable to analyze impact)';
                 }
-                
+
                 $joinAnalysis[] = $analysis;
             }
 
@@ -974,7 +930,7 @@ class ImportProfileController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'JOIN analysis failed: ' . $e->getMessage(),
+                'error' => 'JOIN analysis failed: '.$e->getMessage(),
                 'join_analysis' => [],
             ], 500);
         }
@@ -985,11 +941,11 @@ class ImportProfileController extends Controller
      */
     private function generateSQL(array $config): string
     {
-        $sql = "SELECT ";
-        
+        $sql = 'SELECT ';
+
         // Fields
         if (empty($config['fields'])) {
-            $sql .= "*";
+            $sql .= '*';
         } else {
             $fieldList = [];
             foreach ($config['fields'] as $field) {
@@ -999,31 +955,31 @@ class ImportProfileController extends Controller
             }
             $sql .= implode(', ', $fieldList);
         }
-        
+
         // FROM clause
         $sql .= "\nFROM {$config['base_table']}";
-        
+
         // JOINs
-        if (!empty($config['joins'])) {
+        if (! empty($config['joins'])) {
             foreach ($config['joins'] as $join) {
                 $sql .= "\n{$join['type']} JOIN {$join['table']} ON {$join['on']}";
-                if (!empty($join['condition'])) {
+                if (! empty($join['condition'])) {
                     $sql .= " AND {$join['condition']}";
                 }
             }
         }
-        
+
         // WHERE clause
-        if (!empty($config['filters'])) {
+        if (! empty($config['filters'])) {
             $whereConditions = [];
             foreach ($config['filters'] as $filter) {
                 $whereConditions[] = $this->formatFilterCondition($filter);
             }
-            if (!empty($whereConditions)) {
-                $sql .= "\nWHERE " . implode(' AND ', $whereConditions);
+            if (! empty($whereConditions)) {
+                $sql .= "\nWHERE ".implode(' AND ', $whereConditions);
             }
         }
-        
+
         return $sql;
     }
 
@@ -1049,10 +1005,11 @@ class ImportProfileController extends Controller
             case 'NOT IN':
                 // Handle comma-separated values
                 $values = array_map('trim', explode(',', $value));
-                $quotedValues = array_map(function($v) {
-                    return "'" . str_replace("'", "''", $v) . "'";
+                $quotedValues = array_map(function ($v) {
+                    return "'".str_replace("'", "''", $v)."'";
                 }, $values);
-                return "{$field} {$operator} (" . implode(', ', $quotedValues) . ")";
+
+                return "{$field} {$operator} (".implode(', ', $quotedValues).')';
 
             case 'LIKE':
             case 'ILIKE':
@@ -1061,10 +1018,11 @@ class ImportProfileController extends Controller
                 if (strpos($value, '%') === false) {
                     $value = "%{$value}%";
                 }
-                return "{$field} {$operator} '" . str_replace("'", "''", $value) . "'";
+
+                return "{$field} {$operator} '".str_replace("'", "''", $value)."'";
 
             case 'REGEXP':
-                return "{$field} ~ '" . str_replace("'", "''", $value) . "'";
+                return "{$field} ~ '".str_replace("'", "''", $value)."'";
 
             case '=':
             case '!=':
@@ -1075,6 +1033,7 @@ class ImportProfileController extends Controller
             default:
                 // Escape single quotes and wrap in quotes
                 $escapedValue = str_replace("'", "''", $value);
+
                 return "{$field} {$operator} '{$escapedValue}'";
         }
     }
@@ -1085,16 +1044,16 @@ class ImportProfileController extends Controller
     private function generateWarnings(array $config): array
     {
         $warnings = [];
-        
+
         // Check for potential performance issues
         if (empty($config['filters'])) {
             $warnings[] = 'No filters specified - this may import a large amount of data';
         }
-        
-        if (!empty($config['joins']) && count($config['joins']) > 3) {
+
+        if (! empty($config['joins']) && count($config['joins']) > 3) {
             $warnings[] = 'Complex query with multiple JOINs may be slow on large datasets';
         }
-        
+
         return $warnings;
     }
 }

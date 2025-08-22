@@ -459,7 +459,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('settings.nuclear-reset');
     });
 
-
     // Billing Rate Management routes
     Route::apiResource('billing-rates', App\Http\Controllers\Api\BillingRateController::class);
 
@@ -477,7 +476,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('invoices.mark-paid');
         Route::get('invoices/{invoice}/pdf', [App\Http\Controllers\Api\InvoiceController::class, 'pdf'])
             ->name('invoices.pdf');
-        
+
         // Line item management for draft invoices
         Route::get('invoices/{invoice}/available-items', [App\Http\Controllers\Api\InvoiceController::class, 'getAvailableItems'])
             ->name('invoices.available-items');
@@ -551,84 +550,84 @@ Route::prefix('admin')->middleware(['auth:web,sanctum'])->group(function () {
         ->name('admin.timers.cancel');
 });
 
-    // Import System routes
-    Route::prefix('import')->middleware('check_permission:system.import')->group(function () {
-        // Import Profile Management
-        Route::apiResource('profiles', ImportProfileController::class);
-        Route::post('profiles/test-connection', [ImportProfileController::class, 'testConnection'])
-            ->name('import.profiles.test-connection');
-        Route::post('profiles/{profile}/test-connection', [ImportProfileController::class, 'testConnection'])
-            ->name('import.profiles.test-existing');
-        Route::get('profiles/{profile}/schema', [ImportProfileController::class, 'getSchema'])
-            ->name('import.profiles.schema');
-        Route::get('profiles/{profile}/introspect', [ImportProfileController::class, 'introspectSchema'])
-            ->name('import.profiles.introspect');
-        Route::get('profiles/{profile}/preview', [ImportProfileController::class, 'preview'])
-            ->name('import.profiles.preview');
-        Route::post('profiles/{profile}/preview-table', [ImportProfileController::class, 'previewTable'])
-            ->name('import.profiles.preview-table');
-        Route::post('profiles/{profile}/preview-query', [ImportProfileController::class, 'previewQuery'])
-            ->name('import.profiles.preview-query');
-        
-        // Field Mapping Management
-        Route::get('profiles/{profile}/mappings', [ImportProfileController::class, 'getMappings'])
-            ->name('import.profiles.mappings.get');
-        Route::post('profiles/{profile}/mappings', [ImportProfileController::class, 'saveMappings'])
-            ->name('import.profiles.mappings.save');
-        
-        // Database Introspection
-        Route::get('profiles/{profile}/introspect-emails', [ImportProfileController::class, 'introspectEmails'])
-            ->name('import.profiles.introspect-emails');
-        Route::get('profiles/{profile}/introspect-time-tracking', [ImportProfileController::class, 'introspectTimeTracking'])
-            ->name('import.profiles.introspect-time-tracking');
+// Import System routes
+Route::prefix('import')->middleware('check_permission:system.import')->group(function () {
+    // Import Profile Management
+    Route::apiResource('profiles', ImportProfileController::class);
+    Route::post('profiles/test-connection', [ImportProfileController::class, 'testConnection'])
+        ->name('import.profiles.test-connection');
+    Route::post('profiles/{profile}/test-connection', [ImportProfileController::class, 'testConnection'])
+        ->name('import.profiles.test-existing');
+    Route::get('profiles/{profile}/schema', [ImportProfileController::class, 'getSchema'])
+        ->name('import.profiles.schema');
+    Route::get('profiles/{profile}/introspect', [ImportProfileController::class, 'introspectSchema'])
+        ->name('import.profiles.introspect');
+    Route::get('profiles/{profile}/preview', [ImportProfileController::class, 'preview'])
+        ->name('import.profiles.preview');
+    Route::post('profiles/{profile}/preview-table', [ImportProfileController::class, 'previewTable'])
+        ->name('import.profiles.preview-table');
+    Route::post('profiles/{profile}/preview-query', [ImportProfileController::class, 'previewQuery'])
+        ->name('import.profiles.preview-query');
 
-        // Import Job Management
-        Route::apiResource('jobs', ImportJobController::class)->except(['update']);
-        Route::post('profiles/{profile}/import', [ImportJobController::class, 'execute'])
-            ->name('import.jobs.execute');
-        Route::get('jobs/{job}/status', [ImportJobController::class, 'status'])
-            ->name('import.jobs.status');
-        Route::post('jobs/{job}/cancel', [ImportJobController::class, 'cancel'])
-            ->name('import.jobs.cancel');
-        Route::get('jobs/stats', [ImportJobController::class, 'stats'])
-            ->name('import.jobs.stats');
+    // Field Mapping Management
+    Route::get('profiles/{profile}/mappings', [ImportProfileController::class, 'getMappings'])
+        ->name('import.profiles.mappings.get');
+    Route::post('profiles/{profile}/mappings', [ImportProfileController::class, 'saveMappings'])
+        ->name('import.profiles.mappings.save');
 
-        // Template Application
-        Route::put('profiles/{profile}/template', [ImportProfileController::class, 'applyTemplate'])
-            ->name('import.profiles.apply-template');
+    // Database Introspection
+    Route::get('profiles/{profile}/introspect-emails', [ImportProfileController::class, 'introspectEmails'])
+        ->name('import.profiles.introspect-emails');
+    Route::get('profiles/{profile}/introspect-time-tracking', [ImportProfileController::class, 'introspectTimeTracking'])
+        ->name('import.profiles.introspect-time-tracking');
 
-        // Query Builder API
-        Route::post('profiles/{profile}/builder/validate', [ImportProfileController::class, 'validateQuery'])
-            ->name('import.profiles.validate-query');
-        Route::post('profiles/{profile}/queries', [ImportProfileController::class, 'saveQuery'])
-            ->name('import.profiles.save-query');
-        Route::post('profiles/{profile}/builder/analyze-joins', [ImportProfileController::class, 'analyzeJoins'])
-            ->name('import.profiles.analyze-joins');
+    // Import Job Management
+    Route::apiResource('jobs', ImportJobController::class)->except(['update']);
+    Route::post('profiles/{profile}/import', [ImportJobController::class, 'execute'])
+        ->name('import.jobs.execute');
+    Route::get('jobs/{job}/status', [ImportJobController::class, 'status'])
+        ->name('import.jobs.status');
+    Route::post('jobs/{job}/cancel', [ImportJobController::class, 'cancel'])
+        ->name('import.jobs.cancel');
+    Route::get('jobs/stats', [ImportJobController::class, 'stats'])
+        ->name('import.jobs.stats');
 
-        // Import Template Management
-        Route::get('templates', [ImportTemplateController::class, 'index'])
-            ->name('import.templates.index');
-        Route::get('templates/{template}', [ImportTemplateController::class, 'show'])
-            ->name('import.templates.show');
-            
-        // Import Analytics and Reporting
-        Route::prefix('analytics')->group(function () {
-            Route::get('dashboard', [ImportAnalyticsController::class, 'dashboard'])
-                ->name('import.analytics.dashboard');
-            Route::get('profiles/{profile}/stats', [ImportAnalyticsController::class, 'profileStats'])
-                ->name('import.analytics.profile-stats');
-            Route::get('jobs/{job}/details', [ImportAnalyticsController::class, 'jobDetails'])
-                ->name('import.analytics.job-details');
-            Route::get('records', [ImportAnalyticsController::class, 'records'])
-                ->name('import.analytics.records');
-            Route::get('duplicate-analysis', [ImportAnalyticsController::class, 'duplicateAnalysis'])
-                ->name('import.analytics.duplicate-analysis');
-            Route::get('performance-metrics', [ImportAnalyticsController::class, 'performanceMetrics'])
-                ->name('import.analytics.performance-metrics');
-            Route::get('trends', [ImportAnalyticsController::class, 'trends'])
-                ->name('import.analytics.trends');
-        });
+    // Template Application
+    Route::put('profiles/{profile}/template', [ImportProfileController::class, 'applyTemplate'])
+        ->name('import.profiles.apply-template');
+
+    // Query Builder API
+    Route::post('profiles/{profile}/builder/validate', [ImportProfileController::class, 'validateQuery'])
+        ->name('import.profiles.validate-query');
+    Route::post('profiles/{profile}/queries', [ImportProfileController::class, 'saveQuery'])
+        ->name('import.profiles.save-query');
+    Route::post('profiles/{profile}/builder/analyze-joins', [ImportProfileController::class, 'analyzeJoins'])
+        ->name('import.profiles.analyze-joins');
+
+    // Import Template Management
+    Route::get('templates', [ImportTemplateController::class, 'index'])
+        ->name('import.templates.index');
+    Route::get('templates/{template}', [ImportTemplateController::class, 'show'])
+        ->name('import.templates.show');
+
+    // Import Analytics and Reporting
+    Route::prefix('analytics')->group(function () {
+        Route::get('dashboard', [ImportAnalyticsController::class, 'dashboard'])
+            ->name('import.analytics.dashboard');
+        Route::get('profiles/{profile}/stats', [ImportAnalyticsController::class, 'profileStats'])
+            ->name('import.analytics.profile-stats');
+        Route::get('jobs/{job}/details', [ImportAnalyticsController::class, 'jobDetails'])
+            ->name('import.analytics.job-details');
+        Route::get('records', [ImportAnalyticsController::class, 'records'])
+            ->name('import.analytics.records');
+        Route::get('duplicate-analysis', [ImportAnalyticsController::class, 'duplicateAnalysis'])
+            ->name('import.analytics.duplicate-analysis');
+        Route::get('performance-metrics', [ImportAnalyticsController::class, 'performanceMetrics'])
+            ->name('import.analytics.performance-metrics');
+        Route::get('trends', [ImportAnalyticsController::class, 'trends'])
+            ->name('import.analytics.trends');
     });
+});
 
 // Manager-only routes
 Route::prefix('manager')->middleware(['auth:web,sanctum'])->group(function () {

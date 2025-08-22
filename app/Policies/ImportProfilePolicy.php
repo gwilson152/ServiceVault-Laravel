@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\ImportProfile;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class ImportProfilePolicy
 {
@@ -17,7 +16,7 @@ class ImportProfilePolicy
         return $user->hasAnyPermission([
             'system.import',
             'system.import.configure',
-            'import.profiles.manage'
+            'import.profiles.manage',
         ]);
     }
 
@@ -29,7 +28,7 @@ class ImportProfilePolicy
         return $user->hasAnyPermission([
             'system.import',
             'system.import.configure',
-            'import.profiles.manage'
+            'import.profiles.manage',
         ]);
     }
 
@@ -40,7 +39,7 @@ class ImportProfilePolicy
     {
         return $user->hasAnyPermission([
             'system.import.configure',
-            'import.profiles.manage'
+            'import.profiles.manage',
         ]);
     }
 
@@ -51,7 +50,7 @@ class ImportProfilePolicy
     {
         return $user->hasAnyPermission([
             'system.import.configure',
-            'import.profiles.manage'
+            'import.profiles.manage',
         ]);
     }
 
@@ -62,18 +61,18 @@ class ImportProfilePolicy
     {
         return $user->hasAnyPermission([
             'system.import.configure',
-            'import.profiles.manage'
+            'import.profiles.manage',
         ]);
     }
 
     /**
      * Determine whether the user can test connection for the model.
      */
-    public function testConnection(User $user, ImportProfile $importProfile = null): bool
+    public function testConnection(User $user, ?ImportProfile $importProfile = null): bool
     {
         return $user->hasAnyPermission([
             'system.import.configure',
-            'import.profiles.manage'
+            'import.profiles.manage',
         ]);
     }
 
@@ -86,7 +85,7 @@ class ImportProfilePolicy
             'system.import',
             'system.import.configure',
             'system.import.execute',
-            'import.profiles.manage'
+            'import.profiles.manage',
         ]);
     }
 
@@ -97,7 +96,7 @@ class ImportProfilePolicy
     {
         return $user->hasAnyPermission([
             'system.import.execute',
-            'import.jobs.execute'
+            'import.jobs.execute',
         ]);
     }
 
@@ -108,7 +107,7 @@ class ImportProfilePolicy
     {
         return $user->hasAnyPermission([
             'system.import.configure',
-            'import.profiles.manage'
+            'import.profiles.manage',
         ]);
     }
 

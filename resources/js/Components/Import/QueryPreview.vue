@@ -229,10 +229,16 @@ const props = defineProps({
   autoRefresh: {
     type: Boolean,
     default: true
+  },
+  refreshTrigger: {
+    type: Number,
+    default: 0
   }
 })
 
 const emit = defineEmits(['query-validated', 'preview-updated'])
+
+// Will expose refreshPreview method
 
 // State
 const isLoading = ref(false)
@@ -279,7 +285,7 @@ const refreshPreview = async () => {
     return
   }
   
-  // Don't validate if required fields are missing
+  // Check if we have valid fields (core requirement)
   const hasValidFields = props.queryConfig.fields && 
     props.queryConfig.fields.length > 0 && 
     props.queryConfig.fields.every(field => 
@@ -287,6 +293,7 @@ const refreshPreview = async () => {
       field.target && field.target.trim() !== ''
     )
   
+  // If no valid fields, we can't generate a meaningful query
   if (!hasValidFields) {
     // Clear previous results without showing errors
     queryStatus.value = 'pending'
@@ -327,7 +334,10 @@ const refreshPreview = async () => {
       })
     }
     
+    
     // Validate and preview the query
+    console.log('VALIDATE API - Sending to /builder/validate:', cleanQueryConfig)
+    
     const response = await fetch(`/api/import/profiles/${props.profileId}/builder/validate`, {
       method: 'POST',
       headers: {
@@ -340,6 +350,11 @@ const refreshPreview = async () => {
     const result = await response.json()
 
     if (response.ok) {
+      console.log('VALIDATE API - Response:', {
+        generated_sql: result.generated_sql,
+        estimated_records: result.estimated_records
+      })
+      
       generatedSQL.value = result.generated_sql
       estimatedRecords.value = result.estimated_records || 0
       validationErrors.value = result.errors || []
@@ -349,7 +364,7 @@ const refreshPreview = async () => {
 
       // Get sample data if query is valid
       if (queryStatus.value === 'valid') {
-        await fetchSampleData()
+        await fetchSampleData(cleanQueryConfig)
         await fetchJoinAnalysis()
       }
     } else {
@@ -373,31 +388,31 @@ const refreshPreview = async () => {
   }
 }
 
-const fetchSampleData = async () => {
+const fetchSampleData = async (queryConfig = props.queryConfig) => {
   try {
-    // Check if we have complex query (joins, field mappings, or filters)
-    const hasComplexQuery = 
-      (props.queryConfig.joins && props.queryConfig.joins.length > 0) ||
-      (props.queryConfig.fields && props.queryConfig.fields.length > 0) ||
-      (props.queryConfig.filters && props.queryConfig.filters.length > 0)
+    // Always use complex query endpoint when we have field mappings
+    // This ensures consistent SQL generation with the validation endpoint
+    const hasFieldMappings = queryConfig.fields && queryConfig.fields.length > 0
     
     let response, endpoint, requestBody
     
-    if (hasComplexQuery) {
-      // Use complex query preview endpoint
+    if (hasFieldMappings) {
+      // Use complex query preview endpoint - same as validation
       endpoint = `/api/import/profiles/${props.profileId}/preview-query`
       requestBody = {
-        ...props.queryConfig,
+        ...queryConfig,
         limit: 10
       }
     } else {
-      // Use simple table preview endpoint
-      endpoint = `/api/import/profiles/${props.profileId}/preview-table`
+      // Only use simple table preview when no field mappings exist
+      endpoint = `/api/import/profiles/${props.profileId}/preview-table`  
       requestBody = {
-        table_name: props.queryConfig.base_table,
+        table_name: queryConfig.base_table,
         limit: 10
       }
     }
+    
+    console.log('SAMPLE DATA API - Sending to', endpoint + ':', requestBody)
     
     response = await fetch(endpoint, {
       method: 'POST',
@@ -411,12 +426,19 @@ const fetchSampleData = async () => {
     const result = await response.json()
     
     if (response.ok) {
+      console.log('SAMPLE DATA API - Full response:', result)
+      
       // Handle both simple table preview and complex query preview responses
       if (result.sample_data) {
         // Complex query preview response
         sampleData.value = result.sample_data
         estimatedRecords.value = result.estimated_records || 0
-        generatedSQL.value = result.generated_query || ''
+        
+        // DO NOT overwrite the SQL from validation - it's already correct
+        console.log('SAMPLE DATA API - NOT overwriting SQL. Current:', generatedSQL.value, 'API returned:', result.generated_query)
+        console.log('SAMPLE DATA API - Sample data records:', sampleData.value.length, 'records:', sampleData.value.slice(0, 3))
+        // generatedSQL.value = result.generated_query || ''
+        
         if (result.columns) {
           sampleColumns.value = result.columns
         } else if (sampleData.value.length > 0) {
@@ -503,13 +525,13 @@ const getJoinImpactClass = (impact) => {
   }
 }
 
-// Watch for changes in query config
-watch(() => props.queryConfig, () => {
-  if (props.autoRefresh) {
-    refreshPreview()
-  }
-}, { deep: true })
+// DISABLE ALL AUTOMATIC WATCHING - something is causing circular updates
 
 // Initial load
 refreshPreview()
+
+// Expose refreshPreview method for parent component
+defineExpose({
+  refreshPreview
+})
 </script>

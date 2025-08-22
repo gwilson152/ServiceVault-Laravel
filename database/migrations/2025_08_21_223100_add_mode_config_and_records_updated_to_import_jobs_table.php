@@ -15,7 +15,7 @@ return new class extends Migration
             // Add mode configuration field
             $table->json('mode_config')->nullable()->after('import_options')
                 ->comment('Import mode configuration used for this job');
-                
+
             // Add records updated counter
             $table->integer('records_updated')->default(0)->after('records_imported')
                 ->comment('Number of records that were updated during import');

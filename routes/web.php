@@ -121,7 +121,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Invoice Detail View
     Route::get('/invoices/{invoice}', function ($invoice) {
         return Inertia::render('Invoices/Show', [
-            'invoiceId' => $invoice
+            'invoiceId' => $invoice,
         ]);
     })->name('invoices.show');
 

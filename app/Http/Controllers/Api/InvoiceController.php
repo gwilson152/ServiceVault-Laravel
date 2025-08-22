@@ -93,10 +93,10 @@ class InvoiceController extends Controller
         // Get tax settings using TaxService hierarchy
         $taxService = app(\App\Services\TaxService::class);
         $account = \App\Models\Account::find($validated['account_id']);
-        
+
         $taxRate = $taxService->getEffectiveTaxRate($validated['account_id'], $validated['tax_rate'] ?? null);
         $taxApplicationMode = $taxService->getEffectiveTaxApplicationMode($validated['account_id'], $validated['tax_application_mode'] ?? null);
-        
+
         // If tax preferences were specified and differ from current account settings, update account settings
         if (isset($validated['tax_rate']) || isset($validated['tax_application_mode'])) {
             $accountTaxSettings = [];
@@ -106,8 +106,8 @@ class InvoiceController extends Controller
             if (isset($validated['tax_application_mode'])) {
                 $accountTaxSettings['default_application_mode'] = $validated['tax_application_mode'];
             }
-            
-            if (!empty($accountTaxSettings)) {
+
+            if (! empty($accountTaxSettings)) {
                 $taxService->setAccountTaxSettings($validated['account_id'], $accountTaxSettings);
             }
         }
@@ -248,25 +248,25 @@ class InvoiceController extends Controller
         }
 
         // Can only edit draft invoices, except for status changes
-        if ($invoice->status !== 'draft' && !$request->has('status')) {
+        if ($invoice->status !== 'draft' && ! $request->has('status')) {
             return response()->json(['error' => 'Only draft invoices can be edited.'], 422);
         }
-        
+
         // Allow status changes: draft -> sent/cancelled, sent -> draft
         if ($request->has('status')) {
             $newStatus = $validated['status'] ?? $request->input('status');
-            
+
             // Define allowed status transitions
             $allowedTransitions = [
                 'draft' => ['sent', 'cancelled'],
                 'sent' => ['draft'],  // Allow reverting sent invoices back to draft
             ];
-            
+
             $currentStatus = $invoice->status;
-            if (!isset($allowedTransitions[$currentStatus]) || 
-                !in_array($newStatus, $allowedTransitions[$currentStatus])) {
+            if (! isset($allowedTransitions[$currentStatus]) ||
+                ! in_array($newStatus, $allowedTransitions[$currentStatus])) {
                 return response()->json([
-                    'error' => "Cannot change invoice status from '{$currentStatus}' to '{$newStatus}'."
+                    'error' => "Cannot change invoice status from '{$currentStatus}' to '{$newStatus}'.",
                 ], 422);
             }
         }
@@ -285,16 +285,16 @@ class InvoiceController extends Controller
         if (isset($validated['tax_rate']) || isset($validated['tax_application_mode'])) {
             $taxService = app(\App\Services\TaxService::class);
             $accountTaxSettings = [];
-            
+
             if (isset($validated['tax_rate'])) {
                 $accountTaxSettings['default_rate'] = $validated['tax_rate'];
             }
-            
+
             if (isset($validated['tax_application_mode'])) {
                 $accountTaxSettings['default_application_mode'] = $validated['tax_application_mode'];
             }
-            
-            if (!empty($accountTaxSettings)) {
+
+            if (! empty($accountTaxSettings)) {
                 $taxService->setAccountTaxSettings($invoice->account_id, $accountTaxSettings);
             }
         }
@@ -443,7 +443,7 @@ class InvoiceController extends Controller
         $effectiveTaxApplicationMode = $taxService->getEffectiveTaxApplicationMode($accountId);
 
         // Determine if time entries should be taxable based on effective tax application mode
-        $timeEntryTaxable = match($effectiveTaxApplicationMode) {
+        $timeEntryTaxable = match ($effectiveTaxApplicationMode) {
             'all_items' => true,           // Time entries are taxable by default
             'non_service_items' => false,  // Time entries are never taxed
             'custom' => false,             // Only explicitly marked items are taxable
@@ -697,7 +697,7 @@ class InvoiceController extends Controller
             'data' => [
                 'time_entries' => $timeEntries,
                 'ticket_addons' => $ticketAddons,
-            ]
+            ],
         ]);
     }
 
@@ -805,11 +805,12 @@ class InvoiceController extends Controller
 
             return response()->json([
                 'data' => new \App\Http\Resources\InvoiceLineItemResource($lineItem),
-                'message' => 'Line item added successfully.'
+                'message' => 'Line item added successfully.',
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['error' => 'Failed to add line item.'], 500);
         }
     }
@@ -843,7 +844,7 @@ class InvoiceController extends Controller
             if ($lineItem->time_entry_id) {
                 TimeEntry::where('id', $lineItem->time_entry_id)->update(['invoice_id' => null]);
             }
-            
+
             if ($lineItem->ticket_addon_id) {
                 TicketAddon::where('id', $lineItem->ticket_addon_id)->update(['invoice_id' => null]);
             }
@@ -858,11 +859,12 @@ class InvoiceController extends Controller
             DB::commit();
 
             return response()->json([
-                'message' => 'Line item removed successfully.'
+                'message' => 'Line item removed successfully.',
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['error' => 'Failed to remove line item.'], 500);
         }
     }
@@ -894,8 +896,8 @@ class InvoiceController extends Controller
         // For other fields, only allow custom line items
         $requestKeys = array_keys($request->all());
         $isTaxableOnlyUpdate = count($requestKeys) === 1 && in_array('taxable', $requestKeys);
-        
-        if (!$isTaxableOnlyUpdate && $lineItem->line_type !== 'custom') {
+
+        if (! $isTaxableOnlyUpdate && $lineItem->line_type !== 'custom') {
             return response()->json(['error' => 'Can only update description, quantity, and unit_price on custom line items.'], 422);
         }
 
@@ -927,11 +929,12 @@ class InvoiceController extends Controller
 
             return response()->json([
                 'data' => new \App\Http\Resources\InvoiceLineItemResource($lineItem),
-                'message' => 'Line item updated successfully.'
+                'message' => 'Line item updated successfully.',
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['error' => 'Failed to update line item.'], 500);
         }
     }
@@ -964,9 +967,9 @@ class InvoiceController extends Controller
         try {
             foreach ($validated['line_items'] as $item) {
                 $lineItem = InvoiceLineItem::where('id', $item['id'])
-                                          ->where('invoice_id', $invoice->id)
-                                          ->first();
-                
+                    ->where('invoice_id', $invoice->id)
+                    ->first();
+
                 if ($lineItem) {
                     $lineItem->update(['sort_order' => $item['sort_order']]);
                 }
@@ -980,6 +983,7 @@ class InvoiceController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['error' => 'Failed to reorder line items.'], 500);
         }
     }
@@ -1013,8 +1017,8 @@ class InvoiceController extends Controller
         // Shift existing items if inserting in middle
         if (isset($validated['position'])) {
             $invoice->lineItems()
-                    ->where('sort_order', '>=', $sortOrder)
-                    ->increment('sort_order');
+                ->where('sort_order', '>=', $sortOrder)
+                ->increment('sort_order');
         }
 
         // Create separator line item

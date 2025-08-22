@@ -179,6 +179,7 @@ class ImportQuery extends Model
         foreach ($this->joins ?? [] as $join) {
             $tables[] = $join['alias'] ?? $join['table'];
         }
+
         return $tables;
     }
 }

@@ -160,15 +160,15 @@ class TimeEntryController extends Controller
             $timer = \App\Models\Timer::find($validated['timer_id']);
             if ($timer) {
                 // Verify user owns the timer or has permission to manage it
-                if ($timer->user_id !== $user->id && !$user->hasAnyPermission(['timers.manage', 'admin.write'])) {
+                if ($timer->user_id !== $user->id && ! $user->hasAnyPermission(['timers.manage', 'admin.write'])) {
                     return response()->json(['error' => 'You do not have permission to commit this timer.'], 403);
                 }
-                
+
                 // Verify timer is in a committable state
                 if ($timer->status === 'committed') {
                     return response()->json(['error' => 'Timer has already been committed.'], 422);
                 }
-                
+
                 // Commit the timer (changes status to 'committed' and sets stopped_at)
                 $timer->commit();
             }
@@ -177,7 +177,7 @@ class TimeEntryController extends Controller
         // Check if user can override rates (time managers and admins)
         $canOverrideRates = $user->hasAnyPermission(['time.manage', 'admin.manage']);
         $rateOverride = null;
-        
+
         if ($canOverrideRates && isset($validated['rate_override'])) {
             $rateOverride = $validated['rate_override'];
         }
@@ -285,8 +285,8 @@ class TimeEntryController extends Controller
 
         // Check if user can override rates (time managers and admins)
         $canOverrideRates = $user->hasAnyPermission(['time.manage', 'admin.manage']);
-        
-        if (!$canOverrideRates && isset($validated['rate_override'])) {
+
+        if (! $canOverrideRates && isset($validated['rate_override'])) {
             unset($validated['rate_override']); // Remove rate override if user doesn't have permission
         }
 
@@ -378,7 +378,7 @@ class TimeEntryController extends Controller
         // Check if user can override rates (time managers and admins)
         $canOverrideRates = $user->hasAnyPermission(['time.manage', 'admin.manage']);
         $rateOverride = null;
-        
+
         if ($canOverrideRates && isset($validated['rate_override'])) {
             $rateOverride = $validated['rate_override'];
         }
@@ -438,13 +438,13 @@ class TimeEntryController extends Controller
         $user = $request->user();
 
         // Verify unapproval permissions - same as approval permissions
-        if (!($user->user_type === 'service_provider' ||
+        if (! ($user->user_type === 'service_provider' ||
               $user->hasAnyPermission(['time.manage', 'time.approve', 'teams.manage', 'admin.manage', 'admin.write']))) {
             return response()->json(['error' => 'Insufficient permissions to unapprove time entries.'], 403);
         }
 
         // Check if the time entry can be unapproved
-        if (!$timeEntry->canUnapprove()) {
+        if (! $timeEntry->canUnapprove()) {
             if ($timeEntry->isInvoiced()) {
                 return response()->json(['error' => 'Cannot unapprove time entry that has been invoiced.'], 422);
             }
@@ -454,14 +454,14 @@ class TimeEntryController extends Controller
         }
 
         // Verify manager has access to this account
-        if (!$user->hasPermission('admin.manage')) {
+        if (! $user->hasPermission('admin.manage')) {
             $managedAccountIds = $user->accounts()
                 ->whereHas('users', function ($userQuery) use ($user) {
                     $userQuery->where('users.id', $user->id);
                 })
                 ->pluck('accounts.id');
 
-            if (!$managedAccountIds->contains($timeEntry->account_id)) {
+            if (! $managedAccountIds->contains($timeEntry->account_id)) {
                 return response()->json(['error' => 'You cannot unapprove time entries for this account.'], 403);
             }
         }
@@ -476,7 +476,7 @@ class TimeEntryController extends Controller
             $validated['notes'] ?? 'Unapproved and returned to pending status'
         );
 
-        if (!$success) {
+        if (! $success) {
             return response()->json(['error' => 'Failed to unapprove time entry.'], 422);
         }
 

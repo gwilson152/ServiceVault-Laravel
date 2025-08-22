@@ -35,24 +35,24 @@ class ImportTemplateController extends Controller
 
         // Search by name
         if ($request->filled('search')) {
-            $query->where('name', 'ILIKE', '%' . $request->search . '%');
+            $query->where('name', 'ILIKE', '%'.$request->search.'%');
         }
 
         // Only show active templates by default
-        if (!$request->has('active')) {
+        if (! $request->has('active')) {
             $query->where('is_active', true);
         }
 
         $templates = $query->orderBy('platform')
-                          ->orderBy('name')
-                          ->get();
+            ->orderBy('name')
+            ->get();
 
         return response()->json([
             'data' => $templates,
             'meta' => [
                 'total' => $templates->count(),
-                'filters_applied' => $request->only(['database_type', 'platform', 'active', 'search'])
-            ]
+                'filters_applied' => $request->only(['database_type', 'platform', 'active', 'search']),
+            ],
         ]);
     }
 

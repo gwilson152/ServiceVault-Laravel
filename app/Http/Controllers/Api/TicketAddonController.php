@@ -274,14 +274,14 @@ class TicketAddonController extends Controller
         $this->authorize('update', $ticketAddon->ticket);
 
         // Check if user has approval permissions
-        if (!$user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
+        if (! $user->hasAnyPermission(['tickets.approve', 'admin.write'])) {
             return response()->json([
                 'message' => 'Insufficient permissions to unapprove addons',
             ], 403);
         }
 
         // Check if the addon can be unapproved
-        if (!$ticketAddon->canUnapprove()) {
+        if (! $ticketAddon->canUnapprove()) {
             if ($ticketAddon->isInvoiced()) {
                 return response()->json([
                     'message' => 'Cannot unapprove addon that has been invoiced',

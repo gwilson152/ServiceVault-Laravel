@@ -161,7 +161,7 @@ class RoleTemplateSeeder extends Seeder
                 'timers.manage',
                 'timers.sync',
 
-                // Import System Management  
+                // Import System Management
                 'system.import',
                 'system.import.configure',
                 'system.import.execute',

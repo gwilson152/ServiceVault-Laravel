@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('import_status')->default('imported'); // imported, updated, failed
             $table->text('error_message')->nullable(); // Error details if failed
             $table->timestamps();
-            
+
             // Indexes for efficient lookups
             $table->index(['job_id', 'import_status']);
             $table->index(['source_table', 'source_id']);

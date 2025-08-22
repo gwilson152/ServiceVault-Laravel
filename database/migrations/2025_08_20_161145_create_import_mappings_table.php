@@ -22,12 +22,12 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->integer('import_order')->default(0); // Order of import execution
             $table->timestamps();
-            
+
             // Indexes
             $table->index(['profile_id', 'is_active']);
             $table->index(['source_table', 'destination_table']);
             $table->index('import_order');
-            
+
             // Unique constraint to prevent duplicate mappings
             $table->unique(['profile_id', 'source_table', 'destination_table']);
         });

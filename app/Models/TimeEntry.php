@@ -280,7 +280,7 @@ class TimeEntry extends Model
 
         // Lock the current calculated amount at approval time
         $this->approved_amount = $this->calculated_cost;
-        
+
         $this->status = 'approved';
         $this->approved_by = $approvedBy;
         $this->approved_at = now();
@@ -315,7 +315,7 @@ class TimeEntry extends Model
      */
     public function canUnapprove(): bool
     {
-        return $this->status === 'approved' && !$this->isInvoiced();
+        return $this->status === 'approved' && ! $this->isInvoiced();
     }
 
     /**
@@ -323,7 +323,7 @@ class TimeEntry extends Model
      */
     public function unapprove(string $unapprovedBy, ?string $notes = null): bool
     {
-        if (!$this->canUnapprove()) {
+        if (! $this->canUnapprove()) {
             return false;
         }
 

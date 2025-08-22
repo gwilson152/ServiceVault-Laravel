@@ -14,7 +14,7 @@ The universal import system enables administrators to migrate data from any Post
 
 - **✅ Universal Database Support** - Any PostgreSQL database with intelligent schema introspection
 - **🎯 Platform Templates** - Pre-configured import patterns for FreeScout, custom platforms
-- **🔧 Visual Query Builder** - Drag-and-drop interface with table hover tooltips and detailed column information
+- **🔧 Visual Query Builder** - Fullscreen interface with table hover tooltips, real-time SQL preview, and consistent query generation
 - **📊 Real-Time Monitoring** - WebSocket-based live progress tracking with floating job monitor
 - **🔍 Advanced Duplicate Detection** - Configurable matching strategies with confidence scoring
 - **⚙️ Import Mode Configuration** - Create-only, update-only, or upsert modes with smart handling
@@ -84,16 +84,17 @@ After creating the connection, choose your configuration approach:
 #### Option B: Build Custom Query
 
 **Visual Query Builder Components:**
-- **Table Selector** - Choose base table and browse schema
+- **Table Selector** - Choose base table and browse schema with enhanced tooltips
 - **JOIN Builder** - Configure table relationships with suggested joins
 - **Field Mapper** - Map source fields to Service Vault fields with transformations
-- **Filter Builder** - Add WHERE conditions for data selection
+- **Filter Builder** - Add WHERE conditions with real-time SQL generation
+- **Query Preview** - Live SQL preview with validation and sample data
 
 **Build Custom:**
 1. Click **"Build Custom Query"** on profile card
-2. Use visual components to construct import query
-3. Preview data and validate configuration
-4. Save custom configuration
+2. Use fullscreen visual components to construct import query
+3. Preview data with real-time filtering and validation
+4. Save custom configuration with consistent SQL generation
 
 ### Step 3: Configure Import Modes
 
@@ -182,7 +183,7 @@ LEFT JOIN users ON users.id = time_logs.user_id
 - Full visual query builder access
 - Extensible for any PostgreSQL schema
 
-## Visual Query Builder
+## Visual Query Builder (Production-Ready)
 
 ### Table Selector
 
@@ -193,19 +194,20 @@ LEFT JOIN users ON users.id = time_logs.user_id
 - **Search & Filter** - Find tables by name or column content
 - **Visual Selection** - Click to select base table for query
 
-**Enhanced Hover Information:**
+**Enhanced Hover Information (Fixed Positioning):**
 - Complete column list with data types
-- Primary key and foreign key indicators
+- Primary key and foreign key indicators  
 - Nullable status and default values
 - Table size and row count statistics
 - Schema and additional metadata
+- Tooltips positioned at top-right of table items for optimal visibility
 
 **Usage:**
-1. Select profile → "Build Custom Query"
+1. Select profile → "Build Custom Query" (opens fullscreen dialog)
 2. Browse available tables in source database
-3. Hover over tables to see detailed column information
+3. Hover over tables to see detailed column information (tooltips positioned at top-right)
 4. Click table to select as base for import query
-5. Review table structure and sample data
+5. Review table structure and real-time filtered sample data
 
 ### JOIN Builder
 
@@ -268,7 +270,13 @@ TO_CHAR(date, 'YYYY-MM-DD') → date      -- Date formatting
 - **Agents** - Staff users and agents
 - **Accounts** - Customer accounts and organizations
 
-### Filter Builder
+### Filter Builder (Enhanced with Real-Time Preview)
+
+**Real-Time Features:**
+- Live SQL generation as filters are added/modified
+- Immediate validation of filter syntax and field references
+- Consistent query generation between validation and sample data
+- Debounced input handling for smooth user experience
 
 **Filter Types:**
 
@@ -813,4 +821,4 @@ telnet hostname 5432
 
 ---
 
-*Universal Import System Guide | Service Vault Documentation | Updated: August 21, 2025*
+*Universal Import System Guide | Service Vault Documentation | Updated: August 22, 2025*

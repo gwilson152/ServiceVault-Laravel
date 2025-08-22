@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -13,17 +13,17 @@ return new class extends Migration
     public function up(): void
     {
         // Check if account tax columns exist before migration
-        if (!Schema::hasColumn('accounts', 'default_tax_rate')) {
+        if (! Schema::hasColumn('accounts', 'default_tax_rate')) {
             // Columns don't exist, nothing to migrate
             return;
         }
 
         // Migrate existing account tax settings to settings table
         $accounts = DB::table('accounts')
-                     ->whereNotNull('default_tax_rate')
-                     ->orWhereNotNull('default_tax_application_mode')
-                     ->orWhere('tax_exempt', true)
-                     ->get();
+            ->whereNotNull('default_tax_rate')
+            ->orWhereNotNull('default_tax_application_mode')
+            ->orWhere('tax_exempt', true)
+            ->get();
 
         foreach ($accounts as $account) {
             // Only migrate non-default values
@@ -90,19 +90,19 @@ return new class extends Migration
         Schema::table('accounts', function (Blueprint $table) {
             $table->decimal('default_tax_rate', 5, 4)->default(0)->after('billing_country');
             $table->enum('default_tax_application_mode', ['all_items', 'non_service_items', 'custom'])
-                  ->default('all_items')->after('default_tax_rate');
+                ->default('all_items')->after('default_tax_rate');
             $table->boolean('tax_exempt')->default(false)->after('default_tax_application_mode');
         });
 
         // Migrate settings back to account columns
         $taxSettings = DB::table('settings')
-                        ->where('type', 'account')
-                        ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
-                        ->get();
+            ->where('type', 'account')
+            ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
+            ->get();
 
         $accountUpdates = [];
         foreach ($taxSettings as $setting) {
-            if (!isset($accountUpdates[$setting->account_id])) {
+            if (! isset($accountUpdates[$setting->account_id])) {
                 $accountUpdates[$setting->account_id] = [];
             }
 
@@ -126,8 +126,8 @@ return new class extends Migration
 
         // Remove the migrated settings
         DB::table('settings')
-          ->where('type', 'account')
-          ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
-          ->delete();
+            ->where('type', 'account')
+            ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
+            ->delete();
     }
 };

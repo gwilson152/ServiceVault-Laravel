@@ -62,7 +62,7 @@ return new class extends Migration
         // Drop the triggers
         DB::statement('DROP TRIGGER IF EXISTS time_entries_prevent_duplicate_billing ON time_entries;');
         DB::statement('DROP TRIGGER IF EXISTS ticket_addons_prevent_duplicate_billing ON ticket_addons;');
-        
+
         // Restore original function
         DB::statement('
             CREATE OR REPLACE FUNCTION prevent_duplicate_billing() RETURNS TRIGGER AS $$

@@ -158,8 +158,8 @@ class Account extends Model
     public function hasTaxOverrides(): bool
     {
         return Setting::where('type', 'account')
-                     ->where('account_id', $this->id)
-                     ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
-                     ->exists();
+            ->where('account_id', $this->id)
+            ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
+            ->exists();
     }
 }

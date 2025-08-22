@@ -174,11 +174,11 @@ class SearchController extends Controller
         $accounts = $builder->limit($limit)->get();
 
         $taxService = app(\App\Services\TaxService::class);
-        
+
         return response()->json([
             'data' => $accounts->map(function ($account) use ($taxService) {
                 $taxSettings = $taxService->getAccountTaxSettings($account->id);
-                
+
                 return [
                     'id' => $account->id,
                     'name' => $account->name,

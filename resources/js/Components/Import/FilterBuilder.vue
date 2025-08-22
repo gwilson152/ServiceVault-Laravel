@@ -99,7 +99,6 @@
               v-model="filter.value"
               :type="getInputType(filter)"
               :placeholder="getValuePlaceholder(filter)"
-              @input="updateModelValue"
               class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             />
             
@@ -109,14 +108,12 @@
                 v-model="filter.value"
                 :type="getInputType(filter)"
                 placeholder="Start value"
-                @input="updateModelValue"
                 class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               />
               <input
                 v-model="filter.value2"
                 :type="getInputType(filter)"
                 placeholder="End value"
-                @input="updateModelValue"
                 class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               />
             </div>
@@ -249,7 +246,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'filters-changed'])
 
 // State
-const filters = ref(props.modelValue.map(filter => reactive({ ...filter })))
+const filters = ref([...props.modelValue])
 
 // Computed
 const availableFields = computed(() => {
@@ -400,24 +397,24 @@ const suggestedFilters = computed(() => {
 
 // Methods
 const addFilter = () => {
-  filters.value.push(reactive({
+  filters.value.push({
     field: '',
     operator: '',
     value: '',
     value2: '' // For BETWEEN operations
-  }))
-  updateModelValue()
+  })
+  // updateModelValue will be called by debounced watcher
 }
 
 const removeFilter = (index) => {
   filters.value.splice(index, 1)
-  updateModelValue()
+  // updateModelValue will be called by debounced watcher
 }
 
 const duplicateFilter = (index) => {
   const original = filters.value[index]
   filters.value.splice(index + 1, 0, { ...original })
-  updateModelValue()
+  // updateModelValue will be called by debounced watcher
 }
 
 const updateModelValue = () => {
@@ -430,14 +427,14 @@ const onFieldChange = (filter) => {
   filter.operator = ''
   filter.value = ''
   filter.value2 = ''
-  updateModelValue()
+  // updateModelValue will be called by debounced watcher
 }
 
 const onOperatorChange = (filter) => {
   // Reset values when operator changes
   filter.value = ''
   filter.value2 = ''
-  updateModelValue()
+  // updateModelValue will be called by debounced watcher
 }
 
 const isValidFilter = (filter) => {
@@ -599,14 +596,15 @@ const applySuggestedFilter = (suggestion) => {
     value: suggestion.value,
     value2: ''
   })
-  updateModelValue()
+  // updateModelValue will be called automatically by the watcher
 }
 
 // Watchers
 watch(() => props.modelValue, (newValue) => {
-  filters.value = newValue.map(filter => reactive({ ...filter }))
+  filters.value = [...newValue]
 }, { deep: true })
 
+// Immediate update when filters change via v-model
 watch(filters, () => {
   updateModelValue()
 }, { deep: true })

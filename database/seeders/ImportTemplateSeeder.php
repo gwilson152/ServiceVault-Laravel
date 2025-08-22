@@ -26,8 +26,8 @@ class ImportTemplateSeeder extends Seeder
                                 'type' => 'LEFT',
                                 'table' => 'emails',
                                 'on' => 'emails.customer_id = customers.id',
-                                'condition' => "emails.type = 'work'"
-                            ]
+                                'condition' => "emails.type = 'work'",
+                            ],
                         ],
                         'fields' => [
                             'customers.id as external_id',
@@ -44,14 +44,14 @@ class ImportTemplateSeeder extends Seeder
                             'customers.zip',
                             'customers.address',
                             'customers.created_at',
-                            'customers.updated_at'
+                            'customers.updated_at',
                         ],
                         'target_type' => 'customer_users',
                         'transformations' => [
                             'name' => "CONCAT(first_name, ' ', last_name)",
                             'user_type' => "'customer'",
-                            'is_active' => 'true'
-                        ]
+                            'is_active' => 'true',
+                        ],
                     ],
                     'conversations' => [
                         'name' => 'Support Tickets',
@@ -61,19 +61,19 @@ class ImportTemplateSeeder extends Seeder
                             [
                                 'type' => 'LEFT',
                                 'table' => 'customers',
-                                'on' => 'customers.id = conversations.customer_id'
+                                'on' => 'customers.id = conversations.customer_id',
                             ],
                             [
                                 'type' => 'LEFT',
                                 'table' => 'emails',
                                 'on' => 'emails.customer_id = customers.id',
-                                'condition' => "emails.type = 'work'"
+                                'condition' => "emails.type = 'work'",
                             ],
                             [
                                 'type' => 'LEFT',
                                 'table' => 'users',
-                                'on' => 'users.id = conversations.user_id'
-                            ]
+                                'on' => 'users.id = conversations.user_id',
+                            ],
                         ],
                         'fields' => [
                             'conversations.id as external_id',
@@ -88,7 +88,7 @@ class ImportTemplateSeeder extends Seeder
                             'conversations.mailbox_id',
                             'conversations.folder_id',
                             'conversations.created_at',
-                            'conversations.updated_at'
+                            'conversations.updated_at',
                         ],
                         'target_type' => 'tickets',
                         'transformations' => [
@@ -100,8 +100,8 @@ class ImportTemplateSeeder extends Seeder
                                 WHEN status = 2 THEN 'pending'
                                 WHEN status = 3 THEN 'closed'
                                 ELSE 'open'
-                            END"
-                        ]
+                            END",
+                        ],
                     ],
                     'time_entries' => [
                         'name' => 'Time Tracking Entries',
@@ -111,13 +111,13 @@ class ImportTemplateSeeder extends Seeder
                             [
                                 'type' => 'LEFT',
                                 'table' => 'conversations',
-                                'on' => 'conversations.id = time_logs.conversation_id'
+                                'on' => 'conversations.id = time_logs.conversation_id',
                             ],
                             [
                                 'type' => 'LEFT',
                                 'table' => 'users',
-                                'on' => 'users.id = time_logs.user_id'
-                            ]
+                                'on' => 'users.id = time_logs.user_id',
+                            ],
                         ],
                         'fields' => [
                             'time_logs.id as external_id',
@@ -129,35 +129,35 @@ class ImportTemplateSeeder extends Seeder
                             'time_logs.billable',
                             'time_logs.rate_amount',
                             'time_logs.created_at',
-                            'time_logs.updated_at'
+                            'time_logs.updated_at',
                         ],
                         'target_type' => 'time_entries',
                         'transformations' => [
                             'duration' => 'ROUND(duration_seconds / 60)', // Convert seconds to minutes
                             'billable' => 'COALESCE(billable, true)',
-                            'rate_override' => 'rate_amount'
-                        ]
-                    ]
+                            'rate_override' => 'rate_amount',
+                        ],
+                    ],
                 ],
                 'priority_order' => ['customers', 'conversations', 'time_entries'],
                 'suggested_filters' => [
                     'customers' => [
                         'active_only' => "customers.created_at >= '2020-01-01'",
-                        'with_email' => "emails.email IS NOT NULL"
+                        'with_email' => 'emails.email IS NOT NULL',
                     ],
                     'conversations' => [
                         'recent_only' => "conversations.created_at >= DATE('now', '-1 year')",
-                        'exclude_spam' => "conversations.state != 'spam'"
+                        'exclude_spam' => "conversations.state != 'spam'",
                     ],
                     'time_entries' => [
                         'billable_only' => 'time_logs.billable = true',
-                        'recent_entries' => "time_logs.date >= DATE('now', '-6 months')"
-                    ]
-                ]
+                        'recent_entries' => "time_logs.date >= DATE('now', '-6 months')",
+                    ],
+                ],
             ],
             'is_system' => true,
             'is_active' => true,
-            'created_by' => null
+            'created_by' => null,
         ]);
 
         // Custom/Generic Template
@@ -169,11 +169,11 @@ class ImportTemplateSeeder extends Seeder
             'configuration' => [
                 'queries' => [],
                 'priority_order' => [],
-                'suggested_filters' => []
+                'suggested_filters' => [],
             ],
             'is_system' => true,
             'is_active' => true,
-            'created_by' => null
+            'created_by' => null,
         ]);
     }
 }

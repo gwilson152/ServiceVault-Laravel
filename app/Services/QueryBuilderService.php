@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\ImportQuery;
+use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Exception;
 
 class QueryBuilderService
 {
@@ -21,41 +21,41 @@ class QueryBuilderService
      */
     public function buildQuery(ImportQuery $query): string
     {
-        $sql = "SELECT ";
-        
+        $sql = 'SELECT ';
+
         // Build SELECT clause
-        if ($query->select_fields && !empty($query->select_fields)) {
+        if ($query->select_fields && ! empty($query->select_fields)) {
             $sql .= implode(', ', $query->select_fields);
         } else {
             // Default to all fields from base table and joined tables
             $sql .= $this->buildDefaultSelectClause($query);
         }
-        
+
         // FROM clause
         $sql .= " FROM {$query->base_table}";
-        
+
         // JOIN clauses
-        if ($query->joins && !empty($query->joins)) {
+        if ($query->joins && ! empty($query->joins)) {
             foreach ($query->joins as $join) {
                 $sql .= $this->buildJoinClause($join);
             }
         }
-        
+
         // WHERE clause
         if ($query->where_conditions) {
-            $sql .= " WHERE " . $query->where_conditions;
+            $sql .= ' WHERE '.$query->where_conditions;
         }
-        
+
         // ORDER BY clause
         if ($query->order_by) {
-            $sql .= " ORDER BY " . $query->order_by;
+            $sql .= ' ORDER BY '.$query->order_by;
         }
-        
+
         // LIMIT clause
         if ($query->limit_clause) {
-            $sql .= " LIMIT " . $query->limit_clause;
+            $sql .= ' LIMIT '.$query->limit_clause;
         }
-        
+
         return $sql;
     }
 
@@ -65,19 +65,19 @@ class QueryBuilderService
     public function buildCountQuery(ImportQuery $query): string
     {
         $sql = "SELECT COUNT(*) as count FROM {$query->base_table}";
-        
+
         // JOIN clauses
-        if ($query->joins && !empty($query->joins)) {
+        if ($query->joins && ! empty($query->joins)) {
             foreach ($query->joins as $join) {
                 $sql .= $this->buildJoinClause($join);
             }
         }
-        
+
         // WHERE clause
         if ($query->where_conditions) {
-            $sql .= " WHERE " . $query->where_conditions;
+            $sql .= ' WHERE '.$query->where_conditions;
         }
-        
+
         return $sql;
     }
 
@@ -88,7 +88,7 @@ class QueryBuilderService
     {
         $sql = $this->buildQuery($query);
         $results = DB::connection($connectionName)->select($sql);
-        
+
         return collect($results)->map(function ($result) {
             return (array) $result;
         });
@@ -121,7 +121,7 @@ class QueryBuilderService
         if ($query->joins) {
             foreach ($query->joins as $index => $join) {
                 $joinValidation = $this->validateJoinDefinition($join, $index);
-                if (!$joinValidation['is_valid']) {
+                if (! $joinValidation['is_valid']) {
                     $validation['is_valid'] = false;
                     $validation['errors'] = array_merge($validation['errors'], $joinValidation['errors']);
                 }
@@ -131,8 +131,8 @@ class QueryBuilderService
         // Validate WHERE conditions syntax (basic check)
         if ($query->where_conditions) {
             $whereValidation = $this->validateWhereConditions($query->where_conditions);
-            if (!$whereValidation['is_valid']) {
-                $validation['warnings'][] = 'WHERE conditions may contain syntax errors: ' . $whereValidation['message'];
+            if (! $whereValidation['is_valid']) {
+                $validation['warnings'][] = 'WHERE conditions may contain syntax errors: '.$whereValidation['message'];
             }
         }
 
@@ -153,7 +153,7 @@ class QueryBuilderService
 
         foreach ($tables as $table) {
             $foreignKeys = $this->connectionService->getTableForeignKeys($connectionName, $table);
-            
+
             foreach ($foreignKeys as $fk) {
                 $relationships[] = [
                     'source_table' => $table,
@@ -175,10 +175,10 @@ class QueryBuilderService
     public function suggestJoins(string $connectionName, string $baseTable): array
     {
         $suggestions = [];
-        
+
         // Get foreign keys from the base table
         $foreignKeys = $this->connectionService->getTableForeignKeys($connectionName, $baseTable);
-        
+
         foreach ($foreignKeys as $fk) {
             $suggestions[] = [
                 'table' => $fk->foreign_table_name,
@@ -192,14 +192,16 @@ class QueryBuilderService
 
         // Find tables that reference the base table
         $allTables = $this->connectionService->getTables($connectionName);
-        
+
         foreach ($allTables as $table) {
             $tableName = $table->table_name ?? $table['table_name'];
-            
-            if ($tableName === $baseTable) continue;
-            
+
+            if ($tableName === $baseTable) {
+                continue;
+            }
+
             $tableFks = $this->connectionService->getTableForeignKeys($connectionName, $tableName);
-            
+
             foreach ($tableFks as $fk) {
                 if ($fk->foreign_table_name === $baseTable) {
                     $suggestions[] = [
@@ -217,6 +219,7 @@ class QueryBuilderService
         // Sort suggestions by confidence
         usort($suggestions, function ($a, $b) {
             $confidenceOrder = ['high' => 3, 'medium' => 2, 'low' => 1];
+
             return ($confidenceOrder[$b['confidence']] ?? 0) - ($confidenceOrder[$a['confidence']] ?? 0);
         });
 
@@ -247,7 +250,7 @@ class QueryBuilderService
             foreach ($query->joins as $join) {
                 $tableName = $join['table'];
                 $alias = $join['alias'] ?? $tableName;
-                
+
                 try {
                     $joinTableFields = $this->connectionService->getTableColumns($connectionName, $tableName);
                     foreach ($joinTableFields as $field) {
@@ -276,14 +279,14 @@ class QueryBuilderService
     protected function buildDefaultSelectClause(ImportQuery $query): string
     {
         $selects = ["{$query->base_table}.*"];
-        
+
         if ($query->joins) {
             foreach ($query->joins as $join) {
                 $alias = $join['alias'] ?? $join['table'];
                 $selects[] = "{$alias}.*";
             }
         }
-        
+
         return implode(', ', $selects);
     }
 
@@ -296,15 +299,15 @@ class QueryBuilderService
         $table = $join['table'];
         $on = $join['on'];
         $alias = $join['alias'] ?? null;
-        
+
         $clause = " {$type} {$table}";
-        
+
         if ($alias) {
             $clause .= " AS {$alias}";
         }
-        
+
         $clause .= " ON {$on}";
-        
+
         return $clause;
     }
 
@@ -332,14 +335,14 @@ class QueryBuilderService
         // Validate JOIN type
         $validJoinTypes = ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL OUTER JOIN'];
         $joinType = strtoupper($join['type'] ?? 'LEFT JOIN');
-        
-        if (!in_array($joinType, $validJoinTypes)) {
+
+        if (! in_array($joinType, $validJoinTypes)) {
             $validation['is_valid'] = false;
             $validation['errors'][] = "JOIN {$index}: invalid join type '{$joinType}'";
         }
 
         // Basic validation of ON condition (should contain = operator)
-        if (!empty($join['on']) && !str_contains($join['on'], '=')) {
+        if (! empty($join['on']) && ! str_contains($join['on'], '=')) {
             $validation['errors'][] = "JOIN {$index}: ON condition should contain equality comparison";
         }
 
@@ -377,7 +380,7 @@ class QueryBuilderService
         // Check for unmatched parentheses
         $openParens = substr_count($whereConditions, '(');
         $closeParens = substr_count($whereConditions, ')');
-        
+
         if ($openParens !== $closeParens) {
             $validation['is_valid'] = false;
             $validation['message'] = 'Unmatched parentheses in WHERE conditions';

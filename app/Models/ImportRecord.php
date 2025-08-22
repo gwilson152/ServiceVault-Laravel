@@ -87,10 +87,10 @@ class ImportRecord extends Model
     {
         // Use specific fields if provided, otherwise use all data
         $hashData = empty($matchingFields) ? $data : array_intersect_key($data, array_flip($matchingFields));
-        
+
         // Sort to ensure consistent hashing
         ksort($hashData);
-        
+
         return hash('sha256', serialize($hashData));
     }
 
@@ -123,7 +123,7 @@ class ImportRecord extends Model
      */
     public function isDuplicate(): bool
     {
-        return !is_null($this->duplicate_of);
+        return ! is_null($this->duplicate_of);
     }
 
     /**
@@ -132,15 +132,15 @@ class ImportRecord extends Model
     public function getFormattedErrors(): array
     {
         $errors = [];
-        
+
         if ($this->error_message) {
             $errors['general'] = $this->error_message;
         }
-        
+
         if ($this->validation_errors) {
             $errors['validation'] = $this->validation_errors;
         }
-        
+
         return $errors;
     }
 
@@ -206,9 +206,9 @@ class ImportRecord extends Model
     public static function findBySource(string $sourceTable, string $sourceIdentifier): ?self
     {
         return static::where('source_table', $sourceTable)
-                    ->where('source_identifier', $sourceIdentifier)
-                    ->orderBy('created_at', 'desc')
-                    ->first();
+            ->where('source_identifier', $sourceIdentifier)
+            ->orderBy('created_at', 'desc')
+            ->first();
     }
 
     /**
@@ -217,8 +217,8 @@ class ImportRecord extends Model
     public static function hasBeenImported(string $sourceTable, string $sourceIdentifier): bool
     {
         return static::where('source_table', $sourceTable)
-                    ->where('source_identifier', $sourceIdentifier)
-                    ->where('import_action', '!=', 'failed')
-                    ->exists();
+            ->where('source_identifier', $sourceIdentifier)
+            ->where('import_action', '!=', 'failed')
+            ->exists();
     }
 }

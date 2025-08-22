@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Support\Str;
-use Exception;
 
 class ImportTransformationService
 {
@@ -15,8 +14,8 @@ class ImportTransformationService
     {
         // Create a deterministic UUID based on the integer ID and prefix
         $namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // Random namespace UUID
-        $name = $prefix . $id;
-        
+        $name = $prefix.$id;
+
         // Generate UUID v5 (deterministic based on namespace and name)
         return (string) Str::uuid5($namespace, $name);
     }
@@ -31,15 +30,17 @@ class ImportTransformationService
                 if (is_numeric($value)) {
                     return $this->integerToUuid((int) $value, $rules['prefix'] ?? '');
                 }
+
                 return $value;
 
             case 'combine_fields':
                 $combined = [];
                 foreach ($rules['fields'] as $field) {
-                    if (isset($sourceRecord[$field]) && !empty($sourceRecord[$field])) {
+                    if (isset($sourceRecord[$field]) && ! empty($sourceRecord[$field])) {
                         $combined[] = $sourceRecord[$field];
                     }
                 }
+
                 return implode($rules['separator'] ?? ' ', $combined);
 
             case 'role_mapping':
@@ -60,31 +61,34 @@ class ImportTransformationService
                         if ($condition['type'] === 'combine_fields') {
                             return $this->transform(null, $condition, $sourceRecord);
                         }
+
                         return $sourceRecord[$condition['use_field']] ?? null;
                     }
-                    
+
                     $checkField = $condition['if_field'];
                     if (isset($condition['if_not_empty']) && $condition['if_not_empty']) {
-                        if (!empty($sourceRecord[$checkField])) {
+                        if (! empty($sourceRecord[$checkField])) {
                             return $sourceRecord[$condition['use_field']];
                         }
                     }
                 }
+
                 return $value;
 
             case 'conditional_name':
                 $primaryField = $rules['primary_field'];
-                if (!empty($sourceRecord[$primaryField])) {
+                if (! empty($sourceRecord[$primaryField])) {
                     return $sourceRecord[$primaryField];
                 }
-                
+
                 // Fallback to combined fields
                 $combined = [];
                 foreach ($rules['fallback_fields'] as $field) {
-                    if (isset($sourceRecord[$field]) && !empty($sourceRecord[$field])) {
+                    if (isset($sourceRecord[$field]) && ! empty($sourceRecord[$field])) {
                         $combined[] = $sourceRecord[$field];
                     }
                 }
+
                 return implode($rules['fallback_separator'] ?? ' ', $combined);
 
             case 'lookup_by_source_uuid':
@@ -93,8 +97,10 @@ class ImportTransformationService
                 $sourceId = $sourceRecord[$rules['source_field']] ?? null;
                 if ($sourceId && is_numeric($sourceId)) {
                     $prefix = $rules['source_prefix'] ?? '';
+
                     return $this->integerToUuid((int) $sourceId, $prefix);
                 }
+
                 return null;
 
             case 'conditional_lookup_uuid':
@@ -104,10 +110,12 @@ class ImportTransformationService
                         $sourceValue = $sourceRecord[$checkField] ?? null;
                         if ($sourceValue !== null && is_numeric($sourceValue)) {
                             $prefix = $condition['source_prefix'] ?? '';
+
                             return $this->integerToUuid((int) $sourceValue, $prefix);
                         }
                     }
                 }
+
                 return null;
 
             case 'thread_type_mapping':
@@ -124,14 +132,14 @@ class ImportTransformationService
     public function transformRecord(array $sourceRecord, array $transformationRules): array
     {
         $transformed = [];
-        
+
         foreach ($transformationRules as $targetField => $rules) {
             $sourceField = $rules['source_field'] ?? $targetField;
             $sourceValue = $sourceRecord[$sourceField] ?? null;
-            
+
             $transformed[$targetField] = $this->transform($sourceValue, $rules, $sourceRecord);
         }
-        
+
         return $transformed;
     }
 }

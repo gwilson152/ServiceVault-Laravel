@@ -52,7 +52,7 @@ class AccountResource extends JsonResource
 
             // Tax Configuration
             'default_tax_rate' => $this->getEffectiveTaxRate(),
-            'default_tax_application_mode' => $this->getEffectiveTaxApplicationMode(), 
+            'default_tax_application_mode' => $this->getEffectiveTaxApplicationMode(),
             'tax_exempt' => $this->isTaxExempt(),
             'has_tax_overrides' => $this->hasTaxOverrides(),
 

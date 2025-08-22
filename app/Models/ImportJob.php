@@ -92,11 +92,11 @@ class ImportJob extends Model
         if ($this->started_at && $this->completed_at) {
             return $this->completed_at->diffInSeconds($this->started_at);
         }
-        
+
         if ($this->started_at && $this->isRunning()) {
             return now()->diffInSeconds($this->started_at);
         }
-        
+
         return null;
     }
 
@@ -108,7 +108,7 @@ class ImportJob extends Model
         if ($this->records_processed === 0) {
             return 0;
         }
-        
+
         return round(($this->records_imported / $this->records_processed) * 100, 2);
     }
 
@@ -122,7 +122,7 @@ class ImportJob extends Model
             'started_at' => now(),
             'progress_percentage' => 0,
         ]);
-        
+
         $this->broadcastStatusChange('job_started');
     }
 
@@ -137,42 +137,42 @@ class ImportJob extends Model
             'progress_percentage' => 100,
             'current_operation' => null,
         ]);
-        
+
         $this->broadcastStatusChange('job_completed');
     }
 
     /**
      * Mark the job as failed.
      */
-    public function markAsFailed(string $error = null): void
+    public function markAsFailed(?string $error = null): void
     {
         $this->update([
             'status' => 'failed',
             'completed_at' => now(),
-            'errors' => $error ? ($this->errors ? $this->errors . "\n" . $error : $error) : $this->errors,
+            'errors' => $error ? ($this->errors ? $this->errors."\n".$error : $error) : $this->errors,
             'current_operation' => null,
         ]);
-        
+
         $this->broadcastStatusChange('job_failed');
     }
 
     /**
      * Update job progress with real-time broadcasting.
      */
-    public function updateProgress(int $percentage, string $operation = null): void
+    public function updateProgress(int $percentage, ?string $operation = null): void
     {
         $updateData = ['progress_percentage' => min(100, max(0, $percentage))];
-        
+
         if ($operation) {
             $updateData['current_operation'] = $operation;
         }
-        
+
         $this->update($updateData);
-        
+
         // Broadcast progress update in real-time
         broadcast(new \App\Events\ImportProgressUpdated($this))->toOthers();
     }
-    
+
     /**
      * Broadcast job status change.
      */

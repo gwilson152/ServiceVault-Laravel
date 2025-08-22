@@ -107,6 +107,7 @@ class ImportProfile extends Model
         if ($value) {
             return Crypt::decryptString($value);
         }
+
         return null;
     }
 
@@ -121,9 +122,9 @@ class ImportProfile extends Model
             'mysql' => 'mysql',
             'sqlite' => 'sqlite',
         ];
-        
+
         $driver = $driverMap[$this->database_type] ?? 'pgsql';
-        
+
         return [
             'database_type' => $this->database_type,
             'driver' => $driver,
@@ -158,8 +159,8 @@ class ImportProfile extends Model
      */
     public function lastTestSuccessful(): bool
     {
-        return $this->last_test_result && 
-               isset($this->last_test_result['success']) && 
+        return $this->last_test_result &&
+               isset($this->last_test_result['success']) &&
                $this->last_test_result['success'] === true;
     }
 
@@ -181,6 +182,7 @@ class ImportProfile extends Model
 
     /**
      * Get the field mappings for this import profile.
+     *
      * @deprecated Use queries() instead for the new system
      */
     public function mappings()

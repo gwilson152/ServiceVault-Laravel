@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\ImportTemplate;
 use App\Models\ImportProfile;
 use App\Models\ImportQuery;
+use App\Models\ImportTemplate;
+use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Exception;
 
 class TemplateService
 {
@@ -64,7 +64,7 @@ class TemplateService
         foreach ($queries as $index => $queryConfig) {
             $query = ImportQuery::create([
                 'profile_id' => $profile->id,
-                'name' => $queryConfig['name'] ?? "Query " . ($index + 1),
+                'name' => $queryConfig['name'] ?? 'Query '.($index + 1),
                 'description' => $queryConfig['description'] ?? null,
                 'base_table' => $queryConfig['base_table'],
                 'joins' => $queryConfig['joins'] ?? null,
@@ -93,7 +93,7 @@ class TemplateService
     {
         try {
             $tables = $this->connectionService->getTables($connectionName);
-            $tableNames = array_map(fn($table) => $table->table_name ?? $table['table_name'], $tables);
+            $tableNames = array_map(fn ($table) => $table->table_name ?? $table['table_name'], $tables);
 
             // Check for FreeScout indicators
             $freeScoutTables = ['customers', 'conversations', 'threads', 'users', 'mailboxes'];
@@ -141,7 +141,7 @@ class TemplateService
     public function updateTemplate(ImportTemplate $template, array $data): ImportTemplate
     {
         // Only allow updating non-system templates or by admin users
-        if ($template->is_system && !Auth::user()?->isAdmin()) {
+        if ($template->is_system && ! Auth::user()?->isAdmin()) {
             throw new Exception('Cannot modify system templates');
         }
 
@@ -179,7 +179,7 @@ class TemplateService
     public function importTemplate(array $templateData): ImportTemplate
     {
         return $this->createTemplate([
-            'name' => $templateData['name'] . ' (Imported)',
+            'name' => $templateData['name'].' (Imported)',
             'platform' => $templateData['platform'] ?? 'custom',
             'description' => $templateData['description'] ?? null,
             'database_type' => $templateData['database_type'] ?? 'postgresql',
@@ -224,8 +224,8 @@ class TemplateService
                             'table' => 'customer_emails',
                             'type' => 'LEFT JOIN',
                             'on' => 'customers.id = customer_emails.customer_id',
-                            'alias' => 'emails'
-                        ]
+                            'alias' => 'emails',
+                        ],
                     ],
                     'select_fields' => [
                         'customers.id',
@@ -234,7 +234,7 @@ class TemplateService
                         'customers.photo_url',
                         'customers.created_at',
                         'customers.updated_at',
-                        'emails.email'
+                        'emails.email',
                     ],
                     'where_conditions' => 'emails.email IS NOT NULL',
                     'destination_table' => 'users',
@@ -245,31 +245,31 @@ class TemplateService
                         'emails.email' => 'email',
                         'customers.photo_url' => 'avatar',
                         'customers.created_at' => 'created_at',
-                        'customers.updated_at' => 'updated_at'
+                        'customers.updated_at' => 'updated_at',
                     ],
                     'transformation_rules' => [
                         'id' => [
                             'type' => 'uuid_convert',
-                            'prefix' => 'freescout_customer_'
+                            'prefix' => 'freescout_customer_',
                         ],
                         'name' => [
                             'type' => 'combine',
                             'fields' => ['customers.first_name', 'customers.last_name'],
-                            'separator' => ' '
+                            'separator' => ' ',
                         ],
                         'user_type' => [
                             'type' => 'static',
-                            'value' => 'account_user'
-                        ]
+                            'value' => 'account_user',
+                        ],
                     ],
                     'validation_rules' => [
                         'email' => [
                             ['type' => 'required'],
-                            ['type' => 'email']
-                        ]
+                            ['type' => 'email'],
+                        ],
                     ],
                     'import_order' => 0,
-                    'is_active' => true
+                    'is_active' => true,
                 ],
                 [
                     'name' => 'Service Tickets',
@@ -280,14 +280,14 @@ class TemplateService
                             'table' => 'customers',
                             'type' => 'LEFT JOIN',
                             'on' => 'conversations.customer_id = customers.id',
-                            'alias' => 'customer'
+                            'alias' => 'customer',
                         ],
                         [
                             'table' => 'mailboxes',
                             'type' => 'LEFT JOIN',
                             'on' => 'conversations.mailbox_id = mailboxes.id',
-                            'alias' => 'mailbox'
-                        ]
+                            'alias' => 'mailbox',
+                        ],
                     ],
                     'select_fields' => [
                         'conversations.id',
@@ -300,7 +300,7 @@ class TemplateService
                         'conversations.updated_at',
                         'customer.first_name',
                         'customer.last_name',
-                        'mailbox.name as mailbox_name'
+                        'mailbox.name as mailbox_name',
                     ],
                     'destination_table' => 'tickets',
                     'field_mappings' => [
@@ -311,28 +311,28 @@ class TemplateService
                         'conversations.customer_id' => 'customer_id',
                         'conversations.user_id' => 'agent_id',
                         'conversations.created_at' => 'created_at',
-                        'conversations.updated_at' => 'updated_at'
+                        'conversations.updated_at' => 'updated_at',
                     ],
                     'transformation_rules' => [
                         'id' => [
                             'type' => 'uuid_convert',
-                            'prefix' => 'freescout_ticket_'
+                            'prefix' => 'freescout_ticket_',
                         ],
                         'customer_id' => [
                             'type' => 'uuid_convert',
-                            'prefix' => 'freescout_customer_'
+                            'prefix' => 'freescout_customer_',
                         ],
                         'agent_id' => [
                             'type' => 'uuid_convert',
-                            'prefix' => 'freescout_user_'
+                            'prefix' => 'freescout_user_',
                         ],
                         'description' => [
                             'type' => 'static',
-                            'value' => 'Imported from FreeScout'
-                        ]
+                            'value' => 'Imported from FreeScout',
+                        ],
                     ],
                     'import_order' => 1,
-                    'is_active' => true
+                    'is_active' => true,
                 ],
                 [
                     'name' => 'Staff Users',
@@ -351,25 +351,25 @@ class TemplateService
                         'phone' => 'phone',
                         'job_title' => 'job_title',
                         'created_at' => 'created_at',
-                        'updated_at' => 'updated_at'
+                        'updated_at' => 'updated_at',
                     ],
                     'transformation_rules' => [
                         'id' => [
                             'type' => 'uuid_convert',
-                            'prefix' => 'freescout_user_'
+                            'prefix' => 'freescout_user_',
                         ],
                         'name' => [
                             'type' => 'combine',
                             'fields' => ['first_name', 'last_name'],
-                            'separator' => ' '
+                            'separator' => ' ',
                         ],
                         'user_type' => [
                             'type' => 'static',
-                            'value' => 'agent'
-                        ]
+                            'value' => 'agent',
+                        ],
                     ],
                     'import_order' => 2,
-                    'is_active' => true
+                    'is_active' => true,
                 ],
                 [
                     'name' => 'Time Entries',
@@ -380,20 +380,20 @@ class TemplateService
                             'table' => 'conversations',
                             'type' => 'LEFT JOIN',
                             'on' => 'time_logs.conversation_id = conversations.id',
-                            'alias' => 'ticket'
+                            'alias' => 'ticket',
                         ],
                         [
                             'table' => 'users',
                             'type' => 'LEFT JOIN',
                             'on' => 'time_logs.user_id = users.id',
-                            'alias' => 'agent'
+                            'alias' => 'agent',
                         ],
                         [
                             'table' => 'customers',
                             'type' => 'LEFT JOIN',
                             'on' => 'conversations.customer_id = customers.id',
-                            'alias' => 'customer'
-                        ]
+                            'alias' => 'customer',
+                        ],
                     ],
                     'select_fields' => [
                         'time_logs.id',
@@ -408,7 +408,7 @@ class TemplateService
                         'time_logs.created_at',
                         'time_logs.updated_at',
                         'conversations.subject as ticket_title',
-                        'customers.id as customer_id'
+                        'customers.id as customer_id',
                     ],
                     'where_conditions' => 'time_logs.duration > 0 AND time_logs.user_id IS NOT NULL',
                     'destination_table' => 'time_entries',
@@ -423,65 +423,65 @@ class TemplateService
                         'time_logs.billable' => 'billable',
                         'time_logs.rate' => 'rate_at_time',
                         'time_logs.created_at' => 'created_at',
-                        'time_logs.updated_at' => 'updated_at'
+                        'time_logs.updated_at' => 'updated_at',
                     ],
                     'transformation_rules' => [
                         'id' => [
                             'type' => 'uuid_convert',
-                            'prefix' => 'freescout_time_'
+                            'prefix' => 'freescout_time_',
                         ],
                         'user_id' => [
                             'type' => 'uuid_convert',
-                            'prefix' => 'freescout_user_'
+                            'prefix' => 'freescout_user_',
                         ],
                         'ticket_id' => [
                             'type' => 'uuid_convert',
-                            'prefix' => 'freescout_ticket_'
+                            'prefix' => 'freescout_ticket_',
                         ],
                         'duration' => [
-                            'type' => 'time_to_minutes'
+                            'type' => 'time_to_minutes',
                         ],
                         'account_id' => [
-                            'type' => 'account_from_ticket'
+                            'type' => 'account_from_ticket',
                         ],
                         'billing_rate_id' => [
-                            'type' => 'billing_rate_lookup'
+                            'type' => 'billing_rate_lookup',
                         ],
                         'status' => [
                             'type' => 'static',
-                            'value' => 'approved'
+                            'value' => 'approved',
                         ],
                         'billable' => [
                             'type' => 'static',
-                            'value' => true
-                        ]
+                            'value' => true,
+                        ],
                     ],
                     'validation_rules' => [
                         'user_id' => [
                             ['type' => 'required'],
-                            ['type' => 'user_exists']
+                            ['type' => 'user_exists'],
                         ],
                         'duration' => [
                             ['type' => 'required'],
-                            ['type' => 'duration_range', 'min_minutes' => 1, 'max_minutes' => 1440]
+                            ['type' => 'duration_range', 'min_minutes' => 1, 'max_minutes' => 1440],
                         ],
                         'started_at' => [
-                            ['type' => 'required']
+                            ['type' => 'required'],
                         ],
                         'ticket_id' => [
-                            ['type' => 'ticket_exists']
+                            ['type' => 'ticket_exists'],
                         ],
                         'time_range' => [
-                            ['type' => 'time_range_valid', 'start_field' => 'started_at', 'end_field' => 'ended_at', 'max_hours' => 24]
+                            ['type' => 'time_range_valid', 'start_field' => 'started_at', 'end_field' => 'ended_at', 'max_hours' => 24],
                         ],
                         'no_duplicates' => [
-                            ['type' => 'no_duplicate_time']
-                        ]
+                            ['type' => 'no_duplicate_time'],
+                        ],
                     ],
                     'import_order' => 3,
-                    'is_active' => false // Disabled by default - user can enable if time tracking exists
-                ]
-            ]
+                    'is_active' => false, // Disabled by default - user can enable if time tracking exists
+                ],
+            ],
         ];
 
         return ImportTemplate::updateOrCreate(
@@ -513,7 +513,7 @@ class TemplateService
             'settings' => [
                 'instructions' => 'Use the query builder to create custom import queries for your database',
             ],
-            'queries' => [] // Empty - user will build their own
+            'queries' => [], // Empty - user will build their own
         ];
 
         return ImportTemplate::updateOrCreate(

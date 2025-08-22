@@ -150,9 +150,10 @@
         <div class="w-1/2 flex flex-col">
           <div class="flex-1 overflow-y-auto p-6">
             <QueryPreview
+              ref="queryPreviewRef"
               :profile-id="profile?.id"
               :query-config="queryConfig"
-              :auto-refresh="true"
+              :auto-refresh="false"
               @query-validated="handleQueryValidated"
               @preview-updated="handlePreviewUpdated"
             />
@@ -252,6 +253,7 @@ const connectionStatus = ref('connected')
 const availableTables = ref([])
 const isQueryValid = ref(false)
 const isSaving = ref(false)
+const queryPreviewRef = ref(null)
 
 const queryConfig = ref({
   base_table: '',
@@ -394,11 +396,13 @@ const handleTargetTypeChanged = (targetType) => {
 }
 
 const handleFiltersUpdated = (filters) => {
-  queryConfig.value.filters = filters
-  
-  // Mark filters step as completed if there are filters
+  // Don't update queryConfig.filters here since v-model handles it
+  // Just handle step completion
   const filtersStep = steps.value.find(s => s.id === 'filters')
   if (filtersStep) filtersStep.completed = filters.length > 0
+  
+  // DON'T manually trigger refresh - this creates infinite loops
+  // The QueryPreview should auto-refresh when queryConfig changes via v-model
 }
 
 const handleQueryValidated = (validation) => {
@@ -486,6 +490,9 @@ const saveAsTemplate = async () => {
     alert('Failed to save template: ' + error.message)
   }
 }
+
+// Remove the watcher that's causing infinite loops
+// We'll handle step completion manually in the handler
 
 // Initialize
 onMounted(() => {

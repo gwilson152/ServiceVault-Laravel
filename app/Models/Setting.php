@@ -44,13 +44,13 @@ class Setting extends Model
     public function scopeAccount($query, $accountId = null)
     {
         return $query->where('type', 'account')
-                     ->where('account_id', $accountId);
+            ->where('account_id', $accountId);
     }
 
     public function scopeUser($query, $userId = null)
     {
         return $query->where('type', 'user')
-                     ->where('user_id', $userId);
+            ->where('user_id', $userId);
     }
 
     /**
@@ -59,8 +59,8 @@ class Setting extends Model
     public static function getValue(string $key, $default = null)
     {
         $setting = static::where('key', $key)
-                         ->where('type', 'system')
-                         ->first();
+            ->where('type', 'system')
+            ->first();
 
         return $setting ? $setting->value : $default;
     }
@@ -71,10 +71,10 @@ class Setting extends Model
     public static function getValueWithContext(string $key, ?string $accountId = null, ?string $userId = null, $default = null)
     {
         $setting = static::where('key', $key)
-                         ->where('type', $accountId ? 'account' : ($userId ? 'user' : 'system'))
-                         ->when($accountId, fn($q) => $q->where('account_id', $accountId))
-                         ->when($userId, fn($q) => $q->where('user_id', $userId))
-                         ->first();
+            ->where('type', $accountId ? 'account' : ($userId ? 'user' : 'system'))
+            ->when($accountId, fn ($q) => $q->where('account_id', $accountId))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->first();
 
         return $setting ? $setting->value : $default;
     }
@@ -101,9 +101,9 @@ class Setting extends Model
     public static function getByType(string $type, ?string $accountId = null, ?string $userId = null): array
     {
         return static::where('type', $type)
-                     ->when($accountId, fn($q) => $q->where('account_id', $accountId))
-                     ->when($userId, fn($q) => $q->where('user_id', $userId))
-                     ->pluck('value', 'key')
-                     ->toArray();
+            ->when($accountId, fn ($q) => $q->where('account_id', $accountId))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->pluck('value', 'key')
+            ->toArray();
     }
 }

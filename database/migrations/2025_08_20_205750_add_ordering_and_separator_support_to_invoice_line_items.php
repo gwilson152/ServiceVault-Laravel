@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::table('invoice_line_items', function (Blueprint $table) {
             // Add ordering support
             $table->integer('sort_order')->default(0)->after('line_type')
-                  ->comment('Sort order for line items (0-based)');
-            
+                ->comment('Sort order for line items (0-based)');
+
             // Add index for efficient ordering queries
             $table->index(['invoice_id', 'sort_order']);
         });
-        
+
         // Add separator as a valid line_type (no schema change needed, just documentation)
         // line_type can now be: 'time_entry', 'addon', 'manual', 'separator'
     }

@@ -26,6 +26,53 @@ Technical overview of Service Vault's architecture, database design, and key sys
 
 ## Core Systems
 
+### Universal Import System (Production-Ready)
+
+**Architecture Overview**:
+- **Database-Agnostic Design**: Supports any PostgreSQL database with intelligent schema introspection
+- **Template-Based Configuration**: Pre-built platform patterns (FreeScout, Custom) with JSON storage
+- **Visual Query Builder**: Fullscreen interface with real-time SQL generation and consistent validation
+- **Real-Time Monitoring**: WebSocket-based job tracking with floating progress monitor
+- **Enterprise Audit Trails**: UUID-based record tracking with complete lineage and rollback capabilities
+
+**Key Components**:
+```php
+// Unified SQL generation for validation and sample data
+public function generateSQL(array $config): string
+{
+    return $this->buildSelectClause($config)
+         . $this->buildFromClause($config)
+         . $this->buildJoinClauses($config)
+         . $this->buildWhereClause($config);
+}
+
+// Consistent query preview and validation
+$query = $this->generateSQL($request->all());
+```
+
+**Import Modes**:
+- **Create Only**: New records only, skip existing ones
+- **Update Only**: Existing records only, skip new ones
+- **Upsert**: Smart handling of both new and existing records
+
+**Duplicate Detection Strategies**:
+- **Exact Match**: Perfect field-by-field matching
+- **Case-Insensitive**: Handles case variations
+- **Fuzzy Match**: Levenshtein distance with configurable thresholds
+
+**Database Schema**:
+```sql
+import_profiles (id, name, database_config, ssl_mode, notes, ...)
+import_jobs (id, profile_id, status, progress, records_imported, ...)
+import_records (id, job_id, source_table, target_type, import_action, ...)
+import_templates (id, name, platform, configuration, ...)
+```
+
+**Real-Time Broadcasting**:
+- `import.job.{job_id}`: Individual job progress updates
+- `import.profile.{profile_id}`: Profile-related events
+- `user.{user_id}`: Personal import notifications
+
 ### Authentication System
 
 **Hybrid Authentication Architecture**:
@@ -466,3 +513,7 @@ const { comments } = useTicketComments(ticketId)
 - WebSocket connection monitoring
 
 For deployment guides and configuration details, see [Development Setup](../guides/setup.md).
+
+---
+
+*System Architecture | Service Vault Technical Documentation | Updated: August 22, 2025*

@@ -38,7 +38,7 @@ class ImportTemplatePolicy
     public function update(User $user, ImportTemplate $importTemplate): bool
     {
         // Only super admins can modify templates, and only non-system templates
-        return $user->hasPermission('system.configure') && !$importTemplate->is_system;
+        return $user->hasPermission('system.configure') && ! $importTemplate->is_system;
     }
 
     /**
@@ -47,6 +47,6 @@ class ImportTemplatePolicy
     public function delete(User $user, ImportTemplate $importTemplate): bool
     {
         // Only super admins can delete templates, and only non-system templates
-        return $user->hasPermission('system.configure') && !$importTemplate->is_system;
+        return $user->hasPermission('system.configure') && ! $importTemplate->is_system;
     }
 }

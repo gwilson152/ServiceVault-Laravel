@@ -3,9 +3,7 @@
 namespace App\Events;
 
 use App\Models\ImportJob;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -31,9 +29,9 @@ class ImportProgressUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('import.job.' . $this->job->id),
-            new PrivateChannel('import.profile.' . $this->job->profile_id),
-            new PrivateChannel('user.' . $this->job->created_by),
+            new PrivateChannel('import.job.'.$this->job->id),
+            new PrivateChannel('import.profile.'.$this->job->profile_id),
+            new PrivateChannel('user.'.$this->job->created_by),
         ];
     }
 

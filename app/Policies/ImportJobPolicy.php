@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\ImportJob;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class ImportJobPolicy
 {
@@ -17,7 +16,7 @@ class ImportJobPolicy
             'system.import',
             'system.import.execute',
             'import.jobs.execute',
-            'import.jobs.monitor'
+            'import.jobs.monitor',
         ]);
     }
 
@@ -33,7 +32,7 @@ class ImportJobPolicy
 
         return $user->hasAnyPermission([
             'system.import',
-            'import.jobs.monitor'
+            'import.jobs.monitor',
         ]);
     }
 
@@ -44,7 +43,7 @@ class ImportJobPolicy
     {
         return $user->hasAnyPermission([
             'system.import.execute',
-            'import.jobs.execute'
+            'import.jobs.execute',
         ]);
     }
 
@@ -64,7 +63,7 @@ class ImportJobPolicy
     public function delete(User $user, ImportJob $importJob): bool
     {
         // Only allow deletion of completed/failed jobs by admins or job creators
-        if (!in_array($importJob->status, ['completed', 'failed', 'cancelled'])) {
+        if (! in_array($importJob->status, ['completed', 'failed', 'cancelled'])) {
             return false;
         }
 
@@ -81,7 +80,7 @@ class ImportJobPolicy
     public function cancel(User $user, ImportJob $importJob): bool
     {
         // Only allow cancellation of running/pending jobs
-        if (!in_array($importJob->status, ['running', 'pending'])) {
+        if (! in_array($importJob->status, ['running', 'pending'])) {
             return false;
         }
 
@@ -92,7 +91,7 @@ class ImportJobPolicy
 
         return $user->hasAnyPermission([
             'system.import',
-            'import.jobs.monitor'
+            'import.jobs.monitor',
         ]);
     }
 
@@ -108,7 +107,7 @@ class ImportJobPolicy
 
         return $user->hasAnyPermission([
             'system.import',
-            'import.jobs.monitor'
+            'import.jobs.monitor',
         ]);
     }
 
@@ -119,7 +118,7 @@ class ImportJobPolicy
     {
         return $user->hasAnyPermission([
             'system.import.execute',
-            'import.jobs.execute'
+            'import.jobs.execute',
         ]);
     }
 
@@ -130,7 +129,7 @@ class ImportJobPolicy
     {
         return $user->hasAnyPermission([
             'system.import',
-            'import.jobs.monitor'
+            'import.jobs.monitor',
         ]);
     }
 

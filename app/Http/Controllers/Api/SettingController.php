@@ -734,8 +734,8 @@ class SettingController extends Controller
 
         // Get tax settings with tax.* prefix
         $taxSettings = Setting::where('key', 'like', 'tax.%')
-                              ->where('type', 'system')
-                              ->pluck('value', 'key');
+            ->where('type', 'system')
+            ->pluck('value', 'key');
         $taxData = [];
         foreach ($taxSettings as $key => $value) {
             // Remove 'tax.' prefix from key

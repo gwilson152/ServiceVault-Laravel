@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\ImportProfile;
 use App\Models\ImportRecord;
-use Illuminate\Support\Facades\DB;
 
 class DuplicateDetectionService
 {
@@ -15,8 +14,8 @@ class DuplicateDetectionService
     {
         $duplicateConfig = $profile->getDefaultDuplicateDetection();
         $matchingStrategy = $profile->getDefaultMatchingStrategy();
-        
-        if (!$duplicateConfig['enabled']) {
+
+        if (! $duplicateConfig['enabled']) {
             return [
                 'is_duplicate' => false,
                 'matches' => [],
@@ -29,7 +28,7 @@ class DuplicateDetectionService
 
         // Primary field matching (highest priority)
         $primaryMatches = $this->findByPrimaryFields(
-            $sourceData, 
+            $sourceData,
             $matchingStrategy['primary_fields'],
             $profile,
             $duplicateConfig['case_sensitive']
@@ -41,13 +40,13 @@ class DuplicateDetectionService
                 'record' => $match,
                 'confidence' => $confidence,
                 'matching_fields' => $this->getMatchingFields($sourceData, $match, $matchingStrategy['primary_fields']),
-                'match_type' => 'primary'
+                'match_type' => 'primary',
             ];
             $maxConfidence = max($maxConfidence, $confidence);
         }
 
         // Secondary field matching if no strong primary matches
-        if ($maxConfidence < 0.9 && !empty($matchingStrategy['secondary_fields'])) {
+        if ($maxConfidence < 0.9 && ! empty($matchingStrategy['secondary_fields'])) {
             $secondaryMatches = $this->findBySecondaryFields(
                 $sourceData,
                 $matchingStrategy['secondary_fields'],
@@ -57,7 +56,7 @@ class DuplicateDetectionService
 
             foreach ($secondaryMatches as $match) {
                 // Skip if already found in primary matches
-                if (collect($matches)->contains(fn($m) => $m['record']['id'] === $match['id'])) {
+                if (collect($matches)->contains(fn ($m) => $m['record']['id'] === $match['id'])) {
                     continue;
                 }
 
@@ -66,7 +65,7 @@ class DuplicateDetectionService
                     'record' => $match,
                     'confidence' => $confidence,
                     'matching_fields' => $this->getMatchingFields($sourceData, $match, $matchingStrategy['secondary_fields']),
-                    'match_type' => 'secondary'
+                    'match_type' => 'secondary',
                 ];
                 $maxConfidence = max($maxConfidence, $confidence);
             }
@@ -83,7 +82,7 @@ class DuplicateDetectionService
 
             foreach ($fuzzyMatches as $match) {
                 // Skip if already found
-                if (collect($matches)->contains(fn($m) => $m['record']['id'] === $match['id'])) {
+                if (collect($matches)->contains(fn ($m) => $m['record']['id'] === $match['id'])) {
                     continue;
                 }
 
@@ -92,14 +91,14 @@ class DuplicateDetectionService
                     'record' => $match,
                     'confidence' => $confidence,
                     'matching_fields' => $this->getFuzzyMatchingFields($sourceData, $match),
-                    'match_type' => 'fuzzy'
+                    'match_type' => 'fuzzy',
                 ];
                 $maxConfidence = max($maxConfidence, $confidence);
             }
         }
 
         // Sort matches by confidence (highest first)
-        usort($matches, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
+        usort($matches, fn ($a, $b) => $b['confidence'] <=> $a['confidence']);
 
         return [
             'is_duplicate' => $maxConfidence >= $matchingStrategy['similarity_threshold'],
@@ -118,24 +117,24 @@ class DuplicateDetectionService
         $matches = [];
 
         foreach ($primaryFields as $field) {
-            if (!isset($sourceData[$field]) || empty($sourceData[$field])) {
+            if (! isset($sourceData[$field]) || empty($sourceData[$field])) {
                 continue;
             }
 
             $value = $sourceData[$field];
-            
+
             // Query existing import records for this profile
             $query = ImportRecord::where('import_profile_id', $profile->id)
                 ->where('import_action', '!=', 'failed')
-                ->whereJsonContains('source_data->' . $field, $value);
+                ->whereJsonContains('source_data->'.$field, $value);
 
-            if (!$caseSensitive && is_string($value)) {
+            if (! $caseSensitive && is_string($value)) {
                 // For case-insensitive matching, we need to use raw SQL
                 $query->whereRaw('LOWER(source_data->>?) = LOWER(?)', [$field, $value]);
             }
 
             $fieldMatches = $query->get();
-            
+
             foreach ($fieldMatches as $match) {
                 $matches[] = $match->toArray();
             }
@@ -167,7 +166,7 @@ class DuplicateDetectionService
 
         foreach ($allRecords as $record) {
             $similarity = $this->calculateFuzzySimilarity($sourceData, $record->source_data, $fields);
-            
+
             if ($similarity >= $threshold) {
                 $recordArray = $record->toArray();
                 $recordArray['fuzzy_similarity'] = $similarity;
@@ -176,7 +175,7 @@ class DuplicateDetectionService
         }
 
         // Sort by similarity
-        usort($matches, fn($a, $b) => $b['fuzzy_similarity'] <=> $a['fuzzy_similarity']);
+        usort($matches, fn ($a, $b) => $b['fuzzy_similarity'] <=> $a['fuzzy_similarity']);
 
         return $matches;
     }
@@ -195,6 +194,7 @@ class DuplicateDetectionService
 
             if (empty($sourceValue) && empty($targetValue)) {
                 $matchScore += 1;
+
                 continue;
             }
 
@@ -232,6 +232,7 @@ class DuplicateDetectionService
         }
 
         $distance = levenshtein($str1, $str2);
+
         return 1 - ($distance / $maxLen);
     }
 
@@ -296,7 +297,7 @@ class DuplicateDetectionService
 
         foreach ($sourceData as $field => $sourceValue) {
             $targetValue = $targetData[$field] ?? null;
-            
+
             if ($sourceValue && $targetValue && is_string($sourceValue) && is_string($targetValue)) {
                 $similarity = $this->stringSimilarity($sourceValue, $targetValue);
                 if ($similarity > 0.7) { // Only include reasonably similar fields
@@ -319,16 +320,17 @@ class DuplicateDetectionService
     public function generateDuplicateHash(array $sourceData, array $fields): string
     {
         $hashData = [];
-        
+
         foreach ($fields as $field) {
             if (isset($sourceData[$field])) {
-                $hashData[$field] = is_string($sourceData[$field]) 
-                    ? strtolower(trim($sourceData[$field])) 
+                $hashData[$field] = is_string($sourceData[$field])
+                    ? strtolower(trim($sourceData[$field]))
                     : $sourceData[$field];
             }
         }
 
         ksort($hashData);
+
         return hash('sha256', serialize($hashData));
     }
 
@@ -339,18 +341,18 @@ class DuplicateDetectionService
     {
         $isDuplicate = $duplicateResult['is_duplicate'];
         $importMode = $profile->import_mode ?? 'upsert';
-        
-        if (!$isDuplicate) {
+
+        if (! $isDuplicate) {
             return [
                 'proceed' => true,
                 'action' => 'create',
-                'reason' => 'No duplicates found'
+                'reason' => 'No duplicates found',
             ];
         }
 
         // Get the best match
         $bestMatch = $duplicateResult['matches'][0] ?? null;
-        
+
         switch ($importMode) {
             case 'create':
                 if ($profile->shouldSkipDuplicates()) {
@@ -358,14 +360,14 @@ class DuplicateDetectionService
                         'proceed' => false,
                         'action' => 'skip',
                         'reason' => 'Duplicate found and profile configured to skip duplicates',
-                        'duplicate_record' => $bestMatch
+                        'duplicate_record' => $bestMatch,
                     ];
                 } else {
                     return [
                         'proceed' => true,
                         'action' => 'create',
                         'reason' => 'Duplicate found but profile allows creating duplicates',
-                        'duplicate_record' => $bestMatch
+                        'duplicate_record' => $bestMatch,
                     ];
                 }
 
@@ -375,13 +377,13 @@ class DuplicateDetectionService
                         'proceed' => true,
                         'action' => 'update',
                         'reason' => 'Duplicate found, updating existing record',
-                        'duplicate_record' => $bestMatch
+                        'duplicate_record' => $bestMatch,
                     ];
                 } else {
                     return [
                         'proceed' => false,
                         'action' => 'skip',
-                        'reason' => 'Update mode but no existing record found'
+                        'reason' => 'Update mode but no existing record found',
                     ];
                 }
 
@@ -391,16 +393,16 @@ class DuplicateDetectionService
                     return [
                         'proceed' => true,
                         'action' => $profile->shouldUpdateDuplicates() ? 'update' : 'skip',
-                        'reason' => $profile->shouldUpdateDuplicates() 
-                            ? 'Duplicate found, updating existing record' 
+                        'reason' => $profile->shouldUpdateDuplicates()
+                            ? 'Duplicate found, updating existing record'
                             : 'Duplicate found, skipping update',
-                        'duplicate_record' => $bestMatch
+                        'duplicate_record' => $bestMatch,
                     ];
                 } else {
                     return [
                         'proceed' => true,
                         'action' => 'create',
-                        'reason' => 'No duplicates found, creating new record'
+                        'reason' => 'No duplicates found, creating new record',
                     ];
                 }
         }

@@ -29,16 +29,16 @@ return new class extends Migration
             $table->integer('import_order')->default(0); // Order of query execution
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             // Indexes
             $table->index(['profile_id', 'is_active']);
             $table->index(['base_table', 'destination_table']);
             $table->index('import_order');
             $table->index('name');
-            
+
             // Foreign key constraints
             $table->foreign('profile_id')->references('id')->on('import_profiles')->onDelete('cascade');
-            
+
             // Unique constraint for query names per profile
             $table->unique(['profile_id', 'name']);
         });

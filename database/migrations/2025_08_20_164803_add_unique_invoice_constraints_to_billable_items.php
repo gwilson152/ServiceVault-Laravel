@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -18,7 +18,7 @@ return new class extends Migration
             $table->index(['invoice_id'], 'time_entries_invoice_id_index');
         });
 
-        // Add unique constraint to ticket_addons - each addon can only be on one invoice  
+        // Add unique constraint to ticket_addons - each addon can only be on one invoice
         Schema::table('ticket_addons', function (Blueprint $table) {
             // Only add index if invoice_id is not null (allows multiple unbilled addons)
             $table->index(['invoice_id'], 'ticket_addons_invoice_id_index');

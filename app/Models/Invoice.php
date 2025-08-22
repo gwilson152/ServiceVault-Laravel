@@ -122,13 +122,14 @@ class Invoice extends Model
             $lineItem->calculateTotals();
             $lineItem->save();
         }
-        
+
         // Then calculate invoice totals from updated line items
-        $this->subtotal = $this->lineItems->sum(function($item) {
+        $this->subtotal = $this->lineItems->sum(function ($item) {
             $subtotal = $item->quantity * $item->unit_price;
+
             return $subtotal - $item->discount_amount;
         });
-        
+
         $this->tax_amount = $this->lineItems->sum('tax_amount');
         $this->total = $this->subtotal + $this->tax_amount;
     }
@@ -140,40 +141,40 @@ class Invoice extends Model
     {
         $taxableSubtotal = 0;
         $taxService = app(\App\Services\TaxService::class);
-        
+
         // Get effective tax application mode
-        $effectiveMode = $this->override_tax 
+        $effectiveMode = $this->override_tax
             ? ($this->tax_application_mode ?? 'all_items')
             : $taxService->getEffectiveTaxApplicationMode($this->account_id);
-        
+
         foreach ($this->lineItems as $item) {
             $isItemTaxable = $this->isLineItemTaxable($item, $effectiveMode);
-            
+
             if ($isItemTaxable) {
                 $taxableSubtotal += $item->total_amount;
             }
         }
-        
+
         return $taxableSubtotal;
     }
 
     /**
      * Determine if a line item is taxable based on its setting and inheritance
      */
-    public function isLineItemTaxable(InvoiceLineItem $item, string $effectiveMode = null): bool
+    public function isLineItemTaxable(InvoiceLineItem $item, ?string $effectiveMode = null): bool
     {
         // Explicit taxable setting takes precedence
         if ($item->taxable !== null) {
             return $item->taxable;
         }
-        
+
         $taxService = app(\App\Services\TaxService::class);
-        
+
         // Inherit from tax application mode
-        $mode = $effectiveMode ?? ($this->override_tax 
+        $mode = $effectiveMode ?? ($this->override_tax
             ? ($this->tax_application_mode ?? 'all_items')
             : $taxService->getEffectiveTaxApplicationMode($this->account_id));
-        
+
         switch ($mode) {
             case 'all_items':
                 // All items mode: time entries are taxable by default
@@ -202,7 +203,7 @@ class Invoice extends Model
                    ?? \App\Models\BillingSetting::whereNull('account_id')->first();
 
         // If no settings exist, create default global settings
-        if (!$settings) {
+        if (! $settings) {
             $settings = \App\Models\BillingSetting::create([
                 'account_id' => null, // Global settings
                 'company_name' => 'Company Name',

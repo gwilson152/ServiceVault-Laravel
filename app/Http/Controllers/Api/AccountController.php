@@ -132,7 +132,7 @@ class AccountController extends Controller
         if ($validated['override_tax'] ?? false) {
             $taxService = app(\App\Services\TaxService::class);
             $taxSettings = [];
-            
+
             if (isset($validated['tax_rate'])) {
                 $taxSettings['default_rate'] = $validated['tax_rate'];
             }
@@ -142,8 +142,8 @@ class AccountController extends Controller
             if (isset($validated['tax_exempt'])) {
                 $taxSettings['exempt'] = $validated['tax_exempt'];
             }
-            
-            if (!empty($taxSettings)) {
+
+            if (! empty($taxSettings)) {
                 $taxService->setAccountTaxSettings($account->id, $taxSettings);
             }
         }
@@ -205,11 +205,11 @@ class AccountController extends Controller
 
         // Handle tax settings via TaxService
         $taxService = app(\App\Services\TaxService::class);
-        
+
         if ($validated['override_tax'] ?? false) {
             // Set account-specific tax settings
             $taxSettings = [];
-            
+
             if (isset($validated['tax_rate'])) {
                 $taxSettings['default_rate'] = $validated['tax_rate'];
             }
@@ -219,16 +219,16 @@ class AccountController extends Controller
             if (isset($validated['tax_exempt'])) {
                 $taxSettings['exempt'] = $validated['tax_exempt'];
             }
-            
-            if (!empty($taxSettings)) {
+
+            if (! empty($taxSettings)) {
                 $taxService->setAccountTaxSettings($account->id, $taxSettings);
             }
         } else {
             // Remove account-specific tax overrides (fall back to system defaults)
             \App\Models\Setting::where('type', 'account')
-                               ->where('account_id', $account->id)
-                               ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
-                               ->delete();
+                ->where('account_id', $account->id)
+                ->whereIn('key', ['tax.default_rate', 'tax.default_application_mode', 'tax.exempt'])
+                ->delete();
         }
 
         return response()->json([

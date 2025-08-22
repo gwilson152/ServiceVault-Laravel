@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::table('invoices', function (Blueprint $table) {
             $table->enum('tax_application_mode', ['all_items', 'non_service_items', 'custom'])
-                  ->default('all_items')
-                  ->after('tax_rate')
-                  ->comment('How tax should be applied: all_items (all taxable items), non_service_items (only products/addons), custom (per item settings)');
+                ->default('all_items')
+                ->after('tax_rate')
+                ->comment('How tax should be applied: all_items (all taxable items), non_service_items (only products/addons), custom (per item settings)');
         });
     }
 

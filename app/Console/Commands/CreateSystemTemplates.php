@@ -30,13 +30,14 @@ class CreateSystemTemplates extends Command
 
         try {
             $templateService->createSystemTemplates();
-            
+
             $this->info('✅ System templates created successfully:');
             $this->line('  - FreeScout Standard');
             $this->line('  - Custom Database');
-            
+
         } catch (\Exception $e) {
-            $this->error('❌ Failed to create system templates: ' . $e->getMessage());
+            $this->error('❌ Failed to create system templates: '.$e->getMessage());
+
             return Command::FAILURE;
         }
 

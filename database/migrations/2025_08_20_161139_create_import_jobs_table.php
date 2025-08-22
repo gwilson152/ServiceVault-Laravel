@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('current_operation')->nullable(); // Current import step
             $table->foreignUuid('created_by')->constrained('users');
             $table->timestamps();
-            
+
             // Indexes
             $table->index(['profile_id', 'status']);
             $table->index(['status', 'started_at']);

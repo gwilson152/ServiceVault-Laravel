@@ -3,11 +3,11 @@
 namespace App\Services;
 
 use App\Models\ImportProfile;
+use Exception;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use PDO;
 use PDOException;
-use Exception;
 
 class PostgreSQLConnectionService
 {
@@ -24,7 +24,7 @@ class PostgreSQLConnectionService
                 'error' => "Database type '{$config['database_type']}' is not supported yet. Only PostgreSQL is currently supported.",
             ];
         }
-        
+
         try {
             $dsn = $this->buildDsn($config);
             $pdo = new PDO($dsn, $config['username'], $config['password'], [
@@ -68,8 +68,8 @@ class PostgreSQLConnectionService
      */
     public function createConnection(ImportProfile $profile): string
     {
-        $connectionName = 'import_' . $profile->id;
-        
+        $connectionName = 'import_'.$profile->id;
+
         // Build Laravel-compatible configuration
         $config = [
             'driver' => 'pgsql',
@@ -86,18 +86,19 @@ class PostgreSQLConnectionService
             'sslmode' => $profile->ssl_mode,
             'options' => [],
         ];
-        
+
         // Add connection to Laravel's database configuration
         Config::set("database.connections.{$connectionName}", $config);
-        
+
         // Test the connection
         try {
             DB::connection($connectionName)->getPdo();
+
             return $connectionName;
         } catch (Exception $e) {
             // Add more detailed error information
-            $errorMsg = "Failed to create connection: " . $e->getMessage();
-            $errorMsg .= "\nConnection config: " . json_encode($config);
+            $errorMsg = 'Failed to create connection: '.$e->getMessage();
+            $errorMsg .= "\nConnection config: ".json_encode($config);
             throw new Exception($errorMsg);
         }
     }
@@ -122,7 +123,7 @@ class PostgreSQLConnectionService
 
             return $schemaInfo;
         } catch (Exception $e) {
-            throw new Exception("Failed to retrieve schema info: " . $e->getMessage());
+            throw new Exception('Failed to retrieve schema info: '.$e->getMessage());
         }
     }
 
@@ -233,12 +234,13 @@ class PostgreSQLConnectionService
     public function getRowCount(string $connectionName, string $tableName, string $whereClause = ''): int
     {
         $query = "SELECT COUNT(*) as count FROM {$tableName}";
-        
+
         if ($whereClause) {
             $query .= " WHERE {$whereClause}";
         }
 
         $result = DB::connection($connectionName)->selectOne($query);
+
         return $result->count;
     }
 
@@ -249,12 +251,12 @@ class PostgreSQLConnectionService
     {
         try {
             // Try to create a temporary table (should fail for read-only users)
-            $testTableName = 'test_write_access_' . uniqid();
-            
+            $testTableName = 'test_write_access_'.uniqid();
+
             try {
                 DB::connection($connectionName)->statement("CREATE TEMP TABLE {$testTableName} (id INT)");
                 DB::connection($connectionName)->statement("DROP TABLE {$testTableName}");
-                
+
                 return [
                     'is_read_only' => false,
                     'warning' => 'User has write access to the database. For security, consider using a read-only user.',
@@ -268,7 +270,7 @@ class PostgreSQLConnectionService
         } catch (Exception $e) {
             return [
                 'is_read_only' => null,
-                'error' => 'Could not determine user permissions: ' . $e->getMessage(),
+                'error' => 'Could not determine user permissions: '.$e->getMessage(),
             ];
         }
     }
@@ -287,11 +289,11 @@ class PostgreSQLConnectionService
     private function buildDsn(array $config): string
     {
         $dsn = "pgsql:host={$config['host']};port={$config['port']};dbname={$config['database']}";
-        
+
         if (isset($config['sslmode'])) {
             $dsn .= ";sslmode={$config['sslmode']}";
         }
-        
+
         return $dsn;
     }
 
@@ -301,6 +303,7 @@ class PostgreSQLConnectionService
     public function previewTableData(string $connectionName, string $tableName, int $limit = 10): array
     {
         $query = "SELECT * FROM {$tableName} LIMIT ?";
+
         return DB::connection($connectionName)->select($query, [$limit]);
     }
 
@@ -312,7 +315,7 @@ class PostgreSQLConnectionService
         try {
             $versionResult = DB::connection($connectionName)->selectOne('SELECT version() as version');
             $dbResult = DB::connection($connectionName)->selectOne('SELECT current_database() as database, current_user as user');
-            
+
             return [
                 'version' => $versionResult->version,
                 'database' => $dbResult->database,
@@ -321,7 +324,7 @@ class PostgreSQLConnectionService
                 'tested_at' => now()->toISOString(),
             ];
         } catch (Exception $e) {
-            throw new Exception("Failed to retrieve server info: " . $e->getMessage());
+            throw new Exception('Failed to retrieve server info: '.$e->getMessage());
         }
     }
 
@@ -332,7 +335,7 @@ class PostgreSQLConnectionService
     {
         try {
             $emailTables = [];
-            
+
             // Find all tables that might contain email data
             $allTables = DB::connection($connectionName)->select("
                 SELECT table_name 
@@ -341,10 +344,10 @@ class PostgreSQLConnectionService
                 AND table_type = 'BASE TABLE'
                 ORDER BY table_name
             ");
-            
+
             foreach ($allTables as $table) {
                 $tableName = $table->table_name;
-                
+
                 // Get columns for each table to find email-related fields
                 $columns = DB::connection($connectionName)->select("
                     SELECT column_name, data_type, is_nullable, column_default
@@ -352,33 +355,33 @@ class PostgreSQLConnectionService
                     WHERE table_name = ? AND table_schema = 'public'
                     ORDER BY ordinal_position
                 ", [$tableName]);
-                
+
                 // Check if table has email-related columns
                 $emailColumns = [];
                 $customerRelated = false;
                 $hasId = false;
-                
+
                 foreach ($columns as $column) {
                     $columnName = strtolower($column->column_name);
-                    
+
                     if (strpos($columnName, 'email') !== false) {
                         $emailColumns[] = [
                             'name' => $column->column_name,
                             'type' => $column->data_type,
-                            'nullable' => $column->is_nullable
+                            'nullable' => $column->is_nullable,
                         ];
                     }
-                    
+
                     if (strpos($columnName, 'customer') !== false) {
                         $customerRelated = true;
                     }
-                    
+
                     if ($columnName === 'id') {
                         $hasId = true;
                     }
                 }
-                
-                if (!empty($emailColumns)) {
+
+                if (! empty($emailColumns)) {
                     // Get sample data to understand the structure
                     $sampleData = [];
                     try {
@@ -387,7 +390,7 @@ class PostgreSQLConnectionService
                     } catch (\Exception $e) {
                         // Some tables might have permission issues
                     }
-                    
+
                     // Get row count
                     $rowCount = 0;
                     try {
@@ -397,18 +400,18 @@ class PostgreSQLConnectionService
                     } catch (\Exception $e) {
                         // Ignore count errors
                     }
-                    
+
                     $emailTables[$tableName] = [
                         'email_columns' => $emailColumns,
                         'all_columns' => $columns,
                         'customer_related' => $customerRelated,
                         'has_id' => $hasId,
                         'row_count' => $rowCount,
-                        'sample_data' => $sampleData
+                        'sample_data' => $sampleData,
                     ];
                 }
             }
-            
+
             // Look for foreign key relationships that might connect customers to emails
             $foreignKeys = DB::connection($connectionName)->select("
                 SELECT
@@ -431,22 +434,22 @@ class PostgreSQLConnectionService
                      OR ccu.table_name LIKE '%email%'
                      OR ccu.table_name LIKE '%customer%')
             ");
-            
+
             return [
                 'email_tables' => $emailTables,
                 'foreign_keys' => $foreignKeys,
-                'analysis' => $this->analyzeEmailStructure($emailTables, $foreignKeys)
+                'analysis' => $this->analyzeEmailStructure($emailTables, $foreignKeys),
             ];
-            
+
         } catch (Exception $e) {
             return [
-                'error' => 'Failed to introspect emails: ' . $e->getMessage(),
+                'error' => 'Failed to introspect emails: '.$e->getMessage(),
                 'email_tables' => [],
-                'foreign_keys' => []
+                'foreign_keys' => [],
             ];
         }
     }
-    
+
     /**
      * Introspect FreeScout database for time tracking tables and relationships.
      */
@@ -454,7 +457,7 @@ class PostgreSQLConnectionService
     {
         try {
             $timeTables = [];
-            
+
             // Find all tables that might contain time tracking data
             $allTables = DB::connection($connectionName)->select("
                 SELECT table_name 
@@ -463,13 +466,13 @@ class PostgreSQLConnectionService
                 AND table_type = 'BASE TABLE'
                 ORDER BY table_name
             ");
-            
+
             foreach ($allTables as $table) {
                 $tableName = $table->table_name;
-                
+
                 // Check if table name suggests time tracking
                 $isTimeRelated = $this->isTimeTrackingTable($tableName);
-                
+
                 if ($isTimeRelated) {
                     // Get columns for time-related tables
                     $columns = DB::connection($connectionName)->select("
@@ -478,56 +481,56 @@ class PostgreSQLConnectionService
                         WHERE table_name = ? AND table_schema = 'public'
                         ORDER BY ordinal_position
                     ", [$tableName]);
-                    
+
                     // Analyze columns for time tracking indicators
                     $timeColumns = [];
                     $durationColumns = [];
                     $userRelated = false;
                     $conversationRelated = false;
-                    
+
                     foreach ($columns as $column) {
                         $columnName = strtolower($column->column_name);
-                        
+
                         if (preg_match('/(start|begin|from).*time|time.*(start|begin|from)/i', $columnName)) {
                             $timeColumns['start'] = $column->column_name;
                         }
-                        
+
                         if (preg_match('/(end|stop|to).*time|time.*(end|stop|to)/i', $columnName)) {
                             $timeColumns['end'] = $column->column_name;
                         }
-                        
+
                         if (preg_match('/duration|elapsed|spent|hours|minutes|seconds/i', $columnName)) {
                             $durationColumns[] = [
                                 'name' => $column->column_name,
-                                'type' => $column->data_type
+                                'type' => $column->data_type,
                             ];
                         }
-                        
+
                         if (preg_match('/user_id|agent_id|staff_id/i', $columnName)) {
                             $userRelated = true;
                         }
-                        
+
                         if (preg_match('/conversation|ticket|thread/i', $columnName)) {
                             $conversationRelated = true;
                         }
                     }
-                    
+
                     // Get sample data
                     $sampleData = [];
                     $rowCount = 0;
-                    
+
                     try {
                         $sampleData = DB::connection($connectionName)
                             ->select("SELECT * FROM {$tableName} LIMIT 3");
-                        
+
                         $countResult = DB::connection($connectionName)
                             ->selectOne("SELECT COUNT(*) as count FROM {$tableName}");
                         $rowCount = $countResult->count ?? 0;
-                        
+
                     } catch (\Exception $e) {
                         // Some tables might have permission issues
                     }
-                    
+
                     $timeTables[$tableName] = [
                         'table_name' => $tableName,
                         'all_columns' => $columns,
@@ -537,16 +540,16 @@ class PostgreSQLConnectionService
                         'conversation_related' => $conversationRelated,
                         'row_count' => $rowCount,
                         'sample_data' => $sampleData,
-                        'confidence' => $this->calculateTimeTableConfidence($timeColumns, $durationColumns, $userRelated, $conversationRelated)
+                        'confidence' => $this->calculateTimeTableConfidence($timeColumns, $durationColumns, $userRelated, $conversationRelated),
                     ];
                 }
             }
-            
+
             // Get foreign key relationships for time tables
             $timeTableNames = array_keys($timeTables);
             $foreignKeys = [];
-            
-            if (!empty($timeTableNames)) {
+
+            if (! empty($timeTableNames)) {
                 $foreignKeys = DB::connection($connectionName)->select("
                     SELECT
                         tc.table_name,
@@ -564,20 +567,20 @@ class PostgreSQLConnectionService
                     WHERE tc.constraint_type = 'FOREIGN KEY'
                     AND tc.table_schema = 'public'
                     AND (tc.table_name = ANY(?) OR ccu.table_name = ANY(?))
-                ", ['{' . implode(',', $timeTableNames) . '}', '{' . implode(',', $timeTableNames) . '}']);
+                ", ['{'.implode(',', $timeTableNames).'}', '{'.implode(',', $timeTableNames).'}']);
             }
-            
+
             return [
                 'time_tables' => $timeTables,
                 'foreign_keys' => $foreignKeys,
-                'analysis' => $this->analyzeTimeTrackingStructure($timeTables, $foreignKeys)
+                'analysis' => $this->analyzeTimeTrackingStructure($timeTables, $foreignKeys),
             ];
-            
+
         } catch (Exception $e) {
             return [
-                'error' => 'Failed to introspect time tracking: ' . $e->getMessage(),
+                'error' => 'Failed to introspect time tracking: '.$e->getMessage(),
                 'time_tables' => [],
-                'foreign_keys' => []
+                'foreign_keys' => [],
             ];
         }
     }
@@ -589,17 +592,17 @@ class PostgreSQLConnectionService
     {
         $timeIndicators = [
             'time', 'timer', 'track', 'log', 'hour', 'work',
-            'duration', 'effort', 'activity', 'session'
+            'duration', 'effort', 'activity', 'session',
         ];
-        
+
         $lowerTableName = strtolower($tableName);
-        
+
         foreach ($timeIndicators as $indicator) {
             if (strpos($lowerTableName, $indicator) !== false) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -609,18 +612,33 @@ class PostgreSQLConnectionService
     private function calculateTimeTableConfidence(array $timeColumns, array $durationColumns, bool $userRelated, bool $conversationRelated): string
     {
         $score = 0;
-        
+
         // Time columns add confidence
-        if (isset($timeColumns['start'])) $score += 2;
-        if (isset($timeColumns['end'])) $score += 2;
-        if (!empty($durationColumns)) $score += 2;
-        
+        if (isset($timeColumns['start'])) {
+            $score += 2;
+        }
+        if (isset($timeColumns['end'])) {
+            $score += 2;
+        }
+        if (! empty($durationColumns)) {
+            $score += 2;
+        }
+
         // Relationships add confidence
-        if ($userRelated) $score += 1;
-        if ($conversationRelated) $score += 1;
-        
-        if ($score >= 5) return 'high';
-        if ($score >= 3) return 'medium';
+        if ($userRelated) {
+            $score += 1;
+        }
+        if ($conversationRelated) {
+            $score += 1;
+        }
+
+        if ($score >= 5) {
+            return 'high';
+        }
+        if ($score >= 3) {
+            return 'medium';
+        }
+
         return 'low';
     }
 
@@ -632,88 +650,88 @@ class PostgreSQLConnectionService
         $analysis = [
             'recommendations' => [],
             'likely_time_table' => null,
-            'suggested_mappings' => []
+            'suggested_mappings' => [],
         ];
-        
+
         // Find the most likely time tracking table
         $bestTable = null;
         $bestScore = 0;
-        
+
         foreach ($timeTables as $tableName => $tableInfo) {
             $confidence = $tableInfo['confidence'];
             $score = $confidence === 'high' ? 3 : ($confidence === 'medium' ? 2 : 1);
-            
+
             if ($tableInfo['row_count'] > 0) {
                 $score += 1; // Bonus for having data
             }
-            
+
             if ($score > $bestScore) {
                 $bestScore = $score;
                 $bestTable = $tableName;
             }
-            
+
             $analysis['recommendations'][] = "Table '{$tableName}' has {$confidence} confidence for time tracking ({$tableInfo['row_count']} rows)";
         }
-        
+
         if ($bestTable) {
             $analysis['likely_time_table'] = $bestTable;
             $tableInfo = $timeTables[$bestTable];
-            
+
             // Generate suggested field mappings
             $mappings = [];
-            
+
             if (isset($tableInfo['time_columns']['start'])) {
                 $mappings[$tableInfo['time_columns']['start']] = 'started_at';
             }
-            
+
             if (isset($tableInfo['time_columns']['end'])) {
                 $mappings[$tableInfo['time_columns']['end']] = 'ended_at';
             }
-            
+
             foreach ($tableInfo['duration_columns'] as $durationCol) {
                 $mappings[$durationCol['name']] = 'duration';
                 break; // Use first duration column
             }
-            
+
             // Look for common field patterns
             foreach ($tableInfo['all_columns'] as $column) {
                 $colName = strtolower($column->column_name);
-                
+
                 if (preg_match('/^(id|time_id|log_id)$/', $colName)) {
                     $mappings[$column->column_name] = 'id';
                 }
-                
+
                 if (preg_match('/user_id|agent_id|staff_id/', $colName)) {
                     $mappings[$column->column_name] = 'user_id';
                 }
-                
+
                 if (preg_match('/conversation_id|ticket_id|thread_id/', $colName)) {
                     $mappings[$column->column_name] = 'ticket_id';
                 }
-                
+
                 if (preg_match('/description|comment|note|summary/', $colName)) {
                     $mappings[$column->column_name] = 'description';
                 }
-                
+
                 if (preg_match('/billable|chargeable/', $colName)) {
                     $mappings[$column->column_name] = 'billable';
                 }
-                
+
                 if (preg_match('/rate|amount|cost|price/', $colName)) {
                     $mappings[$column->column_name] = 'rate_at_time';
                 }
             }
-            
+
             $analysis['suggested_mappings'] = $mappings;
         }
-        
+
         // Analyze foreign key relationships
         foreach ($foreignKeys as $fk) {
             if ($fk->foreign_table_name === 'users' || $fk->foreign_table_name === 'conversations') {
                 $analysis['recommendations'][] = "Foreign key: {$fk->table_name}.{$fk->column_name} → {$fk->foreign_table_name}.{$fk->foreign_column_name}";
             }
         }
-        
+
         return $analysis;
     }
 
@@ -726,17 +744,17 @@ class PostgreSQLConnectionService
             // Start with a simple count query
             $query = "SELECT COUNT(*) as count FROM {$baseTable}";
             $params = [];
-            
+
             // Add JOIN clauses if provided
-            if (!empty($joins)) {
+            if (! empty($joins)) {
                 foreach ($joins as $join) {
                     $joinType = $join['type'] ?? 'INNER';
                     $query .= " {$joinType} JOIN {$join['table']} ON {$join['condition']}";
                 }
             }
-            
+
             // Add WHERE clauses if provided
-            if (!empty($filters)) {
+            if (! empty($filters)) {
                 $whereClauses = [];
                 foreach ($filters as $filter) {
                     $whereClauses[] = $filter['condition'];
@@ -744,21 +762,23 @@ class PostgreSQLConnectionService
                         $params[] = $filter['value'];
                     }
                 }
-                if (!empty($whereClauses)) {
-                    $query .= " WHERE " . implode(' AND ', $whereClauses);
+                if (! empty($whereClauses)) {
+                    $query .= ' WHERE '.implode(' AND ', $whereClauses);
                 }
             }
-            
+
             $result = DB::connection($connectionName)->selectOne($query, $params);
+
             return (int) $result->count;
-            
+
         } catch (Exception $e) {
             // If exact count fails, try to get table statistics estimate
             try {
                 $result = DB::connection($connectionName)->selectOne(
-                    "SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname = ?",
+                    'SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname = ?',
                     [$baseTable]
                 );
+
                 return $result ? (int) $result->estimate : 0;
             } catch (Exception $e2) {
                 return 0;
@@ -776,10 +796,10 @@ class PostgreSQLConnectionService
             if (stripos($sql, 'LIMIT') === false) {
                 $sql .= " LIMIT {$limit}";
             }
-            
+
             return DB::connection($connectionName)->select($sql, $params);
         } catch (Exception $e) {
-            throw new Exception("Query execution failed: " . $e->getMessage());
+            throw new Exception('Query execution failed: '.$e->getMessage());
         }
     }
 
@@ -790,12 +810,12 @@ class PostgreSQLConnectionService
     {
         try {
             // Try to prepare the query with EXPLAIN to validate syntax
-            $explainQuery = "EXPLAIN " . $sql;
+            $explainQuery = 'EXPLAIN '.$sql;
             $result = DB::connection($connectionName)->select($explainQuery);
-            
+
             // Count the number of JOINs
             $joinCount = preg_match_all('/\bJOIN\b/i', $sql);
-            
+
             // Estimate complexity
             $complexity = 'low';
             if ($joinCount >= 3) {
@@ -803,15 +823,15 @@ class PostgreSQLConnectionService
             } elseif ($joinCount >= 1) {
                 $complexity = 'medium';
             }
-            
+
             return [
                 'is_valid' => true,
                 'execution_plan' => $result,
                 'join_count' => $joinCount,
                 'complexity' => $complexity,
-                'warnings' => []
+                'warnings' => [],
             ];
-            
+
         } catch (Exception $e) {
             return [
                 'is_valid' => false,
@@ -819,7 +839,7 @@ class PostgreSQLConnectionService
                 'execution_plan' => null,
                 'join_count' => 0,
                 'complexity' => 'unknown',
-                'warnings' => []
+                'warnings' => [],
             ];
         }
     }
@@ -832,37 +852,37 @@ class PostgreSQLConnectionService
         $analysis = [
             'recommendations' => [],
             'likely_email_table' => null,
-            'customer_email_join' => null
+            'customer_email_join' => null,
         ];
-        
+
         // Look for tables that are likely to contain customer emails
         foreach ($emailTables as $tableName => $tableInfo) {
-            if ($tableInfo['customer_related'] && !empty($tableInfo['email_columns'])) {
-                $analysis['recommendations'][] = "Table '{$tableName}' appears to be customer-email related with " . count($tableInfo['email_columns']) . " email columns";
-                
+            if ($tableInfo['customer_related'] && ! empty($tableInfo['email_columns'])) {
+                $analysis['recommendations'][] = "Table '{$tableName}' appears to be customer-email related with ".count($tableInfo['email_columns']).' email columns';
+
                 if ($tableInfo['row_count'] > 0) {
                     $analysis['likely_email_table'] = $tableName;
                 }
-            } elseif (!empty($tableInfo['email_columns']) && $tableInfo['row_count'] > 0) {
+            } elseif (! empty($tableInfo['email_columns']) && $tableInfo['row_count'] > 0) {
                 $analysis['recommendations'][] = "Table '{$tableName}' contains email data ({$tableInfo['row_count']} rows)";
             }
         }
-        
+
         // Analyze foreign key relationships
         foreach ($foreignKeys as $fk) {
             if (isset($emailTables[$fk->table_name]) || isset($emailTables[$fk->foreign_table_name])) {
                 $analysis['recommendations'][] = "Foreign key relationship: {$fk->table_name}.{$fk->column_name} → {$fk->foreign_table_name}.{$fk->foreign_column_name}";
-                
+
                 if ($fk->foreign_table_name === 'customers' || $fk->table_name === 'customers') {
                     $analysis['customer_email_join'] = [
                         'email_table' => $fk->table_name !== 'customers' ? $fk->table_name : $fk->foreign_table_name,
                         'join_column' => $fk->column_name,
-                        'customer_column' => $fk->foreign_column_name
+                        'customer_column' => $fk->foreign_column_name,
                     ];
                 }
             }
         }
-        
+
         return $analysis;
     }
 }

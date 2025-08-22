@@ -8,7 +8,6 @@ use App\Models\ImportProfile;
 use App\Services\ImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class ImportJobController extends Controller
@@ -51,13 +50,13 @@ class ImportJobController extends Controller
 
         // Search by profile name
         if ($request->filled('search')) {
-            $query->whereHas('profile', function($q) use ($request) {
-                $q->where('name', 'ILIKE', '%' . $request->search . '%');
+            $query->whereHas('profile', function ($q) use ($request) {
+                $q->where('name', 'ILIKE', '%'.$request->search.'%');
             });
         }
 
         $jobs = $query->orderBy('created_at', 'desc')
-                     ->paginate($request->get('per_page', 15));
+            ->paginate($request->get('per_page', 15));
 
         return response()->json($jobs);
     }
@@ -95,7 +94,7 @@ class ImportJobController extends Controller
         $profile = ImportProfile::findOrFail($request->profile_id);
 
         // Check if profile is active
-        if (!$profile->is_active) {
+        if (! $profile->is_active) {
             return response()->json([
                 'message' => 'Import profile is not active',
             ], 400);
@@ -103,8 +102,8 @@ class ImportJobController extends Controller
 
         // Check for existing running jobs on this profile
         $runningJobs = ImportJob::where('profile_id', $profile->id)
-                                ->where('status', 'running')
-                                ->count();
+            ->where('status', 'running')
+            ->count();
 
         if ($runningJobs > 0) {
             return response()->json([
@@ -149,7 +148,7 @@ class ImportJobController extends Controller
     {
         $this->authorize('cancel', $importJob);
 
-        if (!$importJob->isRunning()) {
+        if (! $importJob->isRunning()) {
             return response()->json([
                 'message' => 'Only running jobs can be cancelled',
                 'current_status' => $importJob->status,
@@ -209,7 +208,7 @@ class ImportJobController extends Controller
             ->latest()
             ->limit(10)
             ->get()
-            ->map(function($job) {
+            ->map(function ($job) {
                 return [
                     'id' => $job->id,
                     'profile_name' => $job->profile->name,
@@ -251,7 +250,7 @@ class ImportJobController extends Controller
 
         try {
             $preview = $this->importService->previewImport(
-                $profile, 
+                $profile,
                 $request->get('limit', 10)
             );
 
@@ -302,7 +301,7 @@ class ImportJobController extends Controller
     {
         $this->authorize('execute', ImportJob::class);
 
-        if (!in_array($importJob->status, ['failed', 'cancelled'])) {
+        if (! in_array($importJob->status, ['failed', 'cancelled'])) {
             return response()->json([
                 'message' => 'Only failed or cancelled jobs can be retried',
                 'current_status' => $importJob->status,
@@ -312,7 +311,7 @@ class ImportJobController extends Controller
         try {
             // Create a new job with the same configuration
             $newJob = $this->importService->startImport(
-                $importJob->profile, 
+                $importJob->profile,
                 $importJob->import_options ?? []
             );
 
@@ -350,7 +349,7 @@ class ImportJobController extends Controller
         return response()->json([
             'job_id' => $importJob->id,
             'total_errors' => count($errors),
-            'errors' => array_map(function($error, $index) {
+            'errors' => array_map(function ($error, $index) {
                 return [
                     'line' => $index + 1,
                     'error' => $error,
@@ -368,7 +367,7 @@ class ImportJobController extends Controller
         $this->authorize('execute', ImportJob::class);
 
         // Check if profile is active
-        if (!$profile->is_active) {
+        if (! $profile->is_active) {
             return response()->json([
                 'message' => 'Import profile is not active',
             ], 400);
@@ -376,8 +375,8 @@ class ImportJobController extends Controller
 
         // Check for existing running jobs on this profile
         $runningJobs = ImportJob::where('profile_id', $profile->id)
-                                ->where('status', 'running')
-                                ->count();
+            ->where('status', 'running')
+            ->count();
 
         if ($runningJobs > 0) {
             return response()->json([
@@ -410,7 +409,7 @@ class ImportJobController extends Controller
     {
         $this->authorize('cancel', $importJob);
 
-        if (!$importJob->isRunning()) {
+        if (! $importJob->isRunning()) {
             return response()->json([
                 'message' => 'Only running jobs can be cancelled',
                 'current_status' => $importJob->status,
@@ -469,7 +468,7 @@ class ImportJobController extends Controller
      */
     protected function estimateCompletion(ImportJob $importJob): ?string
     {
-        if (!$importJob->isRunning() || !$importJob->started_at) {
+        if (! $importJob->isRunning() || ! $importJob->started_at) {
             return null;
         }
 

@@ -239,7 +239,7 @@ class TicketAddon extends Model
      */
     public function canUnapprove(): bool
     {
-        return $this->status === 'approved' && !$this->isInvoiced();
+        return $this->status === 'approved' && ! $this->isInvoiced();
     }
 
     /**
@@ -247,7 +247,7 @@ class TicketAddon extends Model
      */
     public function unapprove(User $unapprover, ?string $notes = null): bool
     {
-        if (!$this->canUnapprove()) {
+        if (! $this->canUnapprove()) {
             return false;
         }
 

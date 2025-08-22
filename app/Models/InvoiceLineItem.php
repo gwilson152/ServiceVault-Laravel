@@ -70,17 +70,17 @@ class InvoiceLineItem extends Model
     {
         $subtotal = $this->quantity * $this->unit_price;
         $afterDiscount = $subtotal - $this->discount_amount;
-        
+
         // Calculate tax amount based on invoice tax settings and line item taxable status
         if ($this->invoice && $this->invoice->account_id) {
             $isItemTaxable = $this->invoice->isLineItemTaxable($this);
-            
+
             if ($isItemTaxable) {
                 $taxService = app(\App\Services\TaxService::class);
-                $effectiveTaxRate = $this->invoice->override_tax 
+                $effectiveTaxRate = $this->invoice->override_tax
                     ? ($this->invoice->tax_rate ?? 0)
                     : $taxService->getEffectiveTaxRate($this->invoice->account_id);
-                
+
                 $this->tax_amount = round($afterDiscount * ($effectiveTaxRate / 100), 2);
             } else {
                 $this->tax_amount = 0;
@@ -89,7 +89,7 @@ class InvoiceLineItem extends Model
             // Fallback for cases where invoice is not loaded
             $this->tax_amount = $afterDiscount * (($this->tax_rate ?? 0) / 100);
         }
-        
+
         $this->total_amount = $afterDiscount + $this->tax_amount;
     }
 
