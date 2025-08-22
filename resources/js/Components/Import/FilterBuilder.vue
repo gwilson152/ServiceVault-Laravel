@@ -247,6 +247,7 @@ const emit = defineEmits(['update:modelValue', 'filters-changed'])
 
 // State
 const filters = ref([...props.modelValue])
+const isUpdatingFromProps = ref(false)
 
 // Computed
 const availableFields = computed(() => {
@@ -601,11 +602,15 @@ const applySuggestedFilter = (suggestion) => {
 
 // Watchers
 watch(() => props.modelValue, (newValue) => {
+  isUpdatingFromProps.value = true
   filters.value = [...newValue]
+  isUpdatingFromProps.value = false
 }, { deep: true })
 
 // Immediate update when filters change via v-model
 watch(filters, () => {
-  updateModelValue()
+  if (!isUpdatingFromProps.value) {
+    updateModelValue()
+  }
 }, { deep: true })
 </script>

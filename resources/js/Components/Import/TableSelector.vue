@@ -49,6 +49,7 @@
       <div
         v-for="table in filteredTables"
         :key="table.name"
+        :data-table-name="table.name"
         @click="selectTable(table)"
         @mouseenter="showTableTooltip(table, $event)"
         @mouseleave="hideTableTooltip(table)"
@@ -197,7 +198,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import {
   TableCellsIcon,
   MagnifyingGlassIcon,
@@ -286,6 +287,13 @@ const refreshTables = async () => {
       } else {
         tables.value = []
         emit('schema-loaded', { tables: [] })
+      }
+      
+      // Scroll to selected table after tables are loaded
+      if (selectedTable.value) {
+        nextTick(() => {
+          scrollToSelectedTable()
+        })
       }
     } else {
       const errorData = await response.json()
@@ -396,9 +404,27 @@ const formatRowCount = (count) => {
   return `${(count / 1000000).toFixed(1)}M`
 }
 
+const scrollToSelectedTable = () => {
+  if (!selectedTable.value?.name) return
+  
+  // Use nextTick to ensure DOM is updated
+  nextTick(() => {
+    const tableElement = document.querySelector(`[data-table-name="${selectedTable.value.name}"]`)
+    if (tableElement) {
+      tableElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      })
+    }
+  })
+}
+
 // Watchers
 watch(() => props.modelValue, (newValue) => {
   selectedTable.value = newValue
+  if (newValue) {
+    scrollToSelectedTable()
+  }
 })
 
 watch(() => props.profileId, (newProfileId) => {

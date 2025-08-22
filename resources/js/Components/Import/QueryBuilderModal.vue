@@ -62,7 +62,7 @@
               
               <TableSelector
                 :profile-id="profile?.id"
-                :selected-table="queryConfig.base_table"
+                :model-value="baseTableObject"
                 @table-selected="handleTableSelected"
                 @schema-loaded="handleSchemaLoaded"
               />
@@ -80,7 +80,7 @@
               <JoinBuilder
                 :profile-id="profile?.id"
                 :base-table="baseTableObject"
-                :joins="queryConfig.joins || []"
+                v-model="queryConfig.joins"
                 :available-tables="availableTables"
                 @joins-changed="handleJoinsUpdated"
               />
@@ -116,7 +116,7 @@
                 :profile-id="profile?.id"
                 :base-table="baseTableObject"
                 :joins="queryConfig.joins || []"
-                :fields="queryConfig.fields || []"
+                v-model="queryConfig.fields"
                 :target-type="queryConfig.target_type || 'customer_users'"
                 @fields-changed="handleFieldsUpdated"
                 @target-type-changed="handleTargetTypeChanged"

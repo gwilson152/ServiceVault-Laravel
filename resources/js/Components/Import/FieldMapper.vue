@@ -237,6 +237,10 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
+  profileId: {
+    type: String,
+    default: null
+  },
   baseTable: {
     type: Object,
     default: null
@@ -249,17 +253,21 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  targetType: {
+    type: String,
+    default: 'customer_users'
+  },
   modelValue: {
     type: Array,
     default: () => []
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'fields-changed'])
+const emit = defineEmits(['update:modelValue', 'fields-changed', 'target-type-changed'])
 
 // State
 const fields = ref([...props.modelValue])
-const selectedTargetType = ref('')
+const selectedTargetType = ref(props.targetType || '')
 
 // Target field definitions for different import types
 const targetTypeFields = {
@@ -417,6 +425,7 @@ const onTargetTypeChange = () => {
   // Clear existing fields when target type changes
   fields.value = []
   updateModelValue()
+  emit('target-type-changed', selectedTargetType.value)
 }
 
 const onTransformationTypeChange = (field) => {
@@ -555,6 +564,10 @@ const showTransformationHelper = (field, index) => {
 watch(() => props.modelValue, (newValue) => {
   fields.value = [...newValue]
 }, { deep: true })
+
+watch(() => props.targetType, (newValue) => {
+  selectedTargetType.value = newValue || ''
+}, { immediate: true })
 
 watch(fields, () => {
   updateModelValue()

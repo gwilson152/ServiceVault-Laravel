@@ -1,203 +1,114 @@
 <template>
-    <!-- Page Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200 mb-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                        Settings
-                    </h2>
-                    <p class="text-sm text-gray-600 mt-1">
-                        Configure system settings, email, billing, and more.
-                    </p>
-                </div>
+    <StandardPageLayout
+        title="Settings"
+        subtitle="Configure system settings, email, billing, and more."
+        :show-sidebar="false"
+        :show-filters="false"
+    >
+        <template #tabs>
+            <TabNavigation
+                v-model="activeTab"
+                :tabs="navigationTabs"
+                variant="underline"
+                @tab-change="handleTabChange"
+            />
+        </template>
+
+        <template #main-content>
+            <!-- System Configuration Tab -->
+            <div v-show="activeTab === 'system'" class="space-y-8">
+                <SystemConfiguration
+                    :settings="systemSettings"
+                    :loading="loading.system"
+                    @update="updateSystemSettings"
+                />
             </div>
-        </div>
-    </div>
 
-    <div class="py-6">
-        <div>
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-
-                        <!-- Tab Navigation -->
-                        <div class="border-b border-gray-200 mb-8">
-                            <div class="relative">
-                                <!-- Left scroll button -->
-                                <button
-                                    v-show="canScrollLeft"
-                                    @click="scrollTabs('left')"
-                                    class="absolute left-0 top-0 bottom-0 z-10 bg-white shadow-sm border-r border-gray-200 px-2 flex items-center hover:bg-gray-50"
-                                    type="button"
-                                >
-                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                                    </svg>
-                                </button>
-                                
-                                <!-- Right scroll button -->
-                                <button
-                                    v-show="canScrollRight"
-                                    @click="scrollTabs('right')"
-                                    class="absolute right-0 top-0 bottom-0 z-10 bg-white shadow-sm border-l border-gray-200 px-2 flex items-center hover:bg-gray-50"
-                                    type="button"
-                                >
-                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </button>
-                                
-                                <nav
-                                    ref="tabsContainer"
-                                    @scroll="updateScrollState"
-                                    class="-mb-px flex space-x-8 overflow-x-auto scrollbar-hide"
-                                    :class="{ 'pl-10': canScrollLeft, 'pr-10': canScrollRight }"
-                                    aria-label="Tabs"
-                                    style="scroll-behavior: smooth;"
-                                >
-                                <button
-                                    v-for="tab in tabs"
-                                    :key="tab.id"
-                                    @click="navigateToTab(tab.id)"
-                                    :class="[
-                                        activeTab === tab.id
-                                            ? 'border-indigo-500 text-indigo-600'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                                        'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex-shrink-0',
-                                    ]"
-                                >
-                                    <component
-                                        :is="tab.icon"
-                                        class="w-5 h-5 mr-2 inline"
-                                    />
-                                    {{ tab.name }}
-                                </button>
-                                </nav>
-                            </div>
-                        </div>
-
-                        <!-- Tab Content -->
-                        <div class="mt-8">
-                            <!-- System Configuration Tab -->
-                            <div
-                                v-show="activeTab === 'system'"
-                                class="space-y-8"
-                            >
-                                <SystemConfiguration
-                                    :settings="systemSettings"
-                                    :loading="loading.system"
-                                    @update="updateSystemSettings"
-                                />
-                            </div>
-
-                            <!-- Email Configuration Tab -->
-                            <div
-                                v-show="activeTab === 'email'"
-                                class="space-y-8"
-                            >
-                                <EmailConfiguration
-                                    :settings="emailSettings"
-                                    :loading="loading.email"
-                                    :testing="testing"
-                                    @update="updateEmailSettings"
-                                    @test-smtp="testSmtp"
-                                    @test-imap="testImap"
-                                />
-                            </div>
-
-                            <!-- Ticket Configuration Tab -->
-                            <div
-                                v-show="activeTab === 'tickets'"
-                                class="space-y-8"
-                            >
-                                <TicketConfiguration
-                                    :config="ticketConfig"
-                                    :loading="loading.tickets"
-                                    @refresh="loadTicketConfig"
-                                />
-                            </div>
-
-                            <!-- Billing & Addons Tab -->
-                            <div
-                                v-show="activeTab === 'billing'"
-                                class="space-y-8"
-                            >
-                                <BillingConfiguration
-                                    :config="billingConfig"
-                                    :loading="loading.billing"
-                                    @refresh="loadBillingConfig"
-                                />
-                            </div>
-
-                            <!-- Timer Settings Tab -->
-                            <div
-                                v-show="activeTab === 'timer'"
-                                class="space-y-8"
-                            >
-                                <TimerSettings
-                                    :settings="timerSettings"
-                                    :loading="loading.timer"
-                                    @update="updateTimerSettings"
-                                />
-                            </div>
-
-                            <!-- User Management Tab -->
-                            <div
-                                v-show="activeTab === 'users'"
-                                class="space-y-8"
-                            >
-                                <UserManagement
-                                    :settings="userManagementSettings"
-                                    :loading="loading.users"
-                                    @update="updateUserManagementSettings"
-                                />
-                            </div>
-
-                            <!-- Advanced Tab -->
-                            <div
-                                v-show="activeTab === 'advanced'"
-                                class="space-y-8"
-                            >
-                                <AdvancedSettings
-                                    :settings="advancedSettings"
-                                    :loading="loading.advanced"
-                                    @update="updateAdvancedSettings"
-                                />
-                            </div>
-
-                            <!-- Nuclear Reset Tab -->
-                            <div
-                                v-show="activeTab === 'reset'"
-                                class="space-y-8"
-                            >
-                                <NuclearResetSection />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Email Configuration Tab -->
+            <div v-show="activeTab === 'email'" class="space-y-8">
+                <EmailConfiguration
+                    :settings="emailSettings"
+                    :loading="loading.email"
+                    :testing="testing"
+                    @update="updateEmailSettings"
+                    @test-smtp="testSmtp"
+                    @test-imap="testImap"
+                />
             </div>
-        </div>
-    </div>
+
+            <!-- Ticket Configuration Tab -->
+            <div v-show="activeTab === 'tickets'" class="space-y-8">
+                <TicketConfiguration
+                    :config="ticketConfig"
+                    :loading="loading.tickets"
+                    @refresh="loadTicketConfig"
+                />
+            </div>
+
+            <!-- Billing & Addons Tab -->
+            <div v-show="activeTab === 'billing'" class="space-y-8">
+                <BillingConfiguration
+                    :config="billingConfig"
+                    :loading="loading.billing"
+                    @refresh="loadBillingConfig"
+                />
+            </div>
+
+            <!-- Timer Settings Tab -->
+            <div v-show="activeTab === 'timer'" class="space-y-8">
+                <TimerSettings
+                    :settings="timerSettings"
+                    :loading="loading.timer"
+                    @update="updateTimerSettings"
+                />
+            </div>
+
+            <!-- User Management Tab -->
+            <div v-show="activeTab === 'users'" class="space-y-8">
+                <UserManagement
+                    :settings="userManagementSettings"
+                    :loading="loading.users"
+                    @update="updateUserManagementSettings"
+                />
+            </div>
+
+            <!-- Advanced Tab -->
+            <div v-show="activeTab === 'advanced'" class="space-y-8">
+                <AdvancedSettings
+                    :settings="advancedSettings"
+                    :loading="loading.advanced"
+                    @update="updateAdvancedSettings"
+                />
+            </div>
+
+            <!-- Nuclear Reset Tab -->
+            <div v-show="activeTab === 'reset'" class="space-y-8">
+                <NuclearResetSection />
+            </div>
+        </template>
+    </StandardPageLayout>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
+import StandardPageLayout from "@/Layouts/StandardPageLayout.vue";
+import TabNavigation from "@/Components/Layout/TabNavigation.vue";
 
 // Define persistent layout
 defineOptions({
-  layout: AppLayout
+    layout: (h, page) => h(AppLayout, () => page),
 });
 
 // Props from route
 const props = defineProps({
-  activeTab: {
-    type: String,
-    default: 'system'
-  }
+    activeTab: {
+        type: String,
+        default: 'system'
+    }
 });
+
 import SystemConfiguration from "@/Pages/Settings/Components/SystemConfiguration.vue";
 import EmailConfiguration from "@/Pages/Settings/Components/EmailConfiguration.vue";
 import TicketConfiguration from "@/Pages/Settings/Components/TicketConfiguration.vue";
@@ -206,38 +117,61 @@ import TimerSettings from "@/Pages/Settings/Components/TimerSettings.vue";
 import UserManagement from "@/Pages/Settings/Components/UserManagement.vue";
 import AdvancedSettings from "@/Pages/Settings/Components/AdvancedSettings.vue";
 import NuclearResetSection from "@/Components/Settings/NuclearResetSection.vue";
-import {
-    CogIcon,
-    EnvelopeIcon,
-    TicketIcon,
-    CurrencyDollarIcon,
-    ClockIcon,
-    UsersIcon,
-    WrenchScrewdriverIcon,
-    ExclamationTriangleIcon,
-} from "@heroicons/vue/24/outline";
 
 // Get current user from page props
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 
-// Tab configuration - filter advanced tab for super admin only
-const tabs = computed(() => {
+// Navigation tabs configuration
+const navigationTabs = computed(() => {
     const baseTabs = [
-        { id: "system", name: "System Config", icon: CogIcon },
-        { id: "email", name: "Email Settings", icon: EnvelopeIcon },
-        { id: "tickets", name: "Tickets", icon: TicketIcon },
-        { id: "billing", name: "Billing & Addons", icon: CurrencyDollarIcon },
-        { id: "timer", name: "Timer Settings", icon: ClockIcon },
-        { id: "users", name: "User Management", icon: UsersIcon },
+        { 
+            id: "system", 
+            name: "System Config", 
+            icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+        },
+        { 
+            id: "email", 
+            name: "Email Settings", 
+            icon: 'M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+        },
+        { 
+            id: "tickets", 
+            name: "Tickets", 
+            icon: 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z'
+        },
+        { 
+            id: "billing", 
+            name: "Billing & Addons", 
+            icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+        },
+        { 
+            id: "timer", 
+            name: "Timer Settings", 
+            icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
+        },
+        { 
+            id: "users", 
+            name: "User Management", 
+            icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z'
+        },
     ]
     
     // Only show Advanced tab to super admin users
     if (user.value?.is_super_admin) {
-        baseTabs.push({ id: "advanced", name: "Advanced", icon: WrenchScrewdriverIcon })
+        baseTabs.push({ 
+            id: "advanced", 
+            name: "Advanced", 
+            icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+        })
     }
     
-    baseTabs.push({ id: "reset", name: "Nuclear Reset", icon: ExclamationTriangleIcon })
+    baseTabs.push({ 
+        id: "reset", 
+        name: "Nuclear Reset", 
+        icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z'
+    })
+    
     return baseTabs
 })
 
@@ -266,31 +200,12 @@ const timerSettings = ref({});
 const userManagementSettings = ref({});
 const advancedSettings = ref({});
 
-// Tab scrolling functionality
-const tabsContainer = ref(null);
-const canScrollLeft = ref(false);
-const canScrollRight = ref(false);
-
-// Tab scrolling methods
-const updateScrollState = () => {
-    if (!tabsContainer.value) return;
-    
-    const container = tabsContainer.value;
-    canScrollLeft.value = container.scrollLeft > 0;
-    canScrollRight.value = container.scrollLeft < (container.scrollWidth - container.clientWidth);
-};
-
-const scrollTabs = (direction) => {
-    if (!tabsContainer.value) return;
-    
-    const scrollAmount = 200;
-    const container = tabsContainer.value;
-    
-    if (direction === 'left') {
-        container.scrollLeft -= scrollAmount;
-    } else {
-        container.scrollLeft += scrollAmount;
-    }
+// Tab change handler
+const handleTabChange = (tabId) => {
+    router.visit(`/settings/${tabId}`, {
+        preserveState: true,
+        preserveScroll: true
+    });
 };
 
 // Navigate to tab using URL path params
@@ -298,300 +213,311 @@ const navigateToTab = (tabId) => {
     const currentUrl = new URL(window.location.href);
     const newPath = `/settings/${tabId}`;
     
-    router.visit(newPath, {
-        preserveState: true,
-        preserveScroll: true,
-        only: ['activeTab'],
-        onSuccess: () => {
-            activeTab.value = tabId;
-        }
-    });
-};
-
-// Watch for prop changes when navigating
-watch(() => props.activeTab, (newTab) => {
-    if (newTab && newTab !== activeTab.value) {
-        // Check if user is trying to access advanced tab without super admin privileges
-        if (newTab === 'advanced' && !user.value?.is_super_admin) {
-            // Redirect to system tab instead
-            navigateToTab('system')
-            return
-        }
-        activeTab.value = newTab;
-    }
-}, { immediate: true });
-
-// Load all settings on mount
-onMounted(async () => {
-    await loadAllSettings();
-    
-    // Initialize scroll state after DOM is ready
-    await nextTick();
-    updateScrollState();
-    
-    // Update scroll state on window resize
-    window.addEventListener('resize', updateScrollState);
-});
-
-// Cleanup on unmount
-onUnmounted(() => {
-    window.removeEventListener('resize', updateScrollState);
-});
-
-// Load all settings
-const loadAllSettings = async () => {
-    try {
-        const response = await window.axios.get("/api/settings");
-        const data = response.data.data;
-
-        systemSettings.value = data.system || {};
-        emailSettings.value = data.email || {};
-
-        // Load additional configurations
-        await Promise.all([
-            loadTicketConfig(),
-            loadBillingConfig(),
-            loadTimerSettings(),
-            loadUserManagementSettings(),
-            loadAdvancedSettings(),
-        ]);
-    } catch (error) {
-        console.error("Failed to load settings:", error);
-    }
-};
-
-// Load ticket configuration
-const loadTicketConfig = async () => {
-    loading.tickets = true;
-    try {
-        const response = await window.axios.get("/api/settings/ticket-config");
-        ticketConfig.value = response.data.data;
-    } catch (error) {
-        console.error("Failed to load ticket config:", error);
-    } finally {
-        loading.tickets = false;
-    }
-};
-
-// Load billing configuration
-const loadBillingConfig = async () => {
-    loading.billing = true;
-    try {
-        const response = await window.axios.get("/api/settings/billing-config");
-        billingConfig.value = response.data.data;
-    } catch (error) {
-        console.error("Failed to load billing config:", error);
-    } finally {
-        loading.billing = false;
-    }
-};
-
-// Load timer settings
-const loadTimerSettings = async () => {
-    loading.timer = true;
-    try {
-        const response = await window.axios.get("/api/settings/timer");
-        timerSettings.value = response.data.data;
-    } catch (error) {
-        console.error("Failed to load timer settings:", error);
-    } finally {
-        loading.timer = false;
-    }
-};
-
-// Load user management settings
-const loadUserManagementSettings = async () => {
-    loading.users = true;
-    try {
-        const response = await window.axios.get(
-            "/api/settings/user-management"
-        );
-        userManagementSettings.value = response.data.data;
-    } catch (error) {
-        console.error("Failed to load user management settings:", error);
-    } finally {
-        loading.users = false;
-    }
-};
-
-// Load advanced settings
-const loadAdvancedSettings = async () => {
-    loading.advanced = true;
-    try {
-        const response = await window.axios.get("/api/settings/advanced");
-        advancedSettings.value = response.data.data;
-    } catch (error) {
-        console.error("Failed to load advanced settings:", error);
-        // Fall back to localStorage if API fails
-        advancedSettings.value = {
-            show_debug_overlay: localStorage.getItem('debug_overlay_enabled') === 'true',
-            show_permissions_debug_overlay: localStorage.getItem('permissions_debug_overlay_enabled') === 'true'
-        };
-    } finally {
-        loading.advanced = false;
-    }
-};
-
-// Update system settings
-const updateSystemSettings = async (settings) => {
-    loading.system = true;
-    try {
-        await window.axios.put("/api/settings/system", settings);
-        systemSettings.value = { ...systemSettings.value, ...settings };
-        // Show success message
-        router.visit(route("settings.index"), {
+    if (currentUrl.pathname !== newPath) {
+        router.visit(newPath, {
             preserveState: true,
-            only: [],
-            onSuccess: () => {
-                // Success feedback handled by Inertia
-            },
+            preserveScroll: true
         });
+    }
+};
+
+// Load functions for each tab
+const loadSystemSettings = async () => {
+    try {
+        loading.system = true;
+        const response = await fetch('/api/settings/system');
+        if (response.ok) {
+            systemSettings.value = await response.json();
+        }
     } catch (error) {
-        console.error("Failed to update system settings:", error);
+        console.error('Failed to load system settings:', error);
     } finally {
         loading.system = false;
     }
 };
 
-// Update email settings
-const updateEmailSettings = async (settings) => {
-    loading.email = true;
+const loadEmailSettings = async () => {
     try {
-        await window.axios.put("/api/settings/email", settings);
-        emailSettings.value = { ...emailSettings.value, ...settings };
-        // Show success message without full page refresh
-        console.log("Email settings updated successfully");
+        loading.email = true;
+        const response = await fetch('/api/settings/email');
+        if (response.ok) {
+            emailSettings.value = await response.json();
+        }
     } catch (error) {
-        console.error("Failed to update email settings:", error);
+        console.error('Failed to load email settings:', error);
     } finally {
         loading.email = false;
     }
 };
 
-// Test SMTP configuration
-const testSmtp = async (config) => {
-    testing.smtp = true;
+const loadTicketConfig = async () => {
     try {
-        const response = await window.axios.post(
-            "/api/settings/email/test-smtp",
-            config
-        );
-        return response.data;
+        loading.tickets = true;
+        const response = await fetch('/api/settings/ticket-config');
+        if (response.ok) {
+            ticketConfig.value = await response.json();
+        }
     } catch (error) {
-        return (
-            error.response?.data || { success: false, message: "Test failed" }
-        );
+        console.error('Failed to load ticket config:', error);
     } finally {
-        testing.smtp = false;
+        loading.tickets = false;
     }
 };
 
-// Test IMAP configuration
-const testImap = async (config) => {
-    testing.imap = true;
+const loadBillingConfig = async () => {
     try {
-        const response = await window.axios.post(
-            "/api/settings/email/test-imap",
-            config
-        );
-        return response.data;
+        loading.billing = true;
+        const response = await fetch('/api/billing-rates');
+        if (response.ok) {
+            billingConfig.value = await response.json();
+        }
     } catch (error) {
-        return (
-            error.response?.data || { success: false, message: "Test failed" }
-        );
+        console.error('Failed to load billing config:', error);
     } finally {
-        testing.imap = false;
+        loading.billing = false;
     }
 };
 
-// Update timer settings
-const updateTimerSettings = async (settings) => {
-    loading.timer = true;
+const loadTimerSettings = async () => {
     try {
-        await window.axios.put("/api/settings/timer", settings);
-        timerSettings.value = { ...timerSettings.value, ...settings };
-        router.visit(route("settings.index"), {
-            preserveState: true,
-            only: [],
-            onSuccess: () => {
-                // Success feedback handled by Inertia
-            },
-        });
+        loading.timer = true;
+        const response = await fetch('/api/settings/timer');
+        if (response.ok) {
+            timerSettings.value = await response.json();
+        }
     } catch (error) {
-        console.error("Failed to update timer settings:", error);
+        console.error('Failed to load timer settings:', error);
     } finally {
         loading.timer = false;
     }
 };
 
-// Update user management settings
-const updateUserManagementSettings = async (settings) => {
-    loading.users = true;
+const loadUserManagementSettings = async () => {
     try {
-        await window.axios.put("/api/settings/user-management", settings);
-        userManagementSettings.value = {
-            ...userManagementSettings.value,
-            auto_user_settings: {
-                ...userManagementSettings.value.auto_user_settings,
-                ...settings,
-            },
-        };
-        router.visit(route("settings.index"), {
-            preserveState: true,
-            only: [],
-            onSuccess: () => {
-                // Success feedback handled by Inertia
-            },
-        });
+        loading.users = true;
+        const response = await fetch('/api/settings/user-management');
+        if (response.ok) {
+            userManagementSettings.value = await response.json();
+        }
     } catch (error) {
-        console.error("Failed to update user management settings:", error);
+        console.error('Failed to load user management settings:', error);
     } finally {
         loading.users = false;
     }
 };
 
-const updateAdvancedSettings = async (settings) => {
-    loading.advanced = true;
+const loadAdvancedSettings = async () => {
     try {
-        // Save to backend
-        await window.axios.put("/api/settings/advanced", settings);
-        
-        // Also store in localStorage for immediate access and dispatch events
-        localStorage.setItem('debug_overlay_enabled', settings.show_debug_overlay);
-        localStorage.setItem('permissions_debug_overlay_enabled', settings.show_permissions_debug_overlay);
-        
-        // Dispatch events to notify components
-        window.dispatchEvent(new CustomEvent('localStorage-changed', {
-            detail: { key: 'debug_overlay_enabled', value: settings.show_debug_overlay }
-        }));
-        window.dispatchEvent(new CustomEvent('localStorage-changed', {
-            detail: { key: 'permissions_debug_overlay_enabled', value: settings.show_permissions_debug_overlay }
-        }));
-        
-        // Update local state
-        advancedSettings.value = { ...advancedSettings.value, ...settings };
-        
-        // Show success feedback
-        console.log('Advanced settings saved successfully');
-        
+        loading.advanced = true;
+        const response = await fetch('/api/settings/advanced');
+        if (response.ok) {
+            advancedSettings.value = await response.json();
+        }
     } catch (error) {
-        console.error("Failed to update advanced settings:", error);
-        // Still try to save to localStorage if API fails
-        localStorage.setItem('debug_overlay_enabled', settings.show_debug_overlay);
-        localStorage.setItem('permissions_debug_overlay_enabled', settings.show_permissions_debug_overlay);
+        console.error('Failed to load advanced settings:', error);
     } finally {
         loading.advanced = false;
     }
 };
+
+// Update functions for each tab
+const updateSystemSettings = async (data) => {
+    try {
+        loading.system = true;
+        const response = await fetch('/api/settings/system', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            systemSettings.value = await response.json();
+        }
+    } catch (error) {
+        console.error('Failed to update system settings:', error);
+    } finally {
+        loading.system = false;
+    }
+};
+
+const updateEmailSettings = async (data) => {
+    try {
+        loading.email = true;
+        const response = await fetch('/api/settings/email', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            emailSettings.value = await response.json();
+        }
+    } catch (error) {
+        console.error('Failed to update email settings:', error);
+    } finally {
+        loading.email = false;
+    }
+};
+
+const updateTimerSettings = async (data) => {
+    try {
+        loading.timer = true;
+        const response = await fetch('/api/settings/timer', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            timerSettings.value = await response.json();
+        }
+    } catch (error) {
+        console.error('Failed to update timer settings:', error);
+    } finally {
+        loading.timer = false;
+    }
+};
+
+const updateUserManagementSettings = async (data) => {
+    try {
+        loading.users = true;
+        const response = await fetch('/api/settings/user-management', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            userManagementSettings.value = await response.json();
+        }
+    } catch (error) {
+        console.error('Failed to update user management settings:', error);
+    } finally {
+        loading.users = false;
+    }
+};
+
+const updateAdvancedSettings = async (data) => {
+    try {
+        loading.advanced = true;
+        const response = await fetch('/api/settings/advanced', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            advancedSettings.value = await response.json();
+        }
+    } catch (error) {
+        console.error('Failed to update advanced settings:', error);
+    } finally {
+        loading.advanced = false;
+    }
+};
+
+// Email testing functions
+const testSmtp = async () => {
+    try {
+        testing.smtp = true;
+        const response = await fetch('/api/settings/email/test-smtp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            }
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            alert('SMTP test successful!');
+        } else {
+            alert(`SMTP test failed: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('SMTP test failed:', error);
+        alert('SMTP test failed: ' + error.message);
+    } finally {
+        testing.smtp = false;
+    }
+};
+
+const testImap = async () => {
+    try {
+        testing.imap = true;
+        const response = await fetch('/api/settings/email/test-imap', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            }
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            alert('IMAP test successful!');
+        } else {
+            alert(`IMAP test failed: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('IMAP test failed:', error);
+        alert('IMAP test failed: ' + error.message);
+    } finally {
+        testing.imap = false;
+    }
+};
+
+// Load initial data based on active tab
+const loadInitialData = () => {
+    switch (activeTab.value) {
+        case 'system':
+            loadSystemSettings();
+            break;
+        case 'email':
+            loadEmailSettings();
+            break;
+        case 'tickets':
+            loadTicketConfig();
+            break;
+        case 'billing':
+            loadBillingConfig();
+            break;
+        case 'timer':
+            loadTimerSettings();
+            break;
+        case 'users':
+            loadUserManagementSettings();
+            break;
+        case 'advanced':
+            if (user.value?.is_super_admin) {
+                loadAdvancedSettings();
+            }
+            break;
+    }
+};
+
+// Watch for tab changes and load appropriate data
+watch(activeTab, (newTab) => {
+    loadInitialData();
+});
+
+// Initialize on mount
+onMounted(() => {
+    loadInitialData();
+});
 </script>
-
-<style scoped>
-.scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;     /* Firefox */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;             /* Chrome, Safari and Opera */
-}
-</style>
