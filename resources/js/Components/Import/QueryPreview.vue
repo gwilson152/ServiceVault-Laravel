@@ -526,9 +526,8 @@ const getJoinImpactClass = (impact) => {
 }
 
 // DISABLE ALL AUTOMATIC WATCHING - something is causing circular updates
-
-// Initial load
-refreshPreview()
+// Removed automatic refresh to prevent recursive loops
+// Component will only update when user clicks "Refresh" button
 
 // Expose refreshPreview method for parent component
 defineExpose({

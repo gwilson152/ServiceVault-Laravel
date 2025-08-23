@@ -246,8 +246,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'filters-changed'])
 
 // State
-const filters = ref([...props.modelValue])
-const isUpdatingFromProps = ref(false)
+const filters = ref(props.modelValue.map(filter => ({ ...filter })))
 
 // Computed
 const availableFields = computed(() => {
@@ -602,15 +601,29 @@ const applySuggestedFilter = (suggestion) => {
 
 // Watchers
 watch(() => props.modelValue, (newValue) => {
-  isUpdatingFromProps.value = true
-  filters.value = [...newValue]
-  isUpdatingFromProps.value = false
+  // Only update if the arrays are actually different to prevent loops
+  const currentSerialized = JSON.stringify(filters.value)
+  const newSerialized = JSON.stringify(newValue)
+  
+  if (currentSerialized !== newSerialized) {
+    // Create deep copies to break any object references
+    filters.value = newValue.map(filter => ({ ...filter }))
+  }
 }, { deep: true })
 
-// Immediate update when filters change via v-model
-watch(filters, () => {
-  if (!isUpdatingFromProps.value) {
-    updateModelValue()
+// Update when filters change via v-model, but avoid rapid-fire updates
+let updateTimeout = null
+const debouncedUpdate = () => {
+  if (updateTimeout) {
+    clearTimeout(updateTimeout)
   }
+  updateTimeout = setTimeout(() => {
+    updateModelValue()
+    updateTimeout = null
+  }, 100)
+}
+
+watch(filters, () => {
+  debouncedUpdate()
 }, { deep: true })
 </script>

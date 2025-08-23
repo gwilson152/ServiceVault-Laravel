@@ -80,12 +80,13 @@ After creating the connection, choose your configuration approach:
 2. Select template (FreeScout or Custom)
 3. Review pre-configured queries and field mappings
 4. Customize as needed
+5. **Visual Indicator**: Profile shows blue document icon for template-based configurations
 
 #### Option B: Build Custom Query
 
 **Visual Query Builder Components:**
 - **Table Selector** - Choose base table and browse schema with enhanced tooltips
-- **JOIN Builder** - Configure table relationships with suggested joins
+- **JOIN Builder** - Configure table relationships
 - **Field Mapper** - Map source fields to Service Vault fields with transformations
 - **Filter Builder** - Add WHERE conditions with real-time SQL generation
 - **Query Preview** - Live SQL preview with validation and sample data
@@ -94,7 +95,18 @@ After creating the connection, choose your configuration approach:
 1. Click **"Build Custom Query"** on profile card
 2. Use fullscreen visual components to construct import query
 3. Preview data with real-time filtering and validation
-4. Save custom configuration with consistent SQL generation
+4. **Save Query Configuration** - Saves to profile for persistence across sessions
+5. **Visual Indicator**: Profile shows green cog icon for saved custom queries
+
+#### Saved Configuration Persistence
+
+**✅ Enhanced Configuration Management:**
+- **Automatic Persistence** - Custom queries saved to profile configuration
+- **Page Reload Resilience** - Configurations restore after browser refresh
+- **Visual Status Indicators** - Profile cards show configuration type at a glance:
+  - 🟢 **Green Cog Icon** - Has saved custom query configuration
+  - 🔵 **Blue Document Icon** - Uses platform template
+- **Session Recovery** - Query builder opens with previously saved settings
 
 ### Step 3: Configure Import Modes
 
@@ -185,6 +197,15 @@ LEFT JOIN users ON users.id = time_logs.user_id
 
 ## Visual Query Builder (Production-Ready)
 
+### Centralized State Management
+
+**✅ Enhanced Architecture (Latest Update):**
+- **Reactive Loop Prevention** - Eliminated infinite update cycles through controlled mutations
+- **Centralized Query Store** - Single source of truth using Vue composables (`useQueryBuilder`)
+- **Async Safety Guards** - Prevents cascading reactive changes with `isUpdating` flags
+- **Session Persistence** - Saved configurations load automatically after page reload
+- **Real-Time Synchronization** - All components stay synchronized through controlled state
+
 ### Table Selector
 
 **Features:**
@@ -212,10 +233,10 @@ LEFT JOIN users ON users.id = time_logs.user_id
 ### JOIN Builder
 
 **Features:**
-- **Automatic Suggestions** - Detects potential relationships
 - **JOIN Types** - INNER, LEFT, RIGHT, FULL OUTER JOIN support
-- **Visual Configuration** - Drag-and-drop relationship building
+- **Visual Configuration** - Manual relationship configuration
 - **Condition Support** - Additional WHERE conditions per JOIN
+- **State Synchronization** - Controlled mutations prevent reactive loops
 
 **JOIN Configuration:**
 ```sql
@@ -227,10 +248,6 @@ LEFT JOIN emails ON emails.customer_id = customers.id
 LEFT JOIN users ON users.id = conversations.user_id
 ```
 
-**Suggested Joins:**
-- Based on naming patterns (`customer_id`, `user_id`, etc.)
-- Foreign key detection from schema
-- Confidence scoring for join suggestions
 
 ### Field Mapper
 
@@ -277,6 +294,7 @@ TO_CHAR(date, 'YYYY-MM-DD') → date      -- Date formatting
 - Immediate validation of filter syntax and field references
 - Consistent query generation between validation and sample data
 - Debounced input handling for smooth user experience
+- **Fixed Recursive Updates** - Eliminated infinite API call loops through controlled state management
 
 **Filter Types:**
 
@@ -821,4 +839,4 @@ telnet hostname 5432
 
 ---
 
-*Universal Import System Guide | Service Vault Documentation | Updated: August 22, 2025*
+*Universal Import System Guide | Service Vault Documentation | Updated: August 23, 2025*

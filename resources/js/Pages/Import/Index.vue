@@ -64,7 +64,19 @@
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900 truncate">{{ profile.name }}</p>
+                    <div class="flex items-center space-x-2">
+                      <p class="text-sm font-medium text-gray-900 truncate">{{ profile.name }}</p>
+                      <div v-if="profile.has_custom_queries" class="flex-shrink-0">
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Has saved custom query">
+                          <CogIcon class="w-3 h-3" />
+                        </span>
+                      </div>
+                      <div v-if="profile.template_id" class="flex-shrink-0">
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800" title="Uses template">
+                          <DocumentTextIcon class="w-3 h-3" />
+                        </span>
+                      </div>
+                    </div>
                     <p class="text-xs text-gray-500 uppercase tracking-wide">{{ profile.database_type }}</p>
                   </div>
                 </div>
@@ -288,6 +300,7 @@
     <QueryBuilderModal
       :show="showQueryBuilder"
       :profile="selectedProfile"
+      :initial-config="selectedProfile?.configuration || {}"
       @close="showQueryBuilder = false"
       @query-saved="handleQuerySaved"
     />

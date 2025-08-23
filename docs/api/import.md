@@ -69,6 +69,7 @@ GET /api/import/profiles
         "name": "FreeScout Platform",
         "platform": "freescout"
       },
+      "has_custom_queries": false,
       "last_test_result": {
         "success": true,
         "message": "Connection successful",
@@ -142,16 +143,35 @@ GET /api/import/profiles/{profile_id}
     "name": "FreeScout Platform",
     "platform": "freescout"
   },
+  "has_custom_queries": true,
   "configuration": {
-    "queries": {
-      "customer_users": {
-        "name": "Customer Users Import",
-        "base_table": "customers",
-        "joins": [...],
-        "fields": [...],
-        "filters": [...]
+    "base_table": "customers",
+    "joins": [
+      {
+        "type": "LEFT",
+        "table": "emails",
+        "on": "emails.customer_id = customers.id",
+        "condition": "emails.type = 'work'"
       }
-    }
+    ],
+    "fields": [
+      {
+        "source": "customers.id",
+        "target": "external_id"
+      },
+      {
+        "source": "CONCAT(customers.first_name, ' ', customers.last_name)",
+        "target": "name"
+      }
+    ],
+    "filters": [
+      {
+        "field": "customers.created_at",
+        "operator": ">=",
+        "value": "2024-01-01"
+      }
+    ],
+    "target_type": "customer_users"
   },
   "import_jobs": [
     {
@@ -421,6 +441,30 @@ POST /api/import/profiles/{profile_id}/queries
 }
 ```
 
+**Response:**
+```json
+{
+  "message": "Query saved successfully",
+  "profile": {
+    "id": "uuid",
+    "has_custom_queries": true,
+    "configuration": {
+      "base_table": "customers",
+      "joins": [...],
+      "fields": [...],
+      "filters": [...],
+      "target_type": "customer_users"
+    }
+  }
+}
+```
+
+**Key Features:**
+- ✅ **Persistent Storage** - Configuration saved to profile.configuration column
+- ✅ **Session Recovery** - Query builder loads saved configuration after page reload
+- ✅ **Visual Indicators** - Profile shows green cog icon when has_custom_queries = true
+- ✅ **Centralized State** - Eliminates recursive update loops through controlled mutations
+
 ## Import Preview
 
 ### Preview Import Data
@@ -463,6 +507,35 @@ GET /api/import/profiles/{profile_id}/preview
 }
 ```
 
+### Get Saved Query Configuration
+
+```bash
+GET /api/import/profiles/{profile_id}
+```
+
+**Response includes saved configuration:**
+```json
+{
+  "id": "uuid",
+  "name": "Production Database",
+  "has_custom_queries": true,
+  "configuration": {
+    "base_table": "customers",
+    "joins": [...],
+    "fields": [...],
+    "filters": [...],
+    "target_type": "customer_users"
+  }
+}
+```
+
+**Configuration Structure:**
+- `base_table` (string): Selected base table name
+- `joins` (array): JOIN configuration objects with type, table, on, condition
+- `fields` (array): Field mapping objects with source, target, transformation
+- `filters` (array): WHERE condition objects with field, operator, value
+- `target_type` (string): Service Vault target type (customer_users, tickets, etc.)
+
 ## Visual Query Builder Components
 
 ### Get Table Schema for Builder
@@ -491,14 +564,6 @@ GET /api/import/profiles/{profile_id}/builder/tables
           "nullable": true
         }
       ]
-    }
-  ],
-  "suggested_joins": [
-    {
-      "from_table": "customers",
-      "to_table": "emails",
-      "join_condition": "emails.customer_id = customers.id",
-      "confidence": 0.95
     }
   ]
 }
@@ -530,6 +595,12 @@ POST /api/import/profiles/{profile_id}/builder/validate
   "errors": []
 }
 ```
+
+**Query Builder State Management:**
+- ✅ **Centralized Store** - Uses `useQueryBuilder` composable for controlled state
+- ✅ **Recursive Loop Prevention** - Async safety guards prevent infinite updates
+- ✅ **Real-Time Sync** - All components synchronized through single source of truth
+- ✅ **Session Persistence** - Saved configurations automatically restore
 
 ### Preview Query with Sample Data (Enhanced)
 
@@ -1255,4 +1326,4 @@ GET /api/import/rollback/{rollback_job_id}/status
 
 ---
 
-*Universal Import API Reference | Service Vault Documentation | Updated: August 22, 2025*
+*Universal Import API Reference | Service Vault Documentation | Updated: August 23, 2025*

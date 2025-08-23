@@ -31,7 +31,9 @@ Technical overview of Service Vault's architecture, database design, and key sys
 **Architecture Overview**:
 - **Database-Agnostic Design**: Supports any PostgreSQL database with intelligent schema introspection
 - **Template-Based Configuration**: Pre-built platform patterns (FreeScout, Custom) with JSON storage
-- **Visual Query Builder**: Fullscreen interface with real-time SQL generation and consistent validation
+- **Visual Query Builder**: Fullscreen interface with centralized state management and persistent configurations
+- **Reactive Loop Prevention**: Eliminated infinite update cycles through controlled mutations and async safety guards
+- **Session Persistence**: Saved query configurations automatically restore after page reload
 - **Real-Time Monitoring**: WebSocket-based job tracking with floating progress monitor
 - **Enterprise Audit Trails**: UUID-based record tracking with complete lineage and rollback capabilities
 
@@ -405,6 +407,51 @@ invoices (id, account_id, total_amount, status, due_date, ...)
 // Vue composables for WebSocket integration
 const { timers, isConnected } = useTimerSync()
 const { comments } = useTicketComments(ticketId)
+```
+
+### Centralized State Management (Latest Architecture)
+
+**Composable-Based Architecture**:
+Service Vault implements advanced state management through Vue composables, eliminating common reactive pitfalls and providing robust data flow:
+
+**Visual Query Builder State Management**:
+```javascript
+// Centralized query store with controlled mutations
+import { useQueryBuilder } from '@/composables/useQueryBuilder'
+
+const queryBuilder = useQueryBuilder({
+  base_table: 'customers',
+  joins: [],
+  fields: [],
+  filters: [],
+  target_type: 'customer_users'
+})
+
+// Controlled mutations prevent recursive loops
+await queryBuilder.setBaseTable(table)
+await queryBuilder.setJoins(joins)
+await queryBuilder.setFields(fields)
+
+// Read-only reactive state
+const { queryConfig, isValidQuery } = queryBuilder
+```
+
+**Key Architecture Features**:
+- **🔒 Controlled Mutations**: Async methods with safety guards prevent cascading updates
+- **🎯 Single Source of Truth**: Centralized state eliminates conflicting reactive sources
+- **⚡ Performance Optimized**: Eliminates infinite loop scenarios that plagued earlier iterations
+- **💾 Session Persistence**: Automatically saves/restores configuration across page reloads
+- **🔄 Real-Time Sync**: All components stay synchronized through centralized store
+
+**Benefits Over Direct v-model**:
+```javascript
+// ❌ OLD: Direct reactive refs caused infinite loops
+const queryConfig = ref({ base_table: '', joins: [], fields: [] })
+// Components directly mutated queryConfig causing cascading updates
+
+// ✅ NEW: Controlled mutations with safety guards
+const queryBuilder = useQueryBuilder(initialConfig)
+await queryBuilder.setBaseTable(table) // Safe, async, controlled
 ```
 
 ### Navigation Architecture

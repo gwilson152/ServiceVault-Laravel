@@ -61,11 +61,13 @@ Open → In Progress → Waiting Customer → On Hold → Resolved → Closed
 
 ### Real-Time Messaging
 
-Each ticket has a real-time comment system:
+Each ticket has a real-time comment system with enhanced navigation:
 - **Live Updates**: Messages appear instantly via WebSocket
 - **Permission-Based**: Users only see messages they're authorized to view
 - **Notifications**: Email and in-app notifications for relevant updates
 - **File Attachments**: Support for documents, images, etc.
+- **Instant Tab Switching**: Switch between Messages, Time Tracking, Add-ons, Activity, and Billing tabs without page reloads
+- **Mobile-Responsive Tabs**: Intelligent horizontal scrolling for tab navigation on narrow screens
 
 ### Ticket Addons
 

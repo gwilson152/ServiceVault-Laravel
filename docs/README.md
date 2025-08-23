@@ -57,13 +57,15 @@ npm run dev         # Vite dev server with HMR
 
 ## Recent Updates (August 2025)
 
-### Standardized Layout System & Enhanced Filtering (Latest)
+### Standardized Layout System & Enhanced Navigation (Latest)
 - **StandardPageLayout Component**: New reusable layout system with configurable slots for header, filters, content, and sidebar
+- **Enhanced TabNavigation Component**: Intelligent horizontal scrolling with smooth navigation buttons, mobile-responsive design, and clean scrollbar hiding
+- **Improved Tab Switching**: Tickets detail page now uses client-side tab switching (no page reloads) while preserving URLs for bookmarking
 - **Enhanced Multi-Select Filters**: Intelligent ticket filtering with defaults (excludes closed tickets) and multi-select for status/priority
 - **User-Specific Filter Persistence**: Per-user filter preferences saved to localStorage with automatic restoration
 - **Responsive Design Improvements**: Mobile-first layout with collapsible sidebars and optimized filter interfaces
 - **Full-Width Desktop Experience**: Removed artificial width constraints for better space utilization on large screens
-- **Component Architecture**: Reusable FilterSection, PageHeader, PageSidebar, and MultiSelect components
+- **Component Architecture**: Reusable FilterSection, PageHeader, PageSidebar, MultiSelect, and TabNavigation components
 
 ### Addon Management & Approval System
 - **Enhanced Approval Wizard**: Logical separation of time entries and addons with unified workflow
@@ -88,12 +90,14 @@ npm run dev         # Vite dev server with HMR
 
 ### Universal Import System (Production-Ready)  
 - **✅ Visual Query Builder**: Fullscreen interface with table hover tooltips, real-time SQL preview, and intelligent filter validation
+- **✅ Persistent Query Configurations**: Save custom queries to profiles with automatic restoration after page reload
+- **✅ Centralized State Management**: Eliminated recursive loops through controlled mutations and centralized query store
+- **✅ Visual Status Indicators**: Profile cards show green cog for custom queries, blue document for templates
 - **✅ Advanced Record Management**: Create-only, update-only, and upsert modes with sophisticated duplicate detection
 - **✅ Real-Time Monitoring**: WebSocket-based job tracking with floating progress monitor and live statistics
 - **✅ Intelligent Duplicate Detection**: Configurable strategies (exact, fuzzy, case-insensitive) with confidence scoring
 - **✅ Template-Based Configuration**: Pre-built platform templates (FreeScout, Custom) with automatic query generation
 - **✅ Database-Agnostic Architecture**: Supports any PostgreSQL database with intelligent schema introspection
-- **✅ Advanced JOIN Support**: Visual configuration of complex multi-table relationships with suggested joins
 - **✅ Enterprise Audit Trails**: UUID-based tracking with complete lineage and rollback capabilities
 - **✅ Bulk Operations**: Approve, retry, and delete operations with comprehensive record management
 - **✅ Consistent Query Generation**: Unified SQL generation for validation and sample data with proper field aliases and filtering
@@ -101,4 +105,4 @@ npm run dev         # Vite dev server with HMR
 
 ---
 
-*Service Vault - B2B Service Management Platform | Last Updated: August 22, 2025*
+*Service Vault - B2B Service Management Platform | Last Updated: August 23, 2025*

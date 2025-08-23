@@ -1182,19 +1182,17 @@ const currentUserId = computed(() => user.value?.id);
 
 // Methods
 const navigateToTab = (tabId) => {
-    // Update the URL to include the tab parameter
+    // Simply update the active tab - no page reload needed
+    activeTab.value = tabId;
+    
+    // Optionally update the URL without reloading (for bookmarking)
     const currentUrl = route('tickets.show', { ticket: props.ticketId });
     const newUrl = tabId === 'messages' ? currentUrl : `${currentUrl}/${tabId}`;
     
-    // Navigate with Inertia to maintain state
-    router.visit(newUrl, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true, // Replace current history entry instead of adding new one
-        onSuccess: () => {
-            activeTab.value = tabId;
-        }
-    });
+    // Update URL in browser history without navigation
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', newUrl);
+    }
 };
 
 const getStatusClasses = (status) => {

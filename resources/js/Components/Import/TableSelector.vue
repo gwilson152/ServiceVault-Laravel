@@ -49,13 +49,12 @@
       <div
         v-for="table in filteredTables"
         :key="table.name"
-        :data-table-name="table.name"
         @click="selectTable(table)"
         @mouseenter="showTableTooltip(table, $event)"
         @mouseleave="hideTableTooltip(table)"
         class="group cursor-pointer border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:bg-indigo-50 transition-all relative"
         :class="{
-          'border-indigo-500 bg-indigo-50': selectedTable?.name === table.name
+          'border-indigo-500 bg-indigo-50': props.modelValue?.name === table.name
         }"
       >
         <div class="flex items-start justify-between">
@@ -70,7 +69,7 @@
             <p v-if="table.comment" class="mt-1 text-sm text-gray-500">{{ table.comment }}</p>
           </div>
           
-          <div v-if="selectedTable?.name === table.name" class="flex-shrink-0 ml-3">
+          <div v-if="props.modelValue?.name === table.name" class="flex-shrink-0 ml-3">
             <CheckCircleIcon class="w-5 h-5 text-indigo-600" />
           </div>
         </div>
@@ -111,9 +110,9 @@
     </div>
 
     <!-- Selected Table Details -->
-    <div v-if="selectedTable" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <div v-if="props.modelValue" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
       <div class="flex items-center justify-between mb-3">
-        <h4 class="text-sm font-medium text-blue-900">Selected: {{ selectedTable.name }}</h4>
+        <h4 class="text-sm font-medium text-blue-900">Selected: {{ props.modelValue.name }}</h4>
         <button
           @click="viewTableDetails"
           class="text-xs text-blue-600 hover:text-blue-800"
@@ -124,11 +123,11 @@
       <div class="grid grid-cols-2 gap-4 text-sm">
         <div>
           <span class="font-medium text-blue-700">Columns:</span>
-          <span class="text-blue-900 ml-1">{{ selectedTable.columns?.length || 0 }}</span>
+          <span class="text-blue-900 ml-1">{{ props.modelValue.columns?.length || 0 }}</span>
         </div>
         <div>
           <span class="font-medium text-blue-700">Rows:</span>
-          <span class="text-blue-900 ml-1">{{ formatRowCount(selectedTable.row_count) }}</span>
+          <span class="text-blue-900 ml-1">{{ formatRowCount(props.modelValue.row_count) }}</span>
         </div>
       </div>
     </div>
@@ -222,7 +221,6 @@ const emit = defineEmits(['update:modelValue', 'table-selected', 'schema-loaded'
 
 // State
 const tables = ref([])
-const selectedTable = ref(props.modelValue)
 const searchQuery = ref('')
 const isLoading = ref(false)
 const error = ref(null)
@@ -249,7 +247,6 @@ const filteredTables = computed(() => {
 
 // Methods
 const selectTable = (table) => {
-  selectedTable.value = table
   emit('update:modelValue', table)
   emit('table-selected', table)
 }
@@ -289,12 +286,6 @@ const refreshTables = async () => {
         emit('schema-loaded', { tables: [] })
       }
       
-      // Scroll to selected table after tables are loaded
-      if (selectedTable.value) {
-        nextTick(() => {
-          scrollToSelectedTable()
-        })
-      }
     } else {
       const errorData = await response.json()
       error.value = errorData.message || 'Failed to load database schema'
@@ -307,9 +298,9 @@ const refreshTables = async () => {
 }
 
 const viewTableDetails = () => {
-  if (selectedTable.value) {
+  if (props.modelValue) {
     // Could emit an event or open a modal with detailed table information
-    emit('view-table-details', selectedTable.value)
+    emit('view-table-details', props.modelValue)
   }
 }
 
@@ -404,28 +395,8 @@ const formatRowCount = (count) => {
   return `${(count / 1000000).toFixed(1)}M`
 }
 
-const scrollToSelectedTable = () => {
-  if (!selectedTable.value?.name) return
-  
-  // Use nextTick to ensure DOM is updated
-  nextTick(() => {
-    const tableElement = document.querySelector(`[data-table-name="${selectedTable.value.name}"]`)
-    if (tableElement) {
-      tableElement.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center' 
-      })
-    }
-  })
-}
 
-// Watchers
-watch(() => props.modelValue, (newValue) => {
-  selectedTable.value = newValue
-  if (newValue) {
-    scrollToSelectedTable()
-  }
-})
+// Watchers (removed problematic selectedTable watcher)
 
 watch(() => props.profileId, (newProfileId) => {
   if (newProfileId) {

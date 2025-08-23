@@ -213,13 +213,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import StackedDialog from '@/Components/StackedDialog.vue'
 import TableSelector from './TableSelector.vue'
 import JoinBuilder from './JoinBuilder.vue'
 import FieldMapper from './FieldMapper.vue'
 import FilterBuilder from './FilterBuilder.vue'
 import QueryPreview from './QueryPreview.vue'
+import { useQueryBuilder } from '@/composables/useQueryBuilder'
 import {
   TableCellsIcon,
   LinkIcon,
@@ -255,7 +256,8 @@ const isQueryValid = ref(false)
 const isSaving = ref(false)
 const queryPreviewRef = ref(null)
 
-const queryConfig = ref({
+// Initialize query builder with initial config
+const queryBuilder = useQueryBuilder({
   base_table: '',
   joins: [],
   fields: [],
@@ -263,6 +265,9 @@ const queryConfig = ref({
   target_type: 'customer_users',
   ...props.initialConfig
 })
+
+// Expose queryConfig for template compatibility
+const queryConfig = queryBuilder.queryConfig
 
 // Steps configuration
 const steps = ref([
@@ -307,19 +312,19 @@ const canProceedToNextStep = computed(() => {
 
   switch (currentStep.value) {
     case 'tables':
-      return !!queryConfig.value.base_table
+      return !!queryBuilder.baseTable.value
     case 'fields':
-      return queryConfig.value.fields?.length > 0
+      return queryBuilder.fields.value.length > 0
     default:
       return true
   }
 })
 
 const baseTableObject = computed(() => {
-  if (!queryConfig.value.base_table || !availableTables.value.length) {
+  if (!queryBuilder.baseTable.value || !availableTables.value.length) {
     return null
   }
-  return availableTables.value.find(table => table.name === queryConfig.value.base_table) || null
+  return availableTables.value.find(table => table.name === queryBuilder.baseTable.value) || null
 })
 
 // Methods
@@ -352,61 +357,74 @@ const nextStep = () => {
 
   const currentIndex = currentStepIndex.value
   if (currentIndex < steps.value.length - 1) {
-    // Mark current step as completed
+    const nextStepId = steps.value[currentIndex + 1].id
+    
+    // Update step completion first
     const step = steps.value.find(s => s.id === currentStep.value)
-    if (step) step.completed = true
-
-    currentStep.value = steps.value[currentIndex + 1].id
+    if (step && !step.completed) {
+      step.completed = true
+    }
+    
+    // Then change the current step in next tick to avoid loops
+    nextTick(() => {
+      currentStep.value = nextStepId
+    })
   }
 }
 
 // Event Handlers
-const handleTableSelected = (table) => {
-  queryConfig.value.base_table = table.name
-  queryConfig.value.joins = [] // Reset joins when table changes
-  queryConfig.value.fields = [] // Reset fields when table changes
+const handleTableSelected = async (table) => {
+  // Use controlled mutation from composable
+  await queryBuilder.setBaseTable(table)
   
   // Mark tables step as completed
   const tablesStep = steps.value.find(s => s.id === 'tables')
-  if (tablesStep) tablesStep.completed = true
+  if (tablesStep && !tablesStep.completed) {
+    tablesStep.completed = true
+  }
 }
 
 const handleSchemaLoaded = (schema) => {
   availableTables.value = schema.tables || []
 }
 
-const handleJoinsUpdated = (joins) => {
-  queryConfig.value.joins = joins
+const handleJoinsUpdated = async (joins) => {
+  // Use controlled mutation from composable
+  await queryBuilder.setJoins(joins)
   
   // Mark joins step as completed if there are joins
   const joinsStep = steps.value.find(s => s.id === 'joins')
   if (joinsStep) joinsStep.completed = joins.length > 0
 }
 
-const handleFieldsUpdated = (fields) => {
-  queryConfig.value.fields = fields
+const handleFieldsUpdated = async (fields) => {
+  // Use controlled mutation from composable
+  await queryBuilder.setFields(fields)
   
   // Mark fields step as completed
   const fieldsStep = steps.value.find(s => s.id === 'fields')
   if (fieldsStep) fieldsStep.completed = fields.length > 0
 }
 
-const handleTargetTypeChanged = (targetType) => {
-  queryConfig.value.target_type = targetType
+const handleTargetTypeChanged = async (targetType) => {
+  // Use controlled mutation from composable
+  await queryBuilder.setTargetType(targetType)
 }
 
-const handleFiltersUpdated = (filters) => {
-  // Don't update queryConfig.filters here since v-model handles it
-  // Just handle step completion
+const handleFiltersUpdated = async (filters) => {
+  // Use controlled mutation from composable
+  await queryBuilder.setFilters(filters)
+  
+  // Mark filters step as completed
   const filtersStep = steps.value.find(s => s.id === 'filters')
   if (filtersStep) filtersStep.completed = filters.length > 0
-  
-  // DON'T manually trigger refresh - this creates infinite loops
-  // The QueryPreview should auto-refresh when queryConfig changes via v-model
 }
 
 const handleQueryValidated = (validation) => {
-  isQueryValid.value = validation.isValid
+  // Prevent unnecessary updates if the validation status hasn't actually changed
+  if (isQueryValid.value !== validation.isValid) {
+    isQueryValid.value = validation.isValid
+  }
 }
 
 const handlePreviewUpdated = () => {
@@ -425,7 +443,7 @@ const saveQuery = async () => {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
       },
-      body: JSON.stringify(queryConfig.value)
+      body: JSON.stringify(queryBuilder.exportConfig())
     })
 
     if (response.ok) {
@@ -449,6 +467,7 @@ const saveAsTemplate = async () => {
   if (!templateName) return
 
   try {
+    const exportedConfig = queryBuilder.exportConfig()
     const templateData = {
       name: templateName,
       platform: 'custom',
@@ -456,13 +475,13 @@ const saveAsTemplate = async () => {
       database_type: 'postgresql',
       configuration: {
         queries: {
-          [queryConfig.value.target_type]: {
-            name: `${queryConfig.value.target_type} import`,
-            base_table: queryConfig.value.base_table,
-            joins: queryConfig.value.joins,
-            fields: queryConfig.value.fields,
-            filters: queryConfig.value.filters,
-            target_type: queryConfig.value.target_type
+          [exportedConfig.target_type]: {
+            name: `${exportedConfig.target_type} import`,
+            base_table: exportedConfig.base_table,
+            joins: exportedConfig.joins,
+            fields: exportedConfig.fields,
+            filters: exportedConfig.filters,
+            target_type: exportedConfig.target_type
           }
         }
       },
@@ -497,22 +516,22 @@ const saveAsTemplate = async () => {
 // Initialize
 onMounted(() => {
   // Set initial step completion based on existing config
-  if (queryConfig.value.base_table) {
+  if (queryBuilder.baseTable.value) {
     const tablesStep = steps.value.find(s => s.id === 'tables')
     if (tablesStep) tablesStep.completed = true
   }
   
-  if (queryConfig.value.fields?.length > 0) {
+  if (queryBuilder.fields.value?.length > 0) {
     const fieldsStep = steps.value.find(s => s.id === 'fields')
     if (fieldsStep) fieldsStep.completed = true
   }
   
-  if (queryConfig.value.joins?.length > 0) {
+  if (queryBuilder.joins.value?.length > 0) {
     const joinsStep = steps.value.find(s => s.id === 'joins')
     if (joinsStep) joinsStep.completed = true
   }
   
-  if (queryConfig.value.filters?.length > 0) {
+  if (queryBuilder.filters.value?.length > 0) {
     const filtersStep = steps.value.find(s => s.id === 'filters')
     if (filtersStep) filtersStep.completed = true
   }

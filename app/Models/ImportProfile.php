@@ -27,6 +27,7 @@ class ImportProfile extends Model
         'description',
         'notes',
         'connection_options',
+        'configuration',
         'is_active',
         'created_by',
         'last_tested_at',
@@ -42,6 +43,7 @@ class ImportProfile extends Model
 
     protected $casts = [
         'connection_options' => 'array',
+        'configuration' => 'array',
         'last_test_result' => 'array',
         'duplicate_detection' => 'array',
         'matching_strategy' => 'array',
@@ -55,6 +57,10 @@ class ImportProfile extends Model
 
     protected $hidden = [
         'password',
+    ];
+
+    protected $appends = [
+        'has_custom_queries',
     ];
 
     /**
@@ -230,6 +236,14 @@ class ImportProfile extends Model
     public function shouldUpdateDuplicates(): bool
     {
         return $this->update_duplicates;
+    }
+
+    /**
+     * Check if this profile has custom queries saved.
+     */
+    public function getHasCustomQueriesAttribute(): bool
+    {
+        return !empty($this->configuration);
     }
 
     /**

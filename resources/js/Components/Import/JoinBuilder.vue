@@ -149,98 +149,6 @@
       </p>
     </div>
 
-    <!-- Suggested Joins -->
-    <div v-if="allSuggestedJoins.length > 0" class="mt-6">
-      <div class="flex items-center justify-between mb-3">
-        <h4 class="text-sm font-medium text-gray-900">Suggested Joins</h4>
-        <span class="text-xs text-gray-500">
-          {{ filteredSuggestedJoins.length }} of {{ allSuggestedJoins.length }} suggestions
-        </span>
-      </div>
-      
-      <!-- Filters and Controls -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
-        <!-- Search Filter -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">Search</label>
-          <input
-            v-model="suggestionsFilter"
-            type="text"
-            placeholder="Filter by table or column..."
-            class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-        
-        <!-- Confidence Filter -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">
-            Min Confidence: {{ Math.round(minConfidence * 100) }}%
-          </label>
-          <input
-            v-model.number="minConfidence"
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            class="w-full"
-          />
-        </div>
-        
-        <!-- Limit -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">Show</label>
-          <select
-            v-model.number="suggestionsLimit"
-            class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option :value="5">Top 5</option>
-            <option :value="10">Top 10</option>
-            <option :value="15">Top 15</option>
-            <option :value="25">Top 25</option>
-            <option :value="50">Top 50</option>
-            <option :value="999">All</option>
-          </select>
-        </div>
-      </div>
-      
-      <!-- Suggestions List -->
-      <div v-if="filteredSuggestedJoins.length > 0" class="space-y-2 max-h-64 overflow-y-auto">
-        <div
-          v-for="suggestion in filteredSuggestedJoins"
-          :key="`${suggestion.table}-${suggestion.leftColumn}-${suggestion.rightColumn}`"
-          class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
-        >
-          <div>
-            <p class="text-sm font-medium text-green-900">
-              {{ baseTable?.name }} → {{ suggestion.table }}
-            </p>
-            <p class="text-xs text-green-700">
-              {{ suggestion.leftColumn }} = {{ suggestion.rightColumn }}
-              <span v-if="suggestion.confidence" class="ml-2 text-green-600">
-                ({{ Math.round(suggestion.confidence * 100) }}% confidence)
-              </span>
-            </p>
-          </div>
-          <button
-            @click="applySuggestedJoin(suggestion)"
-            class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200"
-          >
-            Apply
-          </button>
-        </div>
-      </div>
-      
-      <!-- No Results Message -->
-      <div v-else class="text-center py-4 text-gray-500 text-sm">
-        No suggestions match your current filters.
-        <button
-          @click="suggestionsFilter = ''; minConfidence = 0"
-          class="ml-2 text-indigo-600 hover:text-indigo-800 underline"
-        >
-          Clear filters
-        </button>
-      </div>
-    </div>
 
     <!-- Full Query Preview -->
     <div v-if="joins.length > 0" class="mt-6">
@@ -284,12 +192,7 @@ const emit = defineEmits(['update:modelValue', 'joins-changed'])
 
 // State
 const joins = ref([...props.modelValue])
-const suggestedJoins = ref([])
-const allSuggestedJoins = ref([]) // Store all suggestions before filtering
 const tableColumns = ref({}) // Cache for table columns
-const suggestionsLimit = ref(15)
-const suggestionsFilter = ref('')
-const minConfidence = ref(0.3)
 
 // Computed
 const fullQueryPreview = computed(() => {
@@ -309,27 +212,6 @@ const fullQueryPreview = computed(() => {
   return query
 })
 
-const filteredSuggestedJoins = computed(() => {
-  let filtered = allSuggestedJoins.value
-  
-  // Apply confidence filter
-  filtered = filtered.filter(suggestion => suggestion.confidence >= minConfidence.value)
-  
-  // Apply text filter
-  if (suggestionsFilter.value.trim()) {
-    const filter = suggestionsFilter.value.toLowerCase()
-    filtered = filtered.filter(suggestion => 
-      suggestion.table.toLowerCase().includes(filter) ||
-      suggestion.leftColumn.toLowerCase().includes(filter) ||
-      suggestion.rightColumn.toLowerCase().includes(filter)
-    )
-  }
-  
-  // Sort by confidence and apply limit
-  return filtered
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, suggestionsLimit.value)
-})
 
 // Methods
 const addJoin = () => {
@@ -418,115 +300,14 @@ const formatJoinSQL = (join) => {
   return sql
 }
 
-const generateSuggestedJoins = () => {
-  if (!props.baseTable?.columns) return
-  
-  const suggestions = []
-  const baseColumns = props.baseTable.columns
-  
-  props.availableTables.forEach(table => {
-    if (table.name === props.baseTable.name) return
-    if (!table.columns) return
-    
-    // Look for potential foreign key relationships
-    baseColumns.forEach(baseCol => {
-      table.columns.forEach(targetCol => {
-        // Check for common naming patterns
-        const confidence = calculateJoinConfidence(baseCol, targetCol, props.baseTable.name, table.name)
-        
-        if (confidence > 0.3) { // Only suggest if confidence > 30%
-          suggestions.push({
-            table: table.name,
-            leftColumn: `${props.baseTable.name}.${baseCol.name}`,
-            rightColumn: targetCol.name,
-            confidence: confidence,
-            type: 'LEFT'
-          })
-        }
-      })
-    })
-  })
-  
-  // Store all suggestions and let the computed property handle filtering
-  allSuggestedJoins.value = suggestions.filter(s => s.confidence > 0)
-}
 
-const calculateJoinConfidence = (leftCol, rightCol, leftTable, rightTable) => {
-  // Safety checks
-  if (!leftCol || !rightCol || !leftCol.name || !rightCol.name) {
-    return 0
-  }
-  
-  let confidence = 0
-  
-  // Check for exact name matches
-  if (leftCol.name === rightCol.name) {
-    confidence += 0.4
-  }
-  
-  // Check for foreign key patterns
-  if (leftCol.name === `${rightTable}_id` || rightCol.name === `${leftTable}_id`) {
-    confidence += 0.6
-  }
-  
-  // Check for common patterns
-  if (leftCol.name.includes('_id') && rightCol.name === 'id') {
-    confidence += 0.3
-  }
-  
-  // Check for primary/foreign key indicators
-  if (leftCol.is_foreign_key && rightCol.is_primary_key) {
-    confidence += 0.5
-  }
-  
-  // Check for data type compatibility
-  if (leftCol.data_type && rightCol.data_type && leftCol.data_type === rightCol.data_type) {
-    confidence += 0.1
-  }
-  
-  return Math.min(confidence, 1.0) // Cap at 100%
-}
-
-const applySuggestedJoin = (suggestion) => {
-  joins.value.push({
-    type: suggestion.type,
-    table: suggestion.table,
-    leftColumn: suggestion.leftColumn,
-    rightColumn: suggestion.rightColumn,
-    condition: ''
-  })
-  
-  // Load columns for the new table if needed
-  if (!tableColumns.value[suggestion.table]) {
-    loadTableColumns(suggestion.table)
-  }
-  
-  updateModelValue()
-  
-  // Remove applied suggestion from all suggestions
-  allSuggestedJoins.value = allSuggestedJoins.value.filter(s => 
-    s.table !== suggestion.table || 
-    s.leftColumn !== suggestion.leftColumn || 
-    s.rightColumn !== suggestion.rightColumn
-  )
-}
 
 // Watchers
 watch(() => props.modelValue, (newValue) => {
   joins.value = [...newValue]
 }, { deep: true })
 
-watch(() => props.baseTable, (newBaseTable) => {
-  if (newBaseTable) {
-    generateSuggestedJoins()
-  }
-}, { immediate: true })
 
-watch(() => props.availableTables, (newTables) => {
-  if (newTables.length > 0 && props.baseTable) {
-    generateSuggestedJoins()
-  }
-}, { deep: true, immediate: true })
 
 // Load columns for tables that are already in joins
 watch(joins, (newJoins) => {
@@ -551,9 +332,5 @@ watch(() => [props.baseTable, props.availableTables], () => {
     }
   })
   
-  // Generate suggestions when data is available
-  if (props.baseTable && props.availableTables.length > 0) {
-    generateSuggestedJoins()
-  }
 }, { deep: true, immediate: true })
 </script>
