@@ -80,9 +80,9 @@
               <JoinBuilder
                 :profile-id="profile?.id"
                 :base-table="baseTableObject"
-                v-model="queryConfig.joins"
+                :model-value="queryBuilder.joins.value"
+                @update:model-value="handleJoinsUpdated"
                 :available-tables="availableTables"
-                @joins-changed="handleJoinsUpdated"
               />
             </div>
 
@@ -115,10 +115,10 @@
               <FieldMapper
                 :profile-id="profile?.id"
                 :base-table="baseTableObject"
-                :joins="queryConfig.joins || []"
-                v-model="queryConfig.fields"
-                :target-type="queryConfig.target_type || 'customer_users'"
-                @fields-changed="handleFieldsUpdated"
+                :joins="queryBuilder.joins.value || []"
+                :model-value="queryBuilder.fields.value"
+                @update:model-value="handleFieldsUpdated"
+                :target-type="queryBuilder.targetType.value || 'customer_users'"
                 @target-type-changed="handleTargetTypeChanged"
               />
             </div>
@@ -135,12 +135,12 @@
               <FilterBuilder
                 :profile-id="profile?.id"
                 :base-table="baseTableObject"
-                :joins="queryConfig.joins || []"
-                :fields="queryConfig.fields || []"
+                :joins="queryBuilder.joins.value || []"
+                :fields="queryBuilder.fields.value || []"
                 :available-tables="availableTables"
-                v-model="queryConfig.filters"
-                :selected-target-type="queryConfig.target_type || 'customer_users'"
-                @filters-changed="handleFiltersUpdated"
+                :model-value="queryBuilder.filters.value"
+                @update:model-value="handleFiltersUpdated"
+                :selected-target-type="queryBuilder.targetType.value || 'customer_users'"
               />
             </div>
           </div>
@@ -268,6 +268,35 @@ const queryBuilder = useQueryBuilder({
 
 // Expose queryConfig for template compatibility
 const queryConfig = queryBuilder.queryConfig
+
+// Watch for changes to initialConfig and update query builder
+watch(() => props.initialConfig, async (newConfig) => {
+  if (newConfig && Object.keys(newConfig).length > 0) {
+    // Use loadConfig to update query builder without side effects
+    await queryBuilder.loadConfig(newConfig)
+    
+    // Update step completion based on loaded configuration
+    const tablesStep = steps.value.find(s => s.id === 'tables')
+    if (tablesStep && newConfig.base_table) {
+      tablesStep.completed = true
+    }
+    
+    const joinsStep = steps.value.find(s => s.id === 'joins')
+    if (joinsStep && newConfig.joins?.length > 0) {
+      joinsStep.completed = true
+    }
+    
+    const fieldsStep = steps.value.find(s => s.id === 'fields')
+    if (fieldsStep && newConfig.fields?.length > 0) {
+      fieldsStep.completed = true
+    }
+    
+    const filtersStep = steps.value.find(s => s.id === 'filters')
+    if (filtersStep && newConfig.filters?.length > 0) {
+      filtersStep.completed = true
+    }
+  }
+}, { immediate: true, deep: true })
 
 // Steps configuration
 const steps = ref([

@@ -125,6 +125,34 @@ export function useQueryBuilder(initialConfig = {}) {
     filters.value = []
     targetType.value = 'customer_users'
   }
+
+  const loadConfig = async (config) => {
+    if (isUpdating.value) return
+    
+    isUpdating.value = true
+    
+    try {
+      // Load configuration without side effects
+      if (config.base_table) {
+        baseTable.value = config.base_table
+      }
+      if (config.joins) {
+        joins.value = [...config.joins]
+      }
+      if (config.fields) {
+        fields.value = [...config.fields]
+      }
+      if (config.filters) {
+        filters.value = [...config.filters]
+      }
+      if (config.target_type) {
+        targetType.value = config.target_type
+      }
+    } finally {
+      await nextTick()
+      isUpdating.value = false
+    }
+  }
   
   const exportConfig = () => ({
     base_table: baseTable.value,
@@ -155,6 +183,7 @@ export function useQueryBuilder(initialConfig = {}) {
     
     // Utilities
     reset,
+    loadConfig,
     exportConfig
   }
 }

@@ -374,7 +374,8 @@ const {
   refreshJobs,
   executeImport: executeImportMutation,
   deleteProfile: deleteProfileMutation,
-  cancelJob: cancelJobMutation
+  cancelJob: cancelJobMutation,
+  fetchProfile
 } = useImportQueries()
 
 // Load data on mount
@@ -508,10 +509,20 @@ const openTemplateSelector = (profile) => {
   activeProfileMenu.value = null
 }
 
-const openQueryBuilder = (profile) => {
-  selectedProfile.value = profile
-  showQueryBuilder.value = true
-  activeProfileMenu.value = null
+const openQueryBuilder = async (profile) => {
+  try {
+    // Fetch latest profile data to ensure we have the most recent configuration
+    const latestProfile = await fetchProfile(profile.id)
+    selectedProfile.value = latestProfile
+    showQueryBuilder.value = true
+    activeProfileMenu.value = null
+  } catch (error) {
+    console.error('Error fetching profile for query builder:', error)
+    // Fallback to using cached profile if fetch fails
+    selectedProfile.value = profile
+    showQueryBuilder.value = true
+    activeProfileMenu.value = null
+  }
 }
 
 const editProfile = (profile) => {

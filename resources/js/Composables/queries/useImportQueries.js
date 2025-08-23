@@ -206,6 +206,12 @@ export function useImportQueries() {
     }
 
     // Field Mappings API
+    // Fetch single profile with latest configuration
+    const fetchProfile = async (profileId) => {
+        const response = await axios.get(`/api/import/profiles/${profileId}`)
+        return response.data
+    }
+
     const getFieldMappings = async (profileId) => {
         const response = await axios.get(`/api/import/profiles/${profileId}/mappings`)
         return response.data
@@ -269,6 +275,7 @@ export function useImportQueries() {
         previewImport,
         executeImport,
         cancelJob,
+        fetchProfile,
         getFieldMappings,
         saveFieldMappings,
         getTemplate,
