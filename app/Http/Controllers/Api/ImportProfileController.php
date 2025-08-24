@@ -1025,6 +1025,39 @@ class ImportProfileController extends Controller
     }
 
     /**
+     * Get accurate record count from generated SQL by converting to COUNT query.
+     */
+    private function getRecordCountFromSQL(string $connectionName, string $sql): int
+    {
+        try {
+            \Log::info('Getting record count from SQL', ['sql' => $sql]);
+            
+            // Convert the SELECT query to a COUNT query by wrapping it
+            $countSQL = "SELECT COUNT(*) as count FROM ({$sql}) as query_result";
+            
+            \Log::info('Executing count SQL', ['countSQL' => $countSQL]);
+            
+            // Use DB connection directly since executeQuery returns a Generator
+            $result = DB::connection($connectionName)->select($countSQL);
+            
+            $count = (int) ($result[0]->count ?? 0);
+            
+            \Log::info('Record count result', ['count' => $count]);
+            
+            return $count;
+        } catch (\Exception $e) {
+            // If COUNT query fails, fall back to 0
+            \Log::warning('Failed to get record count from SQL', [
+                'sql' => $sql,
+                'countSQL' => $countSQL ?? 'not generated',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return 0;
+        }
+    }
+
+    /**
      * Simulate an import based on the query builder configuration.
      */
     public function simulate(Request $request, ImportProfile $profile): JsonResponse
@@ -1063,13 +1096,8 @@ class ImportProfileController extends Controller
                 $limit
             );
 
-            // Get estimated record count
-            $estimatedRecords = $this->connectionService->getEstimatedRecordCount(
-                $connectionName,
-                $configuration['base_table'],
-                $configuration['joins'] ?? [],
-                $configuration['filters'] ?? []
-            );
+            // Get accurate record count from the actual generated SQL
+            $estimatedRecords = $this->getRecordCountFromSQL($connectionName, $sql);
 
             // Transform sample data to show source -> target mapping
             $transformedSampleData = [];
@@ -1125,9 +1153,17 @@ class ImportProfileController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Import simulation failed', [
+                'profile_id' => $profile->id,
+                'configuration' => $configuration,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'message' => 'Import simulation failed',
                 'error' => $e->getMessage(),
+                'debug' => app()->environment('local') ? $e->getTraceAsString() : null,
             ], 500);
         }
     }
