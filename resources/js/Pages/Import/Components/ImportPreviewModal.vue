@@ -450,14 +450,14 @@ const formatCellValue = (value) => {
 
 const getShortTitle = (title) => {
   // Simplify tab titles for better space usage
-  const titleMap = {
-    'FreeScout Staff → Service Vault Users': 'Staff',
-    'FreeScout Customers → Service Vault Accounts + Users': 'Customers',
-    'FreeScout Conversations → Service Vault Tickets': 'Tickets',
-    'FreeScout Threads → Service Vault Comments': 'Comments'
+  if (!title) return 'Untitled'
+  
+  // Extract the last part after arrow if present, otherwise use first word
+  if (title.includes('→')) {
+    return title.split('→').pop().trim()
   }
   
-  return titleMap[title] || title.split(' ')[0] || title
+  return title.split(' ')[0] || title
 }
 
 const getStatusLabel = (status) => {

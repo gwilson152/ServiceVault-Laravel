@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('job_id')->constrained('import_jobs')->onDelete('cascade');
             $table->foreignId('mapping_id')->constrained('import_mappings')->onDelete('cascade');
-            $table->string('source_table'); // e.g., 'users' in FreeScout
+            $table->string('source_table'); // e.g., 'users' in source database
             $table->string('source_id'); // Original ID in source system
             $table->string('destination_table'); // e.g., 'users' in Service Vault
             $table->string('destination_id'); // UUID in Service Vault

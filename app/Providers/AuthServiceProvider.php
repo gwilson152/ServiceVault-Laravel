@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\Account;
 use App\Models\DomainMapping;
+use App\Models\EmailConfig;
+use App\Models\EmailTemplate;
 use App\Models\ImportJob;
 use App\Models\ImportProfile;
 use App\Models\ImportTemplate;
@@ -12,6 +14,8 @@ use App\Models\TimeEntry;
 use App\Models\Timer;
 use App\Policies\AccountPolicy;
 use App\Policies\DomainMappingPolicy;
+use App\Policies\EmailConfigPolicy;
+use App\Policies\EmailTemplatePolicy;
 use App\Policies\ImportJobPolicy;
 use App\Policies\ImportProfilePolicy;
 use App\Policies\ImportTemplatePolicy;
@@ -31,6 +35,8 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         Account::class => AccountPolicy::class,
         DomainMapping::class => DomainMappingPolicy::class,
+        EmailConfig::class => EmailConfigPolicy::class,
+        EmailTemplate::class => EmailTemplatePolicy::class,
         ImportJob::class => ImportJobPolicy::class,
         ImportProfile::class => ImportProfilePolicy::class,
         ImportTemplate::class => ImportTemplatePolicy::class,

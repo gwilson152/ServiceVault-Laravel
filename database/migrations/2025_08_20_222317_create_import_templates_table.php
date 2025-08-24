@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('import_templates', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name')->unique();
-            $table->string('platform', 100)->nullable(); // 'freescout', 'zendesk', 'custom', etc.
+            $table->string('platform', 100)->nullable(); // 'custom', 'generic', etc.
             $table->text('description')->nullable();
             $table->string('database_type', 50)->default('postgresql');
             $table->json('configuration'); // Template configuration with queries and mappings

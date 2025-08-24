@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
+use App\Http\Controllers\Api\EmailConfigController;
+use App\Http\Controllers\Api\EmailIngestionController;
+use App\Http\Controllers\Api\EmailTemplateController;
 use App\Http\Controllers\Api\ImportAnalyticsController;
 use App\Http\Controllers\Api\ImportJobController;
 use App\Http\Controllers\Api\ImportProfileController;
@@ -576,10 +579,7 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
         ->name('import.profiles.mappings.save');
 
     // Database Introspection
-    Route::get('profiles/{profile}/introspect-emails', [ImportProfileController::class, 'introspectEmails'])
-        ->name('import.profiles.introspect-emails');
-    Route::get('profiles/{profile}/introspect-time-tracking', [ImportProfileController::class, 'introspectTimeTracking'])
-        ->name('import.profiles.introspect-time-tracking');
+    // (FreeScout-specific routes removed)
 
     // Import Job Management
     Route::apiResource('jobs', ImportJobController::class)->except(['update']);
@@ -603,6 +603,8 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
         ->name('import.profiles.save-query');
     Route::post('profiles/{profile}/builder/analyze-joins', [ImportProfileController::class, 'analyzeJoins'])
         ->name('import.profiles.analyze-joins');
+    Route::post('profiles/{profile}/simulate', [ImportProfileController::class, 'simulate'])
+        ->name('import.profiles.simulate');
 
     // Import Template Management
     Route::get('templates', [ImportTemplateController::class, 'index'])
@@ -629,7 +631,110 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
     });
 });
 
+// Email Configuration Management Routes (Admin/Manager)
+Route::middleware(['auth:sanctum'])->prefix('email-configs')->group(function () {
+    // List email configurations with filtering
+    Route::get('/', [EmailConfigController::class, 'index'])
+        ->name('email-configs.index');
+    
+    // Create new email configuration
+    Route::post('/', [EmailConfigController::class, 'store'])
+        ->name('email-configs.store');
+    
+    // Get driver information and requirements
+    Route::get('drivers', [EmailConfigController::class, 'getDriverInfo'])
+        ->name('email-configs.drivers');
+    
+    // Show specific email configuration
+    Route::get('{emailConfig}', [EmailConfigController::class, 'show'])
+        ->name('email-configs.show');
+    
+    // Update email configuration
+    Route::put('{emailConfig}', [EmailConfigController::class, 'update'])
+        ->name('email-configs.update');
+    
+    // Delete email configuration
+    Route::delete('{emailConfig}', [EmailConfigController::class, 'destroy'])
+        ->name('email-configs.destroy');
+    
+    // Test email configuration connection
+    Route::post('{emailConfig}/test-connection', [EmailConfigController::class, 'testConnection'])
+        ->name('email-configs.test-connection');
+    
+    // Send test email using configuration
+    Route::post('{emailConfig}/send-test', [EmailConfigController::class, 'sendTestEmail'])
+        ->name('email-configs.send-test');
+    
+    // Set configuration as default
+    Route::post('{emailConfig}/set-default', [EmailConfigController::class, 'setDefault'])
+        ->name('email-configs.set-default');
+});
+
+// Email Template Management Routes (Admin/Manager)
+Route::middleware(['auth:sanctum'])->prefix('email-templates')->group(function () {
+    // List email templates with filtering
+    Route::get('/', [EmailTemplateController::class, 'index'])
+        ->name('email-templates.index');
+    
+    // Create new email template
+    Route::post('/', [EmailTemplateController::class, 'store'])
+        ->name('email-templates.store');
+    
+    // Get template types and available variables
+    Route::get('types', [EmailTemplateController::class, 'getTemplateTypes'])
+        ->name('email-templates.types');
+    
+    // Show specific email template
+    Route::get('{emailTemplate}', [EmailTemplateController::class, 'show'])
+        ->name('email-templates.show');
+    
+    // Update email template
+    Route::put('{emailTemplate}', [EmailTemplateController::class, 'update'])
+        ->name('email-templates.update');
+    
+    // Delete email template
+    Route::delete('{emailTemplate}', [EmailTemplateController::class, 'destroy'])
+        ->name('email-templates.destroy');
+    
+    // Preview email template with sample data
+    Route::post('{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])
+        ->name('email-templates.preview');
+    
+    // Duplicate email template
+    Route::post('{emailTemplate}/duplicate', [EmailTemplateController::class, 'duplicate'])
+        ->name('email-templates.duplicate');
+});
+
 // Manager-only routes
 Route::prefix('manager')->middleware(['auth:web,sanctum'])->group(function () {
     // Future manager routes
+});
+
+// Email Ingestion Routes (Public endpoints for webhooks)
+Route::prefix('email')->group(function () {
+    // Health check for email service
+    Route::get('health', [EmailIngestionController::class, 'health'])
+        ->name('email.health');
+    
+    // Generic email ingestion endpoint
+    Route::post('ingest', [EmailIngestionController::class, 'receiveEmail'])
+        ->name('email.ingest');
+    
+    // Provider-specific endpoints
+    Route::post('ingest/sendgrid', [EmailIngestionController::class, 'receiveSendGrid'])
+        ->name('email.ingest.sendgrid');
+    Route::post('ingest/mailgun', [EmailIngestionController::class, 'receiveMailgun'])
+        ->name('email.ingest.mailgun');
+    Route::post('ingest/postmark', [EmailIngestionController::class, 'receivePostmark'])
+        ->name('email.ingest.postmark');
+    Route::post('ingest/aws-ses', [EmailIngestionController::class, 'receiveAwsSes'])
+        ->name('email.ingest.aws-ses');
+    
+    // Immediate processing (for testing)
+    Route::post('process-immediate', [EmailIngestionController::class, 'processImmediate'])
+        ->name('email.process-immediate');
+    
+    // Status checking
+    Route::get('status/{emailId}', [EmailIngestionController::class, 'getStatus'])
+        ->name('email.status');
 });

@@ -100,20 +100,16 @@ export function useQueryBuilder(initialConfig = {}) {
   }
   
   const setTargetType = async (newTargetType) => {
-    if (isUpdating.value) return
-    
-    isUpdating.value = true
-    
-    try {
-      if (targetType.value !== newTargetType) {
-        targetType.value = newTargetType
-        
-        // Clear fields when target type changes - they need remapping
+    // Target type changes are critical and should not be blocked by isUpdating
+    // Just update the target type directly - it's independent of other operations
+    if (targetType.value !== newTargetType) {
+      targetType.value = newTargetType
+      
+      // Clear fields when target type changes - they need remapping
+      // Only clear if we're not currently updating to avoid conflicts
+      if (!isUpdating.value) {
         fields.value = []
       }
-    } finally {
-      await nextTick()
-      isUpdating.value = false
     }
   }
   

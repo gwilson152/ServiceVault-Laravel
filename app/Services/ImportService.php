@@ -59,19 +59,14 @@ class ImportService
             $connectionName = $this->connectionService->createConnection($profile);
             $job->updateProgress(10, 'Connected to source database');
 
-            // Handle FreeScout imports with selected tables and filters
-            if ($profile->type === 'freescout-postgres' && ! empty($options['selected_tables'])) {
-                $this->processFreeScoutImport($connectionName, $profile, $job, $options);
-            } else {
-                // Get import mappings for this profile (traditional mapping-based import)
-                $mappings = $profile->importMappings()->active()->get();
+            // Get import mappings for this profile (mapping-based import)
+            $mappings = $profile->importMappings()->active()->get();
 
-                if ($mappings->isEmpty()) {
-                    throw new Exception('No active import mappings found for this profile');
-                }
-
-                $this->processMappingBasedImport($connectionName, $mappings, $job);
+            if ($mappings->isEmpty()) {
+                throw new Exception('No active import mappings found for this profile');
             }
+
+            $this->processMappingBasedImport($connectionName, $mappings, $job);
 
             // Processing is handled by the specific import method above
 
@@ -117,151 +112,17 @@ class ImportService
     }
 
     /**
-     * Process FreeScout import with selected tables and filters.
-     */
-    protected function processFreeScoutImport(string $connectionName, ImportProfile $profile, ImportJob $job, array $options): void
-    {
-        $selectedTables = $options['selected_tables'] ?? [];
-        $filters = $options['import_filters'] ?? [];
-
-        $job->updateProgress(20, 'Processing FreeScout data with filters');
-
-        // Use FreeScout import service for specialized handling
-        $freeScoutService = app(FreeScoutImportService::class);
-
-        // Get the preview data structure which includes table mappings
-        $previewData = $freeScoutService->getImportPreview($profile);
-
-        $totalTables = count($selectedTables);
-        $currentTable = 0;
-
-        foreach ($selectedTables as $tableKey) {
-            if (! isset($previewData[$tableKey])) {
-                continue; // Skip if table doesn't exist in preview
-            }
-
-            $currentTable++;
-            $progressBase = 20 + (($currentTable - 1) / $totalTables) * 70;
-
-            $job->updateProgress(
-                (int) $progressBase,
-                "Processing {$tableKey} data..."
-            );
-
-            // Build filtered query for this table
-            $this->processFreeScoutTable($connectionName, $tableKey, $filters, $job, $progressBase);
-        }
-    }
-
-    /**
-     * Process traditional mapping-based import.
+     * Process mapping-based import.
      */
     protected function processMappingBasedImport(string $connectionName, $mappings, ImportJob $job): void
     {
-        $job->updateProgress(20, 'Processing with import mappings');
-
-        // Process each mapping in order
         $totalMappings = $mappings->count();
         $currentMapping = 0;
 
         foreach ($mappings as $mapping) {
-            $currentMapping++;
-            $progressBase = 20 + (($currentMapping - 1) / $totalMappings) * 70;
-
-            $job->updateProgress(
-                (int) $progressBase,
-                "Processing {$mapping->source_table} -> {$mapping->destination_table}"
-            );
-
+            $progressBase = 20 + (($currentMapping / $totalMappings) * 70); // 70% of total progress
             $this->processMapping($connectionName, $mapping, $job, $progressBase);
-        }
-    }
-
-    /**
-     * Process a specific FreeScout table with filters.
-     */
-    protected function processFreeScoutTable(string $connectionName, string $tableKey, array $filters, ImportJob $job, float $progressBase): void
-    {
-        // Map UI table keys to actual database tables
-        $tableMapping = [
-            'users' => 'users',
-            'customers' => 'customers',
-            'conversations' => 'conversations',
-            'threads' => 'threads',
-        ];
-
-        $actualTable = $tableMapping[$tableKey] ?? $tableKey;
-
-        try {
-            // Build base query
-            $query = "SELECT * FROM {$actualTable}";
-            $whereConditions = [];
-
-            // Apply filters
-            if (! empty($filters['date_from'])) {
-                $whereConditions[] = "created_at >= '{$filters['date_from']} 00:00:00'";
-            }
-
-            if (! empty($filters['date_to'])) {
-                $whereConditions[] = "created_at <= '{$filters['date_to']} 23:59:59'";
-            }
-
-            if (! empty($filters['ticket_status']) && $tableKey === 'conversations') {
-                $whereConditions[] = "status = {$filters['ticket_status']}";
-            }
-
-            if (! empty($filters['active_users_only']) && $tableKey === 'users') {
-                $whereConditions[] = "(role IS NOT NULL AND role != 'disabled')";
-            }
-
-            // Add WHERE clause if we have conditions
-            if (! empty($whereConditions)) {
-                $query .= ' WHERE '.implode(' AND ', $whereConditions);
-            }
-
-            // Apply limit if specified
-            if (! empty($filters['limit'])) {
-                $query .= " LIMIT {$filters['limit']}";
-            }
-
-            // Get total count for progress tracking
-            $countQuery = str_replace('SELECT *', 'SELECT COUNT(*) as total', $query);
-            $countQuery = preg_replace('/\s+LIMIT\s+\d+$/i', '', $countQuery); // Remove LIMIT for count
-
-            $result = $this->connectionService->executeQuery($connectionName, $countQuery)->current();
-            $totalRows = $result['total'] ?? 0;
-
-            if ($totalRows === 0) {
-                return; // Nothing to import for this table
-            }
-
-            $job->updateProgress(
-                (int) $progressBase + 5,
-                "Found {$totalRows} records to import from {$tableKey}"
-            );
-
-            // For now, just log what we would import
-            // In a full implementation, you would process each record here
-            Log::info('FreeScout import simulation', [
-                'table' => $tableKey,
-                'actual_table' => $actualTable,
-                'query' => $query,
-                'total_rows' => $totalRows,
-                'filters_applied' => $filters,
-            ]);
-
-            // Simulate processing
-            $job->records_processed += $totalRows;
-            $job->records_imported += $totalRows; // Simulate successful import
-            $job->save();
-
-        } catch (Exception $e) {
-            $job->records_failed++;
-            Log::error('FreeScout table import failed', [
-                'table' => $tableKey,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
+            $currentMapping++;
         }
     }
 

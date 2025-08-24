@@ -278,7 +278,7 @@ class ImportProfileController extends Controller
     }
 
     /**
-     * Introspect FreeScout database schema.
+     * Introspect database schema.
      */
     public function introspectSchema($importProfileId): JsonResponse
     {
@@ -433,7 +433,7 @@ class ImportProfileController extends Controller
     }
 
     /**
-     * Preview import data for FreeScout profiles.
+     * Preview import data for PostgreSQL profiles.
      */
     public function preview($importProfileId): JsonResponse
     {
@@ -456,14 +456,8 @@ class ImportProfileController extends Controller
         ]);
 
         try {
-            if ($importProfile->type === 'freescout-postgres') {
-                // Use the FreeScout import service for specialized preview
-                $freeScoutService = app(\App\Services\FreeScoutImportService::class);
-                $preview = $freeScoutService->getImportPreview($importProfile);
-            } else {
-                // For custom PostgreSQL profiles, provide generic preview
-                $preview = $this->getGenericPreview($importProfile);
-            }
+            // Use generic preview for all PostgreSQL profiles
+            $preview = $this->getGenericPreview($importProfile);
 
             return response()->json($preview);
         } catch (\Exception $e) {
@@ -697,45 +691,6 @@ class ImportProfileController extends Controller
         }
     }
 
-    /**
-     * Introspect FreeScout database for email structure
-     */
-    public function introspectEmails(ImportProfile $profile): JsonResponse
-    {
-        $this->authorize('view', $profile);
-
-        try {
-            $connectionName = $this->connectionService->createConnection($profile);
-            $result = $this->connectionService->introspectFreeScoutEmails($connectionName);
-            $this->connectionService->closeConnection($connectionName);
-
-            return response()->json($result);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to introspect database: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Introspect FreeScout database for time tracking structure
-     */
-    public function introspectTimeTracking(ImportProfile $profile): JsonResponse
-    {
-        $this->authorize('view', $profile);
-
-        try {
-            $connectionName = $this->connectionService->createConnection($profile);
-            $result = $this->connectionService->introspectFreeScoutTimeTracking($connectionName);
-            $this->connectionService->closeConnection($connectionName);
-
-            return response()->json($result);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to introspect time tracking: '.$e->getMessage(),
-            ], 500);
-        }
-    }
 
     /**
      * Apply a template to an import profile.
@@ -962,7 +917,19 @@ class ImportProfileController extends Controller
         // JOINs
         if (! empty($config['joins'])) {
             foreach ($config['joins'] as $join) {
-                $sql .= "\n{$join['type']} JOIN {$join['table']} ON {$join['on']}";
+                // Handle different join formats from frontend
+                if (isset($join['leftColumn']) && isset($join['rightColumn'])) {
+                    // Frontend format: leftColumn = rightColumn
+                    $joinCondition = "{$join['leftColumn']} = {$join['rightColumn']}";
+                } else if (isset($join['on'])) {
+                    // Backend format: pre-formatted join condition
+                    $joinCondition = $join['on'];
+                } else {
+                    // Skip invalid joins
+                    continue;
+                }
+                
+                $sql .= "\n{$join['type']} JOIN {$join['table']} ON {$joinCondition}";
                 if (! empty($join['condition'])) {
                     $sql .= " AND {$join['condition']}";
                 }
@@ -1055,5 +1022,113 @@ class ImportProfileController extends Controller
         }
 
         return $warnings;
+    }
+
+    /**
+     * Simulate an import based on the query builder configuration.
+     */
+    public function simulate(Request $request, ImportProfile $profile): JsonResponse
+    {
+        $this->authorize('preview', $profile);
+
+        $validator = Validator::make($request->all(), [
+            'configuration' => 'required|array',
+            'configuration.base_table' => 'required|string',
+            'configuration.fields' => 'required|array|min:1',
+            'configuration.target_type' => 'required|string|in:customer_users,tickets,time_entries,agents,accounts',
+            'limit' => 'integer|between:1,100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $configuration = $request->configuration;
+            $limit = $request->get('limit', 10);
+
+            $connectionName = $this->connectionService->createConnection($profile);
+
+            // Generate SQL from the configuration
+            $sql = $this->generateSQL($configuration);
+
+            // Execute query to get sample data
+            $sampleData = $this->connectionService->executeQuerySample(
+                $connectionName,
+                $sql,
+                [],
+                $limit
+            );
+
+            // Get estimated record count
+            $estimatedRecords = $this->connectionService->getEstimatedRecordCount(
+                $connectionName,
+                $configuration['base_table'],
+                $configuration['joins'] ?? [],
+                $configuration['filters'] ?? []
+            );
+
+            // Transform sample data to show source -> target mapping
+            $transformedSampleData = [];
+            foreach ($sampleData as $record) {
+                $sourceData = [];
+                $targetData = [];
+
+                // Map each field from source to target based on configuration
+                foreach ($configuration['fields'] as $field) {
+                    $sourceField = $field['source'];
+                    $targetField = $field['target'];
+                    
+                    // Extract the actual column name from source field (handle table.column format)
+                    $sourceColumn = strpos($sourceField, '.') !== false 
+                        ? substr($sourceField, strpos($sourceField, '.') + 1)
+                        : $sourceField;
+
+                    $value = $record->$targetField ?? $record->$sourceColumn ?? null;
+                    
+                    $sourceData[$sourceField] = $value;
+                    $targetData[$targetField] = $value;
+                }
+
+                $transformedSampleData[] = [
+                    'source' => $sourceData,
+                    'target' => $targetData,
+                ];
+            }
+
+            // Generate warnings for the configuration
+            $warnings = $this->generateWarnings($configuration);
+
+            // Add specific simulation warnings
+            if ($estimatedRecords > 10000) {
+                $warnings[] = "Large dataset detected ({$estimatedRecords} records). Consider adding filters to reduce import size.";
+            }
+
+            if (empty($configuration['filters']) && $estimatedRecords > 1000) {
+                $warnings[] = "No filters applied. This will import all records from the source tables.";
+            }
+
+            $this->connectionService->closeConnection($connectionName);
+
+            return response()->json([
+                'sql' => $sql,
+                'results' => [
+                    'estimated_records' => $estimatedRecords,
+                    'sample_data' => $transformedSampleData,
+                    'mapped_fields' => count($configuration['fields']),
+                    'target_entities' => $estimatedRecords, // For now, assuming 1:1 mapping
+                    'warnings' => $warnings,
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Import simulation failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

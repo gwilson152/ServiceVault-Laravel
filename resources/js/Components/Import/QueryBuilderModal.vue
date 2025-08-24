@@ -118,7 +118,7 @@
                 :joins="queryBuilder.joins.value || []"
                 :model-value="queryBuilder.fields.value"
                 @update:model-value="handleFieldsUpdated"
-                :target-type="queryBuilder.targetType.value || 'customer_users'"
+                :target-type="queryBuilder.targetType.value"
                 @target-type-changed="handleTargetTypeChanged"
               />
             </div>
@@ -140,7 +140,7 @@
                 :available-tables="availableTables"
                 :model-value="queryBuilder.filters.value"
                 @update:model-value="handleFiltersUpdated"
-                :selected-target-type="queryBuilder.targetType.value || 'customer_users'"
+                :selected-target-type="queryBuilder.targetType.value"
               />
             </div>
           </div>
@@ -256,15 +256,16 @@ const isQueryValid = ref(false)
 const isSaving = ref(false)
 const queryPreviewRef = ref(null)
 
-// Initialize query builder with initial config
-const queryBuilder = useQueryBuilder({
-  base_table: '',
-  joins: [],
-  fields: [],
-  filters: [],
-  target_type: 'customer_users',
-  ...props.initialConfig
-})
+// Initialize query builder with proper defaults, avoiding premature spreading
+const initialConfigWithDefaults = {
+  base_table: props.initialConfig?.base_table || '',
+  joins: props.initialConfig?.joins || [],
+  fields: props.initialConfig?.fields || [],
+  filters: props.initialConfig?.filters || [],
+  target_type: props.initialConfig?.target_type || 'customer_users', // Only default if not provided
+}
+
+const queryBuilder = useQueryBuilder(initialConfigWithDefaults)
 
 // Expose queryConfig for template compatibility
 const queryConfig = queryBuilder.queryConfig
@@ -388,10 +389,34 @@ const nextStep = () => {
   if (currentIndex < steps.value.length - 1) {
     const nextStepId = steps.value[currentIndex + 1].id
     
-    // Update step completion first
+    // Update step completion based on actual content, not navigation
     const step = steps.value.find(s => s.id === currentStep.value)
     if (step && !step.completed) {
-      step.completed = true
+      // Only mark as completed if it's required OR has actual data
+      switch (currentStep.value) {
+        case 'tables':
+          if (queryBuilder.baseTable.value) {
+            step.completed = true
+          }
+          break
+        case 'joins':
+          // Only mark as completed if there are actual joins (optional step)
+          if (queryBuilder.joins.value?.length > 0) {
+            step.completed = true
+          }
+          break
+        case 'fields':
+          if (queryBuilder.fields.value?.length > 0) {
+            step.completed = true
+          }
+          break
+        case 'filters':
+          // Only mark as completed if there are actual filters (optional step)
+          if (queryBuilder.filters.value?.length > 0) {
+            step.completed = true
+          }
+          break
+      }
     }
     
     // Then change the current step in next tick to avoid loops
@@ -466,13 +491,15 @@ const saveQuery = async () => {
   isSaving.value = true
   
   try {
+    const configToSave = queryBuilder.exportConfig()
+    
     const response = await fetch(`/api/import/profiles/${props.profile.id}/queries`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
       },
-      body: JSON.stringify(queryBuilder.exportConfig())
+      body: JSON.stringify(configToSave)
     })
 
     if (response.ok) {

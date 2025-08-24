@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('import_profiles', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('type')->default('freescout-postgres'); // Import profile type
+            $table->string('type')->default('postgresql'); // Import profile type
             $table->string('host');
             $table->integer('port')->default(5432);
             $table->string('database');

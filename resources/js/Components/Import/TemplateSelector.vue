@@ -295,7 +295,6 @@ const applyTemplate = async () => {
 // Helper methods
 const getTemplateIcon = (platform) => {
   switch (platform) {
-    case 'freescout': return ServerIcon
     case 'custom': return CogIcon
     default: return DocumentTextIcon
   }
@@ -303,7 +302,6 @@ const getTemplateIcon = (platform) => {
 
 const getTemplateIconClass = (platform) => {
   switch (platform) {
-    case 'freescout': return 'bg-blue-100 text-blue-600'
     case 'custom': return 'bg-gray-100 text-gray-600'
     default: return 'bg-purple-100 text-purple-600'
   }
@@ -311,7 +309,6 @@ const getTemplateIconClass = (platform) => {
 
 const getPlatformBadgeClass = (platform) => {
   switch (platform) {
-    case 'freescout': return 'bg-blue-100 text-blue-800'
     case 'custom': return 'bg-gray-100 text-gray-800'
     default: return 'bg-purple-100 text-purple-800'
   }
@@ -319,7 +316,6 @@ const getPlatformBadgeClass = (platform) => {
 
 const formatPlatform = (platform) => {
   switch (platform) {
-    case 'freescout': return 'FreeScout'
     case 'custom': return 'Custom'
     default: return platform.charAt(0).toUpperCase() + platform.slice(1)
   }
