@@ -36,6 +36,9 @@ Technical overview of Service Vault's architecture, database design, and key sys
 - **Session Persistence**: Saved query configurations automatically restore after page reload
 - **Real-Time Monitoring**: WebSocket-based job tracking with floating progress monitor
 - **Enterprise Audit Trails**: UUID-based record tracking with complete lineage and rollback capabilities
+- **Automated Sync Scheduling**: Configurable frequencies with Laravel scheduler integration
+- **Profile Duplication**: Complete configuration cloning with settings preservation
+- **Enhanced SQL Generation**: Proper table prefixing in JOIN conditions for frontend and backend consistency
 
 **Key Components**:
 ```php
@@ -64,11 +67,23 @@ $query = $this->generateSQL($request->all());
 
 **Database Schema**:
 ```sql
-import_profiles (id, name, database_config, ssl_mode, notes, ...)
+import_profiles (id, name, database_config, ssl_mode, notes, 
+                 sync_enabled, sync_frequency, sync_time, sync_timezone,
+                 last_sync_at, next_sync_at, sync_options, sync_stats, ...)
 import_jobs (id, profile_id, status, progress, records_imported, ...)
 import_records (id, job_id, source_table, target_type, import_action, ...)
 import_templates (id, name, platform, configuration, ...)
+import_queries (id, profile_id, name, base_table, joins, fields, filters, ...)
 ```
+
+**Sync Scheduling Fields**:
+- `sync_enabled`: Boolean flag for automated execution
+- `sync_frequency`: hourly, daily, weekly, monthly, custom
+- `sync_time`: Time of day for execution (HH:MM format)
+- `sync_timezone`: Timezone for scheduling calculations
+- `sync_cron_expression`: Custom cron pattern for complex schedules
+- `sync_options`: JSON configuration for batch size, timeouts, etc.
+- `sync_stats`: Historical sync performance and statistics
 
 **Real-Time Broadcasting**:
 - `import.job.{job_id}`: Individual job progress updates

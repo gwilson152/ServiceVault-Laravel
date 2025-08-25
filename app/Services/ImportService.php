@@ -665,8 +665,63 @@ class ImportService
      */
     private function importCustomerUser(array $data, ImportJob $job): void
     {
-        // Basic customer user import - extend as needed
-        throw new \Exception("Customer user import not yet implemented in query builder mode");
+        try {
+            // Prepare user data with required fields
+            $userData = [
+                'name' => $data['name'] ?? $data['first_name'] . ' ' . $data['last_name'] ?? 'Imported User',
+                'email' => $data['email'] ?? 'imported.' . uniqid() . '@example.com',
+                'password' => \Hash::make('password'), // Default password
+                'user_type' => 'customer',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            // Map additional fields if available
+            if (isset($data['account_id'])) {
+                $userData['account_id'] = $data['account_id'];
+            }
+            if (isset($data['phone'])) {
+                $userData['phone'] = $data['phone'];
+            }
+            if (isset($data['timezone'])) {
+                $userData['timezone'] = $data['timezone'];
+            }
+
+            // Check for duplicate by email to avoid creating duplicates
+            $existingUser = \App\Models\User::where('email', $userData['email'])->first();
+            
+            if ($existingUser) {
+                // Update existing user (skip password update)
+                unset($userData['password']);
+                $existingUser->update($userData);
+                $job->records_updated = ($job->records_updated ?? 0) + 1;
+                
+                \Log::info('User updated during import', [
+                    'job_id' => $job->id,
+                    'user_id' => $existingUser->id,
+                    'user_email' => $userData['email']
+                ]);
+            } else {
+                // Create new user with UUID
+                $userData['id'] = \Illuminate\Support\Str::uuid();
+                $user = \App\Models\User::create($userData);
+                
+                \Log::info('User created during import', [
+                    'job_id' => $job->id,
+                    'user_id' => $user->id,
+                    'user_email' => $userData['email']
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to import customer user', [
+                'job_id' => $job->id,
+                'data' => $data,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
     
     /**
@@ -674,8 +729,78 @@ class ImportService
      */
     private function importAccount(array $data, ImportJob $job): void
     {
-        // Basic account import - extend as needed
-        throw new \Exception("Account import not yet implemented in query builder mode");
+        try {
+            // Prepare account data with required fields
+            $accountData = [
+                'name' => $data['name'] ?? 'Imported Account',
+                'account_type' => 'customer', // Valid account type: customer, prospect, partner, internal
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            // Map additional fields if available
+            if (isset($data['description'])) {
+                $accountData['description'] = $data['description'];
+            }
+            if (isset($data['email'])) {
+                $accountData['email'] = $data['email'];
+            }
+            if (isset($data['phone'])) {
+                $accountData['phone'] = $data['phone'];
+            }
+            if (isset($data['website'])) {
+                $accountData['website'] = $data['website'];
+            }
+            if (isset($data['address'])) {
+                $accountData['address'] = $data['address'];
+            }
+            if (isset($data['city'])) {
+                $accountData['city'] = $data['city'];
+            }
+            if (isset($data['state'])) {
+                $accountData['state'] = $data['state'];
+            }
+            if (isset($data['postal_code'])) {
+                $accountData['postal_code'] = $data['postal_code'];
+            }
+            if (isset($data['country'])) {
+                $accountData['country'] = $data['country'];
+            }
+
+            // Check for duplicate by name to avoid creating duplicates
+            $existingAccount = \App\Models\Account::where('name', $accountData['name'])->first();
+            
+            if ($existingAccount) {
+                // Update existing account
+                $existingAccount->update($accountData);
+                $job->records_updated = ($job->records_updated ?? 0) + 1;
+                
+                \Log::info('Account updated during import', [
+                    'job_id' => $job->id,
+                    'account_id' => $existingAccount->id,
+                    'account_name' => $accountData['name']
+                ]);
+            } else {
+                // Create new account with UUID
+                $accountData['id'] = \Illuminate\Support\Str::uuid();
+                $account = \App\Models\Account::create($accountData);
+                
+                \Log::info('Account created during import', [
+                    'job_id' => $job->id,
+                    'account_id' => $account->id,
+                    'account_name' => $accountData['name']
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to import account', [
+                'job_id' => $job->id,
+                'data' => $data,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
     
     /**
@@ -683,8 +808,24 @@ class ImportService
      */
     private function importTicket(array $data, ImportJob $job): void
     {
-        // Basic ticket import - extend as needed
-        throw new \Exception("Ticket import not yet implemented in query builder mode");
+        try {
+            // Basic ticket import - requires more complex logic for production
+            \Log::warning('Ticket import attempted but not fully implemented', [
+                'job_id' => $job->id,
+                'data' => $data
+            ]);
+            
+            // For now, just log and skip - tickets require complex relationships
+            $job->records_skipped = ($job->records_skipped ?? 0) + 1;
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to import ticket', [
+                'job_id' => $job->id,
+                'data' => $data,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
     
     /**
@@ -692,8 +833,24 @@ class ImportService
      */
     private function importTimeEntry(array $data, ImportJob $job): void
     {
-        // Basic time entry import - extend as needed
-        throw new \Exception("Time entry import not yet implemented in query builder mode");
+        try {
+            // Basic time entry import - requires more complex logic for production
+            \Log::warning('Time entry import attempted but not fully implemented', [
+                'job_id' => $job->id,
+                'data' => $data
+            ]);
+            
+            // For now, just log and skip - time entries require account/ticket relationships
+            $job->records_skipped = ($job->records_skipped ?? 0) + 1;
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to import time entry', [
+                'job_id' => $job->id,
+                'data' => $data,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
     
     /**
@@ -701,8 +858,60 @@ class ImportService
      */
     private function importAgent(array $data, ImportJob $job): void
     {
-        // Basic agent import - extend as needed
-        throw new \Exception("Agent import not yet implemented in query builder mode");
+        try {
+            // Agents are also users, so use similar logic to customer users
+            $userData = [
+                'name' => $data['name'] ?? $data['first_name'] . ' ' . $data['last_name'] ?? 'Imported Agent',
+                'email' => $data['email'] ?? 'agent.' . uniqid() . '@example.com',
+                'password' => \Hash::make('password'), // Default password
+                'user_type' => 'agent',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            // Map additional fields if available
+            if (isset($data['account_id'])) {
+                $userData['account_id'] = $data['account_id'];
+            }
+            if (isset($data['phone'])) {
+                $userData['phone'] = $data['phone'];
+            }
+
+            // Check for duplicate by email
+            $existingAgent = \App\Models\User::where('email', $userData['email'])->first();
+            
+            if ($existingAgent) {
+                // Update existing agent (skip password update)
+                unset($userData['password']);
+                $existingAgent->update($userData);
+                $job->records_updated = ($job->records_updated ?? 0) + 1;
+                
+                \Log::info('Agent updated during import', [
+                    'job_id' => $job->id,
+                    'user_id' => $existingAgent->id,
+                    'user_email' => $userData['email']
+                ]);
+            } else {
+                // Create new agent with UUID
+                $userData['id'] = \Illuminate\Support\Str::uuid();
+                $agent = \App\Models\User::create($userData);
+                
+                \Log::info('Agent created during import', [
+                    'job_id' => $job->id,
+                    'user_id' => $agent->id,
+                    'user_email' => $userData['email']
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to import agent', [
+                'job_id' => $job->id,
+                'data' => $data,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
 
     /**

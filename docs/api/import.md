@@ -1324,6 +1324,175 @@ GET /api/import/rollback/{rollback_job_id}/status
 }
 ```
 
+## Profile Sync Management
+
+### Configure Sync Settings
+
+```bash
+PUT /api/import/profiles/{id}/sync-config
+```
+
+**Request Body:**
+```json
+{
+  "enabled": true,
+  "frequency": "daily",
+  "time": "02:00",
+  "timezone": "UTC",
+  "cron_expression": null,
+  "options": {
+    "update_existing": true,
+    "skip_existing": false,
+    "batch_size": 100,
+    "max_records_per_run": null,
+    "error_threshold": 10,
+    "timeout_minutes": 30,
+    "notification_on_failure": true
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Sync configuration updated successfully",
+  "profile": {
+    "id": "uuid",
+    "sync_enabled": true,
+    "sync_frequency": "daily",
+    "sync_time": "02:00",
+    "next_sync_at": "2025-08-25T02:00:00Z",
+    "sync_config": {...}
+  }
+}
+```
+
+### Get Sync Status
+
+```bash
+GET /api/import/profiles/{id}/sync-status
+```
+
+**Response:**
+```json
+{
+  "sync_config": {
+    "enabled": true,
+    "frequency": "daily",
+    "next_sync_at": "2025-08-25T02:00:00Z",
+    "last_sync_at": "2025-08-24T02:00:00Z"
+  },
+  "last_sync_stats": {
+    "records_processed": 1500,
+    "records_created": 50,
+    "records_updated": 200,
+    "records_skipped": 1200,
+    "records_failed": 50,
+    "duration": "00:05:30",
+    "status": "completed"
+  },
+  "sync_history": [...]
+}
+```
+
+### Trigger Manual Sync
+
+```bash
+POST /api/import/profiles/{id}/sync-now
+```
+
+**Request Body:**
+```json
+{
+  "force": false,
+  "override_options": {
+    "batch_size": 50,
+    "dry_run": true
+  }
+}
+```
+
+## Profile Duplication
+
+### Duplicate Import Profile
+
+```bash
+POST /api/import/profiles/{id}/duplicate
+```
+
+**Request Body:**
+```json
+{
+  "name": "Production Database - Copy",
+  "description": "Copy of production import configuration"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Import profile duplicated successfully",
+  "original_profile": {
+    "id": "original-uuid",
+    "name": "Production Database"
+  },
+  "duplicate_profile": {
+    "id": "new-uuid", 
+    "name": "Production Database - Copy",
+    "description": "Copy of production import configuration",
+    "created_at": "2025-08-25T10:00:00Z",
+    "configuration": {...},
+    "sync_enabled": false,
+    "last_sync_at": null,
+    "sync_stats": null
+  }
+}
+```
+
+**Duplication Features:**
+- All connection settings preserved (host, database, credentials)
+- Query builder configurations copied exactly
+- Field mappings and transformations maintained
+- Import mode and duplicate detection settings preserved
+- Sync configuration copied but disabled by default
+- Tracking data reset (sync history, statistics, test results)
+
+## Console Commands
+
+### Run Scheduled Imports
+
+```bash
+# Run all due sync profiles
+php artisan import:sync
+
+# Run specific profile sync
+php artisan import:sync --profile={profile-id}
+
+# Force sync regardless of schedule
+php artisan import:sync --force
+
+# Dry run to preview without execution
+php artisan import:sync --dry-run
+
+# Verbose output with detailed logging
+php artisan import:sync --verbose
+```
+
+**Command Options:**
+- `--profile=UUID` - Run sync for specific profile only
+- `--force` - Ignore schedule and run immediately
+- `--dry-run` - Preview sync operations without execution
+- `--verbose` - Display detailed execution information
+
+**Laravel Scheduler Integration:**
+```php
+// In app/Console/Kernel.php
+$schedule->command('import:sync')
+         ->hourly()
+         ->withoutOverlapping()
+         ->runInBackground();
+```
+
 ---
 
-*Universal Import API Reference | Service Vault Documentation | Updated: August 23, 2025*
+*Universal Import API Reference | Service Vault Documentation | Updated: August 25, 2025*

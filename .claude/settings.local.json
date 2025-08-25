@@ -21,7 +21,8 @@
       "Bash(./vendor/bin/pint:*)",
       "WebFetch(domain:inertiajs.com)",
       "Bash(redis-cli:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(mysql:*)"
     ],
     "deny": []
   }

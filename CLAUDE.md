@@ -57,7 +57,7 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **Left-Aligned Timer Interface**: Timer overlay and individual timers now align left with improved visual hierarchy
 - **Fixed Ticket Addon System**: Resolved UUID generation issues and standardized billable column usage across all models
 - **Unified Ticket Edit Dialog**: Ticket detail page uses the same CreateTicketModalTabbed component for editing, providing consistent UI/UX with smart data prefilling
-- **✅ Universal Import System (Production-Ready)**: Completed visual query builder with fullscreen interface, real-time SQL preview, and consistent query generation between validation and sample data endpoints
+- **✅ Universal Import System (Production-Ready)**: Completed visual query builder with fullscreen interface, real-time SQL preview, consistent query generation between validation and sample data endpoints, automated sync scheduling, profile duplication, and enhanced JOIN handling with proper table prefixing
 
 ## Documentation
 

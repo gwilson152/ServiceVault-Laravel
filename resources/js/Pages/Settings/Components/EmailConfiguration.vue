@@ -2,8 +2,40 @@
   <div class="max-w-6xl mx-auto">
     <!-- Header -->
     <div class="mb-8">
-      <h2 class="text-2xl font-semibold text-gray-900">Email Configuration</h2>
-      <p class="text-gray-600 mt-2">Configure outgoing and incoming email services independently.</p>
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-900">Email Configuration</h2>
+          <p class="text-gray-600 mt-2">Configure outgoing and incoming email services independently.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <!-- Account Selector -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Configuration Scope</label>
+            <select
+              v-model="configurationScope"
+              @change="loadConfigurationForScope"
+              class="block w-56 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="global">Global Settings (All Accounts)</option>
+              <option v-for="account in availableAccounts" :key="account.id" :value="account.id">
+                Account: {{ account.name }}
+              </option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ configurationScope === 'global' ? 'Default settings for all accounts' : 'Override settings for this account' }}
+            </p>
+          </div>
+          
+          <!-- Advanced Settings Button -->
+          <button
+            @click="showAdvancedSettings = true"
+            class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <CogIcon class="w-4 h-4 mr-2" />
+            Advanced
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Progress Steps -->
@@ -14,7 +46,7 @@
             <button
               @click="goToStep(1)"
               class="flex items-center hover:text-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-md p-1 -m-1"
-              :title="'Go to Step 1: Outgoing Email'"
+              :title="'Go to Step 1: Driver Selection'"
             >
               <span :class="[
                 'w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors',
@@ -22,7 +54,7 @@
                   ? 'border-indigo-600 bg-indigo-600 text-white' 
                   : 'border-gray-300 hover:border-indigo-300'
               ]">1</span>
-              <span class="ml-4 text-sm font-medium">Outgoing Email</span>
+              <span class="ml-4 text-sm font-medium">Driver Selection</span>
             </button>
             
             <!-- Connecting line to next step -->
@@ -33,7 +65,7 @@
             <button
               @click="goToStep(2)"
               class="flex items-center hover:text-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-md p-1 -m-1"
-              :title="'Go to Step 2: Incoming Email'"
+              :title="'Go to Step 2: Configuration'"
             >
               <span :class="[
                 'w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors',
@@ -41,7 +73,7 @@
                   ? 'border-indigo-600 bg-indigo-600 text-white' 
                   : 'border-gray-300 hover:border-indigo-300'
               ]">2</span>
-              <span class="ml-4 text-sm font-medium">Incoming Email</span>
+              <span class="ml-4 text-sm font-medium">Configuration</span>
             </button>
             
             <!-- Connecting line to next step -->
@@ -52,7 +84,7 @@
             <button
               @click="goToStep(3)"
               class="flex items-center hover:text-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-md p-1 -m-1"
-              :title="'Go to Step 3: Test & Save'"
+              :title="'Go to Step 3: Advanced Settings'"
             >
               <span :class="[
                 'w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors',
@@ -60,6 +92,25 @@
                   ? 'border-indigo-600 bg-indigo-600 text-white' 
                   : 'border-gray-300 hover:border-indigo-300'
               ]">3</span>
+              <span class="ml-4 text-sm font-medium">Advanced</span>
+            </button>
+            
+            <!-- Connecting line to next step -->
+            <div class="absolute top-4 left-full ml-4 w-8 h-0.5 bg-gray-300 hidden sm:block"></div>
+          </li>
+          
+          <li :class="['relative ml-8 sm:ml-16', currentStep >= 4 ? 'text-indigo-600' : 'text-gray-400']">
+            <button
+              @click="goToStep(4)"
+              class="flex items-center hover:text-indigo-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-md p-1 -m-1"
+              :title="'Go to Step 4: Test & Save'"
+            >
+              <span :class="[
+                'w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors',
+                currentStep >= 4 
+                  ? 'border-indigo-600 bg-indigo-600 text-white' 
+                  : 'border-gray-300 hover:border-indigo-300'
+              ]">4</span>
               <span class="ml-4 text-sm font-medium">Test & Save</span>
             </button>
           </li>
@@ -70,16 +121,297 @@
     <!-- Step Content -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
       
-      <!-- Step 1: Outgoing Email (SMTP) -->
+      <!-- Step 1: Driver Selection -->
       <div v-if="currentStep === 1" class="p-6">
         <div class="mb-6">
-          <h3 class="text-lg font-medium text-gray-900">Outgoing Email Configuration (SMTP)</h3>
-          <p class="text-sm text-gray-600 mt-1">Choose how your system sends emails (notifications, alerts, etc.)</p>
+          <h3 class="text-lg font-medium text-gray-900">Email Driver Selection</h3>
+          <p class="text-sm text-gray-600 mt-1">Choose the email service you want to use for sending and receiving emails</p>
         </div>
         
-        <!-- SMTP Provider Selection -->
+        <!-- Driver Selection Grid -->
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-3">Select SMTP Provider</label>
+          <label class="block text-sm font-medium text-gray-700 mb-4">Select Email Driver</label>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              v-for="driver in availableDrivers"
+              :key="driver.key"
+              @click="selectEmailDriver(driver)"
+              :class="[
+                'p-6 border rounded-lg text-left transition-all relative',
+                selectedDriver?.key === driver.key
+                  ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500'
+                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+              ]"
+            >
+              <!-- Popular Badge -->
+              <div v-if="driver.popular" class="absolute top-2 right-2">
+                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                  Popular
+                </span>
+              </div>
+              
+              <div class="flex flex-col space-y-3">
+                <div class="flex items-center space-x-3">
+                  <div :class="[
+                    'w-12 h-12 rounded-lg flex items-center justify-center',
+                    driver.color || 'bg-gray-100'
+                  ]">
+                    <component :is="driver.icon" class="w-6 h-6 text-gray-600" />
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="text-lg font-medium text-gray-900">{{ driver.name }}</h4>
+                    <p class="text-sm text-gray-500">{{ driver.description }}</p>
+                  </div>
+                </div>
+                
+                <!-- Features -->
+                <div class="space-y-2">
+                  <div class="flex flex-wrap gap-1">
+                    <span v-for="feature in driver.features" :key="feature" 
+                      class="inline-flex px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md">
+                      {{ feature }}
+                    </span>
+                  </div>
+                  
+                  <!-- Pricing/Limits Info -->
+                  <div v-if="driver.limits" class="text-xs text-gray-600">
+                    {{ driver.limits }}
+                  </div>
+                </div>
+                
+                <!-- Best For -->
+                <div v-if="driver.bestFor" class="text-xs text-blue-600 font-medium">
+                  Best for: {{ driver.bestFor }}
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Driver Description -->
+        <div v-if="selectedDriver" class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="flex">
+            <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+            </svg>
+            <div class="ml-3">
+              <h4 class="text-sm font-medium text-blue-800">{{ selectedDriver.name }} Setup</h4>
+              <div class="text-sm text-blue-700 mt-1" v-html="selectedDriver.setupInfo"></div>
+              
+              <!-- Requirements -->
+              <div v-if="selectedDriver.requirements" class="mt-2">
+                <p class="text-xs font-medium text-blue-800 mb-1">Requirements:</p>
+                <ul class="text-xs text-blue-700 ml-4 space-y-1">
+                  <li v-for="req in selectedDriver.requirements" :key="req" class="flex">
+                    <span class="mr-2">•</span>
+                    <span>{{ req }}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Step 2: Configuration -->
+      <div v-if="currentStep === 2" class="p-6">
+        <div class="mb-6">
+          <h3 class="text-lg font-medium text-gray-900">{{ selectedDriver?.name }} Configuration</h3>
+          <p class="text-sm text-gray-600 mt-1">Configure your {{ selectedDriver?.name }} settings</p>
+        </div>
+        
+        <!-- Configuration Form based on selected driver -->
+        <div v-if="selectedDriver" class="space-y-6">
+          <!-- Common Settings -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">From Email Address *</label>
+              <input 
+                type="email" 
+                v-model="form.from_address"
+                :placeholder="selectedDriver?.defaultFromAddress || 'noreply@yourdomain.com'"
+                class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                required
+              />
+              <p class="text-xs text-gray-500 mt-1">Email address used for sending notifications</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">From Name</label>
+              <input 
+                type="text" 
+                v-model="form.from_name"
+                placeholder="Service Vault Support"
+                class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+          
+          <!-- Driver-specific configuration (simplified for now) -->
+          <div v-if="selectedDriver.key === 'smtp'" class="space-y-4">
+            <!-- SMTP Configuration -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">SMTP Host *</label>
+                <input 
+                  type="text" 
+                  v-model="form.driver_config.smtp_host"
+                  placeholder="smtp.example.com"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Port *</label>
+                <input 
+                  type="number" 
+                  v-model="form.driver_config.smtp_port"
+                  placeholder="587"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Encryption</label>
+                <select 
+                  v-model="form.driver_config.smtp_encryption"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="">None</option>
+                  <option value="tls">TLS (STARTTLS)</option>
+                  <option value="ssl">SSL/TLS</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                <input 
+                  type="text" 
+                  v-model="form.driver_config.smtp_username"
+                  placeholder="your.email@domain.com"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <input 
+                  type="password" 
+                  v-model="form.driver_config.smtp_password"
+                  placeholder="Your password"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div v-else-if="selectedDriver.key === 'ses'" class="space-y-4">
+            <!-- Amazon SES Configuration -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">AWS Access Key *</label>
+                <input 
+                  type="text" 
+                  v-model="form.driver_config.ses_key"
+                  placeholder="AKIAIOSFODNN7EXAMPLE"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">AWS Secret Key *</label>
+                <input 
+                  type="password" 
+                  v-model="form.driver_config.ses_secret"
+                  placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">AWS Region *</label>
+                <select 
+                  v-model="form.driver_config.ses_region"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="us-east-1">US East (N. Virginia)</option>
+                  <option value="us-west-2">US West (Oregon)</option>
+                  <option value="eu-west-1">Europe (Ireland)</option>
+                  <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Configuration Set (Optional)</label>
+                <input 
+                  type="text" 
+                  v-model="form.driver_config.ses_configuration_set"
+                  placeholder="my-config-set"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div v-else class="text-center py-8 text-gray-500">
+            <CogIcon class="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <p class="text-sm">Configuration for {{ selectedDriver.name }} will be available soon.</p>
+            <p class="text-xs mt-1">For now, you can test basic functionality with SMTP or Amazon SES.</p>
+          </div>
+          
+          <!-- Test Configuration Button -->
+          <div class="mt-6 flex justify-center">
+            <button
+              @click="testCurrentConfiguration"
+              :disabled="testing || !canTestConfiguration"
+              class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+              <span v-if="testing" class="flex items-center">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Testing...
+              </span>
+              <span v-else>
+                <ShieldCheckIcon class="w-4 h-4 mr-2" />
+                Test Configuration
+              </span>
+            </button>
+          </div>
+          
+          <!-- Test Results -->
+          <div v-if="testResult" class="mt-4 p-3 rounded-md" :class="[
+            testResult.success 
+              ? 'bg-green-50 border border-green-200' 
+              : 'bg-red-50 border border-red-200'
+          ]">
+            <div class="flex">
+              <svg v-if="testResult.success" class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              <svg v-else class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              </svg>
+              <div class="ml-3">
+                <p class="text-sm font-medium" :class="testResult.success ? 'text-green-800' : 'text-red-800'">
+                  {{ testResult.success ? 'Configuration Test Successful!' : 'Configuration Test Failed' }}
+                </p>
+                <p class="text-sm mt-1" :class="testResult.success ? 'text-green-700' : 'text-red-700'">
+                  {{ testResult.message }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Fallback if no driver selected -->
+        <div v-else class="text-center py-8 text-gray-500">
+          <CogIcon class="w-12 h-12 mx-auto mb-4 text-gray-400" />
+          <p class="text-sm">Select an email driver to continue with configuration.</p>
+        </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <button
               v-for="provider in smtpProviders"
@@ -270,11 +602,191 @@
         </div>
       </div>
 
-      <!-- Step 2: Incoming Email (IMAP) -->
-      <div v-if="currentStep === 2" class="p-6">
+      <!-- Step 3: Advanced Settings -->
+      <div v-if="currentStep === 3" class="p-6">
         <div class="mb-6">
-          <h3 class="text-lg font-medium text-gray-900">Incoming Email Configuration (IMAP)</h3>
-          <p class="text-sm text-gray-600 mt-1">Optional: Enable automatic ticket creation from incoming emails</p>
+          <h3 class="text-lg font-medium text-gray-900">Advanced Email Settings</h3>
+          <p class="text-sm text-gray-600 mt-1">Configure advanced features like webhooks, routing rules, and processing options</p>
+        </div>
+        
+        <!-- Webhooks Configuration -->
+        <div class="mb-8">
+          <h4 class="text-base font-medium text-gray-900 mb-4">Webhook Endpoints</h4>
+          <p class="text-sm text-gray-600 mb-4">Configure webhook endpoints for real-time email event processing</p>
+          
+          <div class="bg-gray-50 p-4 rounded-lg space-y-4">
+            <!-- Incoming Email Webhook -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Incoming Email Webhook</label>
+              <div class="flex space-x-2">
+                <input 
+                  type="text" 
+                  :value="getWebhookUrl('incoming')"
+                  readonly
+                  class="flex-1 border-gray-300 rounded-md shadow-sm bg-white font-mono text-sm"
+                />
+                <button
+                  @click="copyToClipboard(getWebhookUrl('incoming'))"
+                  class="px-3 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50"
+                >
+                  Copy
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Use this URL in your email provider's webhook settings</p>
+            </div>
+            
+            <!-- Email Status Webhook -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Email Status Webhook</label>
+              <div class="flex space-x-2">
+                <input 
+                  type="text" 
+                  :value="getWebhookUrl('status')"
+                  readonly
+                  class="flex-1 border-gray-300 rounded-md shadow-sm bg-white font-mono text-sm"
+                />
+                <button
+                  @click="copyToClipboard(getWebhookUrl('status'))"
+                  class="px-3 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50"
+                >
+                  Copy
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Receives delivery confirmations, bounces, and spam reports</p>
+            </div>
+            
+            <!-- Webhook Security -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Webhook Security Token</label>
+              <div class="flex space-x-2">
+                <input 
+                  type="text" 
+                  :value="webhookToken"
+                  readonly
+                  class="flex-1 border-gray-300 rounded-md shadow-sm bg-white font-mono text-sm"
+                />
+                <button
+                  @click="regenerateWebhookToken"
+                  class="px-3 py-2 border border-gray-300 text-sm rounded-md hover:bg-gray-50"
+                >
+                  Regenerate
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Include this token in webhook requests for security validation</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Email Routing Rules -->
+        <div class="mb-8">
+          <h4 class="text-base font-medium text-gray-900 mb-4">Email Routing Rules</h4>
+          <p class="text-sm text-gray-600 mb-4">Configure how incoming emails are processed and routed to accounts</p>
+          
+          <div class="space-y-4">
+            <!-- Enable Email Processing -->
+            <div class="flex items-center">
+              <input 
+                type="checkbox" 
+                id="enable_email_processing"
+                v-model="form.enable_email_processing"
+                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label for="enable_email_processing" class="ml-3 text-sm font-medium text-gray-700">
+                Enable automatic email processing
+              </label>
+            </div>
+            
+            <div v-if="form.enable_email_processing" class="ml-7 space-y-4">
+              <!-- Default Account -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Default Account for New Tickets</label>
+                <select
+                  v-model="form.default_account_id"
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="">Select default account...</option>
+                  <option v-for="account in availableAccounts" :key="account.id" :value="account.id">
+                    {{ account.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <!-- Processing Options -->
+              <div class="space-y-2">
+                <label class="flex items-center">
+                  <input
+                    v-model="form.auto_create_tickets"
+                    type="checkbox"
+                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">Auto-create tickets from emails</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    v-model="form.auto_process_commands"
+                    type="checkbox"
+                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">Process subject line commands (time:45, priority:high, etc.)</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    v-model="form.auto_attach_files"
+                    type="checkbox"
+                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">Auto-attach email files to tickets</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Security Settings -->
+        <div class="mb-8">
+          <h4 class="text-base font-medium text-gray-900 mb-4">Security Settings</h4>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Max Attachment Size (MB)</label>
+              <input
+                v-model.number="form.max_attachment_size"
+                type="number"
+                min="1"
+                max="100"
+                class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              />
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Blocked File Extensions</label>
+              <input
+                v-model="form.blocked_extensions"
+                type="text"
+                placeholder=".exe, .bat, .com, .scr"
+                class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              />
+            </div>
+          </div>
+          
+          <div class="mt-4 space-y-2">
+            <label class="flex items-center">
+              <input
+                v-model="form.scan_attachments"
+                type="checkbox"
+                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <span class="ml-2 text-sm text-gray-700">Scan attachments for viruses</span>
+            </label>
+            <label class="flex items-center">
+              <input
+                v-model="form.require_authentication"
+                type="checkbox"
+                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <span class="ml-2 text-sm text-gray-700">Require sender authentication for command processing</span>
+            </label>
+          </div>
         </div>
 
         <!-- Enable IMAP Toggle -->
@@ -515,8 +1027,8 @@
         </div>
       </div>
 
-      <!-- Step 3: Test & Save -->
-      <div v-if="currentStep === 3" class="p-6">
+      <!-- Step 4: Test & Save -->
+      <div v-if="currentStep === 4" class="p-6">
         <h3 class="text-lg font-medium text-gray-900 mb-6">Test Configuration & Save</h3>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -665,17 +1177,17 @@
 
         <div class="flex space-x-3">
           <button
-            v-if="currentStep < 3"
+            v-if="currentStep < 4"
             @click="nextStep"
             :disabled="!canProceed"
             type="button"
             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
           >
-            {{ currentStep === 2 && !enableImap ? 'Skip to Test' : 'Continue' }}
+            Continue
           </button>
 
           <button
-            v-if="currentStep === 3"
+            v-if="currentStep === 4"
             @click="saveConfiguration"
             :disabled="loading || !canSave"
             type="button"
@@ -697,6 +1209,87 @@
         </div>
       </div>
     </div>
+    
+    <!-- Advanced Settings Modal -->
+    <StackedDialog
+      :show="showAdvancedSettings"
+      @close="showAdvancedSettings = false"
+      size="xl"
+      title="Advanced Email Settings"
+    >
+      <div class="space-y-6">
+        <!-- Email Queue Settings -->
+        <div>
+          <h4 class="text-base font-medium text-gray-900 mb-4">Queue Settings</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Queue Driver</label>
+              <select class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <option>Database</option>
+                <option>Redis</option>
+                <option>Sync (Immediate)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Max Retries</label>
+              <input type="number" min="1" max="10" value="3" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            </div>
+          </div>
+        </div>
+        
+        <!-- Rate Limiting -->
+        <div>
+          <h4 class="text-base font-medium text-gray-900 mb-4">Rate Limiting</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Per Minute</label>
+              <input type="number" min="1" value="60" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Per Hour</label>
+              <input type="number" min="1" value="1000" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Per Day</label>
+              <input type="number" min="1" value="10000" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            </div>
+          </div>
+        </div>
+        
+        <!-- Debugging -->
+        <div>
+          <h4 class="text-base font-medium text-gray-900 mb-4">Debugging</h4>
+          <div class="space-y-2">
+            <label class="flex items-center">
+              <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+              <span class="ml-2 text-sm text-gray-700">Enable debug logging</span>
+            </label>
+            <label class="flex items-center">
+              <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+              <span class="ml-2 text-sm text-gray-700">Log all email headers</span>
+            </label>
+            <label class="flex items-center">
+              <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+              <span class="ml-2 text-sm text-gray-700">Save raw email content</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <template #actions>
+        <button
+          @click="showAdvancedSettings = false"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+        >
+          Close
+        </button>
+        <button
+          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+        >
+          Save Advanced Settings
+        </button>
+      </template>
+    </StackedDialog>
   </div>
 </template>
 
@@ -706,8 +1299,22 @@ import {
   EnvelopeIcon, 
   ServerIcon, 
   CogIcon,
-  BuildingOfficeIcon 
+  BuildingOfficeIcon,
+  CloudIcon,
+  ShieldCheckIcon,
+  BoltIcon,
+  GlobeAltIcon
 } from '@heroicons/vue/24/outline'
+
+// Import shared components
+import StackedDialog from '@/Components/Modals/StackedDialog.vue'
+
+// Import driver-specific configuration components (these will be created as needed)
+// import SmtpDriverConfig from './EmailDrivers/SmtpDriverConfig.vue'
+// import SesDriverConfig from './EmailDrivers/SesDriverConfig.vue'
+// import PostmarkDriverConfig from './EmailDrivers/PostmarkDriverConfig.vue'
+// import MailgunDriverConfig from './EmailDrivers/MailgunDriverConfig.vue'
+// import SendgridDriverConfig from './EmailDrivers/SendgridDriverConfig.vue'
 
 const props = defineProps({
   settings: {
@@ -728,12 +1335,14 @@ const emit = defineEmits(['update', 'test-smtp', 'test-imap'])
 
 // Wizard state
 const currentStep = ref(1)
-const selectedSmtpProvider = ref(null)
-const selectedImapProvider = ref(null)
-const enableImap = ref(false)
-const syncCredentials = ref(false)
-const showSmtpPortOptions = ref(false)
-const showImapPortOptions = ref(false)
+const selectedDriver = ref(null)
+const configurationScope = ref('global')
+const showAdvancedSettings = ref(false)
+const availableAccounts = ref([])
+const webhookToken = ref('')
+const loading = ref(false)
+const testing = ref(false)
+const testResult = ref(null)
 
 // Testing state
 const testing = reactive({
@@ -753,24 +1362,147 @@ const testResults = reactive({
 
 // Form data
 const form = reactive({
+  // Common settings
+  driver: '',
   from_address: '',
   from_name: 'Service Vault Support',
-  smtp_host: '',
-  smtp_port: '587',
-  smtp_encryption: 'tls',
-  smtp_username: '',
-  smtp_password: '',
-  imap_host: '',
-  imap_port: '993',
-  imap_encryption: 'ssl',
-  imap_username: '',
-  imap_password: '',
-  imap_folder: 'INBOX',
-  email_check_interval: '5'
+  
+  // Driver-specific settings (will be populated based on selected driver)
+  driver_config: {},
+  
+  // Advanced settings
+  enable_email_processing: false,
+  default_account_id: '',
+  auto_create_tickets: true,
+  auto_process_commands: true,
+  auto_attach_files: true,
+  
+  // Security settings
+  max_attachment_size: 25,
+  blocked_extensions: '.exe, .bat, .com, .scr, .pif',
+  scan_attachments: true,
+  require_authentication: false
 })
 
-// Email providers (both SMTP and IMAP capable)
-const emailProviders = [
+// Available email drivers
+const availableDrivers = [
+  {
+    key: 'smtp',
+    name: 'SMTP',
+    description: 'Traditional SMTP server',
+    icon: ServerIcon,
+    color: 'bg-gray-100',
+    popular: true,
+    features: ['Custom servers', 'Self-hosted', 'Full control'],
+    limits: 'No sending limits (depends on server)',
+    bestFor: 'Self-hosted solutions, custom servers',
+    configComponent: 'SmtpDriverConfig',
+    defaultFromAddress: 'noreply@yourdomain.com',
+    requirements: [
+      'SMTP server hostname and port',
+      'Authentication credentials (if required)',
+      'SSL/TLS configuration'
+    ],
+    setupInfo: 'Configure your existing SMTP server or use a third-party SMTP service. Most flexible but requires server management.'
+  },
+  {
+    key: 'ses',
+    name: 'Amazon SES',
+    description: 'AWS Simple Email Service',
+    icon: CloudIcon,
+    color: 'bg-orange-100',
+    popular: true,
+    features: ['High deliverability', 'AWS integration', 'Cost-effective'],
+    limits: 'Pay per email sent, very low cost',
+    bestFor: 'High volume, AWS environments',
+    configComponent: 'SesDriverConfig',
+    defaultFromAddress: 'noreply@verified-domain.com',
+    requirements: [
+      'AWS account with SES access',
+      'Verified sending domain or email',
+      'AWS access key and secret key',
+      'SES region configuration'
+    ],
+    setupInfo: 'Amazon SES provides reliable, scalable email delivery through AWS infrastructure. Great for high-volume sending with excellent deliverability.'
+  },
+  {
+    key: 'postmark',
+    name: 'Postmark',
+    description: 'Transactional email service',
+    icon: BoltIcon,
+    color: 'bg-yellow-100',
+    popular: true,
+    features: ['Fast delivery', 'Great analytics', 'Template management'],
+    limits: '100 emails/month free, then paid plans',
+    bestFor: 'Transactional emails, fast delivery',
+    configComponent: 'PostmarkDriverConfig',
+    defaultFromAddress: 'noreply@yourdomain.com',
+    requirements: [
+      'Postmark account',
+      'Server API token',
+      'Verified sending signature',
+      'Domain authentication (recommended)'
+    ],
+    setupInfo: 'Postmark specializes in transactional email delivery with excellent speed and deliverability. Ideal for application notifications.'
+  },
+  {
+    key: 'mailgun',
+    name: 'Mailgun',
+    description: 'Email API service by Mailgun',
+    icon: GlobeAltIcon,
+    color: 'bg-red-100',
+    features: ['Powerful API', 'Email validation', 'Advanced analytics'],
+    limits: '5,000 emails/month free, then paid',
+    bestFor: 'API integration, email validation',
+    configComponent: 'MailgunDriverConfig',
+    defaultFromAddress: 'noreply@mg.yourdomain.com',
+    requirements: [
+      'Mailgun account',
+      'Domain verification',
+      'API key and domain',
+      'Webhook endpoints (optional)'
+    ],
+    setupInfo: 'Mailgun provides powerful email APIs with advanced features like email validation, detailed analytics, and webhook support.'
+  },
+  {
+    key: 'sendgrid',
+    name: 'SendGrid',
+    description: 'Twilio SendGrid email service',
+    icon: EnvelopeIcon,
+    color: 'bg-blue-100',
+    features: ['Marketing tools', 'Template engine', 'A/B testing'],
+    limits: '100 emails/day free, then paid plans',
+    bestFor: 'Marketing emails, template management',
+    configComponent: 'SendgridDriverConfig',
+    defaultFromAddress: 'noreply@yourdomain.com',
+    requirements: [
+      'SendGrid account',
+      'API key',
+      'Verified sender identity',
+      'Domain authentication (recommended)'
+    ],
+    setupInfo: 'SendGrid offers comprehensive email delivery with advanced marketing features, template management, and detailed analytics.'
+  },
+  {
+    key: 'log',
+    name: 'Log (Testing)',
+    description: 'Log emails to files (development)',
+    icon: CogIcon,
+    color: 'bg-gray-50',
+    features: ['Local testing', 'No external dependencies', 'File logging'],
+    limits: 'No limits (local files only)',
+    bestFor: 'Development, testing environments',
+    configComponent: 'LogDriverConfig',
+    defaultFromAddress: 'test@localhost',
+    requirements: [
+      'Write permissions to log directory',
+      'Local development environment'
+    ],
+    setupInfo: 'Log driver saves emails to local files instead of sending them. Perfect for development and testing without external services.'
+  }
+]
+
+// Legacy email providers (for backward compatibility)
   {
     key: 'microsoft365_oauth',
     name: 'Microsoft 365 (OAuth)',
@@ -920,9 +1652,23 @@ const emailProviders = [
   }
 ]
 
-// Computed provider lists
-const smtpProviders = computed(() => emailProviders)
-const imapProviders = computed(() => emailProviders.filter(p => p.imap || p.key === 'custom'))
+// Computed properties
+const canProceed = computed(() => {
+  if (currentStep.value === 1) {
+    return selectedDriver.value !== null
+  }
+  if (currentStep.value === 2) {
+    return form.from_address && validateDriverConfig()
+  }
+  if (currentStep.value === 3) {
+    return true // Advanced settings are optional
+  }
+  return true
+})
+
+const canSave = computed(() => {
+  return selectedDriver.value && form.from_address && validateDriverConfig()
+})
 
 // Common port options
 const commonSmtpPorts = [
@@ -939,60 +1685,225 @@ const commonImapPorts = [
 ]
 
 // Computed properties
-const canProceed = computed(() => {
-  if (currentStep.value === 1) {
-    return selectedSmtpProvider.value && form.from_address && form.smtp_host && form.smtp_port
+// Methods
+const selectEmailDriver = (driver) => {
+  selectedDriver.value = driver
+  form.driver = driver.key
+  
+  // Initialize driver-specific config
+  form.driver_config = {}
+  
+  // Set some defaults based on driver
+  if (driver.key === 'smtp') {
+    form.driver_config.smtp_port = '587'
+    form.driver_config.smtp_encryption = 'tls'
+  } else if (driver.key === 'ses') {
+    form.driver_config.ses_region = 'us-east-1'
   }
-  if (currentStep.value === 2) {
-    if (!enableImap.value) return true
-    return selectedImapProvider.value && form.imap_host && form.imap_port && form.imap_username
+  
+  // Set default from address based on driver
+  if (!form.from_address) {
+    form.from_address = driver.defaultFromAddress
   }
-  return true
+}
+
+const validateDriverConfig = () => {
+  if (!selectedDriver.value) return false
+  
+  const config = form.driver_config || {}
+  
+  // Validate based on selected driver
+  if (selectedDriver.value.key === 'smtp') {
+    return config.smtp_host && config.smtp_port
+  }
+  if (selectedDriver.value.key === 'ses') {
+    return config.ses_key && config.ses_secret && config.ses_region
+  }
+  
+  // For other drivers, assume they're valid if config exists
+  return Object.keys(config).length > 0
+}
+
+const canTestConfiguration = computed(() => {
+  return selectedDriver.value && form.from_address && validateDriverConfig()
 })
 
-const canTestSmtp = computed(() => {
-  return form.from_address && form.smtp_host && form.smtp_port && testEmails.smtp
-})
+const testCurrentConfiguration = async () => {
+  const result = await testDriverConfiguration(form.driver_config)
+  testResult.value = result
+}
 
-const canTestImap = computed(() => {
-  if (!enableImap.value || !selectedImapProvider.value || !form.imap_host || !form.imap_port || !form.imap_username) {
-    return false
+const testDriverConfiguration = async (config) => {
+  try {
+    testing.value = true
+    
+    const response = await fetch('/api/email-admin/test-connection', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        driver: selectedDriver.value.key,
+        config: config,
+        scope: configurationScope.value
+      })
+    })
+    
+    const result = await response.json()
+    return {
+      success: response.ok,
+      message: result.message || (response.ok ? 'Connection successful!' : 'Connection failed'),
+      details: result.details
+    }
+    
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message || 'Connection test failed'
+    }
+  } finally {
+    testing.value = false
   }
-  
-  // OAuth providers don't need passwords for testing
-  if (selectedImapProvider.value.requiresOAuth) {
-    return true
-  }
-  
-  // Non-OAuth providers need passwords
-  return !!form.imap_password
-})
+}
 
-const canSave = computed(() => {
-  const smtpValid = selectedSmtpProvider.value && form.from_address && form.smtp_host && form.smtp_port
-  
-  if (!enableImap.value) {
-    return smtpValid
+const loadConfigurationForScope = async () => {
+  try {
+    const url = configurationScope.value === 'global' 
+      ? '/api/email-admin/settings'
+      : `/api/email-admin/settings/${configurationScope.value}`
+      
+    const response = await fetch(url)
+    if (response.ok) {
+      const settings = await response.json()
+      Object.assign(form, settings)
+      
+      // Select the appropriate driver
+      if (settings.driver) {
+        const driver = availableDrivers.find(d => d.key === settings.driver)
+        if (driver) {
+          selectedDriver.value = driver
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error loading configuration:', error)
   }
-  
-  // Check IMAP validation
-  if (!selectedImapProvider.value || !form.imap_host || !form.imap_port || !form.imap_username) {
-    return false
-  }
-  
-  // OAuth providers don't need passwords for saving
-  if (selectedImapProvider.value.requiresOAuth) {
-    return smtpValid
-  }
-  
-  // Non-OAuth providers need passwords
-  return smtpValid && form.imap_password
-})
+}
 
-const canSyncCredentials = computed(() => {
-  return selectedSmtpProvider.value && selectedImapProvider.value && 
-         selectedSmtpProvider.value.key === selectedImapProvider.value.key &&
-         selectedSmtpProvider.value.key !== 'custom'
+const loadAvailableAccounts = async () => {
+  try {
+    const response = await fetch('/api/search/accounts?limit=100')
+    if (response.ok) {
+      const data = await response.json()
+      availableAccounts.value = data.results || []
+    }
+  } catch (error) {
+    console.error('Error loading accounts:', error)
+  }
+}
+
+const getWebhookUrl = (type) => {
+  const baseUrl = window.location.origin
+  return `${baseUrl}/api/webhooks/email/${type}`
+}
+
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    // Could add a toast notification here
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error)
+  }
+}
+
+const regenerateWebhookToken = async () => {
+  try {
+    const response = await fetch('/api/email-admin/webhook-token', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      webhookToken.value = data.token
+    }
+  } catch (error) {
+    console.error('Error regenerating webhook token:', error)
+  }
+}
+
+const nextStep = () => {
+  if (canProceed.value && currentStep.value < 4) {
+    currentStep.value++
+  }
+}
+
+const goToStep = (step) => {
+  if (step >= 1 && step <= 4) {
+    currentStep.value = step
+  }
+}
+
+const saveConfiguration = async () => {
+  if (!canSave.value) return
+  
+  try {
+    loading.value = true
+    
+    const url = configurationScope.value === 'global' 
+      ? '/api/email-admin/settings'
+      : `/api/email-admin/settings/${configurationScope.value}`
+    
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify(form)
+    })
+    
+    if (response.ok) {
+      emit('update', form)
+      // Could add success notification here
+    } else {
+      throw new Error('Failed to save configuration')
+    }
+    
+  } catch (error) {
+    console.error('Error saving configuration:', error)
+    // Could add error notification here
+  } finally {
+    loading.value = false
+  }
+}
+
+// Initialize webhook token
+const initializeWebhookToken = async () => {
+  try {
+    const response = await fetch('/api/email-admin/webhook-token')
+    if (response.ok) {
+      const data = await response.json()
+      webhookToken.value = data.token
+    }
+  } catch (error) {
+    console.error('Error loading webhook token:', error)
+    webhookToken.value = 'webhook-token-not-available'
+  }
+}
+
+// Lifecycle hooks
+onMounted(() => {
+  loadAvailableAccounts()
+  initializeWebhookToken()
+  
+  // Load configuration for current scope
+  if (props.settings && Object.keys(props.settings).length > 0) {
+    loadConfigurationForScope()
+  }
 })
 
 // Methods
@@ -1227,6 +2138,31 @@ watch(() => props.settings, (newSettings) => {
     } else if (newSettings.smtp_host && !selectedSmtpProvider.value) {
       // If we have SMTP data but no provider detected, stay on step 1 to show the issue
       currentStep.value = 1
+    }
+  }
+}, { immediate: true, deep: true })
+
+// Watch for configuration scope changes
+watch(configurationScope, () => {
+  loadConfigurationForScope()
+})
+
+// Watch for settings prop changes
+watch(() => props.settings, (newSettings) => {
+  if (newSettings && Object.keys(newSettings).length > 0) {
+    Object.assign(form, newSettings)
+    
+    // Try to detect driver
+    if (newSettings.driver) {
+      const driver = availableDrivers.find(d => d.key === newSettings.driver)
+      if (driver) {
+        selectedDriver.value = driver
+      }
+    }
+    
+    // Jump to appropriate step if already configured
+    if (selectedDriver.value && newSettings.from_address) {
+      currentStep.value = Math.max(currentStep.value, 2)
     }
   }
 }, { immediate: true, deep: true })

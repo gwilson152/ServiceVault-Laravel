@@ -129,10 +129,61 @@ After creating the connection, choose your configuration approach:
 3. **Source Identifier** - Field to use for tracking imported records
 4. **Confidence Threshold** - Minimum similarity score for fuzzy matching
 
-### Step 4: Preview and Execute
+### Step 4: Sync Scheduling (Optional)
+
+**Automated Import Scheduling:**
+
+Configure profiles for regular synchronization with flexible scheduling options:
+
+1. **Enable Sync** - Toggle automated import execution
+2. **Frequency Options**:
+   - **Hourly** - Every hour for real-time sync
+   - **Daily** - Once per day at specified time
+   - **Weekly** - Weekly execution on chosen day
+   - **Monthly** - Monthly execution on first day
+   - **Custom** - Cron expression for advanced scheduling
+3. **Sync Configuration**:
+   ```json
+   {
+     "sync_enabled": true,
+     "sync_frequency": "daily",
+     "sync_time": "02:00",
+     "sync_timezone": "UTC",
+     "sync_options": {
+       "update_existing": true,
+       "skip_existing": false,
+       "batch_size": 100,
+       "timeout_minutes": 30
+     }
+   }
+   ```
+4. **Sync Management**:
+   - **Next Sync Calculation** - Automatic scheduling based on frequency
+   - **Sync History** - Track execution results and statistics
+   - **Manual Trigger** - Override schedule for immediate execution
+   - **Failure Notifications** - Alert on sync failures
+
+### Step 5: Profile Duplication
+
+**Clone Import Configurations:**
+
+Create copies of existing import profiles with all settings preserved:
+
+1. **Duplicate Profile** - Click duplicate option in profile dropdown menu
+2. **Naming Dialog** - Specify new profile name and description
+3. **Settings Preservation**:
+   - Database connection settings
+   - Query builder configurations
+   - Field mappings and transformations
+   - Sync scheduling options
+   - Import mode preferences
+4. **Reset Tracking Data** - Sync history and statistics start fresh
+5. **Independent Operation** - Duplicated profiles operate independently
+
+### Step 6: Preview and Execute
 
 1. **Preview Import Data** - Review transformed data with impact assessment
-2. **Validate Configuration** - Check field mappings, modes, and relationships
+2. **Validate Configuration** - Check field mappings, modes, and relationships  
 3. **Execute Import** - Run import job with real-time progress tracking
 
 ## Platform Templates
@@ -251,22 +302,41 @@ LEFT JOIN users ON users.id = time_logs.user_id
 **Features:**
 
 -   **JOIN Types** - INNER, LEFT, RIGHT, FULL OUTER JOIN support
--   **Visual Configuration** - Manual relationship configuration
+-   **Visual Configuration** - Manual relationship configuration with dropdowns
+-   **Automatic Table Prefixing** - Smart SQL generation with proper table.column references
 -   **Condition Support** - Additional WHERE conditions per JOIN
+-   **Real-Time SQL Preview** - Live generation of JOIN syntax with validation
 -   **State Synchronization** - Controlled mutations prevent reactive loops
 
-**JOIN Configuration:**
+**Enhanced JOIN Configuration:**
 
 ```sql
--- Example: Customer emails JOIN
-LEFT JOIN emails ON emails.customer_id = customers.id
+-- Properly prefixed JOIN generation
+LEFT JOIN emails ON customers.id = emails.customer_id
   AND emails.type = 'work'
 
--- Example: Ticket assignment JOIN
+-- Complex multi-table JOINs
+LEFT JOIN conversations ON customers.id = conversations.customer_id
 LEFT JOIN users ON users.id = conversations.user_id
 ```
 
+**Smart Prefix Handling:**
+
+- **Left Column Selection** - Shows available columns from base table and previous JOINs
+- **Right Column Selection** - Shows columns from selected join table
+- **Automatic Prefixing** - Adds table prefixes when missing (customers.id, emails.customer_id)
+- **Consistent SQL Generation** - Frontend preview and backend execution use identical logic
+- **JOIN Validation** - Real-time validation of column references and syntax
+
 ### Field Mapper
+
+**Enhanced Field Selection:**
+
+-   **Multi-Table Source Fields** - Access columns from base table and all joined tables
+-   **Organized Field Groups** - Fields grouped by table for easy navigation
+-   **Smart Field Discovery** - Automatic detection of available source columns
+-   **Real-Time Updates** - Field availability updates when JOINs are added/removed
+-   **Table Context** - Clear indication of field source table (table.column format)
 
 **Mapping Types:**
 

@@ -573,6 +573,10 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
     Route::post('profiles/{profile}/preview-query', [ImportProfileController::class, 'previewQuery'])
         ->name('import.profiles.preview-query');
 
+    // Profile Duplication
+    Route::post('profiles/{profile}/duplicate', [ImportProfileController::class, 'duplicate'])
+        ->name('import.profiles.duplicate');
+
     // Field Mapping Management
     Route::get('profiles/{profile}/mappings', [ImportProfileController::class, 'getMappings'])
         ->name('import.profiles.mappings.get');

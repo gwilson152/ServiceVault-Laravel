@@ -228,6 +228,15 @@
                                                 Edit Profile
                                             </button>
                                             <button
+                                                @click="openDuplicateModal(profile)"
+                                                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            >
+                                                <DocumentDuplicateIcon
+                                                    class="inline w-4 h-4 mr-2"
+                                                />
+                                                Duplicate Profile
+                                            </button>
+                                            <button
                                                 @click="deleteProfile(profile)"
                                                 class="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
                                             >
@@ -493,6 +502,14 @@
             @template-applied="handleTemplateApplied"
         />
 
+        <!-- Duplicate Profile Modal -->
+        <DuplicateProfileModal
+            :show="showDuplicateModal"
+            :profile="selectedProfile"
+            @close="showDuplicateModal = false"
+            @duplicated="handleProfileDuplicated"
+        />
+
         <!-- Success Notification -->
         <SuccessNotification
             :show="showSuccessNotification"
@@ -510,6 +527,7 @@ import AppLayout from "@/Layouts/AppLayout.vue";
 import ImportProfileModal from "./Components/ImportProfileModal.vue";
 import SimpleImportPreview from "./Components/SimpleImportPreview.vue";
 import ImportJobDetailsModal from "./Components/ImportJobDetailsModal.vue";
+import DuplicateProfileModal from "./Components/DuplicateProfileModal.vue";
 import QueryBuilderModal from "@/Components/Import/QueryBuilderModal.vue";
 import TemplateSelector from "@/Components/Import/TemplateSelector.vue";
 import SuccessNotification from "@/Components/SuccessNotification.vue";
@@ -521,6 +539,7 @@ import {
     PlayIcon,
     PencilIcon,
     TrashIcon,
+    DocumentDuplicateIcon,
     ServerIcon,
     CogIcon,
     EyeIcon,
@@ -535,6 +554,7 @@ const showImportWizard = ref(false);
 const showJobDetails = ref(false);
 const showQueryBuilder = ref(false);
 const showTemplateSelector = ref(false);
+const showDuplicateModal = ref(false);
 const showSuccessNotification = ref(false);
 const selectedProfile = ref(null);
 const selectedJob = ref(null);
@@ -742,6 +762,12 @@ const openTemplateSelector = (profile) => {
     activeProfileMenu.value = null;
 };
 
+const openDuplicateModal = (profile) => {
+    selectedProfile.value = profile;
+    showDuplicateModal.value = true;
+    activeProfileMenu.value = null;
+};
+
 const openQueryBuilder = async (profile) => {
     try {
         // Fetch latest profile data to ensure we have the most recent configuration
@@ -822,6 +848,16 @@ const handleTemplateApplied = ({ profile, template }) => {
     showSuccessMessage(
         "Template Applied",
         `Template "${template.name}" has been applied to profile "${profile.name}"`
+    );
+};
+
+const handleProfileDuplicated = ({ message, profile }) => {
+    showDuplicateModal.value = false;
+    selectedProfile.value = null;
+    refreshProfiles();
+    showSuccessMessage(
+        "Profile Duplicated",
+        `New profile "${profile.name}" has been created successfully`
     );
 };
 

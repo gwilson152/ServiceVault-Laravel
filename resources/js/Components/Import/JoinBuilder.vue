@@ -202,7 +202,10 @@ const fullQueryPreview = computed(() => {
   
   joins.value.forEach(join => {
     if (isValidJoin(join)) {
-      query += `\n${join.type} JOIN ${join.table} ON ${join.leftColumn} = ${join.table}.${join.rightColumn}`
+      // Handle both left and right columns - add table prefix only if not already prefixed
+      const leftColumn = join.leftColumn.includes('.') ? join.leftColumn : `${props.baseTable?.name}.${join.leftColumn}`
+      const rightColumn = join.rightColumn.includes('.') ? join.rightColumn : `${join.table}.${join.rightColumn}`
+      query += `\n${join.type} JOIN ${join.table} ON ${leftColumn} = ${rightColumn}`
       if (join.condition) {
         query += ` AND ${join.condition}`
       }
@@ -293,7 +296,10 @@ const isValidJoin = (join) => {
 const formatJoinSQL = (join) => {
   if (!isValidJoin(join)) return ''
   
-  let sql = `${join.type} JOIN ${join.table} ON ${join.leftColumn} = ${join.table}.${join.rightColumn}`
+  // Handle both left and right columns - add table prefix only if not already prefixed
+  const leftColumn = join.leftColumn.includes('.') ? join.leftColumn : `${props.baseTable?.name}.${join.leftColumn}`
+  const rightColumn = join.rightColumn.includes('.') ? join.rightColumn : `${join.table}.${join.rightColumn}`
+  let sql = `${join.type} JOIN ${join.table} ON ${leftColumn} = ${rightColumn}`
   if (join.condition) {
     sql += ` AND ${join.condition}`
   }

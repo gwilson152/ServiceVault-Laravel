@@ -94,11 +94,11 @@
                                 <p
                                     class="text-sm text-gray-700 font-mono bg-gray-50 px-2 py-1 rounded"
                                 >
-                                    {{ queryConfig.base_table }}
+                                    {{ queryConfig?.base_table || 'No base table' }}
                                 </p>
                             </div>
 
-                            <div v-if="queryConfig.joins?.length">
+                            <div v-if="queryConfig?.joins?.length">
                                 <h5 class="text-sm font-medium text-gray-900">
                                     Joins ({{ queryConfig.joins.length }})
                                 </h5>
@@ -115,7 +115,7 @@
                                 </div>
                             </div>
 
-                            <div v-if="queryConfig.fields?.length">
+                            <div v-if="queryConfig?.fields?.length">
                                 <h5 class="text-sm font-medium text-gray-900">
                                     Selected Fields ({{
                                         queryConfig.fields.length
@@ -146,7 +146,7 @@
                                 </div>
                             </div>
 
-                            <div v-if="queryConfig.filters?.length">
+                            <div v-if="queryConfig?.filters?.length">
                                 <h5 class="text-sm font-medium text-gray-900">
                                     Filters ({{ queryConfig.filters.length }})
                                 </h5>
@@ -171,7 +171,7 @@
                                 >
                                     {{
                                         formatTargetType(
-                                            queryConfig.target_type
+                                            queryConfig?.target_type
                                         )
                                     }}
                                 </span>
@@ -335,7 +335,7 @@
                                                 >
                                                     {{
                                                         formatTargetType(
-                                                            queryConfig.target_type
+                                                            queryConfig?.target_type
                                                         )
                                                     }}
                                                 </div>

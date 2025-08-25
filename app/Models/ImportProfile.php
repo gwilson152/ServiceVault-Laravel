@@ -39,6 +39,15 @@ class ImportProfile extends Model
         'source_identifier_field',
         'matching_strategy',
         'import_stats',
+        'sync_enabled',
+        'sync_frequency',
+        'sync_cron_expression',
+        'sync_time',
+        'sync_timezone',
+        'last_sync_at',
+        'next_sync_at',
+        'sync_options',
+        'sync_stats',
     ];
 
     protected $casts = [
@@ -48,11 +57,16 @@ class ImportProfile extends Model
         'duplicate_detection' => 'array',
         'matching_strategy' => 'array',
         'import_stats' => 'array',
+        'sync_options' => 'array',
+        'sync_stats' => 'array',
         'is_active' => 'boolean',
         'skip_duplicates' => 'boolean',
         'update_duplicates' => 'boolean',
+        'sync_enabled' => 'boolean',
         'port' => 'integer',
         'last_tested_at' => 'datetime',
+        'last_sync_at' => 'datetime',
+        'next_sync_at' => 'datetime',
     ];
 
     protected $hidden = [
@@ -275,5 +289,225 @@ class ImportProfile extends Model
             'failed' => $stats['failed'] ?? 0,
         ]);
         $this->save();
+    }
+
+    /**
+     * Check if sync is enabled for this profile
+     */
+    public function isSyncEnabled(): bool
+    {
+        return $this->sync_enabled && $this->is_active;
+    }
+
+    /**
+     * Check if the profile is due for sync
+     */
+    public function isDueForSync(): bool
+    {
+        if (!$this->isSyncEnabled()) {
+            return false;
+        }
+
+        return is_null($this->next_sync_at) || $this->next_sync_at <= now();
+    }
+
+    /**
+     * Get sync configuration
+     */
+    public function getSyncConfig(): array
+    {
+        return [
+            'enabled' => $this->sync_enabled,
+            'frequency' => $this->sync_frequency ?? 'daily',
+            'time' => $this->sync_time ?? '02:00',
+            'timezone' => $this->sync_timezone ?? 'UTC',
+            'cron_expression' => $this->sync_cron_expression,
+            'options' => $this->sync_options ?? [],
+            'last_sync_at' => $this->last_sync_at,
+            'next_sync_at' => $this->next_sync_at,
+        ];
+    }
+
+    /**
+     * Get default sync options
+     */
+    public function getDefaultSyncOptions(): array
+    {
+        return $this->sync_options ?? [
+            'update_existing' => $this->shouldUpdateDuplicates(),
+            'skip_existing' => $this->shouldSkipDuplicates(),
+            'batch_size' => 100,
+            'max_records_per_run' => null,
+            'error_threshold' => 10,
+            'timeout_minutes' => 30,
+            'notification_on_failure' => true,
+            'import_filters' => [],
+        ];
+    }
+
+    /**
+     * Update sync configuration
+     */
+    public function updateSyncConfig(array $config): void
+    {
+        if (isset($config['enabled'])) {
+            $this->sync_enabled = $config['enabled'];
+        }
+        
+        if (isset($config['frequency'])) {
+            $this->sync_frequency = $config['frequency'];
+        }
+        
+        if (isset($config['time'])) {
+            $this->sync_time = $config['time'];
+        }
+        
+        if (isset($config['timezone'])) {
+            $this->sync_timezone = $config['timezone'];
+        }
+        
+        if (isset($config['cron_expression'])) {
+            $this->sync_cron_expression = $config['cron_expression'];
+        }
+        
+        if (isset($config['options'])) {
+            $this->sync_options = array_merge($this->getDefaultSyncOptions(), $config['options']);
+        }
+
+        $this->save();
+    }
+
+    /**
+     * Calculate the next sync time
+     */
+    public function calculateNextSyncTime(): ?\Carbon\Carbon
+    {
+        if (!$this->isSyncEnabled()) {
+            return null;
+        }
+
+        $timezone = $this->sync_timezone ?? 'UTC';
+        $syncTime = $this->sync_time ?? '02:00';
+        
+        $now = now()->setTimezone($timezone);
+        
+        switch ($this->sync_frequency) {
+            case 'hourly':
+                return $now->addHour();
+                
+            case 'daily':
+                $next = $now->copy()->addDay();
+                [$hour, $minute] = explode(':', $syncTime);
+                return $next->setTime((int)$hour, (int)$minute, 0);
+                
+            case 'weekly':
+                $next = $now->copy()->addWeek()->startOfWeek();
+                [$hour, $minute] = explode(':', $syncTime);
+                return $next->setTime((int)$hour, (int)$minute, 0);
+                
+            case 'monthly':
+                $next = $now->copy()->addMonth()->startOfMonth();
+                [$hour, $minute] = explode(':', $syncTime);
+                return $next->setTime((int)$hour, (int)$minute, 0);
+                
+            case 'custom':
+                // For custom cron expressions, would need a cron parser library
+                // Fall back to daily for now
+                return $now->copy()->addDay();
+                
+            default:
+                return $now->copy()->addDay();
+        }
+    }
+
+    /**
+     * Get last sync statistics
+     */
+    public function getLastSyncStats(): ?array
+    {
+        return $this->sync_stats['last_sync'] ?? null;
+    }
+
+    /**
+     * Get sync history
+     */
+    public function getSyncHistory(): array
+    {
+        return $this->sync_stats['history'] ?? [];
+    }
+
+    /**
+     * Check if last sync was successful
+     */
+    public function wasLastSyncSuccessful(): bool
+    {
+        $lastSync = $this->getLastSyncStats();
+        if (!$lastSync) {
+            return false;
+        }
+
+        return ($lastSync['records_failed'] ?? 0) === 0;
+    }
+
+    /**
+     * Duplicate this import profile with a new name
+     */
+    public function duplicate(string $newName, ?string $newDescription = null): self
+    {
+        // Get all attributes except ID and timestamps
+        $attributes = $this->getAttributes();
+        
+        // Remove fields that shouldn't be copied
+        unset($attributes['id']);
+        unset($attributes['created_at']);
+        unset($attributes['updated_at']);
+        
+        // Reset sync tracking fields for the duplicate
+        $attributes['last_sync_at'] = null;
+        $attributes['next_sync_at'] = null;
+        $attributes['sync_stats'] = null;
+        $attributes['import_stats'] = null;
+        $attributes['last_tested_at'] = null;
+        $attributes['last_test_result'] = null;
+        
+        // Set new name and description
+        $attributes['name'] = $newName;
+        if ($newDescription !== null) {
+            $attributes['description'] = $newDescription;
+        } else {
+            $attributes['description'] = 'Copy of ' . $this->name;
+        }
+        
+        // Set created_by to current user if available
+        if (auth()->check()) {
+            $attributes['created_by'] = auth()->id();
+        }
+        
+        // Create the duplicate
+        $duplicate = static::create($attributes);
+        
+        // Copy related mappings if they exist (for legacy mapping-based profiles)
+        foreach ($this->importMappings as $mapping) {
+            $mappingAttributes = $mapping->getAttributes();
+            unset($mappingAttributes['id']);
+            unset($mappingAttributes['created_at']);
+            unset($mappingAttributes['updated_at']);
+            $mappingAttributes['profile_id'] = $duplicate->id;
+            
+            $duplicate->importMappings()->create($mappingAttributes);
+        }
+        
+        // Copy import queries if they exist (for query-based profiles)  
+        foreach ($this->queries as $query) {
+            $queryAttributes = $query->getAttributes();
+            unset($queryAttributes['id']);
+            unset($queryAttributes['created_at']);
+            unset($queryAttributes['updated_at']);
+            $queryAttributes['profile_id'] = $duplicate->id;
+            
+            $duplicate->queries()->create($queryAttributes);
+        }
+        
+        return $duplicate->fresh();
     }
 }

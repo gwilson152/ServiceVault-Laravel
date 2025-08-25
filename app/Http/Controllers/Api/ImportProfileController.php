@@ -224,6 +224,58 @@ class ImportProfileController extends Controller
     }
 
     /**
+     * Duplicate an import profile with a new name.
+     */
+    public function duplicate(Request $request, ImportProfile $profile): JsonResponse
+    {
+        $this->authorize('create', ImportProfile::class);
+
+        $validator = Validator::make($request->all(), [
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('import_profiles', 'name'),
+            ],
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $duplicate = $profile->duplicate(
+                $request->input('name'),
+                $request->input('description')
+            );
+
+            return response()->json([
+                'message' => 'Import profile duplicated successfully',
+                'profile' => $duplicate->load(['creator', 'template', 'importJobs' => function($query) {
+                    $query->latest()->take(5);
+                }]),
+            ], 201);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to duplicate import profile', [
+                'original_profile_id' => $profile->id,
+                'new_name' => $request->input('name'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to duplicate import profile',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Test connection for an import profile.
      */
     public function testConnection(Request $request, ?ImportProfile $profile = null): JsonResponse
@@ -738,7 +790,10 @@ class ImportProfileController extends Controller
             'joins' => 'array',
             'joins.*.type' => 'required|string|in:INNER,LEFT,RIGHT,FULL',
             'joins.*.table' => 'required|string',
-            'joins.*.on' => 'required|string',
+            // Accept either format: leftColumn/rightColumn OR pre-formatted on condition
+            'joins.*.leftColumn' => 'required_without:joins.*.on|string',
+            'joins.*.rightColumn' => 'required_without:joins.*.on|string',
+            'joins.*.on' => 'required_without_all:joins.*.leftColumn,joins.*.rightColumn|string',
             'joins.*.condition' => 'nullable|string',
             'fields' => 'array',
             'fields.*.source' => 'required|string',
@@ -919,8 +974,14 @@ class ImportProfileController extends Controller
             foreach ($config['joins'] as $join) {
                 // Handle different join formats from frontend
                 if (isset($join['leftColumn']) && isset($join['rightColumn'])) {
-                    // Frontend format: leftColumn = rightColumn
-                    $joinCondition = "{$join['leftColumn']} = {$join['rightColumn']}";
+                    // Frontend format: leftColumn = rightColumn with proper table prefixing
+                    $leftColumn = str_contains($join['leftColumn'], '.') 
+                        ? $join['leftColumn'] 
+                        : "{$config['base_table']}.{$join['leftColumn']}";
+                    $rightColumn = str_contains($join['rightColumn'], '.') 
+                        ? $join['rightColumn'] 
+                        : "{$join['table']}.{$join['rightColumn']}";
+                    $joinCondition = "{$leftColumn} = {$rightColumn}";
                 } else if (isset($join['on'])) {
                     // Backend format: pre-formatted join condition
                     $joinCondition = $join['on'];

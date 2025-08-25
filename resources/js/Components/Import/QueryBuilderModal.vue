@@ -116,6 +116,7 @@
                 :profile-id="profile?.id"
                 :base-table="baseTableObject"
                 :joins="queryBuilder.joins.value || []"
+                :available-tables="availableTables"
                 :model-value="queryBuilder.fields.value"
                 @update:model-value="handleFieldsUpdated"
                 :target-type="queryBuilder.targetType.value"
