@@ -79,20 +79,47 @@ class ImportJobPolicy
      */
     public function cancel(User $user, ImportJob $importJob): bool
     {
+        \Log::info('ImportJobPolicy.cancel - Authorization check', [
+            'user_id' => $user->id,
+            'job_id' => $importJob->id,
+            'job_status' => $importJob->status,
+            'job_created_by' => $importJob->created_by,
+            'user_permissions' => collect($user->getAllPermissions())->pluck('name')->toArray()
+        ]);
+        
         // Only allow cancellation of running/pending jobs
         if (! in_array($importJob->status, ['running', 'pending'])) {
+            \Log::warning('ImportJobPolicy.cancel - Denied: Job status not cancellable', [
+                'current_status' => $importJob->status,
+                'allowed_statuses' => ['running', 'pending']
+            ]);
             return false;
         }
 
         // Users can cancel their own jobs or if they have admin permissions
         if ($importJob->created_by === $user->id) {
+            \Log::info('ImportJobPolicy.cancel - Authorized: User is job creator');
             return true;
         }
 
-        return $user->hasAnyPermission([
+        $hasPermission = $user->hasAnyPermission([
             'system.import',
             'import.jobs.monitor',
         ]);
+        
+        \Log::info('ImportJobPolicy.cancel - Permission check result', [
+            'has_required_permissions' => $hasPermission,
+            'checked_permissions' => ['system.import', 'import.jobs.monitor']
+        ]);
+        
+        if (!$hasPermission) {
+            \Log::warning('ImportJobPolicy.cancel - Denied: User lacks required permissions', [
+                'user_id' => $user->id,
+                'job_id' => $importJob->id
+            ]);
+        }
+        
+        return $hasPermission;
     }
 
     /**

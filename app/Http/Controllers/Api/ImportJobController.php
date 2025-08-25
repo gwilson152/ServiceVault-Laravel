@@ -405,29 +405,51 @@ class ImportJobController extends Controller
     /**
      * Cancel a running import job.
      */
-    public function cancel(ImportJob $importJob): JsonResponse
+    public function cancel(ImportJob $job): JsonResponse
     {
-        $this->authorize('cancel', $importJob);
-
-        if (! $importJob->isRunning()) {
-            return response()->json([
-                'message' => 'Only running jobs can be cancelled',
-                'current_status' => $importJob->status,
-            ], 400);
-        }
-
         try {
-            $this->importService->cancelImport($importJob);
+            \Log::info('ImportJobController.cancel - Starting cancellation', [
+                'job_id' => $job->id,
+                'job_status' => $job->status,
+                'is_running' => $job->isRunning()
+            ]);
+            
+            $this->authorize('cancel', $job);
+
+            if (! $job->isRunning()) {
+                \Log::warning('ImportJobController.cancel - Job not running', [
+                    'job_id' => $job->id,
+                    'current_status' => $job->status
+                ]);
+                
+                return response()->json([
+                    'message' => 'Only running jobs can be cancelled',
+                    'current_status' => $job->status,
+                ], 400);
+            }
+
+            $this->importService->cancelImport($job);
+            
+            \Log::info('ImportJobController.cancel - Job cancelled successfully', [
+                'job_id' => $job->id
+            ]);
 
             return response()->json([
                 'message' => 'Import job cancelled successfully',
-                'job' => $importJob->fresh(),
+                'job' => $job->fresh(),
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('ImportJobController.cancel - Error during cancellation', [
+                'job_id' => $job->id ?? 'null',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'message' => 'Failed to cancel import job',
                 'error' => $e->getMessage(),
+                'debug' => app()->environment('local') ? $e->getTraceAsString() : null,
             ], 500);
         }
     }

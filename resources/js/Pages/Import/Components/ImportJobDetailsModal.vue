@@ -11,7 +11,12 @@
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-xl font-semibold text-gray-900">{{ job.profile?.name }}</h2>
-            <p class="text-sm text-gray-600 mt-1">{{ job.profile?.type }}</p>
+            <div class="flex items-center mt-1 space-x-3">
+              <p class="text-sm text-gray-600">{{ formatImportType(job.profile) }}</p>
+              <span v-if="getTargetType(job.profile)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                {{ formatTargetType(getTargetType(job.profile)) }}
+              </span>
+            </div>
           </div>
           <span :class="getJobStatusClass(job.status)" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
             {{ job.status }}
@@ -81,8 +86,64 @@
         </div>
       </div>
 
-      <!-- Import Options -->
-      <div v-if="job.import_options" class="bg-white border border-gray-200 rounded-lg p-6">
+      <!-- Query Configuration -->
+      <div v-if="job.profile?.configuration" class="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Query Configuration</h3>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Configuration Summary -->
+          <div class="space-y-4">
+            <div>
+              <h4 class="text-sm font-medium text-gray-900">Base Table</h4>
+              <p class="text-sm text-gray-700 font-mono bg-gray-50 px-2 py-1 rounded">
+                {{ job.profile.configuration.base_table || 'Not specified' }}
+              </p>
+            </div>
+            
+            <div v-if="job.profile.configuration.joins?.length">
+              <h4 class="text-sm font-medium text-gray-900">Joins ({{ job.profile.configuration.joins.length }})</h4>
+              <div class="space-y-1">
+                <div v-for="join in job.profile.configuration.joins.slice(0, 3)" :key="`${join.table}-${join.leftColumn}`" 
+                     class="text-xs bg-gray-50 p-2 rounded font-mono">
+                  {{ join.type }} JOIN {{ join.table }}
+                </div>
+                <div v-if="job.profile.configuration.joins.length > 3" class="text-xs text-gray-500">
+                  +{{ job.profile.configuration.joins.length - 3 }} more joins
+                </div>
+              </div>
+            </div>
+
+            <div v-if="job.profile.configuration.fields?.length">
+              <h4 class="text-sm font-medium text-gray-900">Field Mappings ({{ job.profile.configuration.fields.length }})</h4>
+              <div class="text-xs text-gray-600">
+                {{ job.profile.configuration.fields.length }} field{{ job.profile.configuration.fields.length === 1 ? '' : 's' }} mapped to {{ formatTargetType(job.profile.configuration.target_type) }}
+              </div>
+            </div>
+
+            <div v-if="job.profile.configuration.filters?.length">
+              <h4 class="text-sm font-medium text-gray-900">Filters ({{ job.profile.configuration.filters.length }})</h4>
+              <div class="text-xs text-gray-600">
+                {{ job.profile.configuration.filters.length }} filter condition{{ job.profile.configuration.filters.length === 1 ? '' : 's' }} applied
+              </div>
+            </div>
+          </div>
+          
+          <!-- Raw Configuration (collapsed by default) -->
+          <div>
+            <details class="group">
+              <summary class="cursor-pointer text-sm font-medium text-gray-900 hover:text-gray-700">
+                Raw Configuration
+              </summary>
+              <div class="mt-2 bg-gray-50 rounded-md p-3">
+                <pre class="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">{{ JSON.stringify(job.profile.configuration, null, 2) }}</pre>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import Options (fallback for old jobs) -->
+      <div v-else-if="job.import_options" class="bg-white border border-gray-200 rounded-lg p-6">
         <h3 class="text-lg font-medium text-gray-900 mb-4">Import Options</h3>
         <div class="bg-gray-50 rounded-md p-3">
           <pre class="text-sm text-gray-700 whitespace-pre-wrap">{{ JSON.stringify(job.import_options, null, 2) }}</pre>
@@ -270,5 +331,31 @@ const cancelJob = async () => {
 const downloadReport = () => {
   // TODO: Implement report download
   console.log('Download report for job:', props.job.id)
+}
+
+const formatImportType = (profile) => {
+  if (!profile) return 'Unknown'
+  
+  if (profile.configuration && Object.keys(profile.configuration).length > 0) {
+    return 'Query Builder Import'
+  } else if (profile.template_id) {
+    return 'Template-Based Import'
+  } else {
+    return 'Legacy Import'
+  }
+}
+
+const getTargetType = (profile) => {
+  return profile?.configuration?.target_type || null
+}
+
+const formatTargetType = (targetType) => {
+  if (!targetType) return 'Unknown'
+  
+  return targetType
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 </script>

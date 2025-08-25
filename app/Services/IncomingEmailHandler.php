@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\User;
 use App\Services\EmailParser;
+use App\Services\EmailCommandProcessor;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -16,11 +17,16 @@ class IncomingEmailHandler
 {
     private EmailParser $parser;
     private EmailService $emailService;
+    private EmailCommandProcessor $commandProcessor;
 
-    public function __construct(EmailParser $parser, EmailService $emailService)
-    {
+    public function __construct(
+        EmailParser $parser, 
+        EmailService $emailService,
+        EmailCommandProcessor $commandProcessor
+    ) {
         $this->parser = $parser;
         $this->emailService = $emailService;
+        $this->commandProcessor = $commandProcessor;
     }
 
     /**
@@ -206,7 +212,7 @@ class IncomingEmailHandler
             $customer = User::where('email', $fromEmail)->first();
         }
 
-        // Parse any initial commands from subject
+        // Parse commands from subject for basic ticket creation
         $commands = $this->emailService->parseSubjectCommands($emailData['subject'] ?? '');
         
         // Set defaults
@@ -214,7 +220,7 @@ class IncomingEmailHandler
         $category = 'support';
         $status = 'open';
         
-        // Apply commands
+        // Apply basic commands for ticket creation (without validation/permissions yet)
         foreach ($commands as $command) {
             switch ($command['command']) {
                 case 'priority':
@@ -254,6 +260,11 @@ class IncomingEmailHandler
             'subject' => $emailData['subject'] ?? '',
         ]);
 
+        // Process advanced commands with validation and permissions
+        if (!empty($commands) && $customer) {
+            $this->processAdvancedCommands($commands, $ticket, $customer, $emailData, $processingLog);
+        }
+
         return $ticket;
     }
 
@@ -291,6 +302,16 @@ class IncomingEmailHandler
             'comment_id' => $comment->id,
             'from' => $fromEmail,
         ]);
+
+        // Process commands from the email subject for existing tickets
+        $commands = $this->emailService->parseSubjectCommands($emailData['subject'] ?? '');
+        if (!empty($commands) && $user) {
+            // Use the processing log from the main handler
+            $processingLog = EmailProcessingLog::where('email_id', $emailData['email_id'] ?? '')->first();
+            if ($processingLog) {
+                $this->processAdvancedCommands($commands, $ticket, $user, $emailData, $processingLog);
+            }
+        }
 
         return $comment;
     }
@@ -488,5 +509,151 @@ class IncomingEmailHandler
                 ->where('created_at', '>=', $startDate)
                 ->count(),
         ];
+    }
+
+    /**
+     * Process advanced email commands with validation and permissions
+     */
+    private function processAdvancedCommands(
+        array $commands, 
+        Ticket $ticket, 
+        User $user, 
+        array $emailData, 
+        EmailProcessingLog $processingLog
+    ): void {
+        try {
+            Log::info('Processing advanced email commands', [
+                'email_id' => $processingLog->email_id,
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'commands_count' => count($commands),
+            ]);
+
+            // Use the EmailCommandProcessor to handle commands with validation
+            $result = $this->commandProcessor->processCommands(
+                $commands,
+                $ticket,
+                $user,
+                $emailData,
+                $processingLog
+            );
+
+            // Update processing log with command processing results
+            $processingLog->update([
+                'command_processing_completed' => true,
+                'command_processing_success' => $result['success'],
+                'commands_processed_count' => $result['commands_processed'] ?? 0,
+                'commands_executed_count' => $result['commands_executed'] ?? 0,
+                'commands_failed_count' => $result['commands_failed'] ?? 0,
+            ]);
+
+            // Send confirmation email for successful command executions
+            if ($result['success'] && $result['commands_executed'] > 0) {
+                $this->sendCommandConfirmationEmail($user->email, $ticket, $result);
+            }
+
+            Log::info('Advanced command processing completed', [
+                'email_id' => $processingLog->email_id,
+                'success' => $result['success'],
+                'commands_executed' => $result['commands_executed'] ?? 0,
+                'commands_failed' => $result['commands_failed'] ?? 0,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Advanced command processing failed', [
+                'email_id' => $processingLog->email_id,
+                'ticket_id' => $ticket->id,
+                'error' => $e->getMessage(),
+                'commands' => $commands,
+            ]);
+
+            // Update processing log with error
+            $processingLog->update([
+                'command_processing_completed' => true,
+                'command_processing_success' => false,
+                'command_processing_error' => $e->getMessage(),
+            ]);
+
+            // Send error notification email
+            $this->sendCommandErrorEmail($user->email, $ticket, $e->getMessage(), $commands);
+        }
+    }
+
+    /**
+     * Send confirmation email for successful command execution
+     */
+    private function sendCommandConfirmationEmail(string $email, Ticket $ticket, array $result): void
+    {
+        try {
+            $variables = [
+                'ticket_number' => $ticket->ticket_number,
+                'ticket_title' => $ticket->title,
+                'commands_executed' => $result['commands_executed'],
+                'commands_summary' => $this->formatCommandsSummary($result['results']),
+                'account_name' => $ticket->account->name ?? 'ServiceVault',
+            ];
+
+            $this->emailService->sendTemplatedEmail(
+                'command_confirmation',
+                $email,
+                $variables,
+                $ticket->account_id
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send command confirmation email', [
+                'email' => $email,
+                'ticket_id' => $ticket->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send error notification email for failed command execution
+     */
+    private function sendCommandErrorEmail(string $email, Ticket $ticket, string $error, array $commands): void
+    {
+        try {
+            $variables = [
+                'ticket_number' => $ticket->ticket_number,
+                'ticket_title' => $ticket->title,
+                'error_message' => $error,
+                'commands_attempted' => implode(', ', array_map(fn($c) => $c['original'], $commands)),
+                'account_name' => $ticket->account->name ?? 'ServiceVault',
+            ];
+
+            $this->emailService->sendTemplatedEmail(
+                'command_error',
+                $email,
+                $variables,
+                $ticket->account_id
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send command error email', [
+                'email' => $email,
+                'ticket_id' => $ticket->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Format commands summary for email
+     */
+    private function formatCommandsSummary(array $results): string
+    {
+        $summary = [];
+        
+        foreach ($results as $result) {
+            if ($result['success']) {
+                $summary[] = "✓ {$result['command']}: {$result['message']}";
+            } else {
+                $summary[] = "✗ {$result['command']}: {$result['message']}";
+            }
+        }
+        
+        return implode("\n", $summary);
     }
 }

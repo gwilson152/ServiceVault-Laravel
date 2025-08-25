@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DomainMappingController;
+use App\Http\Controllers\Api\EmailAdminController;
 use App\Http\Controllers\Api\EmailConfigController;
 use App\Http\Controllers\Api\EmailIngestionController;
 use App\Http\Controllers\Api\EmailTemplateController;
@@ -703,6 +704,33 @@ Route::middleware(['auth:sanctum'])->prefix('email-templates')->group(function (
     // Duplicate email template
     Route::post('{emailTemplate}/duplicate', [EmailTemplateController::class, 'duplicate'])
         ->name('email-templates.duplicate');
+});
+
+// Email Administration Routes (Super Admin only)
+Route::middleware(['auth:sanctum'])->prefix('email-admin')->group(function () {
+    // Dashboard and overview
+    Route::get('dashboard', [EmailAdminController::class, 'dashboard'])
+        ->name('email-admin.dashboard');
+    
+    // Processing logs management
+    Route::get('processing-logs', [EmailAdminController::class, 'getProcessingLogs'])
+        ->name('email-admin.processing-logs');
+    Route::get('processing-logs/{emailId}', [EmailAdminController::class, 'getProcessingLogDetail'])
+        ->name('email-admin.processing-log-detail');
+    
+    // Retry and management operations
+    Route::post('retry-processing', [EmailAdminController::class, 'retryProcessing'])
+        ->name('email-admin.retry-processing');
+    
+    // Queue monitoring and management
+    Route::get('queue-status', [EmailAdminController::class, 'getQueueStatus'])
+        ->name('email-admin.queue-status');
+    Route::delete('failed-jobs', [EmailAdminController::class, 'clearFailedJobs'])
+        ->name('email-admin.clear-failed-jobs');
+    
+    // System health monitoring
+    Route::get('system-health', [EmailAdminController::class, 'getSystemHealth'])
+        ->name('email-admin.system-health');
 });
 
 // Manager-only routes

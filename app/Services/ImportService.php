@@ -59,14 +59,20 @@ class ImportService
             $connectionName = $this->connectionService->createConnection($profile);
             $job->updateProgress(10, 'Connected to source database');
 
-            // Get import mappings for this profile (mapping-based import)
-            $mappings = $profile->importMappings()->active()->get();
+            // Check if profile has query builder configuration or mappings
+            if ($profile->configuration && !empty($profile->configuration)) {
+                // Use query builder configuration
+                $this->processQueryBasedImport($connectionName, $profile->configuration, $job);
+            } else {
+                // Fall back to mapping-based import
+                $mappings = $profile->importMappings()->active()->get();
+                
+                if ($mappings->isEmpty()) {
+                    throw new Exception('No query configuration or active import mappings found for this profile. Please configure the import using the Query Builder.');
+                }
 
-            if ($mappings->isEmpty()) {
-                throw new Exception('No active import mappings found for this profile');
+                $this->processMappingBasedImport($connectionName, $mappings, $job);
             }
-
-            $this->processMappingBasedImport($connectionName, $mappings, $job);
 
             // Processing is handled by the specific import method above
 
@@ -426,6 +432,277 @@ class ImportService
         } finally {
             $this->connectionService->closeConnection($connectionName);
         }
+    }
+
+    /**
+     * Process query-based import using query builder configuration.
+     */
+    private function processQueryBasedImport(string $connectionName, array $configuration, ImportJob $job): void
+    {
+        try {
+            // Generate SQL from configuration using the same method as the controller
+            $sql = $this->generateSQL($configuration);
+            
+            $job->updateProgress(20, 'Generated import query');
+            
+            // Get total record count first
+            $countSQL = "SELECT COUNT(*) as count FROM ({$sql}) as query_result";
+            $countResult = \DB::connection($connectionName)->select($countSQL);
+            $totalRows = (int) ($countResult[0]->count ?? 0);
+            
+            if ($totalRows === 0) {
+                $job->updateProgress(100, 'No records found to import');
+                return;
+            }
+            
+            $job->updateProgress(30, "Found {$totalRows} records to import");
+            
+            // Process records in batches
+            $batchSize = 100;
+            $processedRows = 0;
+            $offset = 0;
+            
+            while ($offset < $totalRows) {
+                $batchSQL = $sql . " LIMIT {$batchSize} OFFSET {$offset}";
+                $records = \DB::connection($connectionName)->select($batchSQL);
+                
+                foreach ($records as $record) {
+                    try {
+                        $this->importQueryRecord($record, $configuration, $job);
+                        $job->records_imported++;
+                    } catch (\Exception $e) {
+                        $job->records_failed++;
+                        \Log::warning('Failed to import record', [
+                            'job_id' => $job->id,
+                            'record' => $record,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                    
+                    $processedRows++;
+                    $job->records_processed = $processedRows;
+                    
+                    // Update progress every 10 records
+                    if ($processedRows % 10 === 0) {
+                        $progress = 30 + (($processedRows / $totalRows) * 60);
+                        $job->updateProgress($progress, "Processed {$processedRows}/{$totalRows} records");
+                    }
+                }
+                
+                $offset += $batchSize;
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('Query-based import failed', [
+                'job_id' => $job->id,
+                'configuration' => $configuration,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+    
+    /**
+     * Import a single record from query-based import.
+     */
+    private function importQueryRecord(object $record, array $configuration, ImportJob $job): void
+    {
+        $targetType = $configuration['target_type'] ?? 'customer_users';
+        
+        // Convert record object to associative array for easier field access
+        $recordArray = (array) $record;
+        
+        // Map fields based on configuration
+        $mappedData = [];
+        foreach ($configuration['fields'] as $field) {
+            $sourceField = $field['source'];
+            $targetField = $field['target'];
+            
+            // Handle table.column format by using just the alias/target field name
+            $value = $recordArray[$targetField] ?? null;
+            
+            $mappedData[$targetField] = $value;
+        }
+        
+        // Import based on target type
+        switch ($targetType) {
+            case 'customer_users':
+                $this->importCustomerUser($mappedData, $job);
+                break;
+            case 'accounts':
+                $this->importAccount($mappedData, $job);
+                break;
+            case 'tickets':
+                $this->importTicket($mappedData, $job);
+                break;
+            case 'time_entries':
+                $this->importTimeEntry($mappedData, $job);
+                break;
+            case 'agents':
+                $this->importAgent($mappedData, $job);
+                break;
+            default:
+                throw new \Exception("Unsupported target type: {$targetType}");
+        }
+    }
+    
+    /**
+     * Generate SQL from query configuration (copied from controller for consistency).
+     */
+    private function generateSQL(array $config): string
+    {
+        $sql = 'SELECT ';
+
+        // Fields
+        if (empty($config['fields'])) {
+            $sql .= '*';
+        } else {
+            $fieldList = [];
+            foreach ($config['fields'] as $field) {
+                if (isset($field['source']) && isset($field['target'])) {
+                    $fieldList[] = "{$field['source']} AS {$field['target']}";
+                }
+            }
+            $sql .= implode(', ', $fieldList);
+        }
+
+        // FROM clause
+        $sql .= "\nFROM {$config['base_table']}";
+
+        // JOINs
+        if (!empty($config['joins'])) {
+            foreach ($config['joins'] as $join) {
+                // Handle different join formats from frontend
+                if (isset($join['leftColumn']) && isset($join['rightColumn'])) {
+                    // Frontend format: leftColumn = rightColumn
+                    $joinCondition = "{$join['leftColumn']} = {$join['rightColumn']}";
+                } else if (isset($join['on'])) {
+                    // Backend format: pre-formatted join condition
+                    $joinCondition = $join['on'];
+                } else {
+                    // Skip invalid joins
+                    continue;
+                }
+                
+                $sql .= "\n{$join['type']} JOIN {$join['table']} ON {$joinCondition}";
+                if (!empty($join['condition'])) {
+                    $sql .= " AND {$join['condition']}";
+                }
+            }
+        }
+
+        // WHERE clause
+        if (!empty($config['filters'])) {
+            $whereConditions = [];
+            foreach ($config['filters'] as $filter) {
+                $whereConditions[] = $this->formatFilterCondition($filter);
+            }
+            if (!empty($whereConditions)) {
+                $sql .= "\nWHERE ".implode(' AND ', $whereConditions);
+            }
+        }
+
+        return $sql;
+    }
+    
+    /**
+     * Format a filter condition for SQL (copied from controller).
+     */
+    private function formatFilterCondition(array $filter): string
+    {
+        $field = $filter['field'];
+        $operator = $filter['operator'];
+        $value = $filter['value'] ?? '';
+        $value2 = $filter['value2'] ?? '';
+
+        switch ($operator) {
+            case 'IS NULL':
+            case 'IS NOT NULL':
+                return "{$field} {$operator}";
+
+            case 'BETWEEN':
+                return "{$field} BETWEEN '{$value}' AND '{$value2}'";
+
+            case 'IN':
+            case 'NOT IN':
+                // Handle comma-separated values
+                $values = array_map('trim', explode(',', $value));
+                $quotedValues = array_map(function ($v) {
+                    return "'".str_replace("'", "''", $v)."'";
+                }, $values);
+
+                return "{$field} {$operator} (".implode(', ', $quotedValues).')';
+
+            case 'LIKE':
+            case 'ILIKE':
+            case 'NOT LIKE':
+                // Add wildcards if not present
+                if (strpos($value, '%') === false) {
+                    $value = "%{$value}%";
+                }
+
+                return "{$field} {$operator} '".str_replace("'", "''", $value)."'";
+
+            case 'REGEXP':
+                return "{$field} ~ '".str_replace("'", "''", $value)."'";
+
+            case '=':
+            case '!=':
+            case '>':
+            case '>=':
+            case '<':
+            case '<=':
+            default:
+                // Escape single quotes and wrap in quotes
+                $escapedValue = str_replace("'", "''", $value);
+
+                return "{$field} {$operator} '{$escapedValue}'";
+        }
+    }
+
+    /**
+     * Import a customer user record.
+     */
+    private function importCustomerUser(array $data, ImportJob $job): void
+    {
+        // Basic customer user import - extend as needed
+        throw new \Exception("Customer user import not yet implemented in query builder mode");
+    }
+    
+    /**
+     * Import an account record.
+     */
+    private function importAccount(array $data, ImportJob $job): void
+    {
+        // Basic account import - extend as needed
+        throw new \Exception("Account import not yet implemented in query builder mode");
+    }
+    
+    /**
+     * Import a ticket record.
+     */
+    private function importTicket(array $data, ImportJob $job): void
+    {
+        // Basic ticket import - extend as needed
+        throw new \Exception("Ticket import not yet implemented in query builder mode");
+    }
+    
+    /**
+     * Import a time entry record.
+     */
+    private function importTimeEntry(array $data, ImportJob $job): void
+    {
+        // Basic time entry import - extend as needed
+        throw new \Exception("Time entry import not yet implemented in query builder mode");
+    }
+    
+    /**
+     * Import an agent record.
+     */
+    private function importAgent(array $data, ImportJob $job): void
+    {
+        // Basic agent import - extend as needed
+        throw new \Exception("Agent import not yet implemented in query builder mode");
     }
 
     /**
