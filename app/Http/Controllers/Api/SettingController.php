@@ -210,6 +210,10 @@ class SettingController extends Controller
             'auto_create_users' => $request->boolean('auto_create_users', false),
             'default_role_for_new_users' => $request->input('default_role_for_new_users'),
             'require_approval_for_new_users' => $request->boolean('require_approval_for_new_users', true),
+            
+            // Timestamp Processing
+            'timestamp_source' => $request->input('timestamp_source', 'service_vault'), // 'service_vault' or 'original'
+            'timestamp_timezone' => $request->input('timestamp_timezone', 'preserve'), // 'preserve', 'convert_local', or 'convert_utc'
         ];
 
         foreach ($emailSettings as $key => $value) {
@@ -453,20 +457,29 @@ class SettingController extends Controller
 
             $accessToken = $tokenResponse['token'];
 
-            // Start with the simplest approach - just get root folders
+            // Get all root folders with pagination support and cache-busting
             \Log::info('Starting to get M365 folders for mailbox: ' . $mailbox);
             
-            $response = $this->makeM365Request(
-                "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders?\$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount",
-                $accessToken
-            );
+            $folders = [];
+            $nextUrl = "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders?\$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount&\$top=999&_=" . time();
+            
+            // Handle pagination to get all folders
+            while ($nextUrl) {
+                $response = $this->makeM365Request($nextUrl, $accessToken);
 
-            if (!$response['success']) {
-                \Log::error('Failed to get root folders: ' . $response['message']);
-                throw new \Exception($response['message']);
+                if (!$response['success']) {
+                    \Log::error('Failed to get root folders: ' . $response['message']);
+                    throw new \Exception($response['message']);
+                }
+
+                $pageData = $response['data'];
+                $pageFolders = $pageData['value'] ?? [];
+                $folders = array_merge($folders, $pageFolders);
+                
+                // Check for next page
+                $nextUrl = $pageData['@odata.nextLink'] ?? null;
+                \Log::info('Retrieved page with ' . count($pageFolders) . ' folders, total: ' . count($folders) . ', has next page: ' . ($nextUrl ? 'yes' : 'no'));
             }
-
-            $folders = $response['data']['value'] ?? [];
             \Log::info('Root folders retrieved: ' . count($folders) . ' folders');
             
             if (empty($folders)) {
@@ -484,19 +497,28 @@ class SettingController extends Controller
             $childFoldersFound = 0;
             foreach ($folders as $rootFolder) {
                 try {
-                    $childResponse = $this->makeM365Request(
-                        "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders/{$rootFolder['id']}/childFolders?\$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount",
-                        $accessToken
-                    );
+                    // Get child folders with pagination and cache-busting
+                    $childFolders = [];
+                    $childNextUrl = "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders/{$rootFolder['id']}/childFolders?\$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount&\$top=999&_=" . time();
                     
-                    if ($childResponse['success'] && isset($childResponse['data']['value'])) {
-                        $childFolders = $childResponse['data']['value'];
-                        $childCount = count($childFolders);
-                        if ($childCount > 0) {
-                            \Log::info('Found ' . $childCount . ' child folders for ' . $rootFolder['displayName']);
-                            $allFolders = array_merge($allFolders, $childFolders);
-                            $childFoldersFound += $childCount;
+                    while ($childNextUrl) {
+                        $childResponse = $this->makeM365Request($childNextUrl, $accessToken);
+                        
+                        if ($childResponse['success'] && isset($childResponse['data']['value'])) {
+                            $pageChildFolders = $childResponse['data']['value'];
+                            $childFolders = array_merge($childFolders, $pageChildFolders);
+                            
+                            // Check for next page
+                            $childNextUrl = $childResponse['data']['@odata.nextLink'] ?? null;
+                        } else {
+                            break; // Exit the pagination loop on error
                         }
+                    }
+                    
+                    if (count($childFolders) > 0) {
+                        \Log::info('Found ' . count($childFolders) . ' child folders for ' . $rootFolder['displayName']);
+                        $allFolders = array_merge($allFolders, $childFolders);
+                        $childFoldersFound += count($childFolders);
                     } else {
                         \Log::debug('No child folders for ' . $rootFolder['displayName']);
                     }
@@ -553,6 +575,110 @@ class SettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get M365 folders: '.$e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Test email retrieval from M365 folder
+     */
+    public function testM365EmailRetrieval(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        $validator = Validator::make($request->all(), [
+            'm365_tenant_id' => 'required|string',
+            'm365_client_id' => 'required|string',
+            'm365_client_secret' => 'required|string',
+            'm365_mailbox' => 'required|email',
+            'm365_folder_id' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid configuration',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $tenantId = $request->m365_tenant_id;
+            $clientId = $request->m365_client_id;
+            $clientSecret = $request->m365_client_secret;
+            $mailbox = $request->m365_mailbox;
+            $folderId = $request->m365_folder_id;
+
+            // Get access token
+            $tokenResponse = $this->getM365AccessToken($tenantId, $clientId, $clientSecret);
+
+            if (!$tokenResponse['success']) {
+                throw new \Exception($tokenResponse['message']);
+            }
+
+            $accessToken = $tokenResponse['token'];
+
+            // Get last 5 emails from the specified folder
+            \Log::info('Testing email retrieval from M365 folder', [
+                'mailbox' => $mailbox,
+                'folder_id' => $folderId
+            ]);
+
+            $emailsUrl = "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders/{$folderId}/messages";
+            $emailsUrl .= "?\$select=id,subject,from,receivedDateTime,bodyPreview,hasAttachments,isRead";
+            $emailsUrl .= "&\$orderby=receivedDateTime desc&\$top=5";
+
+            $response = $this->makeM365Request($emailsUrl, $accessToken);
+
+            if (!$response['success']) {
+                throw new \Exception($response['message']);
+            }
+
+            $emails = $response['data']['value'] ?? [];
+            
+            // Format emails for display
+            $formattedEmails = [];
+            foreach ($emails as $email) {
+                $fromAddress = $email['from']['emailAddress']['address'] ?? 'Unknown';
+                $fromName = $email['from']['emailAddress']['name'] ?? $fromAddress;
+                
+                $formattedEmails[] = [
+                    'id' => $email['id'],
+                    'subject' => $email['subject'] ?? '(No Subject)',
+                    'from_address' => $fromAddress,
+                    'from_name' => $fromName,
+                    'received_at' => $email['receivedDateTime'] ?? null,
+                    'body_preview' => $email['bodyPreview'] ?? '',
+                    'has_attachments' => $email['hasAttachments'] ?? false,
+                    'is_read' => $email['isRead'] ?? false,
+                    'received_formatted' => isset($email['receivedDateTime']) 
+                        ? \Carbon\Carbon::parse($email['receivedDateTime'])->format('M j, Y g:i A')
+                        : 'Unknown',
+                ];
+            }
+
+            \Log::info('Retrieved emails from M365 folder', [
+                'folder_id' => $folderId,
+                'email_count' => count($formattedEmails)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'emails' => $formattedEmails,
+                'folder_id' => $folderId,
+                'total_retrieved' => count($formattedEmails),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to test M365 email retrieval', [
+                'error' => $e->getMessage(),
+                'mailbox' => $request->m365_mailbox ?? null,
+                'folder_id' => $request->m365_folder_id ?? null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve emails: '.$e->getMessage(),
             ], 400);
         }
     }
@@ -839,58 +965,6 @@ class SettingController extends Controller
         return $formattedFolders;
     }
 
-    /**
-     * Test method to verify folder hierarchy building logic
-     */
-    public function testFolderHierarchy()
-    {
-        // Sample folder data that mimics what Microsoft Graph API might return
-        $sampleFolders = [
-            [
-                'id' => 'root1',
-                'displayName' => 'Inbox',
-                'parentFolderId' => 'msgfolderroot', // Parent ID that won't be in our list
-                'totalItemCount' => 25,
-                'unreadItemCount' => 3
-            ],
-            [
-                'id' => 'root2', 
-                'displayName' => 'Archive',
-                'parentFolderId' => 'msgfolderroot', // Parent ID that won't be in our list
-                'totalItemCount' => 150,
-                'unreadItemCount' => 0
-            ],
-            [
-                'id' => 'child1',
-                'displayName' => 'Archive-2023',
-                'parentFolderId' => 'root2', // Child of Archive
-                'totalItemCount' => 50,
-                'unreadItemCount' => 0
-            ],
-            [
-                'id' => 'child2',
-                'displayName' => 'Archive-2024', 
-                'parentFolderId' => 'root2', // Child of Archive
-                'totalItemCount' => 100,
-                'unreadItemCount' => 0
-            ]
-        ];
-
-        $result = $this->buildSimpleFolderHierarchy($sampleFolders);
-        
-        \Log::info('Folder hierarchy test result', [
-            'input_folders' => count($sampleFolders),
-            'output_folders' => count($result),
-            'result' => $result
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'input_count' => count($sampleFolders),
-            'output_count' => count($result),
-            'folders' => $result
-        ]);
-    }
 
     /**
      * Format folders with simple hierarchy detection (old method)

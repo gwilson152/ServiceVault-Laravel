@@ -71,6 +71,9 @@ GET /api/email-system/config
   "send_confirmations": true,
   "max_retries": 3,
   
+  "timestamp_source": "service_vault",
+  "timestamp_timezone": "preserve",
+  
   "created_at": "2025-08-25T23:22:50.000000Z",
   "updated_at": "2025-08-25T23:55:04.000000Z"
 }
@@ -110,7 +113,10 @@ PUT /api/email-system/config
   "auto_create_tickets": true,
   "process_commands": true,
   "send_confirmations": true,
-  "max_retries": 3
+  "max_retries": 3,
+  
+  "timestamp_source": "service_vault",
+  "timestamp_timezone": "preserve"
 }
 ```
 
@@ -142,6 +148,9 @@ auto_create_tickets: boolean
 process_commands: boolean
 send_confirmations: boolean
 max_retries: integer|min:0|max:10
+
+timestamp_source: string|in:service_vault,original
+timestamp_timezone: string|in:preserve,convert_local,convert_utc
 ```
 
 **Response**
@@ -221,6 +230,83 @@ GET /api/email-system/status
   "domain_mappings_count": 5,
   "active_domain_mappings": 4,
   "last_updated": "2025-08-25T23:55:04.000000Z"
+}
+```
+
+### Microsoft 365 Folder Management
+
+#### Get M365 Folders
+```http
+POST /api/settings/email/m365-folders
+```
+
+**Request Body**
+```json
+{
+  "m365_tenant_id": "12345678-1234-1234-1234-123456789012",
+  "m365_client_id": "87654321-4321-4321-4321-210987654321", 
+  "m365_client_secret": "your-client-secret",
+  "m365_mailbox": "support@company.com"
+}
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "folders": [
+    {
+      "id": "AAMkAGU3ZGExOTBjLTU2NzMtNDg5MS05MTg4LWQ2NmFlMmI0NjhhMwAuAAAAAACcoLtXNdwG",
+      "name": "Inbox",
+      "original_name": "Inbox",
+      "full_path": "Inbox",
+      "parent_id": null,
+      "total_count": 25,
+      "unread_count": 3,
+      "level": 0,
+      "sort_key": "Inbox"
+    },
+    {
+      "id": "AAMkAGU3ZGExOTBjLTU2NzMtNDg5MS05MTg4LWQ2NmFlMmI0NjhhMwAuAAAAAACcoLtXNdwH",
+      "name": "Archive",
+      "original_name": "Archive", 
+      "full_path": "Archive",
+      "parent_id": null,
+      "total_count": 150,
+      "unread_count": 0,
+      "level": 0,
+      "sort_key": "Archive"
+    },
+    {
+      "id": "AAMkAGU3ZGExOTBjLTU2NzMtNDg5MS05MTg4LWQ2NmFlMmI0NjhhMwAuAAAAAACcoLtXNdwI",
+      "name": "  Archive-2023",
+      "original_name": "Archive-2023",
+      "full_path": "Archive/Archive-2023", 
+      "parent_id": "AAMkAGU3ZGExOTBjLTU2NzMtNDg5MS05MTg4LWQ2NmFlMmI0NjhhMwAuAAAAAACcoLtXNdwH",
+      "total_count": 50,
+      "unread_count": 0,
+      "level": 1,
+      "sort_key": "Archive/Archive-2023"
+    }
+  ]
+}
+```
+
+**Features**
+- **Hierarchical Structure**: Folders include `level` field for visual hierarchy (0=root, 1=child)
+- **Message Counts**: Both `total_count` and `unread_count` for each folder
+- **Parent-Child Relationships**: `parent_id` field links child folders to parents  
+- **Search-Friendly**: `full_path` provides complete folder path for filtering
+- **Visual Display**: `name` field includes indentation for immediate UI use
+
+**Error Response**
+```json
+{
+  "success": false,
+  "message": "Failed to get M365 folders: Authentication failed",
+  "errors": {
+    "authentication": "Invalid tenant ID, client ID, or client secret"
+  }
 }
 ```
 

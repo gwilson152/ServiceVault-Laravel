@@ -1,5 +1,5 @@
 <template>
-  <StackedDialog v-if="show" @close="$emit('close')">
+  <StackedDialog :show="show" @close="$emit('close')">
     <template #title>
       {{ profile ? 'Edit API Profile' : 'Add FreeScout API Profile' }}
     </template>
@@ -305,11 +305,13 @@ import {
 
 // Props
 const props = defineProps({
+  show: Boolean,
   profile: {
     type: Object,
     default: null
   }
 })
+
 
 // Emits
 const emit = defineEmits(['close', 'save'])

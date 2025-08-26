@@ -272,7 +272,7 @@
 
   <!-- API Profile Modal -->
   <FreescoutApiProfileModal
-    v-if="showCreateProfileModal"
+    :show="showCreateProfileModal"
     :profile="editingProfile"
     @close="closeProfileModal"
     @save="handleSaveProfile"
@@ -280,7 +280,7 @@
 
   <!-- Import Preview Dialog -->
   <FreescoutImportPreviewDialog
-    v-if="showPreviewDialog"
+    :show="showPreviewDialog"
     :profile="previewProfile"
     :config="previewConfig"
     :import-data="mockImportData"
@@ -301,7 +301,7 @@
 
   <!-- Import Execution Dialog -->
   <FreescoutImportExecutionDialog
-    v-if="showExecutionDialog"
+    :show="showExecutionDialog"
     :profile="executionProfile"
     :config="executionConfig"
     @close="closeExecutionDialog"

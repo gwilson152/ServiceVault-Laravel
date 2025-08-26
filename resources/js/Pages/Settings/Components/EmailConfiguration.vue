@@ -104,10 +104,22 @@
       </div>
     </div>
 
+    <!-- Tab Navigation -->
+    <div class="mb-6">
+      <TabNavigation
+        v-model="activeTab"
+        :tabs="emailTabs"
+        variant="underline"
+        @tab-change="handleTabChange"
+      />
+    </div>
+
     <!-- Main Configuration Form -->
     <form @submit.prevent="saveConfiguration" class="space-y-8">
       
-      <!-- System Activation -->
+      <!-- Basic Configuration Tab -->
+      <div v-show="activeTab === 'basic'" class="space-y-8">
+        <!-- System Activation -->
       <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-medium text-gray-900">System Status</h3>
@@ -141,6 +153,34 @@
           </div>
         </div>
       </div>
+          
+          <!-- Email Provider Selection -->
+          <div class="bg-white shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-medium text-gray-900">Email Provider</h3>
+              <p class="text-sm text-gray-500 mt-1">Choose your incoming email service provider</p>
+            </div>
+            <div class="p-6 space-y-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Provider</label>
+                <select 
+                  v-model="form.email_provider" 
+                  @change="applyProviderDefaults('incoming')"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="">Select a provider...</option>
+                  <option value="imap">Generic IMAP</option>
+                  <option value="gmail">Gmail</option>
+                  <option value="outlook">Outlook/Office 365</option>
+                  <option value="m365">Microsoft 365 (Graph API)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Incoming Email Configuration Tab -->
+        <div v-show="activeTab === 'incoming'" class="space-y-8">
 
       <!-- Incoming Email Configuration -->
       <div class="bg-white shadow rounded-lg">
@@ -291,175 +331,114 @@
           <div v-show="form.email_provider === 'm365'" class="space-y-6">
             
             <!-- M365 Setup Instructions -->
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div class="flex items-start">
-                <svg class="h-5 w-5 text-blue-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                </svg>
-                <div>
-                  <h4 class="text-sm font-medium text-blue-800 mb-2">Microsoft 365 Setup Required</h4>
-                  <div class="text-sm text-blue-700 space-y-2">
-                    <p>To use Microsoft 365 Graph API, you need to create an Azure AD app registration. Follow these steps:</p>
-                    
-                    <div class="ml-4 space-y-1">
-                      <p><strong>1. Create Azure AD App Registration:</strong></p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>Go to <a href="https://portal.azure.com" target="_blank" class="text-blue-600 hover:text-blue-500 underline">Azure Portal</a> → Azure Active Directory → App registrations</li>
-                        <li>Click "New registration"</li>
-                        <li>Name: "Service Vault Email Integration"</li>
-                        <li>Supported account types: "Accounts in this organizational directory only"</li>
-                        <li>Redirect URI: Leave blank</li>
-                        <li>Click "Register"</li>
-                      </ul>
-                      
-                      <p><strong>2. Get Application Details:</strong></p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>Copy the "Application (client) ID" - this is your Client ID</li>
-                        <li>Copy the "Directory (tenant) ID" - this is your Tenant ID</li>
-                      </ul>
-                      
-                      <p><strong>3. Create Client Secret:</strong></p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>Go to "Certificates & secrets" → "Client secrets"</li>
-                        <li>Click "New client secret"</li>
-                        <li>Description: "Service Vault Email Access"</li>
-                        <li>Expires: Choose appropriate duration (24 months recommended)</li>
-                        <li>Copy the secret VALUE (not the ID) - this is your Client Secret</li>
-                      </ul>
-                      
-                      <p><strong>4. Configure API Permissions:</strong></p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>Go to "API permissions" → "Add a permission"</li>
-                        <li>Select "Microsoft Graph" → "Application permissions"</li>
-                        <li>Add these permissions:
-                          <ul class="ml-4 list-disc">
-                            <li><code class="bg-blue-100 px-1 rounded">Mail.Read</code> - Read mail in all mailboxes</li>
-                            <li><code class="bg-blue-100 px-1 rounded">Mail.ReadWrite</code> - Read and write mail in all mailboxes</li>
-                          </ul>
-                        </li>
-                        <li><strong>Important:</strong> Click "Grant admin consent" for your organization</li>
-                      </ul>
-                    </div>
-                    
-                    <div class="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                      <p class="text-yellow-800"><strong>Security Note:</strong> This app will have access to read emails from the specified mailbox. Ensure you use a dedicated service account mailbox for ticket processing.</p>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg">
+              <div class="p-4">
+                <button
+                  type="button"
+                  @click="showM365Instructions = !showM365Instructions"
+                  class="w-full flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                >
+                  <div class="flex items-start">
+                    <svg class="h-5 w-5 text-blue-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                      <h4 class="text-sm font-medium text-blue-800">Microsoft 365 Setup Instructions</h4>
+                      <p class="text-xs text-blue-600 mt-1">Click to {{ showM365Instructions ? 'hide' : 'show' }} Azure AD app registration guide</p>
                     </div>
                   </div>
+                  <svg 
+                    class="h-5 w-5 text-blue-400 transform transition-transform duration-200"
+                    :class="{ 'rotate-180': showM365Instructions }"
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Collapsible Instructions Content -->
+              <div 
+                v-show="showM365Instructions" 
+                class="border-t border-blue-200 p-4 bg-white rounded-b-lg"
+              >
+                <div class="space-y-4 text-sm text-gray-700">
+                  <div class="bg-blue-50 p-3 rounded-md">
+                    <p class="text-blue-800 font-medium mb-2">Quick Setup Summary:</p>
+                    <ol class="list-decimal list-inside space-y-1 text-xs text-blue-700">
+                      <li>Create Azure AD App Registration at <a href="https://portal.azure.com" target="_blank" class="text-blue-600 hover:text-blue-500 underline">Azure Portal</a></li>
+                      <li>Get Tenant ID and Client ID from app overview</li>
+                      <li>Create Client Secret and copy the value</li>
+                      <li>Add Mail.Read and Mail.ReadWrite permissions</li>
+                      <li>Grant admin consent for the organization</li>
+                    </ol>
+                  </div>
+
+                  <div>
+                    <h5 class="font-medium mb-2 text-gray-800">Step 1: Create Azure AD App Registration</h5>
+                    <ul class="ml-4 list-disc space-y-1 text-xs">
+                      <li>Go to <a href="https://portal.azure.com" target="_blank" class="text-blue-600 hover:text-blue-500 underline">Azure Portal</a> → Azure Active Directory → App registrations</li>
+                      <li>Click "New registration"</li>
+                      <li>Name: "Service Vault Email Integration"</li>
+                      <li>Supported account types: "Accounts in this organizational directory only"</li>
+                      <li>Redirect URI: Leave blank</li>
+                      <li>Click "Register"</li>
+                    </ul>
+                  </div>
                   
-                  <div class="mt-3 flex items-center space-x-2">
-                    <button
-                      type="button"
-                      @click="showM365Instructions = !showM365Instructions"
-                      class="text-xs text-blue-600 hover:text-blue-500"
-                    >
-                      {{ showM365Instructions ? 'Hide' : 'Show' }} detailed instructions
-                    </button>
+                  <div>
+                    <h5 class="font-medium mb-2 text-gray-800">Step 2: Get Application Details</h5>
+                    <ul class="ml-4 list-disc space-y-1 text-xs">
+                      <li>Copy the "Application (client) ID" - this is your <strong>Client ID</strong></li>
+                      <li>Copy the "Directory (tenant) ID" - this is your <strong>Tenant ID</strong></li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h5 class="font-medium mb-2 text-gray-800">Step 3: Create Client Secret</h5>
+                    <ul class="ml-4 list-disc space-y-1 text-xs">
+                      <li>Go to "Certificates & secrets" → "Client secrets"</li>
+                      <li>Click "New client secret"</li>
+                      <li>Description: "Service Vault Email Access"</li>
+                      <li>Expires: Choose appropriate duration (24 months recommended)</li>
+                      <li>Copy the secret VALUE (not the ID) - this is your <strong>Client Secret</strong></li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h5 class="font-medium mb-2 text-gray-800">Step 4: Configure API Permissions</h5>
+                    <ul class="ml-4 list-disc space-y-1 text-xs">
+                      <li>Go to "API permissions" → "Add a permission"</li>
+                      <li>Select "Microsoft Graph" → "Application permissions"</li>
+                      <li>Add these permissions:
+                        <ul class="ml-4 list-disc mt-1">
+                          <li><code class="bg-gray-100 px-1 rounded">Mail.Read</code> - Read mail in all mailboxes</li>
+                          <li><code class="bg-gray-100 px-1 rounded">Mail.ReadWrite</code> - Read and write mail in all mailboxes</li>
+                        </ul>
+                      </li>
+                      <li class="text-red-600 font-medium">Click "Grant admin consent for [your organization]"</li>
+                    </ul>
+                  </div>
+                  
+                  <div class="border-t pt-3">
+                    <h5 class="font-medium mb-2 text-gray-800">Troubleshooting:</h5>
+                    <ul class="ml-4 list-disc space-y-1 text-xs">
+                      <li><strong>Authentication failed:</strong> Verify Tenant ID, Client ID, and Client Secret are correct</li>
+                      <li><strong>Insufficient privileges:</strong> Ensure admin consent was granted for the permissions</li>
+                      <li><strong>Mailbox not found:</strong> Verify the mailbox email address exists and is accessible</li>
+                      <li><strong>Folders not loading:</strong> Test the M365 connection first, then try loading folders</li>
+                    </ul>
+                  </div>
+                  
+                  <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <p class="text-yellow-800 text-xs"><strong>⚠️ Security Note:</strong> This app will have access to read emails from the specified mailbox. Use a dedicated service account mailbox for ticket processing.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Detailed Instructions (Collapsible) -->
-            <div v-show="showM365Instructions" class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <h4 class="text-sm font-medium text-gray-800 mb-3">Detailed Configuration Guide</h4>
-              
-              <div class="space-y-4 text-sm text-gray-700">
-                <div>
-                  <h5 class="font-medium mb-2">Step-by-Step Azure Configuration:</h5>
-                  
-                  <div class="space-y-3">
-                    <div>
-                      <p class="font-medium text-gray-800">1. Access Azure Portal</p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>Navigate to <a href="https://portal.azure.com" target="_blank" class="text-indigo-600 hover:text-indigo-500 underline">https://portal.azure.com</a></li>
-                        <li>Sign in with your Microsoft 365 administrator account</li>
-                        <li>Search for "Azure Active Directory" in the top search bar</li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <p class="font-medium text-gray-800">2. Create App Registration</p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>In Azure AD, click "App registrations" in the left menu</li>
-                        <li>Click "New registration" at the top</li>
-                        <li>Fill in:
-                          <ul class="ml-4 list-disc">
-                            <li><strong>Name:</strong> Service Vault Email Integration</li>
-                            <li><strong>Supported account types:</strong> Accounts in this organizational directory only</li>
-                            <li><strong>Redirect URI:</strong> Leave blank</li>
-                          </ul>
-                        </li>
-                        <li>Click "Register"</li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <p class="font-medium text-gray-800">3. Get Required IDs</p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>On the app overview page, copy:
-                          <ul class="ml-4 list-disc">
-                            <li><strong>Application (client) ID:</strong> Use as Client ID below</li>
-                            <li><strong>Directory (tenant) ID:</strong> Use as Tenant ID below</li>
-                          </ul>
-                        </li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <p class="font-medium text-gray-800">4. Create Client Secret</p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>Click "Certificates & secrets" in the left menu</li>
-                        <li>Under "Client secrets", click "New client secret"</li>
-                        <li>Description: "Service Vault Email Access"</li>
-                        <li>Expires: 24 months (recommended)</li>
-                        <li>Click "Add"</li>
-                        <li><strong>Important:</strong> Copy the secret <strong>Value</strong> immediately (it won't be shown again)</li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <p class="font-medium text-gray-800">5. Configure Permissions</p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>Click "API permissions" in the left menu</li>
-                        <li>Click "Add a permission"</li>
-                        <li>Select "Microsoft Graph"</li>
-                        <li>Select "Application permissions" (not Delegated)</li>
-                        <li>Search for and add:
-                          <ul class="ml-4 list-disc">
-                            <li><strong>Mail.Read:</strong> Read mail in all mailboxes</li>
-                            <li><strong>Mail.ReadWrite:</strong> Read and write mail in all mailboxes</li>
-                          </ul>
-                        </li>
-                        <li>Click "Add permissions"</li>
-                        <li><strong>Critical:</strong> Click "Grant admin consent for [Your Organization]"</li>
-                        <li>Confirm by clicking "Yes"</li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <p class="font-medium text-gray-800">6. Best Practices</p>
-                      <ul class="ml-4 list-disc space-y-1 text-xs">
-                        <li>Use a dedicated service mailbox (e.g., support@company.com) rather than a personal mailbox</li>
-                        <li>Consider creating a separate folder in the mailbox for processed emails</li>
-                        <li>Test the configuration thoroughly before going live</li>
-                        <li>Monitor the app's usage in Azure AD regularly</li>
-                        <li>Set up appropriate alerting for authentication failures</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="border-t pt-4">
-                  <h5 class="font-medium mb-2">Troubleshooting Common Issues:</h5>
-                  <ul class="ml-4 list-disc space-y-1 text-xs">
-                    <li><strong>Authentication failed:</strong> Verify Tenant ID, Client ID, and Client Secret are correct</li>
-                    <li><strong>Insufficient privileges:</strong> Ensure admin consent was granted for the permissions</li>
-                    <li><strong>Mailbox not found:</strong> Verify the mailbox email address exists and is accessible</li>
-                    <li><strong>Folders not loading:</strong> Test the M365 connection first, then try loading folders</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
 
             <!-- Graph API Configuration -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -593,9 +572,6 @@
                           paddingRight: '12px'
                         }"
                       >
-                        <!-- Debug Level Display -->
-                        <span class="text-xs text-red-500 mr-1" v-if="folder.level > 0">[{{ folder.level }}]</span>
-                        
                         <!-- Tree Structure -->
                         <span v-if="folder.level > 0" class="text-gray-400 mr-2 select-none">
                           {{ '\u00A0'.repeat((folder.level - 1) * 2) }}├─
@@ -649,12 +625,104 @@
                 </span>
                 <span v-else>Test M365 Connection</span>
               </button>
+              
+              <!-- Test Email Retrieval -->
+              <button
+                type="button"
+                @click="testM365EmailRetrieval"
+                :disabled="testingEmailRetrieval || !canTestEmailRetrieval"
+                class="inline-flex items-center px-4 py-2 border border-indigo-600 text-sm font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span v-if="testingEmailRetrieval" class="flex items-center">
+                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Testing Retrieval...
+                </span>
+                <span v-else>Test Retrieval</span>
+              </button>
             </div>
           </div>
 
         </div>
       </div>
 
+      <!-- Test Email Results -->
+      <div v-show="form.email_provider === 'm365' && testEmails.length > 0" class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Latest Emails from Selected Folder</h3>
+          <p class="text-sm text-gray-500 mt-1">Last {{ testEmails.length }} email(s) retrieved from {{ form.m365_folder_name || 'selected folder' }}</p>
+        </div>
+        <div class="p-6">
+          <div class="space-y-4">
+            <div v-for="(email, index) in testEmails" :key="email.id" class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                  <!-- Email Header -->
+                  <div class="flex items-center space-x-3 mb-2">
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                          :class="email.is_read ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'">
+                      {{ email.is_read ? 'Read' : 'Unread' }}
+                    </span>
+                    <span v-if="email.has_attachments" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      📎 Attachments
+                    </span>
+                  </div>
+                  
+                  <!-- Subject -->
+                  <h4 class="text-lg font-medium text-gray-900 truncate" :title="email.subject">
+                    {{ email.subject }}
+                  </h4>
+                  
+                  <!-- From -->
+                  <div class="mt-1 text-sm text-gray-600">
+                    <span class="font-medium">From:</span>
+                    {{ email.from_name }}
+                    <span class="text-gray-500">&lt;{{ email.from_address }}&gt;</span>
+                  </div>
+                  
+                  <!-- Date -->
+                  <div class="mt-1 text-sm text-gray-500">
+                    <span class="font-medium">Received:</span>
+                    {{ email.received_formatted }}
+                  </div>
+                  
+                  <!-- Body Preview -->
+                  <div class="mt-3 text-sm text-gray-700 bg-gray-50 rounded-md p-3">
+                    <span class="font-medium text-gray-800">Preview:</span>
+                    <p class="mt-1 line-clamp-3">{{ email.body_preview || '(No preview available)' }}</p>
+                  </div>
+                </div>
+                
+                <!-- Email Number -->
+                <div class="ml-4 flex-shrink-0">
+                  <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-800 text-sm font-medium">
+                    {{ index + 1 }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Clear Results Button -->
+          <div class="mt-6 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              @click="testEmails = []"
+              class="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Clear Results
+            </button>
+          </div>
+        </div>
+      </div>
+
+        </div>
+        
+        <!-- Processing Configuration Tab -->
+        <div v-show="activeTab === 'processing'" class="space-y-8">
+        
       <!-- Email Processing Actions -->
       <div v-show="form.incoming_enabled" class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -699,6 +767,9 @@
                 >
                   {{ loadingFolders ? 'Loading...' : 'Refresh Folders' }}
                 </button>
+                <div v-if="foldersLastLoaded" class="text-xs text-gray-500 mt-1">
+                  Last refreshed: {{ foldersLastLoaded.toLocaleTimeString() }}
+                </div>
               </div>
               
               <!-- Custom Move-to Folder Picker -->
@@ -788,6 +859,73 @@
         </div>
       </div>
 
+      <!-- Timestamp Processing Options -->
+      <div v-show="form.incoming_enabled" class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Timestamp Processing</h3>
+          <p class="text-sm text-gray-500 mt-1">Configure which timestamp to use when creating tickets from emails</p>
+        </div>
+        <div class="p-6 space-y-6">
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Ticket Creation Time</label>
+            <select 
+              v-model="form.timestamp_source" 
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="service_vault">Service Vault Processing Time</option>
+              <option value="original">Original Email Timestamp</option>
+            </select>
+            <div class="mt-2 text-sm text-gray-600">
+              <div v-if="form.timestamp_source === 'service_vault'" class="flex items-start space-x-2">
+                <svg class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <div>
+                  <p class="font-medium text-gray-700">Service Vault Processing Time (Recommended)</p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    Uses the timestamp when Service Vault processed the email. This ensures accurate chronological order of tickets and prevents timestamp manipulation.
+                  </p>
+                </div>
+              </div>
+              <div v-else class="flex items-start space-x-2">
+                <svg class="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                <div>
+                  <p class="font-medium text-gray-700">Original Email Timestamp</p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    Uses the original timestamp from the email headers. May result in tickets appearing out of chronological processing order if emails are processed with delays.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Timezone Handling -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Timezone Handling</label>
+            <select 
+              v-model="form.timestamp_timezone" 
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="preserve">Preserve Original Timezone</option>
+              <option value="convert_local">Convert to Server Timezone</option>
+              <option value="convert_utc">Convert to UTC</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              How to handle timezone information from email timestamps when using original email timestamp
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+        </div>
+        
+        <!-- Outgoing Email Configuration Tab -->
+        <div v-show="activeTab === 'outgoing'" class="space-y-8">
+        
       <!-- Outgoing Email Configuration -->
       <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -1042,6 +1180,8 @@
 
         </div>
       </div>
+        
+        </div>
 
     </form>
 
@@ -1103,6 +1243,7 @@ import {
   XCircleIcon,
   ChartBarIcon
 } from '@heroicons/vue/24/outline'
+import TabNavigation from '@/Components/Layout/TabNavigation.vue'
 
 // Props
 const props = defineProps({
@@ -1132,6 +1273,12 @@ const selectedFolderDisplay = ref('')
 const showMoveFolderDropdown = ref(false)
 const moveFolderSearchQuery = ref('')
 const selectedMoveFolderDisplay = ref('')
+const foldersLastLoaded = ref(null)
+const testingEmailRetrieval = ref(false)
+const testEmails = ref([])
+
+// Tab management
+const activeTab = ref('basic')
 
 // Form data
 const form = useForm({
@@ -1178,6 +1325,10 @@ const form = useForm({
   auto_create_users: false,
   default_role_for_new_users: '',
   require_approval_for_new_users: true,
+  
+  // Timestamp processing
+  timestamp_source: 'service_vault', // 'service_vault' or 'original'
+  timestamp_timezone: 'preserve', // 'preserve', 'convert_local', or 'convert_utc'
 })
 
 // Computed
@@ -1189,6 +1340,10 @@ const canLoadFolders = computed(() => {
          form.m365_client_id && 
          form.m365_client_secret && 
          form.m365_mailbox
+})
+
+const canTestEmailRetrieval = computed(() => {
+  return canLoadFolders.value && form.m365_folder_id
 })
 
 const filteredFolders = computed(() => {
@@ -1214,6 +1369,35 @@ const filteredMoveFolders = computed(() => {
     return name.includes(query)
   })
 })
+
+// Email configuration tabs
+const emailTabs = [
+  {
+    id: 'basic',
+    name: 'Basic Configuration',
+    icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+  },
+  {
+    id: 'incoming',
+    name: 'Incoming Email',
+    icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+  },
+  {
+    id: 'outgoing',
+    name: 'Outgoing Email',
+    icon: 'M12 19l9 2-9-18-9 18 9-2zm0 0v-8'
+  },
+  {
+    id: 'processing',
+    name: 'Processing & Actions',
+    icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z'
+  }
+]
+
+// Handle tab changes
+const handleTabChange = (tabId) => {
+  activeTab.value = tabId
+}
 
 // Provider defaults
 const providerDefaults = {
@@ -1399,7 +1583,7 @@ const loadM365Folders = async () => {
 
   loadingFolders.value = true
   try {
-    const response = await fetch('/api/settings/email/m365-folders', {
+    const response = await fetch(`/api/settings/email/m365-folders?_=${Date.now()}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1409,13 +1593,26 @@ const loadM365Folders = async () => {
         m365_tenant_id: form.m365_tenant_id,
         m365_client_id: form.m365_client_id,
         m365_client_secret: form.m365_client_secret,
-        m365_mailbox: form.m365_mailbox
+        m365_mailbox: form.m365_mailbox,
+        force_refresh: true  // Force fresh data
       })
     })
     
     const result = await response.json()
     if (response.ok && result.success) {
       m365Folders.value = result.folders
+      foldersLastLoaded.value = new Date()
+      
+      // Update the selected folder display with latest folder data
+      if (form.m365_folder_id && form.m365_folder_id !== 'inbox') {
+        const selectedFolder = result.folders.find(f => f.id === form.m365_folder_id)
+        if (selectedFolder) {
+          const icon = getFolderIcon(selectedFolder.original_name || selectedFolder.name)
+          const counts = selectedFolder.total_count > 0 ? ` (${selectedFolder.unread_count}/${selectedFolder.total_count})` : ''
+          const indent = selectedFolder.level > 0 ? '  '.repeat(selectedFolder.level) : ''
+          selectedFolderDisplay.value = `${indent}${icon} ${selectedFolder.original_name || selectedFolder.name}${counts}`
+        }
+      }
     } else {
       alert(`Failed to load folders: ${result.message}`)
     }
@@ -1424,6 +1621,49 @@ const loadM365Folders = async () => {
     alert('Failed to load folders: ' + error.message)
   } finally {
     loadingFolders.value = false
+  }
+}
+
+// Test email retrieval from selected M365 folder
+const testM365EmailRetrieval = async () => {
+  if (!canTestEmailRetrieval.value) {
+    alert('Please select a folder first')
+    return
+  }
+
+  testingEmailRetrieval.value = true
+  testEmails.value = []
+  
+  try {
+    const response = await fetch(`/api/settings/email/test-m365-retrieval?_=${Date.now()}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        m365_tenant_id: form.m365_tenant_id,
+        m365_client_id: form.m365_client_id,
+        m365_client_secret: form.m365_client_secret,
+        m365_mailbox: form.m365_mailbox,
+        m365_folder_id: form.m365_folder_id
+      })
+    })
+    
+    const result = await response.json()
+    if (response.ok && result.success) {
+      testEmails.value = result.emails
+      if (result.emails.length === 0) {
+        alert('No emails found in the selected folder')
+      }
+    } else {
+      alert(`Failed to retrieve emails: ${result.message}`)
+    }
+  } catch (error) {
+    console.error('Failed to retrieve emails:', error)
+    alert('Failed to retrieve emails: ' + error.message)
+  } finally {
+    testingEmailRetrieval.value = false
   }
 }
 
@@ -1557,6 +1797,18 @@ const initializeFormData = () => {
     // Set test results if available
     if (config.value.test_results) {
       testResults.value = config.value.test_results
+    }
+    
+    // Initialize folder display based on saved folder selection
+    if (form.m365_folder_id && form.m365_folder_name) {
+      if (form.m365_folder_id === 'inbox') {
+        selectedFolderDisplay.value = '📧 Inbox'
+      } else {
+        // For non-inbox folders, create a basic display
+        // The proper display will be updated when folders are loaded
+        const icon = getFolderIcon(form.m365_folder_name)
+        selectedFolderDisplay.value = `${icon} ${form.m365_folder_name}`
+      }
     }
     
     console.log('Initialized form data:', form.data())

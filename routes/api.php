@@ -412,7 +412,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Settings Management routes (Admin access required)
     Route::prefix('settings')->group(function () {
         Route::get('/', [SettingController::class, 'index'])
-            ->name('settings.index');
+            ->name('settings.api.index');
 
         // System Settings
         Route::put('system', [SettingController::class, 'updateSystemSettings'])
@@ -431,8 +431,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('settings.email.test-m365');
         Route::post('email/m365-folders', [SettingController::class, 'getM365Folders'])
             ->name('settings.email.m365-folders');
-        Route::get('email/test-folder-hierarchy', [SettingController::class, 'testFolderHierarchy'])
-            ->name('settings.email.test-folder-hierarchy');
+        Route::post('email/test-m365-retrieval', [SettingController::class, 'testM365EmailRetrieval'])
+            ->name('settings.email.test-m365-retrieval');
 
         // Ticket Configuration
         Route::get('ticket-config', [SettingController::class, 'getTicketConfig'])

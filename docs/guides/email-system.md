@@ -88,6 +88,34 @@ Navigate to **Settings → Email** or directly visit `/settings/email`
    Folder: INBOX
    ```
 
+#### Microsoft 365 Folder Selection
+
+For Microsoft 365/Outlook configurations, the system provides an **intelligent folder hierarchy browser**:
+
+1. **Load Folders**: Click "Load Folders" to retrieve your mailbox structure
+2. **Browse Hierarchy**: Navigate through folders with visual tree structure:
+   ```
+   📧 Inbox
+   📁 Archive
+     ├─ Archive-2023
+     ├─ Archive-2024
+   📁 Projects
+     ├─ Client A
+     ├─ Client B
+   📁 Support
+     ├─ Tickets
+     ├─ General
+   ```
+3. **Search Folders**: Use the search box to quickly find specific folders
+4. **Message Counts**: View unread/total message counts for each folder
+5. **Smart Selection**: Choose the folder to monitor for incoming service tickets
+
+**Features**:
+- ✅ **Hierarchical Display**: Visual tree structure with proper indentation
+- ✅ **Real-Time Search**: Filter folders as you type
+- ✅ **Message Counts**: Shows (unread/total) for each folder
+- ✅ **Smart Defaults**: Inbox pre-selected as default option
+
 ### Step 3: Configure Outgoing Email Service
 
 1. **Enable Outgoing Service**
@@ -125,7 +153,20 @@ Navigate to **Settings → Email** or directly visit `/settings/email`
 ☑ Process Commands: Execute embedded email commands
 ☑ Send Confirmations: Send auto-reply confirmations
 Max Retries: 3
+
+Timestamp Processing:
+• Ticket Creation Time: Service Vault Processing Time (Recommended)
+• Timezone Handling: Preserve Original Timezone
 ```
+
+**Timestamp Processing Options**:
+- **Service Vault Processing Time (Recommended)**: Uses the timestamp when Service Vault processed the email. Ensures accurate chronological order and prevents timestamp manipulation.
+- **Original Email Timestamp**: Uses the timestamp from the email headers. May result in tickets appearing out of chronological order if emails are processed with delays.
+
+**Timezone Handling**:
+- **Preserve Original**: Keep the timezone information from the email
+- **Convert to Server Timezone**: Convert timestamps to the server's timezone
+- **Convert to UTC**: Standardize all timestamps to UTC
 
 ### Step 5: Activate System
 
@@ -213,7 +254,10 @@ When multiple patterns could match an email, the system uses **priority order**:
 
 ### Access Email Monitoring
 
-Navigate to **Admin → Email** or visit `/admin/email`
+Navigate to **Admin → Email** and choose from available monitoring interfaces:
+
+- **Dashboard** (`/admin/email/dashboard`) - System overview and metrics
+- **Processing Monitor** (`/admin/email/monitoring`) - Real-time email processing activity
 
 ### Dashboard Metrics
 
@@ -228,11 +272,42 @@ Navigate to **Admin → Email** or visit `/admin/email`
 - **Commands Executed**: 89
 - **Average Processing Time**: 1.2s
 
-**Recent Activity**
-- Live feed of processed emails
-- Success/failure status
-- Ticket creation results
-- Command execution results
+### Real-Time Processing Monitor
+
+The **Processing Monitor** (`/admin/email/monitoring`) provides comprehensive real-time monitoring:
+
+**Live Activity Feed**
+- Real-time email processing events with WebSocket updates
+- Email status indicators (sent, delivered, failed, bounced)
+- Processing time and retry information
+- Detailed error messages for failed emails
+
+**Advanced Filtering**
+```
+Time Range: Last Hour | 6 Hours | 24 Hours | 7 Days | 30 Days
+Status: All | Pending | Processing | Sent | Delivered | Failed | Bounced
+Email Account: All Accounts | Specific account selection
+Direction: All | Inbound | Outbound
+```
+
+**Performance Metrics Cards**
+- **Total Processed**: Live count with success rate percentage
+- **Successful**: Count with percentage change from previous period
+- **Failed**: Error count with failure rate trends
+- **Average Processing Time**: Real-time processing performance
+
+**Queue Status Sidebar**
+- **Pending Jobs**: Currently queued emails
+- **Processing Jobs**: Actively being processed
+- **Failed Jobs**: Requires manual intervention
+- **System Performance**: CPU, memory, and queue health metrics
+
+**Email Details Modal**
+- Complete email processing timeline
+- Raw email content viewer
+- Attachment management
+- Retry functionality for failed emails
+- System metadata and debugging information
 
 ### System Health Monitoring
 
@@ -321,6 +396,30 @@ Solution:
   - Check pattern type (domain/email/wildcard)
   - Review mapping priority order
   - Test with specific email addresses
+```
+
+**6. Microsoft 365 Folder Issues**
+```
+Problem: Folder hierarchy not displaying correctly
+Solution:
+  - Verify M365 credentials and permissions
+  - Check that client app has Mail.Read permissions
+  - Ensure mailbox has proper folder structure
+  - Review folder loading logs in Laravel log
+
+Problem: Cannot load M365 folders
+Solution:
+  - Verify Tenant ID, Client ID, and Client Secret
+  - Check application permissions in Azure AD
+  - Ensure client app is configured for client credentials flow
+  - Review authentication logs for specific error messages
+
+Problem: Folder selection not saving
+Solution:
+  - Ensure folder ID is being returned correctly
+  - Check folder name contains valid characters
+  - Verify folder hierarchy detection is working
+  - Review browser console for JavaScript errors
 ```
 
 ### Queue Management
