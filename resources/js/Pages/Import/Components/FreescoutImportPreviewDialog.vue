@@ -1,10 +1,5 @@
 <template>
-  <StackedDialog @close="$emit('close')" :show="true" size="large">
-    <template #title>
-      Preview FreeScout Import
-    </template>
-
-    <template #content>
+  <StackedDialog @close="$emit('close')" :show="true" maxWidth="4xl" title="Preview FreeScout Import">
       <div class="space-y-6">
         <!-- Import Configuration Summary -->
         <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
@@ -376,9 +371,8 @@
           </div>
         </div>
       </div>
-    </template>
 
-    <template #actions>
+    <template #footer>
       <div class="flex justify-between">
         <div class="text-sm text-gray-500">
           Estimated import time: {{ estimatedDuration }} minutes

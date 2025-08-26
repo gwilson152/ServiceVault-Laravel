@@ -161,7 +161,7 @@ class FreescoutApiService
 
                 if ($conversationsResponse->successful()) {
                     $conversations = $conversationsResponse->json();
-                    Log::info('Conversations response', ['response' => $conversations]);
+                    Log::info('Conversations response for count', ['response' => $conversations]);
                     
                     if (isset($conversations['page']['totalElements'])) {
                         // Spring Boot/HAL style pagination
@@ -169,11 +169,33 @@ class FreescoutApiService
                     } elseif (isset($conversations['total'])) {
                         // Laravel style pagination
                         $conversationsCount = $conversations['total'];
-                    } elseif (isset($conversations['_embedded']['conversations'])) {
-                        // HAL with embedded data - estimate from per_page
-                        $conversationsCount = count($conversations['_embedded']['conversations']) * 100; // Rough estimate
-                    } elseif (isset($conversations['data'])) {
-                        $conversationsCount = count($conversations['data']) * 100; // Rough estimate
+                    } elseif (isset($conversations['meta']['total'])) {
+                        // Alternative Laravel style
+                        $conversationsCount = $conversations['meta']['total'];
+                    } elseif (isset($conversations['_links']['last']['href'])) {
+                        // Extract total from HAL pagination links
+                        $conversationsCount = $this->extractTotalFromHalLinks($conversations['_links']);
+                    } else {
+                        // Fallback: try to get actual total by requesting a larger per_page
+                        $fallbackResponse = Http::withHeaders($headers)
+                            ->timeout(60)
+                            ->get("{$instanceUrl}/api/conversations", [
+                                'per_page' => 1000, // Get more data to estimate better
+                                'page' => 1,
+                            ]);
+                        
+                        if ($fallbackResponse->successful()) {
+                            $fallbackData = $fallbackResponse->json();
+                            if (isset($fallbackData['_embedded']['conversations'])) {
+                                $conversationsCount = count($fallbackData['_embedded']['conversations']);
+                                // If we got exactly 1000, there might be more
+                                if ($conversationsCount === 1000) {
+                                    Log::warning('Conversation count might be higher than 1000, using approximation');
+                                }
+                            } elseif (isset($fallbackData['data'])) {
+                                $conversationsCount = count($fallbackData['data']);
+                            }
+                        }
                     }
                 } else {
                     Log::error('Conversations API failed', [
@@ -195,7 +217,7 @@ class FreescoutApiService
 
                 if ($customersResponse->successful()) {
                     $customers = $customersResponse->json();
-                    Log::info('Customers response', ['response' => $customers]);
+                    Log::info('Customers response for count', ['response' => $customers]);
                     
                     if (isset($customers['page']['totalElements'])) {
                         // Spring Boot/HAL style pagination
@@ -203,11 +225,33 @@ class FreescoutApiService
                     } elseif (isset($customers['total'])) {
                         // Laravel style pagination
                         $customersCount = $customers['total'];
-                    } elseif (isset($customers['_embedded']['customers'])) {
-                        // HAL with embedded data - estimate
-                        $customersCount = count($customers['_embedded']['customers']) * 50; // Rough estimate
-                    } elseif (isset($customers['data'])) {
-                        $customersCount = count($customers['data']) * 50; // Rough estimate
+                    } elseif (isset($customers['meta']['total'])) {
+                        // Alternative Laravel style
+                        $customersCount = $customers['meta']['total'];
+                    } elseif (isset($customers['_links']['last']['href'])) {
+                        // Extract total from HAL pagination links
+                        $customersCount = $this->extractTotalFromHalLinks($customers['_links']);
+                    } else {
+                        // Fallback: try to get actual total by requesting a larger per_page
+                        $fallbackResponse = Http::withHeaders($headers)
+                            ->timeout(60)
+                            ->get("{$instanceUrl}/api/customers", [
+                                'per_page' => 1000, // Get more data to estimate better
+                                'page' => 1,
+                            ]);
+                        
+                        if ($fallbackResponse->successful()) {
+                            $fallbackData = $fallbackResponse->json();
+                            if (isset($fallbackData['_embedded']['customers'])) {
+                                $customersCount = count($fallbackData['_embedded']['customers']);
+                                // If we got exactly 1000, there might be more
+                                if ($customersCount === 1000) {
+                                    Log::warning('Customer count might be higher than 1000, using approximation');
+                                }
+                            } elseif (isset($fallbackData['data'])) {
+                                $customersCount = count($fallbackData['data']);
+                            }
+                        }
                     }
                 } else {
                     Log::error('Customers API failed', [
@@ -245,6 +289,29 @@ class FreescoutApiService
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Extract total count from HAL pagination links.
+     */
+    private function extractTotalFromHalLinks(array $links): int
+    {
+        if (isset($links['last']['href'])) {
+            $lastLink = $links['last']['href'];
+            // Parse URL to extract page parameter
+            $urlParts = parse_url($lastLink);
+            if (isset($urlParts['query'])) {
+                parse_str($urlParts['query'], $queryParams);
+                if (isset($queryParams['page']) && isset($queryParams['per_page'])) {
+                    $lastPage = (int) $queryParams['page'];
+                    $perPage = (int) $queryParams['per_page'];
+                    // Rough estimate: (lastPage * perPage) gives us approximate total
+                    return $lastPage * $perPage;
+                }
+            }
+        }
+        
+        return 0;
     }
 
     /**

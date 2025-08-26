@@ -182,7 +182,7 @@ const config = ref({
   },
   account_strategy: 'map_mailboxes',
   user_strategy: 'map_emails',
-  sync_strategy: 'upsert',
+  sync_strategy: 'create_only',
   duplicate_detection: 'external_id',
   date_range: {
     enabled: false,
@@ -215,8 +215,21 @@ const updateConfig = (updates) => {
   display: none;  /* Chrome, Safari, Opera */
 }
 
-/* Smooth scrolling */
+/* Smooth scrolling and touch support */
 .scrollbar-hide {
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+  overscroll-behavior-x: contain; /* Prevent over-scroll effects */
+}
+
+/* Additional mobile-friendly touch scrolling */
+@media (max-width: 768px) {
+  .scrollbar-hide {
+    scroll-snap-type: x proximity; /* Snap to tabs on mobile */
+  }
+  
+  .scrollbar-hide nav button {
+    scroll-snap-align: center;
+  }
 }
 </style>

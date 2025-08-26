@@ -88,32 +88,32 @@
     <template #main-content>
       <!-- System Status Alerts -->
       <div v-if="systemAlerts.length > 0" class="mb-6 space-y-3">
-        <div v-for="alert in systemAlerts" :key="alert.id" 
+        <div v-for="(alert, index) in systemAlerts" :key="alert.id || index" 
           :class="[
             'p-4 rounded-lg border-l-4',
-            alert.severity === 'error' ? 'bg-red-50 border-red-400' :
-            alert.severity === 'warning' ? 'bg-yellow-50 border-yellow-400' :
+            alert.type === 'error' ? 'bg-red-50 border-red-400' :
+            alert.type === 'warning' ? 'bg-yellow-50 border-yellow-400' :
             'bg-blue-50 border-blue-400'
           ]">
           <div class="flex items-start">
             <div class="flex-shrink-0">
-              <ExclamationTriangleIcon v-if="alert.severity === 'error'" class="h-5 w-5 text-red-400" />
-              <ExclamationTriangleIcon v-else-if="alert.severity === 'warning'" class="h-5 w-5 text-yellow-400" />
+              <ExclamationTriangleIcon v-if="alert.type === 'error'" class="h-5 w-5 text-red-400" />
+              <ExclamationTriangleIcon v-else-if="alert.type === 'warning'" class="h-5 w-5 text-yellow-400" />
               <InformationCircleIcon v-else class="h-5 w-5 text-blue-400" />
             </div>
             <div class="ml-3 flex-1">
               <h3 :class="[
                 'text-sm font-medium',
-                alert.severity === 'error' ? 'text-red-800' :
-                alert.severity === 'warning' ? 'text-yellow-800' :
+                alert.type === 'error' ? 'text-red-800' :
+                alert.type === 'warning' ? 'text-yellow-800' :
                 'text-blue-800'
               ]">
                 {{ alert.title }}
               </h3>
               <p :class="[
                 'text-sm mt-1',
-                alert.severity === 'error' ? 'text-red-700' :
-                alert.severity === 'warning' ? 'text-yellow-700' :
+                alert.type === 'error' ? 'text-red-700' :
+                alert.type === 'warning' ? 'text-yellow-700' :
                 'text-blue-700'
               ]">
                 {{ alert.message }}
@@ -270,12 +270,12 @@
             </div>
             
             <div class="space-y-3">
-              <div v-for="activity in recentActivity" :key="activity.id" 
+              <div v-for="activity in recentActivity" :key="activity.email_id || activity.id" 
                 class="flex items-center space-x-3 p-3 bg-gray-50 rounded-md">
                 <div class="flex-shrink-0">
                   <div :class="[
                     'w-2 h-2 rounded-full',
-                    activity.status === 'success' ? 'bg-green-400' :
+                    activity.status === 'processed' ? 'bg-green-400' :
                     activity.status === 'failed' ? 'bg-red-400' :
                     activity.status === 'processing' ? 'bg-blue-400' :
                     'bg-gray-400'
@@ -284,13 +284,13 @@
                 <div class="min-w-0 flex-1">
                   <p class="text-sm text-gray-900 truncate">{{ activity.subject || 'Email processed' }}</p>
                   <p class="text-xs text-gray-500">
-                    {{ activity.from }} • {{ formatTimeAgo(activity.created_at) }}
+                    {{ activity.from_address || activity.from }} • {{ formatTimeAgo(activity.created_at) }}
                   </p>
                 </div>
                 <div class="flex-shrink-0">
                   <span :class="[
                     'inline-flex px-2 py-1 text-xs font-medium rounded-full',
-                    activity.status === 'success' ? 'bg-green-100 text-green-800' :
+                    activity.status === 'processed' ? 'bg-green-100 text-green-800' :
                     activity.status === 'failed' ? 'bg-red-100 text-red-800' :
                     activity.status === 'processing' ? 'bg-blue-100 text-blue-800' :
                     'bg-gray-100 text-gray-800'
