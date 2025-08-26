@@ -27,12 +27,7 @@
             <!-- Email Configuration Tab -->
             <div v-show="activeTab === 'email'" class="space-y-8">
                 <EmailConfiguration
-                    :settings="emailSettings"
-                    :loading="loading.email"
-                    :testing="testing"
-                    @update="updateEmailSettings"
-                    @test-smtp="testSmtp"
-                    @test-imap="testImap"
+                    :config="emailSettings?.data || emailSettings"
                 />
             </div>
 
@@ -255,7 +250,8 @@ const loadTicketConfig = async () => {
         loading.tickets = true;
         const response = await fetch('/api/settings/ticket-config');
         if (response.ok) {
-            ticketConfig.value = await response.json();
+            const result = await response.json();
+            ticketConfig.value = result.data || result;
         }
     } catch (error) {
         console.error('Failed to load ticket config:', error);

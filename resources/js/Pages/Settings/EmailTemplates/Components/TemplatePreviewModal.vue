@@ -145,7 +145,7 @@
         <h4 class="text-sm font-medium text-blue-900 mb-3">Variables Used in Preview</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div v-for="(value, key) in variablesUsed" :key="key" class="flex justify-between">
-            <code class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{{'{{'}}{{ key }}{{'}}'}}</code>
+            <code class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ key }}</code>
             <span class="text-xs text-blue-700 ml-2">{{ value || '(empty)' }}</span>
           </div>
         </div>
@@ -205,7 +205,7 @@ import {
   ClipboardDocumentIcon,
   ExclamationTriangleIcon
 } from '@heroicons/vue/24/outline'
-import StackedDialog from '@/Components/Modals/StackedDialog.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
 import TestEmailModal from './TestEmailModal.vue'
 
 const props = defineProps({
@@ -373,6 +373,10 @@ async function generatePreview() {
 
 function getTypeLabel(type) {
   return templateTypeLabels[type] || type
+}
+
+function formatVariable(key) {
+  return `{{${key}}}`
 }
 
 async function copyToClipboard(content) {

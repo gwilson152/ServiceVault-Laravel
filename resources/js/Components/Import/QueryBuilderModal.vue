@@ -198,6 +198,15 @@
             </button>
             
             <button
+              @click="showImportPreview"
+              :disabled="!isQueryValid"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+            >
+              <PlayIcon class="w-4 h-4 mr-2" />
+              Preview Import
+            </button>
+            
+            <button
               @click="saveQuery"
               :disabled="!isQueryValid || isSaving"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
@@ -211,6 +220,17 @@
       </div>
     </div>
   </StackedDialog>
+
+  <!-- Query Import Preview Modal -->
+  <QueryImportPreviewModal
+    :show="showQueryImportPreview"
+    :profile="props.profile"
+    :query-config="queryBuilder.queryConfig"
+    :import-type="'query'"
+    @close="showQueryImportPreview = false"
+    @executed="handleExecuted"
+    @execution-started="handleExecutionStarted"
+  />
 </template>
 
 <script setup>
@@ -221,6 +241,7 @@ import JoinBuilder from './JoinBuilder.vue'
 import FieldMapper from './FieldMapper.vue'
 import FilterBuilder from './FilterBuilder.vue'
 import QueryPreview from './QueryPreview.vue'
+import QueryImportPreviewModal from '@/Pages/Import/Components/QueryImportPreviewModal.vue'
 import { useQueryBuilder } from '@/composables/useQueryBuilder'
 import {
   TableCellsIcon,
@@ -233,6 +254,7 @@ import {
   ChevronRightIcon,
   BookmarkIcon,
   CheckIcon,
+  PlayIcon,
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -247,7 +269,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'query-saved'])
+const emit = defineEmits(['close', 'query-saved', 'execution-started'])
 
 // State
 const currentStep = ref('tables')
@@ -256,6 +278,7 @@ const availableTables = ref([])
 const isQueryValid = ref(false)
 const isSaving = ref(false)
 const queryPreviewRef = ref(null)
+const showQueryImportPreview = ref(false)
 
 // Initialize query builder with proper defaults, avoiding premature spreading
 const initialConfigWithDefaults = {
@@ -564,6 +587,27 @@ const saveAsTemplate = async () => {
   } catch (error) {
     console.error('Save template failed:', error)
     alert('Failed to save template: ' + error.message)
+  }
+}
+
+// Handler for query import preview modal events
+const handleExecutionStarted = (executionData) => {
+  // Forward the execution started event to the parent (Index.vue)
+  emit('execution-started', executionData)
+}
+
+const handleExecuted = (executionData) => {
+  // Handle the legacy executed event if needed
+  console.log('Query import executed:', executionData)
+}
+
+// Add a method to show the query import preview
+const showImportPreview = () => {
+  // Allow preview even with incomplete query - the modal will show appropriate error/guidance
+  if (queryBuilder.baseTable.value || props.profile) {
+    showQueryImportPreview.value = true
+  } else {
+    alert('Please select a base table to start configuring your query.')
   }
 }
 

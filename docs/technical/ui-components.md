@@ -49,6 +49,58 @@ The primary layout wrapper for all pages in Service Vault, providing consistent 
 - `sidebar-width` (String, default: "lg:col-span-4 xl:col-span-3"): Tailwind classes for sidebar width
 - `content-width` (String, default: "lg:col-span-8 xl:col-span-9"): Tailwind classes for content width
 
+## Modal Components
+
+### StackedDialog
+
+Service Vault uses a native HTML dialog-based modal system with proper stacking and z-index management.
+
+**Location**: `/resources/js/Components/StackedDialog.vue`
+
+**Import Pattern**:
+```vue
+<template>
+  <StackedDialog :show="showDialog" @close="handleClose" :closable="true">
+    <template #title>
+      <h3 class="text-lg font-medium text-gray-900">Dialog Title</h3>
+    </template>
+    
+    <!-- Main dialog content -->
+    <div class="space-y-4">
+      <p>Dialog content goes here</p>
+    </div>
+    
+    <template #actions>
+      <div class="flex justify-end space-x-3">
+        <button @click="handleClose" class="btn-secondary">Cancel</button>
+        <button @click="handleConfirm" class="btn-primary">Confirm</button>
+      </div>
+    </template>
+  </StackedDialog>
+</template>
+
+<script setup>
+import StackedDialog from '@/Components/StackedDialog.vue'
+</script>
+```
+
+**Critical Import Requirements**:
+- ✅ **Correct**: `import StackedDialog from '@/Components/StackedDialog.vue'`
+- ❌ **Wrong**: `import StackedDialog from '@/Components/UI/StackedDialog.vue'`
+
+**Props**:
+- `show` (Boolean): Controls dialog visibility
+- `closable` (Boolean, default: true): Whether dialog can be closed with X button or escape key
+- `class` (String): Additional CSS classes for dialog sizing (e.g., "max-w-2xl", "max-w-4xl")
+
+**Events**:
+- `@close`: Emitted when dialog should be closed (user clicks X, escape, or backdrop)
+
+**Slots**:
+- `#title`: Dialog header content
+- `#default`: Main dialog content (unnamed slot)
+- `#actions`: Dialog footer with buttons and actions
+
 **Features**:
 - **Mobile-First**: Automatic sidebar and filter collapsing on mobile
 - **Full-Width Desktop**: No artificial width constraints on large screens

@@ -24,12 +24,14 @@ npm run dev         # Vite dev server with HMR
 - **[Setup Guide](guides/setup.md)** - Installation and configuration
 - **[Timer System](guides/timers.md)** - Multi-timer usage and features
 - **[Tickets & Billing](guides/tickets-billing.md)** - Service tickets, billing, and Time & Addons management
+- **[Email System](guides/email-system.md)** - Email processing, domain routing, and monitoring
 - **[User Management](guides/users-permissions.md)** - Users, roles, and permissions
 - **[Import System](guides/import.md)** - PostgreSQL database import and data migration
 
 ### 🔧 [API Reference](api/)
 - **[Authentication](api/auth.md)** - Login, tokens, and session management
 - **[Core Resources](api/resources.md)** - Tickets, timers, users, accounts
+- **[Email System](api/email-system.md)** - Email configuration, domain mappings, and monitoring
 - **[Billing](api/billing.md)** - Billing rates, invoices, payments
 - **[Import API](api/import.md)** - Database import profiles and job management
 
@@ -46,6 +48,7 @@ npm run dev         # Vite dev server with HMR
 - **🎫 Service Tickets** - Complete ticketing workflow with messaging
 - **💰 Billing Integration** - Rate management and invoice generation
 - **📱 Real-Time Updates** - WebSocket broadcasting for live updates
+- **📧 Email Processing System** - Application-wide email processing with domain routing and monitoring
 - **📥 Universal Import System** - Advanced PostgreSQL database connectivity with real-time monitoring, duplicate detection, and comprehensive analytics
 
 ## Technology Stack
@@ -57,7 +60,26 @@ npm run dev         # Vite dev server with HMR
 
 ## Recent Updates (August 2025)
 
-### Standardized Layout System & Enhanced Navigation (Latest)
+### Application-Wide Email System (Latest)
+- **✅ Streamlined Email Architecture**: Clear separation between configuration (`/settings/email`) and monitoring (`/admin/email`)
+- **✅ Application-Wide Configuration**: Single EmailSystemConfig model replacing account-specific configurations
+- **✅ Domain-Based Email Routing**: EmailDomainMapping system for routing emails to business accounts based on patterns
+- **✅ Multi-Provider Support**: SMTP, IMAP, Gmail, Outlook, Exchange integration with provider-specific defaults
+- **✅ Real-Time Monitoring Dashboard**: Performance metrics, processing statistics, queue health, and system alerts
+- **✅ Cross-Navigation Integration**: Seamless links between configuration and monitoring interfaces
+- **✅ Enhanced User Experience**: Fixed Inertia/JSON response conflicts, added success notifications, improved error handling
+- **✅ Comprehensive Documentation**: Complete email system guide with configuration, monitoring, and troubleshooting
+
+### Unified Import Preview Architecture
+- **Single Preview Dialog**: Consolidated all import preview functionality into one intelligent component
+- **Automatic Type Detection**: Smart detection of template-based vs. query-based imports with adaptive UI
+- **Dedicated Progress Dialog**: Separate execution dialog with real-time progress tracking and professional feedback
+- **Enhanced Error Handling**: Comprehensive error messages and fallback states for incomplete configurations
+- **Consistent User Experience**: Identical preview flow for both dropdown menu "Preview Import Data" and query builder "Preview Import"
+- **Eliminated Component Duplication**: Removed SimpleImportPreview and ImportPreviewModal in favor of unified QueryImportPreviewModal
+- **Clean Architecture**: Proper separation of concerns between preview and execution responsibilities
+
+### Standardized Layout System & Enhanced Navigation
 - **StandardPageLayout Component**: New reusable layout system with configurable slots for header, filters, content, and sidebar
 - **Enhanced TabNavigation Component**: Intelligent horizontal scrolling with smooth navigation buttons, mobile-responsive design, and clean scrollbar hiding
 - **Improved Tab Switching**: Tickets detail page now uses client-side tab switching (no page reloads) while preserving URLs for bookmarking
@@ -105,4 +127,4 @@ npm run dev         # Vite dev server with HMR
 
 ---
 
-*Service Vault - B2B Service Management Platform | Last Updated: August 23, 2025*
+*Service Vault - B2B Service Management Platform | Last Updated: August 26, 2025*

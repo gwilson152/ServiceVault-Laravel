@@ -354,6 +354,176 @@ CREATE INDEX idx_invoice_items_invoice ON invoice_line_items(invoice_id);
 CREATE INDEX idx_invoice_items_order ON invoice_line_items(line_order);
 ```
 
+## Email System Tables
+
+### email_system_config
+```sql
+CREATE TABLE email_system_config (
+    id SERIAL PRIMARY KEY,
+    configuration_name VARCHAR(255) DEFAULT 'Default Email System Configuration',
+    
+    -- System Status
+    system_active BOOLEAN DEFAULT false,
+    
+    -- Incoming Email Service Configuration
+    incoming_enabled BOOLEAN DEFAULT false,
+    incoming_provider VARCHAR(50), -- imap, gmail, outlook, exchange
+    incoming_host VARCHAR(255),
+    incoming_port INTEGER,
+    incoming_username VARCHAR(255),
+    incoming_password VARCHAR(255), -- Encrypted
+    incoming_encryption VARCHAR(20), -- tls, ssl, starttls, none
+    incoming_folder VARCHAR(100) DEFAULT 'INBOX',
+    incoming_settings JSONB, -- Provider-specific settings
+    
+    -- Outgoing Email Service Configuration
+    outgoing_enabled BOOLEAN DEFAULT false,
+    outgoing_provider VARCHAR(50), -- smtp, gmail, outlook, ses, sendgrid, postmark, mailgun
+    outgoing_host VARCHAR(255),
+    outgoing_port INTEGER,
+    outgoing_username VARCHAR(255),
+    outgoing_password VARCHAR(255), -- Encrypted
+    outgoing_encryption VARCHAR(20), -- tls, ssl, starttls, none
+    outgoing_settings JSONB, -- Provider-specific settings
+    
+    -- From Address Configuration
+    from_address VARCHAR(255),
+    from_name VARCHAR(255),
+    reply_to_address VARCHAR(255),
+    
+    -- Processing Settings
+    auto_create_tickets BOOLEAN DEFAULT true,
+    process_commands BOOLEAN DEFAULT true,
+    send_confirmations BOOLEAN DEFAULT true,
+    max_retries INTEGER DEFAULT 3,
+    processing_rules JSONB, -- Advanced processing rules
+    
+    -- Testing & Monitoring
+    last_tested_at TIMESTAMP,
+    test_results JSONB,
+    
+    -- Audit
+    updated_by_id UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Single configuration record enforced by application
+CREATE UNIQUE INDEX idx_email_config_singleton ON email_system_config(id) WHERE id = 1;
+```
+
+**Key Features**:
+- **Application-Wide**: Single configuration for entire platform
+- **Multi-Provider**: Support for multiple email services
+- **Encrypted Credentials**: Password fields are encrypted in storage
+- **Test Integration**: Built-in configuration testing and results storage
+
+### email_domain_mappings
+```sql
+CREATE TABLE email_domain_mappings (
+    id SERIAL PRIMARY KEY,
+    
+    -- Domain/Email Pattern Matching
+    domain_pattern VARCHAR(255) NOT NULL, -- @acme.com, support@acme.com, *@acme.com
+    pattern_type VARCHAR(20) DEFAULT 'domain', -- domain, email, wildcard
+    
+    -- Business Account Assignment
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    
+    -- Assignment Rules
+    default_assigned_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    default_category VARCHAR(255),
+    default_priority VARCHAR(20) DEFAULT 'medium', -- low, medium, high, urgent
+    
+    -- Processing Rules
+    auto_create_tickets BOOLEAN DEFAULT true,
+    send_auto_reply BOOLEAN DEFAULT false,
+    auto_reply_template TEXT,
+    custom_rules JSONB, -- Additional processing rules
+    
+    -- Status and Priority
+    is_active BOOLEAN DEFAULT true,
+    priority INTEGER DEFAULT 100, -- Higher number = higher priority for matching
+    
+    -- Audit
+    created_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance
+CREATE INDEX idx_domain_mappings_pattern_active ON email_domain_mappings(domain_pattern, is_active);
+CREATE INDEX idx_domain_mappings_account_active ON email_domain_mappings(account_id, is_active);
+CREATE INDEX idx_domain_mappings_priority_active ON email_domain_mappings(priority, is_active);
+
+-- Unique constraint to prevent duplicate patterns
+CREATE UNIQUE INDEX idx_domain_mappings_unique ON email_domain_mappings(domain_pattern, pattern_type);
+```
+
+**Key Features**:
+- **Pattern Matching**: Support for domain, exact email, and wildcard patterns
+- **Priority-Based**: Configurable priority for pattern matching order
+- **Account Routing**: Direct mapping to business accounts for ticket assignment
+- **Flexible Rules**: JSON-based custom processing rules
+
+### email_processing_logs
+```sql
+CREATE TABLE email_processing_logs (
+    id SERIAL PRIMARY KEY,
+    email_id VARCHAR(255) UNIQUE NOT NULL, -- Unique identifier for the email
+    
+    -- Email Metadata
+    status VARCHAR(20) DEFAULT 'pending', -- pending, processing, processed, failed, retry
+    direction VARCHAR(20) NOT NULL, -- incoming, outgoing
+    from_address VARCHAR(255),
+    to_addresses JSONB, -- Array of recipient addresses
+    subject TEXT,
+    message_id VARCHAR(255), -- Email Message-ID header
+    received_at TIMESTAMP,
+    
+    -- Processing Information
+    processing_duration_ms INTEGER,
+    account_id UUID REFERENCES accounts(id),
+    created_new_ticket BOOLEAN DEFAULT false,
+    ticket_id UUID REFERENCES tickets(id),
+    ticket_comment_id UUID REFERENCES ticket_comments(id),
+    
+    -- Command Processing
+    commands_processed INTEGER DEFAULT 0,
+    commands_executed_count INTEGER DEFAULT 0,
+    commands_failed_count INTEGER DEFAULT 0,
+    command_processing_success BOOLEAN,
+    command_results JSONB, -- Command execution results
+    
+    -- Error Handling
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    next_retry_at TIMESTAMP,
+    
+    -- Email Content (for debugging/audit)
+    raw_email_content TEXT,
+    parsed_content JSONB, -- Structured email content
+    
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for monitoring and reporting
+CREATE INDEX idx_email_logs_status ON email_processing_logs(status);
+CREATE INDEX idx_email_logs_direction ON email_processing_logs(direction);
+CREATE INDEX idx_email_logs_account ON email_processing_logs(account_id);
+CREATE INDEX idx_email_logs_created_at ON email_processing_logs(created_at);
+CREATE INDEX idx_email_logs_ticket ON email_processing_logs(ticket_id);
+CREATE INDEX idx_email_logs_retry ON email_processing_logs(next_retry_at) WHERE next_retry_at IS NOT NULL;
+```
+
+**Key Features**:
+- **Comprehensive Logging**: Complete audit trail of email processing
+- **Command Tracking**: Detailed command execution results
+- **Error Management**: Retry logic with configurable attempts
+- **Performance Monitoring**: Processing duration tracking
+
 ## Import System Tables
 
 ### import_profiles

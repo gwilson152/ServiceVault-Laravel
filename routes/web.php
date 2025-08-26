@@ -101,6 +101,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings/{tab?}', function ($tab = null) {
         return Inertia::render('Settings/Index', [
             'activeTab' => $tab,
+            'emailConfig' => \App\Models\EmailSystemConfig::getConfig(),
         ]);
     })->name('settings.index')->where('tab', '(system|email|tickets|billing|timer|users|advanced|reset)');
 
@@ -155,6 +156,40 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/import', function () {
         return Inertia::render('Import/Index');
     })->name('import.index');
+    
+    Route::get('/import/freescout-api', function () {
+        return Inertia::render('Import/FreescoutApi');
+    })->name('import.freescout-api');
+
+    // Email System Administration
+    Route::prefix('admin/email')->name('admin.email.')->group(function () {
+        Route::get('/', function () {
+            return Inertia::render('Admin/Email/Dashboard');
+        })->name('dashboard');
+        
+        Route::get('/monitoring', function () {
+            return Inertia::render('Admin/Email/Monitoring');
+        })->name('monitoring');
+
+        Route::get('/processing-logs', function () {
+            return Inertia::render('Admin/Email/ProcessingLogs');
+        })->name('processing-logs');
+    });
+    
+    // Email Configuration Management (Settings)
+    Route::prefix('settings/email')->name('settings.email.')->group(function () {
+        Route::get('/templates', function () {
+            return Inertia::render('Settings/EmailTemplates/Index');
+        })->name('templates');
+        
+        Route::get('/commands', function () {
+            return Inertia::render('Settings/EmailCommands/Index');
+        })->name('commands');
+
+        Route::get('/domain-mappings', function () {
+            return Inertia::render('Settings/EmailDomainMappings/Index');
+        })->name('domain-mappings');
+    });
 });
 
 Route::middleware('auth')->group(function () {

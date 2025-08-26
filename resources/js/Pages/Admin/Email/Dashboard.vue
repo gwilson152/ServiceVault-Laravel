@@ -1,8 +1,9 @@
 <template>
-  <Head title="Email System Administration" />
+  <Head title="Email System Monitoring" />
 
   <StandardPageLayout 
-    title="Email System Administration" 
+    title="Email System Monitoring" 
+    subtitle="Monitor email processing, performance metrics, and system health"
     :show-sidebar="true"
     :show-filters="true"
   >
@@ -28,14 +29,14 @@
           Health Check
         </button>
 
-        <!-- Email System Settings -->
-        <button
-          @click="showSettingsModal = true"
+        <!-- Email System Configuration -->
+        <a
+          :href="route('settings.index', 'email')"
           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <CogIcon class="w-4 h-4 mr-2" />
-          Settings
-        </button>
+          Configure Email System
+        </a>
       </div>
     </template>
 
@@ -68,15 +69,18 @@
           />
         </div>
 
-        <!-- Account Filter -->
+        <!-- Email Service Filter -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Account</label>
-          <UnifiedSelector
-            v-model="filters.accounts"
-            type="accounts"
-            placeholder="All accounts"
-            :multiple="true"
-          />
+          <label class="block text-sm font-medium text-gray-700 mb-1">Service Type</label>
+          <select
+            v-model="filters.serviceType"
+            @change="loadDashboardData"
+            class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          >
+            <option value="">All Services</option>
+            <option value="incoming">Incoming Email</option>
+            <option value="outgoing">Outgoing Email</option>
+          </select>
         </div>
       </FilterSection>
     </template>
@@ -409,33 +413,40 @@
     </template>
 
     <template #sidebar>
-      <!-- System Health -->
+      <!-- System Status Summary -->
       <div class="bg-white overflow-hidden shadow rounded-lg mb-6">
         <div class="p-5">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">System Health</h3>
+            <h3 class="text-lg leading-6 font-medium text-gray-900">System Status</h3>
             <div :class="[
-              'w-3 h-3 rounded-full',
-              systemHealth.overall === 'healthy' ? 'bg-green-400' :
-              systemHealth.overall === 'warning' ? 'bg-yellow-400' :
-              'bg-red-400'
-            ]"></div>
+              'flex items-center px-3 py-1 rounded-full text-xs font-medium',
+              systemHealth.system_active ? 'bg-green-100 text-green-800' :
+              systemHealth.fully_configured ? 'bg-yellow-100 text-yellow-800' :
+              'bg-red-100 text-red-800'
+            ]">
+              <div :class="[
+                'w-2 h-2 rounded-full mr-2',
+                systemHealth.system_active ? 'bg-green-400' :
+                systemHealth.fully_configured ? 'bg-yellow-400' :
+                'bg-red-400'
+              ]"></div>
+              {{ systemHealth.system_active ? 'Active' : systemHealth.fully_configured ? 'Configured' : 'Inactive' }}
+            </div>
           </div>
           
-          <div class="space-y-3">
-            <div v-for="check in systemHealth.checks" :key="check.name" 
-              class="flex items-center justify-between">
-              <span class="text-sm text-gray-600">{{ check.name }}</span>
-              <div class="flex items-center">
-                <div :class="[
-                  'w-2 h-2 rounded-full mr-2',
-                  check.status === 'ok' ? 'bg-green-400' :
-                  check.status === 'warning' ? 'bg-yellow-400' :
-                  'bg-red-400'
-                ]"></div>
-                <span class="text-xs text-gray-500">{{ check.message || check.status }}</span>
-              </div>
-            </div>
+          <div class="text-sm text-gray-600">
+            <p v-if="systemHealth.system_active">
+              Email system is active and processing emails with 
+              <strong>{{ systemHealth.active_domain_mappings || 0 }}</strong> domain mappings configured.
+            </p>
+            <p v-else-if="systemHealth.fully_configured">
+              Email system is configured but inactive. 
+              <a :href="route('settings.index', 'email')" class="text-indigo-600 hover:text-indigo-500">Activate in settings</a> to start processing.
+            </p>
+            <p v-else>
+              Email system requires configuration. 
+              <a :href="route('settings.index', 'email')" class="text-indigo-600 hover:text-indigo-500">Complete setup</a> to begin processing emails.
+            </p>
           </div>
         </div>
       </div>
@@ -509,7 +520,7 @@
 
 <script setup>
 import { Head } from '@inertiajs/vue3'
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import {
   ArrowPathIcon,
@@ -525,13 +536,19 @@ import {
 } from '@heroicons/vue/24/outline'
 
 // Components
-import StandardPageLayout from '@/Components/Layout/StandardPageLayout.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
+import StandardPageLayout from '@/Layouts/StandardPageLayout.vue'
 import FilterSection from '@/Components/Layout/FilterSection.vue'
-import MultiSelect from '@/Components/Form/MultiSelect.vue'
-import UnifiedSelector from '@/Components/Form/UnifiedSelector.vue'
+import MultiSelect from '@/Components/UI/MultiSelect.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import EmailSystemSettingsModal from './Components/EmailSystemSettingsModal.vue'
 import ProcessingLogsModal from './Components/ProcessingLogsModal.vue'
 import SystemHealthModal from './Components/SystemHealthModal.vue'
+
+// Define persistent layout
+defineOptions({
+  layout: (h, page) => h(AppLayout, () => page)
+})
 
 // State
 const refreshing = ref(false)
@@ -552,7 +569,7 @@ const emailChart = ref(null)
 const filters = reactive({
   timeRange: '24h',
   statuses: [],
-  accounts: []
+  serviceType: ''
 })
 
 // Filter Options
@@ -574,27 +591,74 @@ const chartPeriods = [
 const queryClient = useQueryClient()
 
 // API Queries
-const { data: dashboardData = {} } = useQuery({
+const { data: dashboardDataRaw } = useQuery({
   queryKey: ['email-admin-dashboard', filters.timeRange],
   queryFn: () => fetchDashboardData(),
-  refetchInterval: 30000 // Refresh every 30 seconds
+  refetchInterval: 30000, // Refresh every 30 seconds
+  retry: false, // Don't retry on 404/500 errors
+  onError: (error) => {
+    console.warn('Dashboard data API not available:', error)
+  }
 })
 
 const { data: queueData = {} } = useQuery({
   queryKey: ['email-queue-status'],
   queryFn: fetchQueueStatus,
-  refetchInterval: 10000 // Refresh every 10 seconds
+  refetchInterval: 10000, // Refresh every 10 seconds
+  retry: false,
+  onError: (error) => {
+    console.warn('Queue status API not available:', error)
+  }
 })
 
-const { data: systemHealth = { overall: 'unknown', checks: [] } } = useQuery({
-  queryKey: ['email-system-health'],
-  queryFn: fetchSystemHealth,
-  refetchInterval: 60000 // Refresh every minute
+// Use system health from dashboard data instead of separate query
+const systemHealth = computed(() => {
+  if (dashboardDataRaw.value?.data?.system_health) {
+    return dashboardDataRaw.value.data.system_health
+  }
+  return { 
+    system_active: false, 
+    fully_configured: false, 
+    incoming_enabled: false, 
+    outgoing_enabled: false, 
+    incoming_provider: 'none',
+    outgoing_provider: 'none',
+    domain_mappings_count: 0,
+    active_domain_mappings: 0
+  }
 })
 
-const { data: commandStats = [] } = useQuery({
-  queryKey: ['email-command-stats'],
-  queryFn: fetchCommandStats
+// Disable command stats for now since the endpoint doesn't exist
+const commandStats = ref([])
+
+// Safe data accessors with proper defaults
+const dashboardData = computed(() => {
+  if (!dashboardDataRaw.value) {
+    return {
+      metrics: {
+        total_emails: 0,
+        email_change: 0,
+        success_rate: 0,
+        commands_executed: 0
+      },
+      queue: {
+        pending: 0,
+        failed: 0
+      }
+    }
+  }
+  return {
+    metrics: dashboardDataRaw.value.metrics || {
+      total_emails: 0,
+      email_change: 0,
+      success_rate: 0,
+      commands_executed: 0
+    },
+    queue: dashboardDataRaw.value.queue || {
+      pending: 0,
+      failed: 0
+    }
+  }
 })
 
 // Computed/Reactive Data
@@ -604,7 +668,11 @@ const recentErrors = ref([])
 
 // API Functions
 async function fetchDashboardData() {
-  const params = new URLSearchParams({ time_range: filters.timeRange })
+  const params = new URLSearchParams({ 
+    time_range: filters.timeRange,
+    service_type: filters.serviceType,
+    statuses: filters.statuses.join(',')
+  })
   const response = await fetch(`/api/email-admin/dashboard?${params}`)
   if (!response.ok) throw new Error('Failed to fetch dashboard data')
   return response.json()
@@ -616,11 +684,6 @@ async function fetchQueueStatus() {
   return response.json()
 }
 
-async function fetchSystemHealth() {
-  const response = await fetch('/api/email-admin/system-health')
-  if (!response.ok) throw new Error('Failed to fetch system health')
-  return response.json()
-}
 
 async function fetchCommandStats() {
   const response = await fetch('/api/email-commands/stats')

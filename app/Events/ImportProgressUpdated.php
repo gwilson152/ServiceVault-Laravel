@@ -42,6 +42,7 @@ class ImportProgressUpdated implements ShouldBroadcast
     {
         return [
             'job_id' => $this->job->id,
+            'progress' => $this->job->progress,
             'progress_percentage' => $this->job->progress_percentage,
             'current_operation' => $this->job->current_operation,
             'records_processed' => $this->job->records_processed,

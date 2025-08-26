@@ -47,6 +47,7 @@ class ImportJobStatusChanged implements ShouldBroadcast
             'job_id' => $this->job->id,
             'status' => $this->job->status,
             'event_type' => $this->eventType,
+            'progress' => $this->job->progress,
             'progress_percentage' => $this->job->progress_percentage,
             'current_operation' => $this->job->current_operation,
             'records_processed' => $this->job->records_processed,

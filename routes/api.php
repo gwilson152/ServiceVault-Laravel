@@ -5,11 +5,13 @@ use App\Http\Controllers\Api\DomainMappingController;
 use App\Http\Controllers\Api\EmailAdminController;
 use App\Http\Controllers\Api\EmailConfigController;
 use App\Http\Controllers\Api\EmailIngestionController;
+use App\Http\Controllers\Api\EmailSystemController;
 use App\Http\Controllers\Api\EmailTemplateController;
 use App\Http\Controllers\Api\ImportAnalyticsController;
 use App\Http\Controllers\Api\ImportJobController;
 use App\Http\Controllers\Api\ImportProfileController;
 use App\Http\Controllers\Api\ImportTemplateController;
+use App\Http\Controllers\Api\FreescoutImportController;
 use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
@@ -417,12 +419,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('settings.system.update');
 
         // Email Settings
+        Route::get('email', [SettingController::class, 'getEmailSettings'])
+            ->name('settings.email.get');
         Route::put('email', [SettingController::class, 'updateEmailSettings'])
             ->name('settings.email.update');
         Route::post('email/test-smtp', [SettingController::class, 'testSmtp'])
             ->name('settings.email.test-smtp');
         Route::post('email/test-imap', [SettingController::class, 'testImap'])
             ->name('settings.email.test-imap');
+        Route::post('email/test-m365', [SettingController::class, 'testM365'])
+            ->name('settings.email.test-m365');
+        Route::post('email/m365-folders', [SettingController::class, 'getM365Folders'])
+            ->name('settings.email.m365-folders');
+        Route::get('email/test-folder-hierarchy', [SettingController::class, 'testFolderHierarchy'])
+            ->name('settings.email.test-folder-hierarchy');
 
         // Ticket Configuration
         Route::get('ticket-config', [SettingController::class, 'getTicketConfig'])
@@ -566,6 +576,10 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
         ->name('import.profiles.schema');
     Route::get('profiles/{profile}/introspect', [ImportProfileController::class, 'introspectSchema'])
         ->name('import.profiles.introspect');
+    Route::get('profiles/{profile}/introspect-emails', [ImportProfileController::class, 'introspectEmails'])
+        ->name('import.profiles.introspect-emails');
+    Route::get('profiles/{profile}/introspect-time-tracking', [ImportProfileController::class, 'introspectTimeTracking'])
+        ->name('import.profiles.introspect-time-tracking');
     Route::get('profiles/{profile}/preview', [ImportProfileController::class, 'preview'])
         ->name('import.profiles.preview');
     Route::post('profiles/{profile}/preview-table', [ImportProfileController::class, 'previewTable'])
@@ -588,12 +602,16 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
 
     // Import Job Management
     Route::apiResource('jobs', ImportJobController::class)->except(['update']);
-    Route::post('profiles/{profile}/import', [ImportJobController::class, 'execute'])
+    Route::post('profiles/{profile}/import', [ImportJobController::class, 'executeImport'])
         ->name('import.jobs.execute');
-    Route::get('jobs/{job}/status', [ImportJobController::class, 'status'])
+    Route::get('jobs/{importJob}/status', [ImportJobController::class, 'status'])
         ->name('import.jobs.status');
-    Route::post('jobs/{job}/cancel', [ImportJobController::class, 'cancel'])
+    Route::post('jobs/{importJob}/cancel', [ImportJobController::class, 'cancel'])
         ->name('import.jobs.cancel');
+    Route::post('jobs/{importJob}/retry', [ImportJobController::class, 'retry'])
+        ->name('import.jobs.retry');
+    Route::get('jobs/{importJob}/errors', [ImportJobController::class, 'errors'])
+        ->name('import.jobs.errors');
     Route::get('jobs/stats', [ImportJobController::class, 'stats'])
         ->name('import.jobs.stats');
 
@@ -610,6 +628,8 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
         ->name('import.profiles.analyze-joins');
     Route::post('profiles/{profile}/simulate', [ImportProfileController::class, 'simulate'])
         ->name('import.profiles.simulate');
+    Route::post('profiles/{profile}/execute-query', [ImportProfileController::class, 'executeQuery'])
+        ->name('import.profiles.execute-query');
 
     // Import Template Management
     Route::get('templates', [ImportTemplateController::class, 'index'])
@@ -633,6 +653,24 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
             ->name('import.analytics.performance-metrics');
         Route::get('trends', [ImportAnalyticsController::class, 'trends'])
             ->name('import.analytics.trends');
+    });
+
+    // FreeScout Import Routes
+    Route::prefix('freescout')->group(function () {
+        Route::post('validate-config', [FreescoutImportController::class, 'validateConfig'])
+            ->name('import.freescout.validate-config');
+        
+        Route::post('preview', [FreescoutImportController::class, 'previewImport'])
+            ->name('import.freescout.preview');
+        
+        Route::post('execute', [FreescoutImportController::class, 'executeImport'])
+            ->name('import.freescout.execute');
+        
+        Route::get('job/{jobId}/status', [FreescoutImportController::class, 'getImportStatus'])
+            ->name('import.freescout.job-status');
+        
+        Route::post('analyze-relationships', [FreescoutImportController::class, 'analyzeRelationships'])
+            ->name('import.freescout.analyze-relationships');
     });
 });
 
@@ -711,7 +749,7 @@ Route::middleware(['auth:sanctum'])->prefix('email-templates')->group(function (
 });
 
 // Email Administration Routes (Super Admin only)
-Route::middleware(['auth:sanctum'])->prefix('email-admin')->group(function () {
+Route::middleware(['auth:sanctum,web'])->prefix('email-admin')->group(function () {
     // Dashboard and overview
     Route::get('dashboard', [EmailAdminController::class, 'dashboard'])
         ->name('email-admin.dashboard');
@@ -769,4 +807,43 @@ Route::prefix('email')->group(function () {
     // Status checking
     Route::get('status/{emailId}', [EmailIngestionController::class, 'getStatus'])
         ->name('email.status');
+});
+
+// Email System Configuration (Application-wide)
+Route::prefix('email-system')->middleware(['auth'])->group(function () {
+    // System Configuration
+    Route::get('config', [EmailSystemController::class, 'getConfig'])
+        ->name('email-system.config.get');
+    
+    Route::put('config', [EmailSystemController::class, 'updateConfig'])
+        ->name('email-system.config.update');
+    
+    Route::post('test', [EmailSystemController::class, 'testConfig'])
+        ->name('email-system.config.test');
+    
+    Route::get('status', [EmailSystemController::class, 'getSystemStatus'])
+        ->name('email-system.status');
+    
+    // Domain Mappings (Business Account Routing)
+    Route::get('domain-mappings', [EmailSystemController::class, 'getDomainMappings'])
+        ->name('email-system.domain-mappings.index');
+    
+    Route::post('domain-mappings', [EmailSystemController::class, 'createDomainMapping'])
+        ->name('email-system.domain-mappings.store');
+    
+    Route::put('domain-mappings/{mapping}', [EmailSystemController::class, 'updateDomainMapping'])
+        ->name('email-system.domain-mappings.update');
+    
+    Route::delete('domain-mappings/{mapping}', [EmailSystemController::class, 'deleteDomainMapping'])
+        ->name('email-system.domain-mappings.delete');
+    
+    Route::post('domain-mappings/test', [EmailSystemController::class, 'testDomainMapping'])
+        ->name('email-system.domain-mappings.test');
+    
+    // Helper endpoints
+    Route::get('pattern-examples', [EmailSystemController::class, 'getPatternExamples'])
+        ->name('email-system.pattern-examples');
+    
+    Route::get('provider-defaults', [EmailSystemController::class, 'getProviderDefaults'])
+        ->name('email-system.provider-defaults');
 });

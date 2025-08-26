@@ -154,6 +154,57 @@ WebSocket: Live updates via Laravel Reverb
 - Reduced 10+ API calls to single request
 - Redis-backed state synchronization
 
+### Application-Wide Email System
+
+**Architecture Overview**:
+- **Single Configuration Model**: `EmailSystemConfig` for platform-wide email settings
+- **Domain-Based Routing**: `EmailDomainMapping` routes emails to business accounts  
+- **Dual Interface Design**: Configuration (`/settings/email`) + Monitoring (`/admin/email`)
+- **Multi-Provider Support**: SMTP, IMAP, Gmail, Outlook, Exchange integration
+
+**System Components**:
+```php
+// Core Models
+EmailSystemConfig::class     // Application-wide email configuration
+EmailDomainMapping::class    // Email pattern → Account routing  
+EmailProcessingLog::class    // Processing history and monitoring
+```
+
+**Configuration Management**:
+```javascript
+// Settings Interface (/settings/email)
+- Email service provider configuration
+- System activation controls  
+- Domain mapping management
+- Test configuration functionality
+
+// Monitoring Interface (/admin/email)  
+- Real-time processing metrics
+- Performance statistics
+- Queue health monitoring
+- Processing logs and alerts
+```
+
+**Domain Routing Logic**:
+```php
+// Pattern matching priority:
+1. Exact email patterns (support@company.com)
+2. Custom priority settings (100 > 50)
+3. Domain patterns (@company.com)
+4. Wildcard patterns (*@company.com)
+```
+
+**Email Processing Flow**:
+```
+Incoming Email → Pattern Matching → Account Assignment → Ticket Creation → Command Processing
+```
+
+**API Integration**:
+- **Configuration**: `/api/email-system/config` (GET/PUT)
+- **Testing**: `/api/email-system/test` (POST)
+- **Monitoring**: `/api/email-admin/dashboard` (GET)
+- **Domain Mappings**: `/api/domain-mappings` (CRUD)
+
 ### Unified Selector System
 
 Service Vault uses a **self-managing** `UnifiedSelector` component for consistent entity selection across the entire application. Selectors automatically handle their own data loading, search, caching, and permissions.
@@ -409,6 +460,70 @@ invoices (id, account_id, total_amount, status, due_date, ...)
 - `UnifiedSelector`: Self-managing selector for all entity types with automatic data loading
 - `StackedDialog`: Native dialog-based modal system with proper z-index management
 - `TimerBroadcastOverlay`: Persistent timer interface with real-time sync
+- `QueryImportPreviewModal`: Unified import preview dialog supporting both template and query-based imports
+- `ImportExecutionDialog`: Dedicated progress dialog for import job execution
+
+### Universal Import Dialog Architecture (Enhanced)
+
+**✅ Unified Preview System (Latest Update):**
+
+Service Vault implements a sophisticated import preview architecture that consolidates multiple import workflows into a single, intelligent interface:
+
+**Architectural Components**:
+```javascript
+// Unified preview modal with intelligent type detection
+<QueryImportPreviewModal
+  :show="showPreview"
+  :profile="selectedProfile"
+  :query-config="queryConfiguration"
+  :import-type="'auto'" // 'auto', 'template', 'query'
+  @execution-started="handleExecutionStarted"
+  @close="showPreview = false"
+/>
+
+// Dedicated execution progress dialog
+<ImportExecutionDialog
+  :show="showExecution"
+  :is-executing="executionState.isExecuting"
+  :progress="executionState.progress"
+  :message="executionState.message"
+  @close="handleExecutionClose"
+/>
+```
+
+**Smart Type Detection**:
+- **Automatic Detection**: Analyzes profile configuration to determine import type
+- **Template-Based Detection**: Checks for `profile.template_id` or configured templates
+- **Query-Based Detection**: Validates `queryConfig.base_table` and field mappings
+- **Fallback Handling**: Graceful degradation with helpful error messages
+
+**Unified Dialog Benefits**:
+- **Single Codebase**: One preview component handles all import scenarios
+- **Consistent UX**: Identical interface patterns across import types
+- **Smart Adaptation**: UI adapts automatically to show relevant configuration
+- **Reduced Duplication**: Eliminates maintenance burden of multiple preview dialogs
+
+**Separation of Concerns**:
+- **Preview Responsibility**: Configuration review, data validation, and sample preview
+- **Execution Responsibility**: Progress tracking, job monitoring, and completion handling
+- **Clean Event Flow**: `execution-started` → Progress Dialog → Job Completion
+
+**API Integration Pattern**:
+```javascript
+// Template-based import execution
+POST /api/import/jobs { profile_id, options }
+
+// Query-based import execution  
+POST /api/import/profiles/{id}/execute-query { query_config, import_options }
+
+// Unified event emission pattern
+emit('execution-started', {
+  job_id: result.job_id,
+  profile: selectedProfile,
+  importType: detectedType,
+  estimatedRecords: recordCount
+})
+```
 
 ### State Management
 

@@ -37,7 +37,7 @@
           >
             <div class="flex-1">
               <div class="font-mono text-indigo-600">
-                {{'{{'}}{{ variable.key }}{{'}}'}}
+                {{ variable.key }}
               </div>
               <div class="text-gray-600 mt-1">{{ variable.label }}</div>
               <div v-if="variable.example" class="text-gray-500 italic mt-1">
@@ -64,7 +64,7 @@
           >
             <div class="flex-1">
               <div class="font-mono text-purple-600">
-                {{'{{'}}{{ variable.key }}{{'}}'}}
+                {{ variable.key }}
               </div>
               <div class="text-gray-600 mt-1">{{ variable.label }}</div>
               <div v-if="variable.example" class="text-gray-500 italic mt-1">
@@ -81,7 +81,7 @@
     <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
       <h5 class="text-xs font-medium text-blue-800 mb-2">Supported Variable Formats:</h5>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-        <code class="bg-blue-100 px-2 py-1 rounded text-blue-700">{{'{{'}}variable{{'}}'}}</code>
+        <code class="bg-blue-100 px-2 py-1 rounded text-blue-700">variable</code>
         <code class="bg-blue-100 px-2 py-1 rounded text-blue-700">{variable}</code>
         <code class="bg-blue-100 px-2 py-1 rounded text-blue-700">[variable]</code>
         <code class="bg-blue-100 px-2 py-1 rounded text-blue-700">$variable$</code>

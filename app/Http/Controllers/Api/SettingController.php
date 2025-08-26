@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -142,6 +143,27 @@ class SettingController extends Controller
     }
 
     /**
+     * Get email settings
+     */
+    public function getEmailSettings(): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        // Get email settings with email.* prefix
+        $emailSettings = Setting::where('key', 'like', 'email.%')->pluck('value', 'key');
+        $emailData = [];
+        foreach ($emailSettings as $key => $value) {
+            // Remove 'email.' prefix from key
+            $shortKey = str_replace('email.', '', $key);
+            $emailData[$shortKey] = $value;
+        }
+
+        return response()->json([
+            'data' => $emailData,
+        ]);
+    }
+
+    /**
      * Update email settings (no validation - allow incomplete saves)
      */
     public function updateEmailSettings(Request $request): JsonResponse
@@ -149,6 +171,9 @@ class SettingController extends Controller
         $this->authorize('system.configure');
 
         $emailSettings = [
+            // Email Provider Type
+            'email_provider' => $request->input('email_provider', 'imap'), // 'imap' or 'm365'
+
             // Outbound Email
             'smtp_host' => $request->input('smtp_host'),
             'smtp_port' => $request->input('smtp_port'),
@@ -159,13 +184,26 @@ class SettingController extends Controller
             'from_name' => $request->input('from_name'),
             'reply_to_address' => $request->input('reply_to_address'),
 
-            // Inbound Email
+            // Inbound Email - IMAP
             'imap_host' => $request->input('imap_host'),
             'imap_port' => $request->input('imap_port'),
             'imap_username' => $request->input('imap_username'),
             'imap_password' => $request->input('imap_password'),
             'imap_encryption' => $request->input('imap_encryption'),
             'imap_folder' => $request->input('imap_folder', 'INBOX'),
+
+            // Inbound Email - Microsoft 365 Graph API
+            'm365_tenant_id' => $request->input('m365_tenant_id'),
+            'm365_client_id' => $request->input('m365_client_id'),
+            'm365_client_secret' => $request->input('m365_client_secret'),
+            'm365_mailbox' => $request->input('m365_mailbox'),
+            'm365_folder_id' => $request->input('m365_folder_id', 'inbox'),
+            'm365_folder_name' => $request->input('m365_folder_name', 'Inbox'),
+
+            // Email Processing Actions
+            'post_processing_action' => $request->input('post_processing_action', 'mark_read'), // 'mark_read', 'move_folder', 'delete'
+            'move_to_folder_id' => $request->input('move_to_folder_id'),
+            'move_to_folder_name' => $request->input('move_to_folder_name'),
 
             // Email Processing
             'enable_email_to_ticket' => $request->boolean('enable_email_to_ticket', false),
@@ -308,6 +346,625 @@ class SettingController extends Controller
                 'success' => false,
                 'message' => 'IMAP test failed: '.$e->getMessage(),
             ], 400);
+        }
+    }
+
+    /**
+     * Test Microsoft 365 Graph API connection
+     */
+    public function testM365(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        $validator = Validator::make($request->all(), [
+            'm365_tenant_id' => 'required|string',
+            'm365_client_id' => 'required|string', 
+            'm365_client_secret' => 'required|string',
+            'm365_mailbox' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid configuration',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $tenantId = $request->m365_tenant_id;
+            $clientId = $request->m365_client_id;
+            $clientSecret = $request->m365_client_secret;
+            $mailbox = $request->m365_mailbox;
+
+            // Get access token using client credentials flow
+            $tokenResponse = $this->getM365AccessToken($tenantId, $clientId, $clientSecret);
+
+            if (!$tokenResponse['success']) {
+                throw new \Exception($tokenResponse['message']);
+            }
+
+            $accessToken = $tokenResponse['token'];
+
+            // Test mailbox access by getting basic mailbox info
+            $response = $this->makeM365Request(
+                "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders/inbox",
+                $accessToken
+            );
+
+            if (!$response['success']) {
+                throw new \Exception($response['message']);
+            }
+
+            $folderInfo = $response['data'];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Microsoft 365 Graph API connection successful!',
+                'details' => [
+                    'mailbox' => $mailbox,
+                    'inbox_messages' => $folderInfo['totalItemCount'] ?? 0,
+                    'unread_messages' => $folderInfo['unreadItemCount'] ?? 0,
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'M365 Graph API test failed: '.$e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Get Microsoft 365 mailbox folders
+     */
+    public function getM365Folders(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        $validator = Validator::make($request->all(), [
+            'm365_tenant_id' => 'required|string',
+            'm365_client_id' => 'required|string',
+            'm365_client_secret' => 'required|string',
+            'm365_mailbox' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid configuration',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $tenantId = $request->m365_tenant_id;
+            $clientId = $request->m365_client_id;
+            $clientSecret = $request->m365_client_secret;
+            $mailbox = $request->m365_mailbox;
+
+            // Get access token
+            $tokenResponse = $this->getM365AccessToken($tenantId, $clientId, $clientSecret);
+
+            if (!$tokenResponse['success']) {
+                throw new \Exception($tokenResponse['message']);
+            }
+
+            $accessToken = $tokenResponse['token'];
+
+            // Start with the simplest approach - just get root folders
+            \Log::info('Starting to get M365 folders for mailbox: ' . $mailbox);
+            
+            $response = $this->makeM365Request(
+                "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders?\$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount",
+                $accessToken
+            );
+
+            if (!$response['success']) {
+                \Log::error('Failed to get root folders: ' . $response['message']);
+                throw new \Exception($response['message']);
+            }
+
+            $folders = $response['data']['value'] ?? [];
+            \Log::info('Root folders retrieved: ' . count($folders) . ' folders');
+            
+            if (empty($folders)) {
+                \Log::warning('No folders found for mailbox: ' . $mailbox);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No folders found in mailbox. Please check permissions.',
+                ]);
+            }
+
+            // Try to get child folders, but don't fail if it doesn't work
+            $allFolders = $folders;
+            \Log::info('Attempting to get child folders for ' . count($folders) . ' root folders');
+            
+            $childFoldersFound = 0;
+            foreach ($folders as $rootFolder) {
+                try {
+                    $childResponse = $this->makeM365Request(
+                        "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders/{$rootFolder['id']}/childFolders?\$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount",
+                        $accessToken
+                    );
+                    
+                    if ($childResponse['success'] && isset($childResponse['data']['value'])) {
+                        $childFolders = $childResponse['data']['value'];
+                        $childCount = count($childFolders);
+                        if ($childCount > 0) {
+                            \Log::info('Found ' . $childCount . ' child folders for ' . $rootFolder['displayName']);
+                            $allFolders = array_merge($allFolders, $childFolders);
+                            $childFoldersFound += $childCount;
+                        }
+                    } else {
+                        \Log::debug('No child folders for ' . $rootFolder['displayName']);
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to get child folders for ' . $rootFolder['displayName'] . ': ' . $e->getMessage());
+                    // Continue with other folders - don't break the whole process
+                }
+            }
+            
+            \Log::info('Total folders found - Root: ' . count($folders) . ', Children: ' . $childFoldersFound . ', Total: ' . count($allFolders));
+            
+            // Log folder parent relationships for debugging
+            $sampleFolders = array_slice($allFolders, 0, 5);
+            \Log::info('Sample folder data', [
+                'folders' => array_map(function($folder) {
+                    return [
+                        'id' => substr($folder['id'], 0, 20) . '...',
+                        'name' => $folder['displayName'],
+                        'parent_id' => $folder['parentFolderId'] ? substr($folder['parentFolderId'], 0, 20) . '...' : null
+                    ];
+                }, $sampleFolders)
+            ]);
+
+            // Format folders with hierarchy
+            $formattedFolders = $this->buildSimpleFolderHierarchy($allFolders);
+            
+            \Log::info('Formatted folders: ' . count($formattedFolders));
+            
+            // Fallback: if hierarchy building failed, just return flat list
+            if (empty($formattedFolders) && !empty($allFolders)) {
+                \Log::warning('Hierarchy building failed, falling back to flat list');
+                $formattedFolders = [];
+                foreach ($allFolders as $folder) {
+                    $formattedFolders[] = [
+                        'id' => $folder['id'],
+                        'name' => $folder['displayName'],
+                        'original_name' => $folder['displayName'],
+                        'full_path' => $folder['displayName'],
+                        'parent_id' => $folder['parentFolderId'] ?? null,
+                        'total_count' => $folder['totalItemCount'] ?? 0,
+                        'unread_count' => $folder['unreadItemCount'] ?? 0,
+                        'level' => 0,
+                        'sort_key' => $folder['displayName'],
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'folders' => $formattedFolders,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get M365 folders: '.$e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Get Microsoft 365 access token using client credentials flow
+     */
+    private function getM365AccessToken(string $tenantId, string $clientId, string $clientSecret): array
+    {
+        try {
+            $response = \Http::asForm()->post(
+                "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token",
+                [
+                    'client_id' => $clientId,
+                    'client_secret' => $clientSecret,
+                    'scope' => 'https://graph.microsoft.com/.default',
+                    'grant_type' => 'client_credentials',
+                ]
+            );
+
+            if ($response->failed()) {
+                $error = $response->json('error_description') ?? 'Authentication failed';
+                return ['success' => false, 'message' => $error];
+            }
+
+            $data = $response->json();
+            return [
+                'success' => true,
+                'token' => $data['access_token'],
+                'expires_in' => $data['expires_in'],
+            ];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Make authenticated request to Microsoft Graph API
+     */
+    private function makeM365Request(string $url, string $accessToken): array
+    {
+        try {
+            \Log::info('Making M365 API request', ['url' => $url]);
+            
+            $response = \Http::withHeaders([
+                'Authorization' => "Bearer {$accessToken}",
+                'Content-Type' => 'application/json',
+            ])->timeout(30)->get($url);
+
+            \Log::info('M365 API response status', ['status' => $response->status()]);
+
+            if ($response->failed()) {
+                $errorData = $response->json();
+                \Log::error('M365 API request failed', [
+                    'url' => $url,
+                    'status' => $response->status(),
+                    'error' => $errorData
+                ]);
+                
+                $error = $errorData['error']['message'] ?? 'API request failed with status ' . $response->status();
+                return ['success' => false, 'message' => $error];
+            }
+
+            $data = $response->json();
+            \Log::info('M365 API request successful', ['data_keys' => array_keys($data)]);
+
+            return [
+                'success' => true,
+                'data' => $data,
+            ];
+
+        } catch (\Exception $e) {
+            \Log::error('M365 API request exception', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Get all M365 folders recursively by making multiple API calls
+     */
+    private function getAllM365Folders(string $accessToken, string $mailbox): array
+    {
+        try {
+            $allFolders = [];
+            
+            // First, get all root-level folders
+            $response = $this->makeM365Request(
+                "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders?\$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount",
+                $accessToken
+            );
+
+            if (!$response['success']) {
+                return $response;
+            }
+
+            $rootFolders = $response['data']['value'] ?? [];
+            
+            \Log::info('M365 Root folders retrieved', ['count' => count($rootFolders), 'folders' => array_column($rootFolders, 'displayName')]);
+            
+            // Process each root folder and get its children recursively
+            foreach ($rootFolders as $folder) {
+                $this->collectFolderHierarchy($folder, $allFolders, $accessToken, $mailbox);
+            }
+            
+            \Log::info('All folders collected', ['count' => count($allFolders)]);
+            
+            // Build the display hierarchy
+            $formattedFolders = $this->buildFolderHierarchy($allFolders);
+            
+            \Log::info('Formatted folders built', ['count' => count($formattedFolders)]);
+            
+            return [
+                'success' => true,
+                'folders' => $formattedFolders
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::error('Error getting M365 folders', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Recursively collect folder hierarchy by making API calls for child folders
+     */
+    private function collectFolderHierarchy(array $folder, array &$allFolders, string $accessToken, string $mailbox): void
+    {
+        // Add current folder to collection
+        $allFolders[$folder['id']] = [
+            'id' => $folder['id'],
+            'name' => $folder['displayName'],
+            'parent_id' => $folder['parentFolderId'] ?? null,
+            'total_count' => $folder['totalItemCount'] ?? 0,
+            'unread_count' => $folder['unreadItemCount'] ?? 0,
+            'children' => []
+        ];
+        
+        // Get child folders for this folder
+        $childResponse = $this->makeM365Request(
+            "https://graph.microsoft.com/v1.0/users/{$mailbox}/mailFolders/{$folder['id']}/childFolders?\$select=id,displayName,parentFolderId,totalItemCount,unreadItemCount",
+            $accessToken
+        );
+        
+        if ($childResponse['success'] && isset($childResponse['data']['value'])) {
+            $childFolders = $childResponse['data']['value'];
+            
+            foreach ($childFolders as $childFolder) {
+                $allFolders[$folder['id']]['children'][] = $childFolder['id'];
+                // Recursively get children of this child
+                $this->collectFolderHierarchy($childFolder, $allFolders, $accessToken, $mailbox);
+            }
+        }
+    }
+
+    /**
+     * Build formatted folder hierarchy for display
+     */
+    private function buildFolderHierarchy(array $allFolders): array
+    {
+        $formattedFolders = [];
+        
+        \Log::info('Building hierarchy from folders', ['all_folders_count' => count($allFolders)]);
+        
+        // Find root folders (those without parents)
+        $rootFolders = array_filter($allFolders, function($folder) {
+            return empty($folder['parent_id']);
+        });
+        
+        \Log::info('Root folders found', ['count' => count($rootFolders), 'names' => array_column($rootFolders, 'name')]);
+        
+        // Sort root folders alphabetically
+        uasort($rootFolders, function($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+        
+        // Process each root folder and its children
+        foreach ($rootFolders as $rootFolder) {
+            \Log::info('Processing root folder', ['name' => $rootFolder['name'], 'id' => $rootFolder['id']]);
+            $this->addFolderToHierarchy($rootFolder, $allFolders, $formattedFolders, 0, $rootFolder['name']);
+        }
+        
+        return $formattedFolders;
+    }
+
+    /**
+     * Build simple folder hierarchy with one level of children
+     */
+    private function buildSimpleFolderHierarchy(array $folders): array
+    {
+        $formattedFolders = [];
+        $folderLookup = [];
+        $childrenLookup = [];
+        $allFolderIds = [];
+        
+        // Build lookup tables
+        foreach ($folders as $folder) {
+            $folderLookup[$folder['id']] = $folder;
+            $allFolderIds[] = $folder['id'];
+            $parentId = $folder['parentFolderId'] ?? 'root';
+            if (!isset($childrenLookup[$parentId])) {
+                $childrenLookup[$parentId] = [];
+            }
+            $childrenLookup[$parentId][] = $folder['id'];
+        }
+        
+        // Find actual root folders (folders whose parentFolderId doesn't exist in our folder list)
+        $rootFolderIds = [];
+        foreach ($folders as $folder) {
+            $parentId = $folder['parentFolderId'] ?? null;
+            if ($parentId === null || !in_array($parentId, $allFolderIds)) {
+                $rootFolderIds[] = $folder['id'];
+            }
+        }
+        
+        \Log::info('Folder lookup built', [
+            'total_folders' => count($folderLookup),
+            'root_folders_found' => count($rootFolderIds),
+            'children_groups' => count($childrenLookup),
+            'sample_parent_ids' => array_slice(array_unique(array_column($folders, 'parentFolderId')), 0, 5)
+        ]);
+        
+        // Add root folders first
+        if (!empty($rootFolderIds)) {
+            
+            // Sort root folders
+            usort($rootFolderIds, function($a, $b) use ($folderLookup) {
+                return strcasecmp($folderLookup[$a]['displayName'], $folderLookup[$b]['displayName']);
+            });
+            
+            foreach ($rootFolderIds as $rootFolderId) {
+                $rootFolder = $folderLookup[$rootFolderId];
+                
+                // Add root folder
+                $formattedFolders[] = [
+                    'id' => $rootFolder['id'],
+                    'name' => $rootFolder['displayName'],
+                    'original_name' => $rootFolder['displayName'],
+                    'full_path' => $rootFolder['displayName'],
+                    'parent_id' => null,
+                    'total_count' => $rootFolder['totalItemCount'] ?? 0,
+                    'unread_count' => $rootFolder['unreadItemCount'] ?? 0,
+                    'level' => 0,
+                    'sort_key' => $rootFolder['displayName'],
+                ];
+                
+                // Add child folders if any exist in our retrieved folders
+                $childFolders = [];
+                foreach ($folders as $folder) {
+                    if (($folder['parentFolderId'] ?? null) === $rootFolderId) {
+                        $childFolders[] = $folder;
+                    }
+                }
+                
+                if (!empty($childFolders)) {
+                    // Sort child folders
+                    usort($childFolders, function($a, $b) {
+                        return strcasecmp($a['displayName'], $b['displayName']);
+                    });
+                    
+                    foreach ($childFolders as $childFolder) {
+                        $fullPath = $rootFolder['displayName'] . '/' . $childFolder['displayName'];
+                        
+                        $formattedFolders[] = [
+                            'id' => $childFolder['id'],
+                            'name' => '  ' . $childFolder['displayName'], // 2 space indent
+                            'original_name' => $childFolder['displayName'],
+                            'full_path' => $fullPath,
+                            'parent_id' => $rootFolderId,
+                            'total_count' => $childFolder['totalItemCount'] ?? 0,
+                            'unread_count' => $childFolder['unreadItemCount'] ?? 0,
+                            'level' => 1,
+                            'sort_key' => $fullPath,
+                        ];
+                    }
+                }
+            }
+        }
+        
+        return $formattedFolders;
+    }
+
+    /**
+     * Test method to verify folder hierarchy building logic
+     */
+    public function testFolderHierarchy()
+    {
+        // Sample folder data that mimics what Microsoft Graph API might return
+        $sampleFolders = [
+            [
+                'id' => 'root1',
+                'displayName' => 'Inbox',
+                'parentFolderId' => 'msgfolderroot', // Parent ID that won't be in our list
+                'totalItemCount' => 25,
+                'unreadItemCount' => 3
+            ],
+            [
+                'id' => 'root2', 
+                'displayName' => 'Archive',
+                'parentFolderId' => 'msgfolderroot', // Parent ID that won't be in our list
+                'totalItemCount' => 150,
+                'unreadItemCount' => 0
+            ],
+            [
+                'id' => 'child1',
+                'displayName' => 'Archive-2023',
+                'parentFolderId' => 'root2', // Child of Archive
+                'totalItemCount' => 50,
+                'unreadItemCount' => 0
+            ],
+            [
+                'id' => 'child2',
+                'displayName' => 'Archive-2024', 
+                'parentFolderId' => 'root2', // Child of Archive
+                'totalItemCount' => 100,
+                'unreadItemCount' => 0
+            ]
+        ];
+
+        $result = $this->buildSimpleFolderHierarchy($sampleFolders);
+        
+        \Log::info('Folder hierarchy test result', [
+            'input_folders' => count($sampleFolders),
+            'output_folders' => count($result),
+            'result' => $result
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'input_count' => count($sampleFolders),
+            'output_count' => count($result),
+            'folders' => $result
+        ]);
+    }
+
+    /**
+     * Format folders with simple hierarchy detection (old method)
+     */
+    private function formatFoldersWithHierarchy(array $folders): array
+    {
+        $formattedFolders = [];
+        
+        // Create lookup arrays
+        $folderLookup = [];
+        $childrenLookup = [];
+        
+        foreach ($folders as $folder) {
+            $folderLookup[$folder['id']] = [
+                'id' => $folder['id'],
+                'name' => $folder['displayName'],
+                'original_name' => $folder['displayName'],
+                'parent_id' => $folder['parentFolderId'] ?? null,
+                'total_count' => $folder['totalItemCount'] ?? 0,
+                'unread_count' => $folder['unreadItemCount'] ?? 0,
+            ];
+            
+            $parentId = $folder['parentFolderId'] ?? 'root';
+            if (!isset($childrenLookup[$parentId])) {
+                $childrenLookup[$parentId] = [];
+            }
+            $childrenLookup[$parentId][] = $folder['id'];
+        }
+        
+        // Build hierarchy starting from root folders
+        $this->addFoldersToHierarchy('root', $folderLookup, $childrenLookup, $formattedFolders, 0, '');
+        
+        return $formattedFolders;
+    }
+
+    /**
+     * Recursively add folders to hierarchy with indentation
+     */
+    private function addFoldersToHierarchy(string $parentId, array $folderLookup, array $childrenLookup, array &$formattedFolders, int $level, string $parentPath): void
+    {
+        if (!isset($childrenLookup[$parentId])) {
+            return;
+        }
+        
+        $children = $childrenLookup[$parentId];
+        
+        // Sort children by name
+        usort($children, function($a, $b) use ($folderLookup) {
+            return strcasecmp($folderLookup[$a]['name'], $folderLookup[$b]['name']);
+        });
+        
+        foreach ($children as $childId) {
+            if (!isset($folderLookup[$childId])) {
+                continue;
+            }
+            
+            $folder = $folderLookup[$childId];
+            $indent = str_repeat('  ', $level);
+            $path = $parentPath ? $parentPath . '/' . $folder['name'] : $folder['name'];
+            
+            $formattedFolders[] = [
+                'id' => $folder['id'],
+                'name' => $indent . $folder['name'],
+                'original_name' => $folder['name'],
+                'full_path' => $path,
+                'parent_id' => $folder['parent_id'],
+                'total_count' => $folder['total_count'],
+                'unread_count' => $folder['unread_count'],
+                'level' => $level,
+                'sort_key' => $path,
+            ];
+            
+            // Recursively add children
+            $this->addFoldersToHierarchy($childId, $folderLookup, $childrenLookup, $formattedFolders, $level + 1, $path);
         }
     }
 

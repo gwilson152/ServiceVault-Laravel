@@ -254,7 +254,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
-import StackedDialog from '@/Components/Modals/StackedDialog.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
 
 const props = defineProps({
   show: Boolean

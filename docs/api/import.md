@@ -1495,4 +1495,4 @@ $schedule->command('import:sync')
 
 ---
 
-*Universal Import API Reference | Service Vault Documentation | Updated: August 25, 2025*
+*Universal Import API Reference | Service Vault Documentation | Updated: August 26, 2025*

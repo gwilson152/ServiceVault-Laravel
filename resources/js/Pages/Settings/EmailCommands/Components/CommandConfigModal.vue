@@ -240,7 +240,7 @@
 <script setup>
 import { reactive, computed, watch } from 'vue'
 import { ref } from 'vue'
-import StackedDialog from '@/Components/Modals/StackedDialog.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
 
 const props = defineProps({
   show: Boolean,

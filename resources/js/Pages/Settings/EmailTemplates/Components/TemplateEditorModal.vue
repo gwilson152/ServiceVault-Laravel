@@ -127,11 +127,11 @@
           v-model="form.subject"
           rows="2"
           required
-          placeholder="e.g., New Ticket Created: {{ticket.subject}}"
+          placeholder="e.g., New Ticket Created: {ticket.subject}"
           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         ></textarea>
         <p class="mt-1 text-xs text-gray-500">
-          Use variables like {{'{{'}}ticket.number{{'}}'}} or {{'{{'}}user.name{{'}}'}} to make the subject dynamic
+          Use variables like <code class="bg-gray-100 px-1 rounded">{{ticket.number}}</code> or <code class="bg-gray-100 px-1 rounded">{{user.name}}</code> to make the subject dynamic
         </p>
       </div>
 
@@ -258,7 +258,7 @@ Support Team"
 
         <div class="mt-2 flex justify-between text-xs text-gray-500">
           <div>
-            Supports 6 variable formats: {{'{{'}}var{{'}}'}}, {var}, [var], $var$, ${var}, %var%
+            Supports 6 variable formats: <code class="bg-gray-100 px-1">{{var}}</code>, {var}, [var], $var$, ${var}, %var%
           </div>
           <div v-if="activeTab === 'html'">
             Characters: {{ (form.body || '').length }}
@@ -339,8 +339,8 @@ Support Team"
 <script setup>
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
-import StackedDialog from '@/Components/Modals/StackedDialog.vue'
-import UnifiedSelector from '@/Components/Form/UnifiedSelector.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 import VariableHelper from './VariableHelper.vue'
 import TemplatePreviewModal from './TemplatePreviewModal.vue'
 

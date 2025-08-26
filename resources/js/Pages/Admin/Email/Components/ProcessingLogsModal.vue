@@ -262,7 +262,7 @@ import {
   ArrowDownIcon,
   DocumentTextIcon
 } from '@heroicons/vue/24/outline'
-import StackedDialog from '@/Components/Modals/StackedDialog.vue'
+import StackedDialog from '@/Components/StackedDialog.vue'
 import LogDetailsModal from './LogDetailsModal.vue'
 
 const props = defineProps({

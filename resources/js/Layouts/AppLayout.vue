@@ -269,6 +269,7 @@ import {
   BuildingOfficeIcon,
   CurrencyDollarIcon,
   ArrowDownTrayIcon,
+  EnvelopeIcon,
 } from '@heroicons/vue/24/outline'
 
 // Components
@@ -325,6 +326,7 @@ const iconMap = {
   'ShieldCheckIcon': ShieldCheckIcon,
   'CogIcon': CogIcon,
   'ArrowDownTrayIcon': ArrowDownTrayIcon,
+  'EnvelopeIcon': EnvelopeIcon,
   
   // Legacy/alternative mappings for backward compatibility
   'home': HomeIcon,
@@ -351,6 +353,9 @@ const iconMap = {
   'settings': CogIcon,
   'arrow-down-tray': ArrowDownTrayIcon,
   'import': ArrowDownTrayIcon,
+  'envelope': EnvelopeIcon,
+  'email': EnvelopeIcon,
+  'mail': EnvelopeIcon,
 }
 
 // Get icon component based on icon string

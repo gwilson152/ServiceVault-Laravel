@@ -44,6 +44,8 @@ class ImportJob extends Model
         'progress_percentage' => 'integer',
     ];
 
+    protected $appends = ['progress'];
+
     /**
      * Get the import profile this job belongs to.
      */
@@ -98,6 +100,14 @@ class ImportJob extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Get progress attribute (alias for progress_percentage for frontend compatibility).
+     */
+    public function getProgressAttribute(): int
+    {
+        return $this->progress_percentage ?? 0;
     }
 
     /**

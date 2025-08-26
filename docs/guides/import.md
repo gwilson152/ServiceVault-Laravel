@@ -182,9 +182,44 @@ Create copies of existing import profiles with all settings preserved:
 
 ### Step 6: Preview and Execute
 
-1. **Preview Import Data** - Review transformed data with impact assessment
-2. **Validate Configuration** - Check field mappings, modes, and relationships  
-3. **Execute Import** - Run import job with real-time progress tracking
+#### Unified Import Preview Experience
+
+**✅ Enhanced Preview Architecture (Latest Update):**
+
+Service Vault now provides a **unified import preview experience** that intelligently adapts to both template-based and query-based imports:
+
+**Single Preview Dialog:**
+- **Automatic Detection**: Detects import type (template vs. query) automatically
+- **Adaptive Interface**: Shows relevant configuration details based on import type
+- **Consistent User Experience**: Same preview flow for all import scenarios
+
+**Access Methods:**
+1. **"Preview Import Data"** (dropdown menu) → Unified preview for template-based imports
+2. **"Preview Import"** (query builder) → Unified preview for query-based imports
+
+**Smart Preview Content:**
+- **Template-Based**: Shows configuration summary, raw data preview, and import options
+- **Query-Based**: Shows query summary, field mappings, sample data, and SQL details
+
+**Preview Features:**
+1. **Import Configuration** - Mode selection (create/update/upsert) and batch size options
+2. **Sample Data Preview** - Real-time data preview with refresh capability
+3. **Impact Assessment** - Estimated records and configuration validation
+4. **Import Execution** - Direct execution with progress dialog integration
+
+#### Import Execution with Progress Dialog
+
+**Separate Execution Experience:**
+- **Dedicated Progress Dialog**: Independent dialog for import job execution
+- **Real-Time Progress**: Live progress bars, status updates, and statistics
+- **Professional Feedback**: Success/error handling with detailed messaging
+- **Job Management**: Direct access to view import jobs after completion
+
+**Execution Flow:**
+1. **Preview Import Data** - Review configuration and sample data
+2. **Click "Execute Import"** - Progress dialog opens immediately
+3. **Monitor Progress** - Real-time job creation and execution feedback
+4. **Completion Handling** - Success confirmation with option to view import jobs
 
 ## Platform Templates
 
@@ -978,4 +1013,4 @@ telnet hostname 5432
 
 ---
 
-_Universal Import System Guide | Service Vault Documentation | Updated: August 23, 2025_
+_Universal Import System Guide | Service Vault Documentation | Updated: August 26, 2025_

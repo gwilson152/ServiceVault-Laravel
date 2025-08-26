@@ -75,7 +75,7 @@
                 <option
                   v-for="column in getAvailableLeftColumns(join, index)"
                   :key="column.name"
-                  :value="column.name"
+                  :value="`${column.table_name}.${column.name}`"
                   :title="column.data_type"
                 >
                   {{ column.table_name }}.{{ column.name }}
@@ -96,7 +96,7 @@
                 <option
                   v-for="column in getRightColumns(join)"
                   :key="column.name"
-                  :value="column.name"
+                  :value="`${join.table}.${column.name}`"
                   :title="column.data_type"
                 >
                   {{ join.table }}.{{ column.name }}
@@ -202,10 +202,8 @@ const fullQueryPreview = computed(() => {
   
   joins.value.forEach(join => {
     if (isValidJoin(join)) {
-      // Handle both left and right columns - add table prefix only if not already prefixed
-      const leftColumn = join.leftColumn.includes('.') ? join.leftColumn : `${props.baseTable?.name}.${join.leftColumn}`
-      const rightColumn = join.rightColumn.includes('.') ? join.rightColumn : `${join.table}.${join.rightColumn}`
-      query += `\n${join.type} JOIN ${join.table} ON ${leftColumn} = ${rightColumn}`
+      // Column values now include proper table prefixes from dropdown selections
+      query += `\n${join.type} JOIN ${join.table} ON ${join.leftColumn} = ${join.rightColumn}`
       if (join.condition) {
         query += ` AND ${join.condition}`
       }
@@ -296,10 +294,8 @@ const isValidJoin = (join) => {
 const formatJoinSQL = (join) => {
   if (!isValidJoin(join)) return ''
   
-  // Handle both left and right columns - add table prefix only if not already prefixed
-  const leftColumn = join.leftColumn.includes('.') ? join.leftColumn : `${props.baseTable?.name}.${join.leftColumn}`
-  const rightColumn = join.rightColumn.includes('.') ? join.rightColumn : `${join.table}.${join.rightColumn}`
-  let sql = `${join.type} JOIN ${join.table} ON ${leftColumn} = ${rightColumn}`
+  // Column values now include proper table prefixes from dropdown selections
+  let sql = `${join.type} JOIN ${join.table} ON ${join.leftColumn} = ${join.rightColumn}`
   if (join.condition) {
     sql += ` AND ${join.condition}`
   }

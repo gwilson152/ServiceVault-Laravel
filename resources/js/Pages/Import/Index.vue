@@ -23,6 +23,94 @@
                 </div>
             </div>
 
+            <!-- Import Methods -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- PostgreSQL Database Import -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="flex-shrink-0">
+                            <svg class="h-8 w-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900">Database Import</h3>
+                            <p class="text-sm text-gray-600">Import from PostgreSQL databases</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-4">
+                        Connect to PostgreSQL databases and import data using visual query builder or pre-built templates.
+                    </p>
+                    <div class="text-sm text-gray-600">
+                        <div class="flex items-center mb-1">
+                            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Visual query builder
+                        </div>
+                        <div class="flex items-center mb-1">
+                            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Real-time monitoring
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Duplicate detection
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FreeScout API Import -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="flex-shrink-0">
+                            <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900">FreeScout API</h3>
+                            <p class="text-sm text-gray-600">Import from FreeScout instances</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-4">
+                        Import conversations, customers, and mailboxes from FreeScout helpdesk systems via REST API.
+                    </p>
+                    <div class="text-sm text-gray-600 mb-4">
+                        <div class="flex items-center mb-1">
+                            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            API key authentication
+                        </div>
+                        <div class="flex items-center mb-1">
+                            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Account mapping strategies
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Import limits & filtering
+                        </div>
+                    </div>
+                    <Link
+                        :href="route('import.freescout-api')"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                        <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                        </svg>
+                        Configure FreeScout API
+                    </Link>
+                </div>
+            </div>
+
             <!-- Import Profiles Section -->
             <div class="bg-white shadow rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
@@ -461,15 +549,6 @@
             @saved="handleProfileSaved"
         />
 
-        <!-- Simple Import Preview Modal -->
-        <SimpleImportPreview
-            :show="showImportWizard"
-            :profile="selectedProfile"
-            @close="showImportWizard = false"
-            @execute-import="handlePreviewExecuteImport"
-            @open-query-builder="handleOpenQueryBuilderFromPreview"
-            @open-template-selector="handleOpenTemplateSelectorFromPreview"
-        />
 
         <!-- Real-time Job Monitor -->
         <ImportJobMonitor
@@ -492,6 +571,7 @@
             :initial-config="selectedProfile?.configuration || {}"
             @close="showQueryBuilder = false"
             @query-saved="handleQuerySaved"
+            @execution-started="handleExecutionStarted"
         />
 
         <!-- Template Selector Modal -->
@@ -502,12 +582,38 @@
             @template-applied="handleTemplateApplied"
         />
 
+        <!-- Import Execution Dialog -->
+        <ImportExecutionDialog
+            :show="showExecutionDialog"
+            :is-executing="executionState.isExecuting"
+            :progress="executionState.progress"
+            :message="executionState.message"
+            :is-success="executionState.isSuccess"
+            :is-error="executionState.isError"
+            :error-details="executionState.errorDetails"
+            :job-id="executionState.jobId"
+            :estimated-records="executionState.estimatedRecords"
+            @close="handleExecutionDialogClose"
+            @view-jobs="handleExecutionViewJobs"
+        />
+
         <!-- Duplicate Profile Modal -->
         <DuplicateProfileModal
             :show="showDuplicateModal"
             :profile="selectedProfile"
             @close="showDuplicateModal = false"
             @duplicated="handleProfileDuplicated"
+        />
+
+        <!-- Unified Import Preview Modal -->
+        <QueryImportPreviewModal
+            :show="showUnifiedPreview"
+            :profile="selectedProfile"
+            :query-config="selectedProfile?.configuration || {}"
+            :import-type="previewImportType"
+            @close="showUnifiedPreview = false"
+            @executed="handlePreviewExecuted"
+            @execution-started="handleExecutionStarted"
         />
 
         <!-- Success Notification -->
@@ -523,15 +629,17 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axios from "axios";
+import { Link } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import ImportProfileModal from "./Components/ImportProfileModal.vue";
-import SimpleImportPreview from "./Components/SimpleImportPreview.vue";
 import ImportJobDetailsModal from "./Components/ImportJobDetailsModal.vue";
 import DuplicateProfileModal from "./Components/DuplicateProfileModal.vue";
 import QueryBuilderModal from "@/Components/Import/QueryBuilderModal.vue";
 import TemplateSelector from "@/Components/Import/TemplateSelector.vue";
 import SuccessNotification from "@/Components/SuccessNotification.vue";
 import ImportJobMonitor from "@/Components/Import/ImportJobMonitor.vue";
+import ImportExecutionDialog from "@/Components/Import/ImportExecutionDialog.vue";
+import QueryImportPreviewModal from "./Components/QueryImportPreviewModal.vue";
 import {
     ArrowDownTrayIcon,
     CircleStackIcon,
@@ -550,18 +658,30 @@ import { useImportQueries } from "@/Composables/queries/useImportQueries.js";
 
 // Reactive state
 const showCreateProfile = ref(false);
-const showImportWizard = ref(false);
 const showJobDetails = ref(false);
 const showQueryBuilder = ref(false);
 const showTemplateSelector = ref(false);
 const showDuplicateModal = ref(false);
 const showSuccessNotification = ref(false);
+const showExecutionDialog = ref(false);
+const showUnifiedPreview = ref(false);
+const previewImportType = ref('auto');
 const selectedProfile = ref(null);
 const selectedJob = ref(null);
 const activeProfileMenu = ref(null);
 const successNotification = ref({
     title: "",
     message: "",
+});
+const executionState = ref({
+    isExecuting: false,
+    progress: 0,
+    message: '',
+    isSuccess: false,
+    isError: false,
+    errorDetails: '',
+    jobId: '',
+    estimatedRecords: 0
 });
 
 // Use import queries composable
@@ -592,7 +712,8 @@ const toggleProfileMenu = (profileId) => {
 
 const openImportWizard = (profile) => {
     selectedProfile.value = profile;
-    showImportWizard.value = true;
+    previewImportType.value = 'template'; // Explicitly set as template-based import
+    showUnifiedPreview.value = true;
     activeProfileMenu.value = null;
 };
 
@@ -861,29 +982,6 @@ const handleProfileDuplicated = ({ message, profile }) => {
     );
 };
 
-const handlePreviewExecuteImport = (profile) => {
-    showImportWizard.value = false;
-    selectedProfile.value = null;
-    refreshJobs();
-    showSuccessMessage(
-        "Import Started",
-        `Import job has been started for "${profile.name}"`
-    );
-};
-
-const handleOpenQueryBuilderFromPreview = () => {
-    showImportWizard.value = false;
-    if (selectedProfile.value) {
-        openQueryBuilder(selectedProfile.value);
-    }
-};
-
-const handleOpenTemplateSelectorFromPreview = () => {
-    showImportWizard.value = false;
-    if (selectedProfile.value) {
-        openTemplateSelector(selectedProfile.value);
-    }
-};
 
 // Job monitor event handlers
 const handleJobDetails = (job) => {
@@ -930,6 +1028,64 @@ const formatDate = (dateString) => {
         new Date(dateString).toLocaleDateString() +
         " " +
         new Date(dateString).toLocaleTimeString()
+    );
+};
+
+// Execution Dialog handlers
+const handleExecutionStarted = (executionData) => {
+    executionState.value = {
+        isExecuting: !executionData.error,
+        progress: executionData.error ? 0 : 20,
+        message: executionData.message,
+        isSuccess: false,
+        isError: !!executionData.error,
+        errorDetails: executionData.errorDetails || '',
+        jobId: executionData.job_id || '',
+        estimatedRecords: executionData.estimatedRecords || 0
+    };
+    
+    showExecutionDialog.value = true;
+    
+    if (!executionData.error) {
+        // Simulate progress for successful job creation
+        setTimeout(() => {
+            executionState.value.progress = 100;
+            executionState.value.isExecuting = false;
+            executionState.value.isSuccess = true;
+            executionState.value.message = 'Import job started successfully!';
+        }, 1500);
+    }
+};
+
+const handleExecutionDialogClose = () => {
+    showExecutionDialog.value = false;
+    // Reset execution state after a delay
+    setTimeout(() => {
+        executionState.value = {
+            isExecuting: false,
+            progress: 0,
+            message: '',
+            isSuccess: false,
+            isError: false,
+            errorDetails: '',
+            jobId: '',
+            estimatedRecords: 0
+        };
+    }, 300);
+};
+
+const handleExecutionViewJobs = () => {
+    showExecutionDialog.value = false;
+    refreshJobs(); // Refresh the jobs list to show the new job
+};
+
+const handlePreviewExecuted = (executionData) => {
+    // Handle the legacy executed event from unified preview
+    console.log('Unified preview executed:', executionData);
+    refreshJobs(); // Refresh the jobs list
+    showSuccessMessage(
+        "Import Started",
+        `Import job has been started successfully`
     );
 };
 </script>

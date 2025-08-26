@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\EmailConfig;
+use App\Models\EmailSystemConfig;
+use App\Models\EmailDomainMapping;
 use App\Models\EmailProcessingLog;
-use App\Models\EmailTemplate;
 use App\Models\Account;
 use App\Models\User;
 use App\Jobs\ProcessIncomingEmail;
@@ -25,24 +25,27 @@ class EmailAdminController extends Controller
      */
     public function dashboard(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', EmailConfig::class);
+        // Check if user can access email system administration
+        if (!auth()->user()->can('system.configure')) {
+            abort(403, 'Unauthorized to access email administration');
+        }
 
-        $timeRange = $request->get('range', '7d'); // 7d, 30d, 90d
+        $timeRange = $request->get('time_range', '24h');
         $startDate = $this->getStartDate($timeRange);
 
         try {
             $dashboardData = [
+                // System health and configuration
+                'system_health' => $this->getSystemHealth(),
+                
                 // Overview statistics
                 'overview' => $this->getOverviewStats($startDate),
                 
                 // Processing performance
                 'performance' => $this->getPerformanceStats($startDate),
                 
-                // Command system analytics
-                'commands' => $this->getCommandStats($startDate),
-                
-                // Configuration status
-                'configurations' => $this->getConfigurationStatus(),
+                // Domain mapping statistics
+                'domain_mappings' => $this->getDomainMappingStats(),
                 
                 // Queue health
                 'queue_health' => $this->getQueueHealth(),
@@ -52,9 +55,6 @@ class EmailAdminController extends Controller
                 
                 // System alerts
                 'alerts' => $this->getSystemAlerts($startDate),
-                
-                // Template usage
-                'templates' => $this->getTemplateUsage($startDate),
             ];
 
             return response()->json([
@@ -83,7 +83,9 @@ class EmailAdminController extends Controller
      */
     public function getProcessingLogs(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', EmailConfig::class);
+        if (!auth()->user()->can('system.configure')) {
+            abort(403, 'Unauthorized to access email processing logs');
+        }
 
         $validator = Validator::make($request->all(), [
             'page' => 'integer|min:1',
@@ -185,7 +187,9 @@ class EmailAdminController extends Controller
      */
     public function getProcessingLogDetail(string $emailId): JsonResponse
     {
-        $this->authorize('viewAny', EmailConfig::class);
+        if (!auth()->user()->can('system.configure')) {
+            abort(403, 'Unauthorized to access email processing details');
+        }
 
         try {
             $log = EmailProcessingLog::where('email_id', $emailId)
@@ -222,7 +226,9 @@ class EmailAdminController extends Controller
      */
     public function retryProcessing(Request $request): JsonResponse
     {
-        $this->authorize('create', EmailConfig::class);
+        if (!auth()->user()->can('system.configure')) {
+            abort(403, 'Unauthorized to retry email processing');
+        }
 
         $validator = Validator::make($request->all(), [
             'email_ids' => 'required|array|min:1|max:50',
@@ -306,7 +312,9 @@ class EmailAdminController extends Controller
      */
     public function getQueueStatus(): JsonResponse
     {
-        $this->authorize('viewAny', EmailConfig::class);
+        if (!auth()->user()->can('system.configure')) {
+            abort(403, 'Unauthorized to access queue status');
+        }
 
         try {
             $queueData = [
@@ -340,57 +348,39 @@ class EmailAdminController extends Controller
     }
 
     /**
-     * Get system health metrics
+     * Get system health metrics (private method for dashboard)
      */
-    public function getSystemHealth(): JsonResponse
+    private function getSystemHealth(): array
     {
-        $this->authorize('viewAny', EmailConfig::class);
-
         try {
+            $emailConfig = EmailSystemConfig::getConfig();
+            
             $health = [
-                'overall_status' => 'healthy',
-                'checks' => [
-                    'database' => $this->checkDatabaseHealth(),
-                    'email_configs' => $this->checkEmailConfigsHealth(),
-                    'templates' => $this->checkTemplatesHealth(),
-                    'queue_system' => $this->checkQueueSystemHealth(),
-                    'processing_logs' => $this->checkProcessingLogsHealth(),
-                    'recent_processing' => $this->checkRecentProcessingHealth(),
-                ],
-                'metrics' => [
-                    'uptime' => $this->getSystemUptime(),
-                    'memory_usage' => $this->getMemoryUsage(),
-                    'disk_usage' => $this->getDiskUsage(),
-                ],
+                'system_active' => $emailConfig->system_active ?? false,
+                'fully_configured' => $emailConfig->isFullyConfigured() ?? false,
+                'incoming_enabled' => $emailConfig->incoming_enabled ?? false,
+                'outgoing_enabled' => $emailConfig->outgoing_enabled ?? false,
+                'incoming_provider' => $emailConfig->incoming_provider ?? 'none',
+                'outgoing_provider' => $emailConfig->outgoing_provider ?? 'none',
+                'domain_mappings_count' => EmailDomainMapping::count(),
+                'active_domain_mappings' => EmailDomainMapping::where('is_active', true)->count(),
+                'last_updated' => $emailConfig->updated_at,
             ];
 
-            // Determine overall status
-            $failedChecks = collect($health['checks'])->filter(fn($check) => !$check['healthy'])->count();
-            if ($failedChecks > 2) {
-                $health['overall_status'] = 'critical';
-            } elseif ($failedChecks > 0) {
-                $health['overall_status'] = 'warning';
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $health,
-                'checked_at' => now()->toISOString(),
-            ]);
+            return $health;
 
         } catch (\Exception $e) {
             Log::error('System health check failed', [
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Health check failed',
-                'data' => [
-                    'overall_status' => 'critical',
-                    'error' => $e->getMessage(),
-                ],
-            ], 500);
+            return [
+                'system_active' => false,
+                'fully_configured' => false,
+                'incoming_enabled' => false,
+                'outgoing_enabled' => false,
+                'error' => $e->getMessage(),
+            ];
         }
     }
 
@@ -399,7 +389,9 @@ class EmailAdminController extends Controller
      */
     public function clearFailedJobs(Request $request): JsonResponse
     {
-        $this->authorize('create', EmailConfig::class);
+        if (!auth()->user()->can('system.configure')) {
+            abort(403, 'Unauthorized to clear failed jobs');
+        }
 
         $validator = Validator::make($request->all(), [
             'older_than_hours' => 'integer|min:1|max:720', // Max 30 days
@@ -467,8 +459,8 @@ class EmailAdminController extends Controller
             'tickets_created' => EmailProcessingLog::where('created_at', '>=', $startDate)->where('created_new_ticket', true)->count(),
             'comments_added' => EmailProcessingLog::where('created_at', '>=', $startDate)->whereNotNull('ticket_comment_id')->count(),
             'commands_executed' => EmailProcessingLog::where('created_at', '>=', $startDate)->sum('commands_executed_count'),
-            'active_configurations' => EmailConfig::where('is_active', true)->count(),
-            'active_templates' => EmailTemplate::where('is_active', true)->count(),
+            'system_configured' => EmailSystemConfig::getConfig()->isFullyConfigured(),
+            'domain_mappings_active' => EmailDomainMapping::where('is_active', true)->count(),
         ];
     }
 
@@ -505,16 +497,17 @@ class EmailAdminController extends Controller
     }
 
     /**
-     * Get configuration status
+     * Get domain mapping statistics
      */
-    private function getConfigurationStatus(): array
+    private function getDomainMappingStats(): array
     {
         return [
-            'total_configs' => EmailConfig::count(),
-            'active_configs' => EmailConfig::where('is_active', true)->count(),
-            'by_driver' => EmailConfig::groupBy('driver')->selectRaw('driver, count(*) as count')->pluck('count', 'driver'),
-            'by_direction' => EmailConfig::groupBy('direction')->selectRaw('direction, count(*) as count')->pluck('count', 'direction'),
-            'accounts_with_configs' => EmailConfig::whereNotNull('account_id')->distinct('account_id')->count(),
+            'total_mappings' => EmailDomainMapping::count(),
+            'active_mappings' => EmailDomainMapping::where('is_active', true)->count(),
+            'by_type' => EmailDomainMapping::groupBy('pattern_type')
+                ->selectRaw('pattern_type, count(*) as count')
+                ->pluck('count', 'pattern_type')->toArray(),
+            'recent_mappings' => EmailDomainMapping::where('created_at', '>=', now()->subDays(7))->count(),
         ];
     }
 
@@ -560,42 +553,52 @@ class EmailAdminController extends Controller
     {
         $alerts = [];
 
-        // Check for high failure rate
-        $totalEmails = EmailProcessingLog::where('created_at', '>=', $startDate)->count();
-        $failedEmails = EmailProcessingLog::where('created_at', '>=', $startDate)->where('status', 'failed')->count();
-        
-        if ($totalEmails > 0 && ($failedEmails / $totalEmails) > 0.1) {
+        $emailConfig = EmailSystemConfig::getConfig();
+
+        // Check if system is not configured
+        if (!$emailConfig->system_active) {
             $alerts[] = [
                 'type' => 'warning',
-                'message' => 'High email processing failure rate detected',
-                'details' => "Failed: {$failedEmails}/{$totalEmails} (" . round(($failedEmails / $totalEmails) * 100, 1) . "%)",
+                'message' => 'Email system is not active',
+                'details' => 'Configure and activate the email system to start processing emails',
             ];
         }
 
-        // Check for inactive configurations
-        $inactiveConfigs = EmailConfig::where('is_active', false)->count();
-        if ($inactiveConfigs > 0) {
+        // Check if system is not fully configured
+        if (!$emailConfig->isFullyConfigured()) {
             $alerts[] = [
                 'type' => 'info',
-                'message' => "{$inactiveConfigs} email configuration(s) are inactive",
+                'message' => 'Email system configuration incomplete',
+                'details' => 'Complete incoming and outgoing email service configuration',
+            ];
+        }
+
+        // Check for high failure rate
+        $totalEmails = EmailProcessingLog::where('created_at', '>=', $startDate)->count();
+        if ($totalEmails > 0) {
+            $failedEmails = EmailProcessingLog::where('created_at', '>=', $startDate)->where('status', 'failed')->count();
+            if (($failedEmails / $totalEmails) > 0.1) {
+                $alerts[] = [
+                    'type' => 'warning',
+                    'message' => 'High email processing failure rate detected',
+                    'details' => "Failed: {$failedEmails}/{$totalEmails} (" . round(($failedEmails / $totalEmails) * 100, 1) . "%)",
+                ];
+            }
+        }
+
+        // Check for domain mappings
+        $activeMappings = EmailDomainMapping::where('is_active', true)->count();
+        if ($activeMappings === 0) {
+            $alerts[] = [
+                'type' => 'info',
+                'message' => 'No active domain mappings configured',
+                'details' => 'Set up domain mappings to route incoming emails to accounts',
             ];
         }
 
         return $alerts;
     }
 
-    /**
-     * Get template usage statistics
-     */
-    private function getTemplateUsage(Carbon $startDate): array
-    {
-        return [
-            'total_templates' => EmailTemplate::count(),
-            'active_templates' => EmailTemplate::where('is_active', true)->count(),
-            'most_used' => EmailTemplate::orderBy('usage_count', 'desc')->limit(5)->get(['name', 'usage_count']),
-            'recently_used' => EmailTemplate::whereNotNull('last_used_at')->orderBy('last_used_at', 'desc')->limit(5)->get(['name', 'last_used_at']),
-        ];
-    }
 
     /**
      * Helper methods for statistics
@@ -741,23 +744,26 @@ class EmailAdminController extends Controller
         }
     }
 
-    private function checkEmailConfigsHealth(): array
+    private function checkEmailSystemHealth(): array
     {
-        $activeConfigs = EmailConfig::where('is_active', true)->count();
+        $emailConfig = EmailSystemConfig::getConfig();
         return [
-            'healthy' => $activeConfigs > 0,
-            'message' => "Active configurations: {$activeConfigs}",
-            'count' => $activeConfigs,
+            'healthy' => $emailConfig->system_active && $emailConfig->isFullyConfigured(),
+            'message' => $emailConfig->system_active ? 
+                ($emailConfig->isFullyConfigured() ? 'Email system active and configured' : 'Email system active but not fully configured') :
+                'Email system inactive',
+            'system_active' => $emailConfig->system_active,
+            'fully_configured' => $emailConfig->isFullyConfigured(),
         ];
     }
 
-    private function checkTemplatesHealth(): array
+    private function checkDomainMappingsHealth(): array
     {
-        $activeTemplates = EmailTemplate::where('is_active', true)->count();
+        $activeMappings = EmailDomainMapping::where('is_active', true)->count();
         return [
-            'healthy' => $activeTemplates > 0,
-            'message' => "Active templates: {$activeTemplates}",
-            'count' => $activeTemplates,
+            'healthy' => $activeMappings > 0,
+            'message' => "Active domain mappings: {$activeMappings}",
+            'count' => $activeMappings,
         ];
     }
 

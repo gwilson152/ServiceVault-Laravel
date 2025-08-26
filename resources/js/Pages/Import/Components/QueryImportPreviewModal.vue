@@ -33,7 +33,9 @@
             <InformationCircleIcon class="h-5 w-5 text-indigo-400" />
           </div>
           <div class="ml-3 flex-1">
-            <h3 class="text-sm font-medium text-indigo-800">Import Query Summary</h3>
+            <h3 class="text-sm font-medium text-indigo-800">
+              {{ isQueryBasedImport ? 'Import Query Summary' : 'Import Preview Summary' }}
+            </h3>
             <div class="mt-2 text-sm text-indigo-700">
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -41,8 +43,10 @@
                   <div class="text-indigo-600">{{ profile?.name }}</div>
                 </div>
                 <div>
-                  <div class="font-medium">Target Type</div>
-                  <div class="text-indigo-600">{{ getTargetTypeLabel(queryConfig?.target_type) }}</div>
+                  <div class="font-medium">Import Type</div>
+                  <div class="text-indigo-600">
+                    {{ isQueryBasedImport ? 'Custom Query' : 'Template-Based' }}
+                  </div>
                 </div>
                 <div>
                   <div class="font-medium">Estimated Records</div>
@@ -50,12 +54,16 @@
                 </div>
               </div>
               
-              <!-- Query Configuration Details -->
-              <div class="mt-3 pt-3 border-t border-indigo-200">
+              <!-- Query Configuration Details (Query-based only) -->
+              <div v-if="isQueryBasedImport" class="mt-3 pt-3 border-t border-indigo-200">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   <div>
                     <div class="font-medium">Base Table:</div>
                     <div>{{ queryConfig?.base_table }}</div>
+                  </div>
+                  <div>
+                    <div class="font-medium">Target Type:</div>
+                    <div>{{ getTargetTypeLabel(queryConfig?.target_type) }}</div>
                   </div>
                   <div>
                     <div class="font-medium">Fields Mapped:</div>
@@ -68,6 +76,24 @@
                   <div v-if="queryConfig?.filters?.length > 0">
                     <div class="font-medium">Data Filters:</div>
                     <div>{{ queryConfig.filters.length }} filter{{ queryConfig.filters.length === 1 ? '' : 's' }}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Template Configuration Details (Template-based only) -->
+              <div v-if="isTemplateBasedImport" class="mt-3 pt-3 border-t border-indigo-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <div class="font-medium">Configuration:</div>
+                    <div>{{ profile?.template_id ? 'Template-based' : 'Custom configuration' }}</div>
+                  </div>
+                  <div v-if="profile?.template_id">
+                    <div class="font-medium">Template ID:</div>
+                    <div>{{ profile.template_id }}</div>
+                  </div>
+                  <div>
+                    <div class="font-medium">Has Custom Queries:</div>
+                    <div>{{ profile?.has_custom_queries ? 'Yes' : 'No' }}</div>
                   </div>
                 </div>
               </div>
@@ -141,7 +167,9 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50 sticky top-0">
               <tr>
+                <!-- Query-based: Show field mappings -->
                 <th
+                  v-if="isQueryBasedImport"
                   v-for="field in mappedFields"
                   :key="field.target"
                   class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -151,6 +179,16 @@
                     <span class="text-gray-400 font-normal normal-case">← {{ field.source }}</span>
                   </div>
                 </th>
+                
+                <!-- Template-based: Show raw data columns -->
+                <th
+                  v-if="isTemplateBasedImport"
+                  v-for="column in getTableColumns(previewData.sample_data[0])"
+                  :key="column"
+                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  {{ formatColumnName(column) }}
+                </th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -159,13 +197,27 @@
                 :key="index"
                 class="hover:bg-gray-50"
               >
+                <!-- Query-based: Show mapped field values -->
                 <td
+                  v-if="isQueryBasedImport"
                   v-for="field in mappedFields"
                   :key="field.target"
                   class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 max-w-xs"
                 >
                   <div class="truncate" :title="getFieldValue(row, field)">
                     {{ getFieldValue(row, field) }}
+                  </div>
+                </td>
+                
+                <!-- Template-based: Show raw column values -->
+                <td
+                  v-if="isTemplateBasedImport"
+                  v-for="column in getTableColumns(row)"
+                  :key="column"
+                  class="px-3 py-2 whitespace-nowrap text-sm text-gray-900 max-w-xs"
+                >
+                  <div class="truncate" :title="formatCellValue(row[column])">
+                    {{ formatCellValue(row[column]) }}
                   </div>
                 </td>
               </tr>
@@ -219,6 +271,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Fallback for when no data, no loading, no error -->
+    <div v-else class="flex items-center justify-center py-12">
+      <div class="text-center">
+        <CircleStackIcon class="mx-auto h-12 w-12 text-gray-300" />
+        <h3 class="mt-4 text-sm font-medium text-gray-900">Preparing Import Preview</h3>
+        <p class="mt-2 text-sm text-gray-500 max-w-sm">
+          {{ isQueryBasedImport 
+            ? 'Complete your query configuration to see import preview.' 
+            : 'Loading import configuration...' 
+          }}
+        </p>
+      </div>
+    </div>
   </StackedDialog>
 </template>
 
@@ -242,10 +308,15 @@ const props = defineProps({
   queryConfig: {
     type: Object,
     default: () => ({})
+  },
+  // New prop to indicate if this is template-based or query-based import
+  importType: {
+    type: String,
+    default: 'auto' // 'auto', 'template', 'query'
   }
 })
 
-const emit = defineEmits(['close', 'executed'])
+const emit = defineEmits(['close', 'executed', 'execution-started'])
 
 // State
 const previewData = ref(null)
@@ -257,7 +328,29 @@ const batchSize = ref('100')
 const duplicateStrategy = ref('exact')
 
 // Computed
+const detectedImportType = computed(() => {
+  if (props.importType !== 'auto') {
+    return props.importType
+  }
+  
+  // Auto-detect based on profile configuration
+  if (props.queryConfig?.base_table && props.queryConfig?.fields?.length > 0) {
+    return 'query'
+  }
+  
+  if (props.profile?.template_id || props.profile?.has_custom_queries) {
+    return 'template'
+  }
+  
+  return 'query' // Default fallback
+})
+
+const isQueryBasedImport = computed(() => detectedImportType.value === 'query')
+const isTemplateBasedImport = computed(() => detectedImportType.value === 'template')
+
 const mappedFields = computed(() => {
+  if (!isQueryBasedImport.value) return []
+  
   return props.queryConfig?.fields?.map(field => ({
     ...field,
     target_label: getTargetFieldLabel(field.target)
@@ -265,15 +358,34 @@ const mappedFields = computed(() => {
 })
 
 const canExecuteImport = computed(() => {
-  return previewData.value && 
-         previewData.value.estimated_records > 0 && 
-         mappedFields.value.length > 0
+  if (isQueryBasedImport.value) {
+    return previewData.value && 
+           previewData.value.estimated_records > 0 && 
+           mappedFields.value.length > 0
+  } else {
+    // Template-based import - just needs a profile and preview data
+    return previewData.value && previewData.value.estimated_records > 0
+  }
 })
 
 // Watch for changes
-watch(() => [props.show, props.profile, props.queryConfig], ([show, profile, queryConfig]) => {
-  if (show && profile && queryConfig?.base_table) {
-    loadPreview()
+watch(() => [props.show, props.profile, props.queryConfig, props.importType], ([show, profile, queryConfig, importType]) => {
+  if (show && profile) {
+    if (isQueryBasedImport.value) {
+      // For query-based imports, require queryConfig with base_table
+      if (queryConfig?.base_table) {
+        loadPreview()
+      } else {
+        // Show helpful message for incomplete query config
+        previewData.value = null
+        error.value = { 
+          message: 'Query configuration is incomplete. Please complete your query setup in the previous steps.' 
+        }
+      }
+    } else {
+      // For template-based imports, just require profile
+      loadPreview()
+    }
   } else {
     previewData.value = null
     error.value = null
@@ -282,27 +394,57 @@ watch(() => [props.show, props.profile, props.queryConfig], ([show, profile, que
 
 // Methods
 const loadPreview = async () => {
-  if (!props.profile || !props.queryConfig?.base_table) return
+  if (!props.profile) return
+  
+  // For query-based imports, require queryConfig with base_table
+  if (isQueryBasedImport.value && !props.queryConfig?.base_table) return
   
   isLoading.value = true
   error.value = null
   
   try {
-    const response = await fetch(`/api/import/profiles/${props.profile.id}/preview-query`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-      },
-      body: JSON.stringify({
-        ...props.queryConfig,
-        limit: 20 // Preview limit
+    let response
+    
+    if (isQueryBasedImport.value) {
+      // Query-based import preview
+      response = await fetch(`/api/import/profiles/${props.profile.id}/preview-query`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          ...props.queryConfig,
+          limit: 20 // Preview limit
+        })
       })
-    })
+    } else {
+      // Template-based import preview  
+      response = await fetch(`/api/import/profiles/${props.profile.id}/simulate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          configuration: props.profile.configuration || {},
+          limit: 20 // Preview limit
+        })
+      })
+    }
 
     if (response.ok) {
       const result = await response.json()
-      previewData.value = result
+      
+      if (isTemplateBasedImport.value && result.results) {
+        // Template-based simulation returns results in a different format
+        previewData.value = {
+          sample_data: result.results.sample_data || [],
+          estimated_records: result.results.estimated_records || 0
+        }
+      } else {
+        previewData.value = result
+      }
     } else {
       const errorData = await response.json()
       error.value = { message: errorData.message || 'Failed to load preview' }
@@ -324,37 +466,91 @@ const executeImport = async () => {
   if (!canExecuteImport.value) return
   
   try {
-    const response = await fetch(`/api/import/profiles/${props.profile.id}/execute-query`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-      },
-      body: JSON.stringify({
-        query_config: props.queryConfig,
-        import_options: {
-          mode: importMode.value,
-          batch_size: parseInt(batchSize.value),
-          duplicate_strategy: duplicateStrategy.value
-        }
+    let response
+    let requestBody
+    
+    if (isQueryBasedImport.value) {
+      // Query-based import execution
+      response = await fetch(`/api/import/profiles/${props.profile.id}/execute-query`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          query_config: props.queryConfig,
+          import_options: {
+            mode: importMode.value,
+            batch_size: parseInt(batchSize.value),
+            duplicate_strategy: duplicateStrategy.value
+          }
+        })
       })
-    })
+    } else {
+      // Template-based import execution using the standard jobs API
+      response = await fetch('/api/import/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          profile_id: props.profile.id,
+          options: {
+            batch_size: parseInt(batchSize.value)
+          }
+        })
+      })
+    }
 
     if (response.ok) {
       const result = await response.json()
-      emit('executed', {
-        job_id: result.job_id,
+      
+      // Emit execution started event with job details for parent to show progress dialog
+      emit('execution-started', {
+        job_id: result.job_id || result.id,
+        profile: props.profile,
         message: 'Import job started successfully',
-        estimated_records: previewData.value.estimated_records
+        estimatedRecords: previewData.value?.estimated_records || 0,
+        queryConfig: isQueryBasedImport.value ? props.queryConfig : null,
+        importType: detectedImportType.value
       })
+      
+      // Also emit the legacy executed event for backward compatibility
+      emit('executed', {
+        job_id: result.job_id || result.id,
+        message: 'Import job started successfully',
+        estimated_records: previewData.value?.estimated_records || 0
+      })
+      
+      // Close the preview modal
       emit('close')
     } else {
       const errorData = await response.json()
-      alert('Failed to start import: ' + (errorData.message || 'Unknown error'))
+      console.error('Import execution failed:', errorData)
+      
+      // Emit execution started with error details for progress dialog to show
+      emit('execution-started', {
+        job_id: null,
+        profile: props.profile,
+        error: true,
+        message: 'Failed to start import: ' + (errorData.message || 'Unknown error'),
+        errorDetails: errorData.message || 'Unknown error occurred',
+        estimatedRecords: 0
+      })
     }
   } catch (error) {
     console.error('Import execution failed:', error)
-    alert('Failed to start import job. Please check the console for details.')
+    
+    // Emit execution started with error details for progress dialog to show
+    emit('execution-started', {
+      job_id: null,
+      profile: props.profile,
+      error: true,
+      message: 'Failed to start import job',
+      errorDetails: error.message || 'Network error occurred',
+      estimatedRecords: 0
+    })
   }
 }
 
@@ -393,5 +589,25 @@ const formatNumber = (num) => {
   if (num < 1000) return num.toString()
   if (num < 1000000) return `${(num / 1000).toFixed(1)}k`
   return `${(num / 1000000).toFixed(1)}M`
+}
+
+// Helper methods for template-based imports
+const getTableColumns = (row) => {
+  if (!row) return []
+  return Object.keys(row)
+}
+
+const formatColumnName = (column) => {
+  return column.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+const formatCellValue = (value) => {
+  if (value === null || value === undefined) {
+    return '-'
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+  return String(value)
 }
 </script>

@@ -357,7 +357,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 // Components
-import StandardPageLayout from '@/Components/Layout/StandardPageLayout.vue'
+import StandardPageLayout from '@/Layouts/StandardPageLayout.vue'
 import CommandConfigModal from './Components/CommandConfigModal.vue'
 import CommandHelpModal from './Components/CommandHelpModal.vue'
 import CommandTestModal from './Components/CommandTestModal.vue'

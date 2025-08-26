@@ -974,14 +974,8 @@ class ImportProfileController extends Controller
             foreach ($config['joins'] as $join) {
                 // Handle different join formats from frontend
                 if (isset($join['leftColumn']) && isset($join['rightColumn'])) {
-                    // Frontend format: leftColumn = rightColumn with proper table prefixing
-                    $leftColumn = str_contains($join['leftColumn'], '.') 
-                        ? $join['leftColumn'] 
-                        : "{$config['base_table']}.{$join['leftColumn']}";
-                    $rightColumn = str_contains($join['rightColumn'], '.') 
-                        ? $join['rightColumn'] 
-                        : "{$join['table']}.{$join['rightColumn']}";
-                    $joinCondition = "{$leftColumn} = {$rightColumn}";
+                    // Frontend format: leftColumn and rightColumn now include table prefixes
+                    $joinCondition = "{$join['leftColumn']} = {$join['rightColumn']}";
                 } else if (isset($join['on'])) {
                     // Backend format: pre-formatted join condition
                     $joinCondition = $join['on'];

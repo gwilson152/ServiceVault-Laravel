@@ -14,6 +14,7 @@ class Ticket extends Model
     protected $table = 'tickets';
 
     protected $fillable = [
+        'external_id',
         'account_id',
         'ticket_number',
         'title',

@@ -469,9 +469,9 @@ class ImportService
                 foreach ($records as $record) {
                     try {
                         $this->importQueryRecord($record, $configuration, $job);
-                        $job->records_imported++;
+                        // Counters are handled inside the specific import methods (importTicket, etc.)
                     } catch (\Exception $e) {
-                        $job->records_failed++;
+                        $job->records_failed = ($job->records_failed ?? 0) + 1;
                         \Log::warning('Failed to import record', [
                             'job_id' => $job->id,
                             'record' => $record,
@@ -518,7 +518,7 @@ class ImportService
             $sourceField = $field['source'];
             $targetField = $field['target'];
             
-            // Handle table.column format by using just the alias/target field name
+            // The SQL query uses "source AS target" format, so the result uses the target field name
             $value = $recordArray[$targetField] ?? null;
             
             $mappedData[$targetField] = $value;
@@ -809,24 +809,139 @@ class ImportService
     private function importTicket(array $data, ImportJob $job): void
     {
         try {
-            // Basic ticket import - requires more complex logic for production
-            \Log::warning('Ticket import attempted but not fully implemented', [
-                'job_id' => $job->id,
-                'data' => $data
-            ]);
+            // Validate required fields
+            if (!isset($data['external_id'])) {
+                throw new \Exception('external_id is required for ticket import');
+            }
+            if (!isset($data['title'])) {
+                throw new \Exception('title is required for ticket import');
+            }
+
+            // Check for existing ticket by external_id
+            $existingTicket = \App\Models\Ticket::where('external_id', $data['external_id'])->first();
             
-            // For now, just log and skip - tickets require complex relationships
-            $job->records_skipped = ($job->records_skipped ?? 0) + 1;
+            if ($existingTicket && $job->import_profile->shouldSkipDuplicates()) {
+                $job->records_skipped = ($job->records_skipped ?? 0) + 1;
+                return;
+            }
+
+            // Create ticket data (map to actual table columns)
+            $ticketData = [
+                'external_id' => $data['external_id'],
+                'title' => $data['title'],
+                'description' => $data['description'] ?? '',
+                'status' => $this->mapTicketStatus($data['status'] ?? 'open'),
+                'priority' => $this->mapTicketPriority($data['priority'] ?? 'medium'),
+                'category' => $data['category'] ?? null,  // tickets table uses 'category' not 'category_id'
+                'ticket_number' => $data['ticket_number'] ?? null,
+                'created_at' => isset($data['created_at']) ? \Carbon\Carbon::parse($data['created_at']) : now(),
+                'updated_at' => now(),
+            ];
+
+            // Handle account relationship
+            if (isset($data['customer_external_id'])) {
+                $account = \App\Models\Account::where('external_id', $data['customer_external_id'])->first();
+                if ($account) {
+                    $ticketData['account_id'] = $account->id;
+                }
+            }
+            
+            // If no account found, create/use default "Imported Tickets" account
+            if (!isset($ticketData['account_id'])) {
+                $defaultAccount = \App\Models\Account::firstOrCreate(
+                    ['name' => 'Imported Tickets'],
+                    [
+                        'description' => 'Default account for imported tickets without specific account mapping',
+                        'external_id' => 'imported_tickets_default',
+                    ]
+                );
+                $ticketData['account_id'] = $defaultAccount->id;
+            }
+
+            // Handle agent assignment
+            if (isset($data['assigned_user_external_id'])) {
+                $user = \App\Models\User::where('external_id', $data['assigned_user_external_id'])->first();
+                if ($user) {
+                    $ticketData['agent_id'] = $user->id;  // tickets table uses 'agent_id' not 'assigned_to'
+                }
+            }
+
+            if ($existingTicket && $job->import_profile->shouldUpdateDuplicates()) {
+                // Update existing ticket
+                $existingTicket->update($ticketData);
+                $job->records_updated = ($job->records_updated ?? 0) + 1;
+                
+                \Log::info('Ticket updated during import', [
+                    'job_id' => $job->id,
+                    'ticket_id' => $existingTicket->id,
+                    'external_id' => $data['external_id']
+                ]);
+            } else {
+                // Create new ticket
+                $ticket = \App\Models\Ticket::create($ticketData);
+                $job->records_imported = ($job->records_imported ?? 0) + 1;
+                
+                \Log::info('Ticket created during import', [
+                    'job_id' => $job->id,
+                    'ticket_id' => $ticket->id,
+                    'external_id' => $data['external_id']
+                ]);
+            }
             
         } catch (\Exception $e) {
+            $job->records_failed = ($job->records_failed ?? 0) + 1;
+            
             \Log::error('Failed to import ticket', [
                 'job_id' => $job->id,
                 'data' => $data,
                 'error' => $e->getMessage()
             ]);
-            throw $e;
+            // Don't re-throw the exception to avoid double counting
         }
     }
+
+    /**
+     * Map source ticket status to Service Vault status.
+     */
+    private function mapTicketStatus(?string $status): string
+    {
+        $statusMap = [
+            '1' => 'open',
+            '2' => 'pending', 
+            '3' => 'closed',
+            'active' => 'open',
+            'new' => 'open',
+            'in_progress' => 'open',
+            'waiting' => 'pending',
+            'resolved' => 'closed',
+            'completed' => 'closed',
+        ];
+
+        if (!$status) return 'open';
+        
+        $normalizedStatus = strtolower(trim($status));
+        return $statusMap[$normalizedStatus] ?? $normalizedStatus;
+    }
+
+    /**
+     * Map source ticket priority to Service Vault priority.
+     */
+    private function mapTicketPriority(?string $priority): string
+    {
+        $priorityMap = [
+            '1' => 'low',
+            '2' => 'medium', 
+            '3' => 'high',
+            '4' => 'urgent',
+            'normal' => 'medium',
+        ];
+
+        if (!$priority) return 'medium';
+        
+        $normalizedPriority = strtolower(trim($priority));
+        return $priorityMap[$normalizedPriority] ?? $normalizedPriority;
+    }
+
     
     /**
      * Import a time entry record.

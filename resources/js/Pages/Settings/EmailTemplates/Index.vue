@@ -210,9 +210,9 @@
           </table>
         </div>
 
-        <!-- Pagination -->
-        <div v-if="templates.meta" class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-          <Pagination :meta="templates.meta" />
+        <!-- Pagination TODO: Implement pagination component -->
+        <div v-if="templates.meta && templates.meta.total > templates.meta.per_page" class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 text-center text-sm text-gray-500">
+          Showing {{ templates.data?.length || 0 }} of {{ templates.meta.total }} templates
         </div>
       </div>
 
@@ -274,9 +274,9 @@
                 Ticket Variables
               </summary>
               <div class="mt-2 pl-4 space-y-1">
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{'{{'}}ticket.number{{'}}'}}</code>
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{'{{'}}ticket.subject{{'}}'}}</code>
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{'{{'}}ticket.description{{'}}'}}</code>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">ticket.number</code>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">ticket.subject</code>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">ticket.description</code>
               </div>
             </details>
             
@@ -285,9 +285,9 @@
                 User Variables
               </summary>
               <div class="mt-2 pl-4 space-y-1">
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{'{{'}}user.name{{'}}'}}</code>
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{'{{'}}user.email{{'}}'}}</code>
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{'{{'}}user.role{{'}}'}}</code>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">user.name</code>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">user.email</code>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">user.role</code>
               </div>
             </details>
             
@@ -296,8 +296,8 @@
                 Account Variables
               </summary>
               <div class="mt-2 pl-4 space-y-1">
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{'{{'}}account.name{{'}}'}}</code>
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">{{'{{'}}account.contact{{'}}'}}</code>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">account.name</code>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded block">account.contact</code>
               </div>
             </details>
           </div>
@@ -345,11 +345,11 @@ import {
 } from '@heroicons/vue/24/outline'
 
 // Components
-import StandardPageLayout from '@/Components/Layout/StandardPageLayout.vue'
+import StandardPageLayout from '@/Layouts/StandardPageLayout.vue'
 import FilterSection from '@/Components/Layout/FilterSection.vue'
-import MultiSelect from '@/Components/Form/MultiSelect.vue'
-import UnifiedSelector from '@/Components/Form/UnifiedSelector.vue'
-import Pagination from '@/Components/Pagination.vue'
+import MultiSelect from '@/Components/UI/MultiSelect.vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
+// import Pagination from '@/Components/Pagination.vue' // TODO: Create pagination component
 import TemplateEditorModal from './Components/TemplateEditorModal.vue'
 import TemplatePreviewModal from './Components/TemplatePreviewModal.vue'
 import ImportTemplatesModal from './Components/ImportTemplatesModal.vue'
