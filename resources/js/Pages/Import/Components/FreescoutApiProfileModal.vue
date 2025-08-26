@@ -1,10 +1,10 @@
 <template>
-  <StackedDialog :show="show" @close="$emit('close')">
-    <template #title>
-      {{ profile ? 'Edit API Profile' : 'Add FreeScout API Profile' }}
-    </template>
+  <StackedDialog 
+    @close="$emit('close')" 
+    :show="true"
+    :title="profile ? 'Edit API Profile' : 'Add FreeScout API Profile'"
+  >
 
-    <template #content>
       <form @submit.prevent="handleSubmit">
         <!-- Profile Name -->
         <div class="mb-6">
@@ -267,9 +267,8 @@
           </div>
         </div>
       </form>
-    </template>
 
-    <template #actions>
+    <template #footer>
       <div class="flex justify-end space-x-3">
         <button
           type="button"
@@ -293,6 +292,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import axios from 'axios'
 import StackedDialog from '@/Components/StackedDialog.vue'
 import {
   EyeIcon,
@@ -305,7 +305,6 @@ import {
 
 // Props
 const props = defineProps({
-  show: Boolean,
   profile: {
     type: Object,
     default: null
@@ -487,41 +486,55 @@ const testConnection = async () => {
   testing.value = true
   connectionTest.value = { status: null, message: '', details: null }
   
-  // Simulate realistic API call delay
-  const delay = Math.random() * 2000 + 500 // 500-2500ms
-  await new Promise(resolve => setTimeout(resolve, delay))
-  
-  // Intelligent mock response based on input patterns
-  let mockIndex = 0
-  const url = form.value.instance_url.toLowerCase()
-  const apiKey = form.value.api_key
-  
-  if (!url.startsWith('https://') && !url.startsWith('http://')) {
-    // Invalid URL format
-    mockIndex = 4 // Connection timeout
-  } else if (apiKey.length < 10 || apiKey === 'test' || apiKey === 'demo') {
-    // Invalid API key
-    mockIndex = 3 // Auth failed
-  } else if (url.includes('localhost') || url.includes('127.0.0.1') || url.includes('demo')) {
-    // Local or demo instance - likely successful
-    mockIndex = Math.random() > 0.8 ? 0 : 2 // Mostly success, sometimes small instance
-  } else if (url.includes('test') || url.includes('staging')) {
-    // Test/staging environment - might have issues
-    mockIndex = Math.random() > 0.5 ? Math.floor(Math.random() * 3) : 6 // Success, small, or slow response
-  } else {
-    // Production-like URL - mixed results
-    const rand = Math.random()
-    if (rand > 0.6) {
-      mockIndex = Math.floor(Math.random() * 3) // Success variants
-    } else if (rand > 0.3) {
-      mockIndex = Math.floor(Math.random() * 2) + 6 // Warning variants  
+  try {
+    // Make real API call to test connection
+    const response = await axios.post('/api/import/freescout/profiles/test-connection', {
+      instance_url: form.value.instance_url,
+      api_key: form.value.api_key
+    })
+    
+    if (response.data.success) {
+      const testResult = response.data.connection_test
+      
+      connectionTest.value = {
+        status: 'success',
+        message: testResult.message || 'Connection successful',
+        details: {
+          response_time: testResult.response_time || 0,
+          api_version: testResult.api_version || 'v1',
+          mailboxes_count: testResult.mailboxes_count || 0,
+          stats: testResult.stats || null
+        }
+      }
     } else {
-      mockIndex = Math.floor(Math.random() * 3) + 3 // Error variants
+      connectionTest.value = {
+        status: 'error',
+        message: response.data.connection_test?.error || 'Connection failed',
+        details: null
+      }
     }
+  } catch (error) {
+    console.error('Connection test failed:', error)
+    
+    let errorMessage = 'Connection failed'
+    if (error.response?.status === 422) {
+      errorMessage = 'Please check your instance URL and API key'
+    } else if (error.response?.status >= 500) {
+      errorMessage = 'Server error. Please try again later.'
+    } else if (error.code === 'NETWORK_ERROR') {
+      errorMessage = 'Network error. Please check your internet connection.'
+    } else if (error.response?.data?.connection_test?.error) {
+      errorMessage = error.response.data.connection_test.error
+    }
+    
+    connectionTest.value = {
+      status: 'error',
+      message: errorMessage,
+      details: null
+    }
+  } finally {
+    testing.value = false
   }
-  
-  connectionTest.value = { ...mockConnectionResponses[mockIndex] }
-  testing.value = false
 }
 
 const applyPreset = (presetType) => {

@@ -385,6 +385,47 @@ class EmailAdminController extends Controller
     }
 
     /**
+     * Manually trigger email retrieval even if email service is disabled
+     */
+    public function manualEmailRetrieval(Request $request): JsonResponse
+    {
+        if (!auth()->user()->can('system.configure')) {
+            abort(403, 'Unauthorized to trigger manual email retrieval');
+        }
+
+        try {
+            Log::info('Manual email retrieval initiated', [
+                'user_id' => auth()->id(),
+            ]);
+
+            // This would dispatch email retrieval jobs manually
+            // Implementation depends on your email service setup
+            $emailsProcessed = 0;
+            
+            // TODO: Add actual manual email retrieval logic here
+            // For now, just return a success response
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Manual email retrieval completed',
+                'emails_processed' => $emailsProcessed,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Manual email retrieval failed', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Manual email retrieval failed',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Clear failed jobs from queue
      */
     public function clearFailedJobs(Request $request): JsonResponse

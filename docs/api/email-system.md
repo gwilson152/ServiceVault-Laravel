@@ -48,7 +48,7 @@ GET /api/email-system/config
   "system_active": true,
   
   "incoming_enabled": true,
-  "incoming_provider": "outlook",
+  "email_provider": "outlook", // incoming email provider
   "incoming_host": "outlook.office365.com",
   "incoming_port": 993,
   "incoming_username": "support@company.com",
@@ -57,6 +57,7 @@ GET /api/email-system/config
   
   "outgoing_enabled": true,
   "outgoing_provider": "smtp",
+  "use_same_provider": false, // use same provider as incoming for M365
   "outgoing_host": "smtp.office365.com",
   "outgoing_port": 587,
   "outgoing_username": "support@company.com",
@@ -71,7 +72,7 @@ GET /api/email-system/config
   "send_confirmations": true,
   "max_retries": 3,
   
-  "timestamp_source": "service_vault",
+  "timestamp_source": "original",
   "timestamp_timezone": "preserve",
   
   "created_at": "2025-08-25T23:22:50.000000Z",
@@ -90,7 +91,7 @@ PUT /api/email-system/config
   "system_active": true,
   
   "incoming_enabled": true,
-  "incoming_provider": "outlook",
+  "email_provider": "outlook", // incoming email provider
   "incoming_host": "outlook.office365.com",
   "incoming_port": 993,
   "incoming_username": "support@company.com",
@@ -100,6 +101,7 @@ PUT /api/email-system/config
   
   "outgoing_enabled": true,
   "outgoing_provider": "smtp",
+  "use_same_provider": false, // use same provider as incoming for M365
   "outgoing_host": "smtp.office365.com",
   "outgoing_port": 587,
   "outgoing_username": "support@company.com",
@@ -115,7 +117,7 @@ PUT /api/email-system/config
   "send_confirmations": true,
   "max_retries": 3,
   
-  "timestamp_source": "service_vault",
+  "timestamp_source": "original",
   "timestamp_timezone": "preserve"
 }
 ```
@@ -124,7 +126,7 @@ PUT /api/email-system/config
 ```
 system_active: boolean
 incoming_enabled: boolean
-incoming_provider: nullable|string|in:imap,gmail,outlook,exchange
+email_provider: nullable|string|in:imap,gmail,outlook,m365
 incoming_host: nullable|string|max:255
 incoming_port: nullable|integer|min:1|max:65535
 incoming_username: nullable|string|max:255
@@ -133,7 +135,8 @@ incoming_encryption: nullable|in:tls,ssl,starttls,none
 incoming_folder: nullable|string|max:100
 
 outgoing_enabled: boolean
-outgoing_provider: nullable|string|in:smtp,gmail,outlook,ses,sendgrid,postmark,mailgun
+outgoing_provider: nullable|string|in:smtp,gmail,outlook,m365,same_as_incoming,ses,sendgrid,postmark,mailgun
+use_same_provider: boolean
 outgoing_host: nullable|string|max:255
 outgoing_port: nullable|integer|min:1|max:65535
 outgoing_username: nullable|string|max:255
@@ -225,8 +228,9 @@ GET /api/email-system/status
   "fully_configured": true,
   "incoming_enabled": true,
   "outgoing_enabled": true,
-  "incoming_provider": "outlook",
+  "email_provider": "outlook", // incoming email provider
   "outgoing_provider": "smtp",
+  "use_same_provider": false, // use same provider as incoming for M365
   "domain_mappings_count": 5,
   "active_domain_mappings": 4,
   "last_updated": "2025-08-25T23:55:04.000000Z"
@@ -476,8 +480,9 @@ statuses: string (comma-separated status list) - optional filter
       "fully_configured": true,
       "incoming_enabled": true,
       "outgoing_enabled": true,
-      "incoming_provider": "outlook",
+      "email_provider": "outlook", // incoming email provider
       "outgoing_provider": "smtp",
+  "use_same_provider": false, // use same provider as incoming for M365
       "domain_mappings_count": 5,
       "active_domain_mappings": 4,
       "last_updated": "2025-08-25T23:55:04.000000Z"

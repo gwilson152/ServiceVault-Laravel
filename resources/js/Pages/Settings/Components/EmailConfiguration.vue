@@ -154,29 +154,6 @@
         </div>
       </div>
           
-          <!-- Email Provider Selection -->
-          <div class="bg-white shadow rounded-lg">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-medium text-gray-900">Email Provider</h3>
-              <p class="text-sm text-gray-500 mt-1">Choose your incoming email service provider</p>
-            </div>
-            <div class="p-6 space-y-6">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Provider</label>
-                <select 
-                  v-model="form.email_provider" 
-                  @change="applyProviderDefaults('incoming')"
-                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                >
-                  <option value="">Select a provider...</option>
-                  <option value="imap">Generic IMAP</option>
-                  <option value="gmail">Gmail</option>
-                  <option value="outlook">Outlook/Office 365</option>
-                  <option value="m365">Microsoft 365 (Graph API)</option>
-                </select>
-              </div>
-            </div>
-          </div>
         </div>
         
         <!-- Incoming Email Configuration Tab -->
@@ -210,16 +187,18 @@
         
         <div v-show="form.incoming_enabled" class="p-6 space-y-6">
           
-          <!-- Provider Selection -->
+          <!-- Incoming Email Provider Selection -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email Provider</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Incoming Email Provider</label>
             <select 
               v-model="form.email_provider" 
               @change="applyProviderDefaults('incoming')"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             >
               <option value="">Select a provider...</option>
-              <option value="imap">IMAP (Traditional Email)</option>
+              <option value="imap">Generic IMAP</option>
+              <option value="gmail">Gmail</option>
+              <option value="outlook">Outlook/Office 365</option>
               <option value="m365">Microsoft 365 (Graph API)</option>
             </select>
           </div>
@@ -723,6 +702,97 @@
         <!-- Processing Configuration Tab -->
         <div v-show="activeTab === 'processing'" class="space-y-8">
         
+          <!-- Email Processing Settings -->
+          <div class="bg-white shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h3 class="text-lg font-medium text-gray-900">Email Processing Settings</h3>
+              <p class="text-sm text-gray-500 mt-1">Configure how incoming emails are processed by the system</p>
+            </div>
+            <div class="p-6 space-y-6">
+              
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <label class="text-sm font-medium text-gray-900">Auto-create Tickets</label>
+                    <p class="text-xs text-gray-500">Create tickets from incoming emails</p>
+                  </div>
+                  <button
+                    type="button"
+                    @click="form.auto_create_tickets = !form.auto_create_tickets"
+                    :class="[
+                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2',
+                      form.auto_create_tickets ? 'bg-indigo-600' : 'bg-gray-200'
+                    ]"
+                  >
+                    <span
+                      :class="[
+                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                        form.auto_create_tickets ? 'translate-x-5' : 'translate-x-0'
+                      ]"
+                    />
+                  </button>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <label class="text-sm font-medium text-gray-900">Process Commands</label>
+                    <p class="text-xs text-gray-500">Execute commands in emails</p>
+                  </div>
+                  <button
+                    type="button"
+                    @click="form.process_commands = !form.process_commands"
+                    :class="[
+                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2',
+                      form.process_commands ? 'bg-indigo-600' : 'bg-gray-200'
+                    ]"
+                  >
+                    <span
+                      :class="[
+                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                        form.process_commands ? 'translate-x-5' : 'translate-x-0'
+                      ]"
+                    />
+                  </button>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <label class="text-sm font-medium text-gray-900">Send Confirmations</label>
+                    <p class="text-xs text-gray-500">Send confirmation emails</p>
+                  </div>
+                  <button
+                    type="button"
+                    @click="form.send_confirmations = !form.send_confirmations"
+                    :class="[
+                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2',
+                      form.send_confirmations ? 'bg-indigo-600' : 'bg-gray-200'
+                    ]"
+                  >
+                    <span
+                      :class="[
+                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                        form.send_confirmations ? 'translate-x-5' : 'translate-x-0'
+                      ]"
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Max Retry Attempts</label>
+                <input 
+                  v-model="form.max_retries" 
+                  type="number" 
+                  min="0" 
+                  max="10"
+                  class="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+                <p class="text-xs text-gray-500 mt-1">Number of times to retry failed email processing</p>
+              </div>
+
+            </div>
+          </div>
+        
       <!-- Email Processing Actions -->
       <div v-show="form.incoming_enabled" class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -956,29 +1026,57 @@
           
           <!-- Provider Selection -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email Provider</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Outgoing Email Provider</label>
             <select 
               v-model="form.outgoing_provider" 
               @change="applyProviderDefaults('outgoing')"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             >
               <option value="">Select a provider...</option>
+              <option v-if="form.email_provider === 'm365'" value="same_as_incoming">📧 Use same as incoming (Microsoft 365)</option>
               <option value="smtp">Generic SMTP</option>
               <option value="gmail">Gmail</option>
               <option value="outlook">Outlook/Office 365</option>
+              <option value="m365">Microsoft 365 (Graph API)</option>
               <option value="ses">Amazon SES</option>
               <option value="sendgrid">SendGrid</option>
               <option value="postmark">Postmark</option>
               <option value="mailgun">Mailgun</option>
             </select>
+            <p v-if="form.email_provider === 'm365'" class="text-xs text-gray-500 mt-1">
+              When using Microsoft 365 for incoming email, you can use the same configuration for outgoing emails
+            </p>
+          </div>
+
+          <!-- Same as Incoming Info -->
+          <div v-show="form.outgoing_provider === 'same_as_incoming'" class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-green-800">Using Microsoft 365 for Both Incoming and Outgoing</h3>
+                <div class="mt-2 text-sm text-green-700">
+                  <p>The same Microsoft 365 configuration from the Incoming tab will be used for sending emails:</p>
+                  <ul class="list-disc list-inside mt-1 space-y-1">
+                    <li>Tenant ID: <span class="font-mono">{{ form.m365_tenant_id || '(not configured)' }}</span></li>
+                    <li>Client ID: <span class="font-mono">{{ form.m365_client_id || '(not configured)' }}</span></li>
+                    <li>Mailbox: <span class="font-mono">{{ form.m365_mailbox || '(not configured)' }}</span></li>
+                  </ul>
+                  <p class="mt-2 text-xs">Configure these settings in the <strong>Incoming</strong> tab.</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Server Configuration -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div v-show="form.outgoing_provider !== 'same_as_incoming'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">SMTP Server</label>
               <input 
-                v-model="form.outgoing_host" 
+                v-model="form.smtp_host" 
                 type="text" 
                 placeholder="smtp.gmail.com"
                 class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -987,7 +1085,7 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Port</label>
               <input 
-                v-model="form.outgoing_port" 
+                v-model="form.smtp_port" 
                 type="number" 
                 placeholder="587"
                 class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -996,11 +1094,11 @@
           </div>
 
           <!-- Authentication -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div v-show="form.outgoing_provider !== 'same_as_incoming'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Username/Email</label>
               <input 
-                v-model="form.outgoing_username" 
+                v-model="form.smtp_username" 
                 type="email" 
                 placeholder="your-email@gmail.com"
                 class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -1010,7 +1108,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <div class="relative">
                 <input 
-                  v-model="form.outgoing_password" 
+                  v-model="form.smtp_password" 
                   :type="showOutgoingPassword ? 'text' : 'password'"
                   placeholder="Your password or app password"
                   autocomplete="email-password"
@@ -1030,10 +1128,10 @@
           </div>
 
           <!-- Encryption -->
-          <div>
+          <div v-show="form.outgoing_provider !== 'same_as_incoming'">
             <label class="block text-sm font-medium text-gray-700 mb-1">Encryption</label>
             <select 
-              v-model="form.outgoing_encryption" 
+              v-model="form.smtp_encryption" 
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             >
               <option value="tls">TLS</option>
@@ -1090,96 +1188,6 @@
         </div>
       </div>
 
-      <!-- Processing Settings -->
-      <div class="bg-white shadow rounded-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-medium text-gray-900">Processing Settings</h3>
-          <p class="text-sm text-gray-500 mt-1">Configure how emails are processed by the system</p>
-        </div>
-        <div class="p-6 space-y-6">
-          
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-gray-900">Auto-create Tickets</label>
-                <p class="text-xs text-gray-500">Create tickets from incoming emails</p>
-              </div>
-              <button
-                type="button"
-                @click="form.auto_create_tickets = !form.auto_create_tickets"
-                :class="[
-                  'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2',
-                  form.auto_create_tickets ? 'bg-indigo-600' : 'bg-gray-200'
-                ]"
-              >
-                <span
-                  :class="[
-                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                    form.auto_create_tickets ? 'translate-x-5' : 'translate-x-0'
-                  ]"
-                />
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-gray-900">Process Commands</label>
-                <p class="text-xs text-gray-500">Execute commands in emails</p>
-              </div>
-              <button
-                type="button"
-                @click="form.process_commands = !form.process_commands"
-                :class="[
-                  'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2',
-                  form.process_commands ? 'bg-indigo-600' : 'bg-gray-200'
-                ]"
-              >
-                <span
-                  :class="[
-                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                    form.process_commands ? 'translate-x-5' : 'translate-x-0'
-                  ]"
-                />
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-gray-900">Send Confirmations</label>
-                <p class="text-xs text-gray-500">Send confirmation emails</p>
-              </div>
-              <button
-                type="button"
-                @click="form.send_confirmations = !form.send_confirmations"
-                :class="[
-                  'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2',
-                  form.send_confirmations ? 'bg-indigo-600' : 'bg-gray-200'
-                ]"
-              >
-                <span
-                  :class="[
-                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                    form.send_confirmations ? 'translate-x-5' : 'translate-x-0'
-                  ]"
-                />
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Max Retry Attempts</label>
-            <input 
-              v-model="form.max_retries" 
-              type="number" 
-              min="0" 
-              max="10"
-              class="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            />
-            <p class="text-xs text-gray-500 mt-1">Number of times to retry failed email processing</p>
-          </div>
-
-        </div>
-      </div>
         
         </div>
 
@@ -1283,9 +1291,12 @@ const activeTab = ref('basic')
 // Form data
 const form = useForm({
   // Email provider type
-  email_provider: 'imap',
+  email_provider: 'imap', // incoming email provider
+  outgoing_provider: 'smtp', // outgoing email provider
+  use_same_provider: false, // use same provider for outgoing when M365
   
   // System status
+  system_active: false, // master email system toggle
   incoming_enabled: true,
   outgoing_enabled: true,
   
@@ -1322,12 +1333,16 @@ const form = useForm({
   
   // Email processing settings
   enable_email_to_ticket: true,
+  auto_create_tickets: true, // alias for enable_email_to_ticket
   auto_create_users: false,
   default_role_for_new_users: '',
   require_approval_for_new_users: true,
+  process_commands: true,
+  send_confirmations: true,
+  max_retries: 3,
   
   // Timestamp processing
-  timestamp_source: 'service_vault', // 'service_vault' or 'original'
+  timestamp_source: 'original', // 'service_vault' or 'original'
   timestamp_timezone: 'preserve', // 'preserve', 'convert_local', or 'convert_utc'
 })
 
@@ -1420,12 +1435,27 @@ const providerDefaults = {
 
 // Methods
 const applyProviderDefaults = (type) => {
-  const provider = type === 'incoming' ? form.incoming_provider : form.outgoing_provider
+  const provider = type === 'incoming' ? form.email_provider : form.outgoing_provider
+  
+  // Handle "same as incoming" selection
+  if (type === 'outgoing' && provider === 'same_as_incoming') {
+    form.use_same_provider = true
+    return
+  } else {
+    form.use_same_provider = false
+  }
+  
   const defaults = providerDefaults[type][provider]
   
   if (defaults) {
     Object.keys(defaults).forEach(key => {
-      const formKey = `${type}_${key}`
+      let formKey
+      if (type === 'incoming') {
+        formKey = `imap_${key}`
+      } else {
+        formKey = `smtp_${key}`
+      }
+      
       if (form[formKey] !== undefined) {
         form[formKey] = defaults[key]
       }

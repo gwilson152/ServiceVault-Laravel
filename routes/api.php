@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ImportJobController;
 use App\Http\Controllers\Api\ImportProfileController;
 use App\Http\Controllers\Api\ImportTemplateController;
 use App\Http\Controllers\Api\FreescoutImportController;
+use App\Http\Controllers\Api\FreescoutApiProfileController;
 use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
@@ -657,6 +658,25 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
 
     // FreeScout Import Routes
     Route::prefix('freescout')->group(function () {
+        // API Profile Management
+        Route::apiResource('profiles', FreescoutApiProfileController::class)->names([
+            'index' => 'import.freescout.profiles.index',
+            'store' => 'import.freescout.profiles.store',
+            'show' => 'import.freescout.profiles.show',
+            'update' => 'import.freescout.profiles.update',
+            'destroy' => 'import.freescout.profiles.destroy',
+        ]);
+        
+        Route::post('profiles/test-connection', [FreescoutApiProfileController::class, 'testConnection'])
+            ->name('import.freescout.profiles.test-connection');
+        Route::post('profiles/{profile}/test-connection', [FreescoutApiProfileController::class, 'testConnection'])
+            ->name('import.freescout.profiles.test-existing');
+        Route::get('profiles/{profile}/stats', [FreescoutApiProfileController::class, 'getStats'])
+            ->name('import.freescout.profiles.stats');
+        Route::get('profiles/{profile}/preview-data', [FreescoutApiProfileController::class, 'getPreviewData'])
+            ->name('import.freescout.profiles.preview-data');
+
+        // Import Configuration and Execution
         Route::post('validate-config', [FreescoutImportController::class, 'validateConfig'])
             ->name('import.freescout.validate-config');
         
@@ -773,6 +793,10 @@ Route::middleware(['auth:sanctum,web'])->prefix('email-admin')->group(function (
     // System health monitoring
     Route::get('system-health', [EmailAdminController::class, 'getSystemHealth'])
         ->name('email-admin.system-health');
+    
+    // Manual email retrieval
+    Route::post('manual-retrieval', [EmailAdminController::class, 'manualEmailRetrieval'])
+        ->name('email-admin.manual-retrieval');
 });
 
 // Manager-only routes

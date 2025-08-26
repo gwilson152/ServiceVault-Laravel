@@ -1,11 +1,11 @@
 <template>
-  <StackedDialog :show="show" @close="handleClose" size="large" :closable="!isExecuting">
+  <StackedDialog @close="handleClose" :show="true" size="large" :closable="!isExecuting">
     <template #title>
       {{ isExecuting ? 'Importing FreeScout Data' : executionComplete ? 'Import Complete' : 'Import Failed' }}
     </template>
 
     <template #content>
-      <div v-if="profile && config" class="space-y-6">
+      <div class="space-y-6">
         <!-- Progress Overview -->
         <div class="bg-gray-50 rounded-lg p-4">
           <div class="flex items-center justify-between mb-3">
@@ -223,9 +223,6 @@
           </div>
         </div>
       </div>
-      <div v-else class="flex items-center justify-center py-8">
-        <div class="text-gray-500">Initializing import...</div>
-      </div>
     </template>
 
     <template #actions>
@@ -280,10 +277,6 @@ import { CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 
 // Props
 const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
   profile: {
     type: Object,
     default: null

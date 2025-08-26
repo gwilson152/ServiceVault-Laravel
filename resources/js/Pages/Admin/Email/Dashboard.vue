@@ -214,7 +214,7 @@
                     </div>
                     <div v-if="dashboardData.queue?.failed > 0" class="ml-2">
                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        {{ dashboardData.queue.failed }} failed
+                        {{ dashboardData.queue?.failed || 0 }} failed
                       </span>
                     </div>
                   </dd>
@@ -321,15 +321,15 @@
               <!-- Queue Status -->
               <div class="grid grid-cols-3 gap-4 text-sm">
                 <div class="text-center">
-                  <div class="text-2xl font-bold text-blue-600">{{ queueData.pending || 0 }}</div>
+                  <div class="text-2xl font-bold text-blue-600">{{ queueData?.pending || 0 }}</div>
                   <div class="text-gray-500">Pending</div>
                 </div>
                 <div class="text-center">
-                  <div class="text-2xl font-bold text-green-600">{{ queueData.processing || 0 }}</div>
+                  <div class="text-2xl font-bold text-green-600">{{ queueData?.processing || 0 }}</div>
                   <div class="text-gray-500">Processing</div>
                 </div>
                 <div class="text-center">
-                  <div class="text-2xl font-bold text-red-600">{{ queueData.failed || 0 }}</div>
+                  <div class="text-2xl font-bold text-red-600">{{ queueData?.failed || 0 }}</div>
                   <div class="text-gray-500">Failed</div>
                 </div>
               </div>
@@ -338,7 +338,7 @@
               <div class="flex space-x-2">
                 <button
                   @click="retryFailedJobs"
-                  :disabled="!queueData.failed || retryingJobs"
+                  :disabled="!queueData?.failed || retryingJobs"
                   class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
                 >
                   <span v-if="retryingJobs" class="flex items-center">
@@ -352,7 +352,7 @@
                 </button>
                 <button
                   @click="clearFailedJobs"
-                  :disabled="!queueData.failed || clearingJobs"
+                  :disabled="!queueData?.failed || clearingJobs"
                   class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                 >
                   Clear Failed
@@ -434,7 +434,7 @@
             </div>
           </div>
           
-          <div class="text-sm text-gray-600">
+          <div class="text-sm text-gray-600 space-y-2">
             <p v-if="systemHealth.system_active">
               Email system is active and processing emails with 
               <strong>{{ systemHealth.active_domain_mappings || 0 }}</strong> domain mappings configured.
@@ -447,6 +447,30 @@
               Email system requires configuration. 
               <a :href="route('settings.index', 'email')" class="text-indigo-600 hover:text-indigo-500">Complete setup</a> to begin processing emails.
             </p>
+            
+            <!-- Provider Information -->
+            <div v-if="systemHealth.incoming_enabled || systemHealth.outgoing_enabled" class="pt-2 border-t border-gray-200">
+              <div class="grid grid-cols-2 gap-4 text-xs">
+                <div v-if="systemHealth.incoming_enabled">
+                  <span class="font-medium text-gray-700">Incoming:</span>
+                  <span class="capitalize">{{ systemHealth.email_provider || 'Not configured' }}</span>
+                </div>
+                <div v-if="systemHealth.outgoing_enabled">
+                  <span class="font-medium text-gray-700">Outgoing:</span>
+                  <span v-if="systemHealth.use_same_provider && systemHealth.email_provider === 'm365'" class="text-green-600">
+                    Same as incoming (M365)
+                  </span>
+                  <span v-else class="capitalize">{{ systemHealth.outgoing_provider || 'Not configured' }}</span>
+                </div>
+              </div>
+              
+              <!-- Timestamp Processing Info -->
+              <div v-if="systemHealth.timestamp_source" class="mt-2 pt-2 border-t border-gray-100">
+                <span class="font-medium text-gray-700">Timestamps:</span>
+                <span class="capitalize">{{ systemHealth.timestamp_source === 'original' ? 'Original Email' : 'Service Vault Processing' }}</span>
+                <span class="text-gray-500">({{ systemHealth.timestamp_timezone }})</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -479,6 +503,13 @@
               class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
             >
               🧪 Test Email System
+            </button>
+            <button
+              @click="manualEmailRetrieval"
+              :disabled="retrievingEmails"
+              class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md disabled:opacity-50"
+            >
+              📬 {{ retrievingEmails ? 'Retrieving...' : 'Manual Email Retrieval' }}
             </button>
           </div>
         </div>
@@ -556,6 +587,7 @@ const healthChecking = ref(false)
 const queueRefreshing = ref(false)
 const retryingJobs = ref(false)
 const clearingJobs = ref(false)
+const retrievingEmails = ref(false)
 const chartPeriod = ref('24h')
 
 const showSettingsModal = ref(false)
@@ -601,13 +633,30 @@ const { data: dashboardDataRaw } = useQuery({
   }
 })
 
-const { data: queueData = {} } = useQuery({
+const { data: queueDataRaw } = useQuery({
   queryKey: ['email-queue-status'],
   queryFn: fetchQueueStatus,
   refetchInterval: 10000, // Refresh every 10 seconds
   retry: false,
   onError: (error) => {
     console.warn('Queue status API not available:', error)
+  }
+})
+
+// Extract queue data with proper defaults - FIXED to match API structure
+const queueData = computed(() => {
+  if (!queueDataRaw.value?.data) {
+    return { pending: 0, processing: 0, failed: 0 }
+  }
+  
+  const apiData = queueDataRaw.value.data
+  const totalPending = Object.values(apiData.queues || {}).reduce((sum, queue) => sum + (queue.pending || 0), 0)
+  const totalFailed = apiData.failed_jobs?.total || 0
+  
+  return {
+    pending: totalPending,
+    processing: 0, // API doesn't provide this directly
+    failed: totalFailed
   }
 })
 
@@ -621,8 +670,11 @@ const systemHealth = computed(() => {
     fully_configured: false, 
     incoming_enabled: false, 
     outgoing_enabled: false, 
-    incoming_provider: 'none',
+    email_provider: 'none', // incoming provider
     outgoing_provider: 'none',
+    use_same_provider: false,
+    timestamp_source: 'original',
+    timestamp_timezone: 'preserve',
     domain_mappings_count: 0,
     active_domain_mappings: 0
   }
@@ -631,9 +683,9 @@ const systemHealth = computed(() => {
 // Disable command stats for now since the endpoint doesn't exist
 const commandStats = ref([])
 
-// Safe data accessors with proper defaults
+// Safe data accessors with proper defaults - FIXED to match API structure
 const dashboardData = computed(() => {
-  if (!dashboardDataRaw.value) {
+  if (!dashboardDataRaw.value?.data) {
     return {
       metrics: {
         total_emails: 0,
@@ -647,23 +699,33 @@ const dashboardData = computed(() => {
       }
     }
   }
+  
+  const apiData = dashboardDataRaw.value.data
+  
   return {
-    metrics: dashboardDataRaw.value.metrics || {
-      total_emails: 0,
-      email_change: 0,
-      success_rate: 0,
-      commands_executed: 0
+    metrics: {
+      total_emails: apiData.overview?.total_emails_processed || 0,
+      email_change: 0, // Not provided by API yet
+      success_rate: apiData.performance?.success_rate || 0,
+      commands_executed: apiData.overview?.commands_executed || 0
     },
-    queue: dashboardDataRaw.value.queue || {
-      pending: 0,
-      failed: 0
+    queue: {
+      pending: apiData.queue_health?.pending_jobs || 0,
+      failed: apiData.queue_health?.failed_jobs || 0
     }
   }
 })
 
-// Computed/Reactive Data
-const recentActivity = ref([])
-const systemAlerts = ref([])
+// Recent activity from API data - FIXED to use real API data
+const recentActivity = computed(() => {
+  return dashboardDataRaw.value?.data?.recent_activity || []
+})
+
+// System alerts from API data - FIXED to use real API data  
+const systemAlerts = computed(() => {
+  return dashboardDataRaw.value?.data?.alerts || []
+})
+
 const recentErrors = ref([])
 
 // API Functions
@@ -807,6 +869,39 @@ function testEmailSystem() {
   // This could open a modal for testing email configurations
 }
 
+async function manualEmailRetrieval() {
+  if (!confirm('Manually trigger email retrieval? This will check for new emails even if the email service is disabled.')) {
+    return
+  }
+
+  retrievingEmails.value = true
+  try {
+    const response = await fetch('/api/email-admin/manual-retrieval', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      }
+    })
+    
+    if (response.ok) {
+      const result = await response.json()
+      // Show success notification with count
+      alert(`Email retrieval completed successfully. ${result.emails_processed || 0} emails processed.`)
+      // Refresh dashboard data
+      await refreshData()
+    } else {
+      const error = await response.json()
+      alert(`Email retrieval failed: ${error.message || 'Unknown error'}`)
+    }
+  } catch (error) {
+    console.error('Error during manual email retrieval:', error)
+    alert('Email retrieval failed: Network error')
+  } finally {
+    retrievingEmails.value = false
+  }
+}
+
 function dismissAlert(alertId) {
   systemAlerts.value = systemAlerts.value.filter(alert => alert.id !== alertId)
 }
@@ -823,43 +918,8 @@ function formatTimeAgo(date) {
   return `${Math.floor(diffInSeconds / 86400)}d ago`
 }
 
-// Initialize with mock data for development
+// Initialize chart when mounted - REMOVED mock data, now using real API data
 onMounted(() => {
-  // Mock recent activity
-  recentActivity.value = [
-    {
-      id: 1,
-      subject: 'Server maintenance completed - time:2h status:resolved',
-      from: 'admin@company.com',
-      status: 'success',
-      created_at: new Date(Date.now() - 300000).toISOString() // 5 minutes ago
-    },
-    {
-      id: 2,
-      subject: 'Database backup - priority:high',
-      from: 'system@company.com',
-      status: 'processing',
-      created_at: new Date(Date.now() - 900000).toISOString() // 15 minutes ago
-    },
-    {
-      id: 3,
-      subject: 'Email configuration issue',
-      from: 'support@company.com',
-      status: 'failed',
-      created_at: new Date(Date.now() - 1800000).toISOString() // 30 minutes ago
-    }
-  ]
-
-  // Mock system alerts
-  systemAlerts.value = [
-    {
-      id: 1,
-      severity: 'warning',
-      title: 'High Queue Volume',
-      message: 'Email queue has 45 pending jobs. Consider adding more workers.'
-    }
-  ]
-
   // Initialize chart if canvas is available
   if (emailChart.value) {
     loadChartData()

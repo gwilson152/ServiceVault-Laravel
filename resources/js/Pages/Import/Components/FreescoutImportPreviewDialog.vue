@@ -1,11 +1,11 @@
 <template>
-  <StackedDialog :show="show" @close="$emit('close')" size="large">
+  <StackedDialog @close="$emit('close')" :show="true" size="large">
     <template #title>
       Preview FreeScout Import
     </template>
 
     <template #content>
-      <div v-if="profile && config" class="space-y-6">
+      <div class="space-y-6">
         <!-- Import Configuration Summary -->
         <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
           <div class="flex items-center mb-3">
@@ -376,9 +376,6 @@
           </div>
         </div>
       </div>
-      <div v-else class="flex items-center justify-center py-8">
-        <div class="text-gray-500">Loading preview data...</div>
-      </div>
     </template>
 
     <template #actions>
@@ -416,10 +413,6 @@ import {
 
 // Props
 const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
   profile: {
     type: Object,
     default: null

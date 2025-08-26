@@ -25,7 +25,7 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ mockData.conversations.length.toLocaleString() }}
+            Available: {{ previewData.conversations?.length?.toLocaleString() || 'Loading...' }}
           </p>
         </div>
 
@@ -43,7 +43,7 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ mockData.time_entries ? mockData.time_entries.length.toLocaleString() : '0' }}
+            Available: {{ previewData.time_entries?.length?.toLocaleString() || '0' }}
           </p>
         </div>
 
@@ -61,7 +61,7 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ mockData.customers.length.toLocaleString() }}
+            Available: {{ previewData.customers?.length?.toLocaleString() || 'Loading...' }}
           </p>
         </div>
 
@@ -79,7 +79,7 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ mockData.mailboxes.length.toLocaleString() }}
+            Available: {{ previewData.mailboxes?.length?.toLocaleString() || 'Loading...' }}
           </p>
         </div>
       </div>
@@ -137,15 +137,15 @@
                 <p class="text-xs font-medium text-blue-900 mb-2">Mailbox → Account Mapping:</p>
                 <div class="space-y-1">
                   <div 
-                    v-for="mailbox in mockData.mailboxes.slice(0, 3)"
+                    v-for="mailbox in previewData.mailboxes.slice(0, 3)"
                     :key="mailbox.id"
                     class="flex items-center justify-between text-xs"
                   >
                     <span class="text-blue-800 font-medium">{{ mailbox.name }}</span>
                     <span class="text-blue-600">→ "{{ mailbox.name }} Account"</span>
                   </div>
-                  <div v-if="mockData.mailboxes.length > 3" class="text-xs text-blue-500">
-                    +{{ mockData.mailboxes.length - 3 }} more accounts will be created
+                  <div v-if="(previewData.mailboxes?.length || 0) > 3" class="text-xs text-blue-500">
+                    +{{ (previewData.mailboxes?.length || 0) - 3 }} more accounts will be created
                   </div>
                 </div>
               </div>
@@ -324,11 +324,11 @@
             <div class="space-y-2">
               <div class="font-medium text-blue-900">FreeScout Data:</div>
               <div class="space-y-1 text-blue-800">
-                <div>• <strong>ID:</strong> {{ mockData.conversations[0]?.id || 'conversation_123' }}</div>
-                <div>• <strong>Subject:</strong> "{{ mockData.conversations[0]?.subject || 'Payment issue with invoice #456' }}"</div>
-                <div>• <strong>Customer:</strong> {{ mockData.conversations[0]?.customer?.email || 'john@acme.com' }}</div>
-                <div>• <strong>Mailbox:</strong> {{ mockData.conversations[0]?.mailbox?.name || 'Support' }}</div>
-                <div>• <strong>Status:</strong> {{ mockData.conversations[0]?.status || 'active' }}</div>
+                <div>• <strong>ID:</strong> {{ previewData.conversations[0]?.id || 'conversation_123' }}</div>
+                <div>• <strong>Subject:</strong> "{{ previewData.conversations[0]?.subject || 'Payment issue with invoice #456' }}"</div>
+                <div>• <strong>Customer:</strong> {{ previewData.conversations[0]?.customer?.email || 'john@acme.com' }}</div>
+                <div>• <strong>Mailbox:</strong> {{ previewData.conversations[0]?.mailbox?.name || 'Support' }}</div>
+                <div>• <strong>Status:</strong> {{ previewData.conversations[0]?.status || 'active' }}</div>
               </div>
             </div>
             
@@ -356,11 +356,11 @@
             <div class="space-y-2">
               <div class="font-medium text-green-900">FreeScout Data:</div>
               <div class="space-y-1 text-green-800">
-                <div>• <strong>ID:</strong> {{ mockData.time_entries?.[0]?.id || 'time_789' }}</div>
-                <div>• <strong>Time:</strong> {{ mockData.time_entries?.[0]?.time || '2.5 hours' }}</div>
-                <div>• <strong>User:</strong> {{ mockData.time_entries?.[0]?.user?.name || 'Agent Smith' }}</div>
-                <div>• <strong>Conversation:</strong> #{{ mockData.time_entries?.[0]?.conversation_id || 'conversation_123' }}</div>
-                <div>• <strong>Note:</strong> "{{ mockData.time_entries?.[0]?.note || 'Investigated payment gateway issue' }}"</div>
+                <div>• <strong>ID:</strong> {{ previewData.time_entries?.[0]?.id || 'time_789' }}</div>
+                <div>• <strong>Time:</strong> {{ previewData.time_entries?.[0]?.time || '2.5 hours' }}</div>
+                <div>• <strong>User:</strong> {{ previewData.time_entries?.[0]?.user?.name || 'Agent Smith' }}</div>
+                <div>• <strong>Conversation:</strong> #{{ previewData.time_entries?.[0]?.conversation_id || 'conversation_123' }}</div>
+                <div>• <strong>Note:</strong> "{{ previewData.time_entries?.[0]?.note || 'Investigated payment gateway issue' }}"</div>
               </div>
             </div>
             
@@ -396,11 +396,11 @@
             <div class="space-y-2">
               <div class="font-medium text-yellow-900">FreeScout Data:</div>
               <div class="space-y-1 text-yellow-800">
-                <div>• <strong>Thread ID:</strong> {{ mockData.conversations[0]?.threads?.[0]?.id || 'thread_456' }}</div>
-                <div>• <strong>Type:</strong> {{ mockData.conversations[0]?.threads?.[0]?.type || 'message' }}</div>
-                <div>• <strong>Author:</strong> {{ mockData.conversations[0]?.threads?.[0]?.created_by?.name || 'Customer' }}</div>
-                <div>• <strong>Body:</strong> "{{ mockData.conversations[0]?.threads?.[0]?.body?.substr(0, 40) || 'The payment failed again today...' }}..."</div>
-                <div>• <strong>Created:</strong> {{ mockData.conversations[0]?.threads?.[0]?.created_at || '2024-01-15 14:30' }}</div>
+                <div>• <strong>Thread ID:</strong> {{ previewData.conversations[0]?.threads?.[0]?.id || 'thread_456' }}</div>
+                <div>• <strong>Type:</strong> {{ previewData.conversations[0]?.threads?.[0]?.type || 'message' }}</div>
+                <div>• <strong>Author:</strong> {{ previewData.conversations[0]?.threads?.[0]?.created_by?.name || 'Customer' }}</div>
+                <div>• <strong>Body:</strong> "{{ previewData.conversations[0]?.threads?.[0]?.body?.substr(0, 40) || 'The payment failed again today...' }}..."</div>
+                <div>• <strong>Created:</strong> {{ previewData.conversations[0]?.threads?.[0]?.created_at || '2024-01-15 14:30' }}</div>
               </div>
             </div>
             
@@ -438,9 +438,9 @@
               <div class="space-y-2">
                 <div class="font-medium text-indigo-900">FreeScout Agent:</div>
                 <div class="space-y-1 text-indigo-800">
-                  <div>• <strong>ID:</strong> {{ mockData.users?.filter(u => u.type === 'user')?.[0]?.id || 'user_101' }}</div>
-                  <div>• <strong>Email:</strong> {{ mockData.users?.filter(u => u.type === 'user')?.[0]?.email || 'agent@company.com' }}</div>
-                  <div>• <strong>Name:</strong> {{ mockData.users?.filter(u => u.type === 'user')?.[0]?.name || 'Agent Smith' }}</div>
+                  <div>• <strong>ID:</strong> {{ previewData.users?.filter(u => u.type === 'user')?.[0]?.id || 'user_101' }}</div>
+                  <div>• <strong>Email:</strong> {{ previewData.users?.filter(u => u.type === 'user')?.[0]?.email || 'agent@company.com' }}</div>
+                  <div>• <strong>Name:</strong> {{ previewData.users?.filter(u => u.type === 'user')?.[0]?.name || 'Agent Smith' }}</div>
                   <div>• <strong>Role:</strong> Admin/Agent</div>
                 </div>
               </div>
@@ -462,9 +462,9 @@
               <div class="space-y-2">
                 <div class="font-medium text-indigo-900">FreeScout Customer:</div>
                 <div class="space-y-1 text-indigo-800">
-                  <div>• <strong>ID:</strong> {{ mockData.customers?.[0]?.id || 'customer_202' }}</div>
-                  <div>• <strong>Email:</strong> {{ mockData.customers?.[0]?.emails?.[0]?.email || 'john@acme.com' }}</div>
-                  <div>• <strong>Name:</strong> {{ mockData.customers?.[0]?.first_name || 'John' }} {{ mockData.customers?.[0]?.last_name || 'Doe' }}</div>
+                  <div>• <strong>ID:</strong> {{ previewData.customers?.[0]?.id || 'customer_202' }}</div>
+                  <div>• <strong>Email:</strong> {{ previewData.customers?.[0]?.emails?.[0]?.email || 'john@acme.com' }}</div>
+                  <div>• <strong>Name:</strong> {{ previewData.customers?.[0]?.first_name || 'John' }} {{ previewData.customers?.[0]?.last_name || 'Doe' }}</div>
                   <div>• <strong>Domain:</strong> @acme.com</div>
                 </div>
               </div>
@@ -679,12 +679,12 @@
           <div class="space-y-2">
             <div class="font-medium text-purple-900">FreeScout Time Entry:</div>
             <div class="space-y-1 text-purple-800">
-              <div>• <strong>ID:</strong> {{ mockData.time_entries?.[0]?.id || 'time_789' }}</div>
-              <div>• <strong>Time:</strong> {{ mockData.time_entries?.[0]?.time || '2.5' }} hours</div>
-              <div>• <strong>User:</strong> {{ mockData.time_entries?.[0]?.user?.name || 'Agent Smith' }}</div>
-              <div>• <strong>Conversation:</strong> #{{ mockData.time_entries?.[0]?.conversation_id || 'conversation_123' }}</div>
-              <div>• <strong>Note:</strong> "{{ mockData.time_entries?.[0]?.note || 'Investigated payment gateway issue' }}"</div>
-              <div>• <strong>Created:</strong> {{ mockData.time_entries?.[0]?.created_at || '2024-01-15 16:45' }}</div>
+              <div>• <strong>ID:</strong> {{ previewData.time_entries?.[0]?.id || 'time_789' }}</div>
+              <div>• <strong>Time:</strong> {{ previewData.time_entries?.[0]?.time || '2.5' }} hours</div>
+              <div>• <strong>User:</strong> {{ previewData.time_entries?.[0]?.user?.name || 'Agent Smith' }}</div>
+              <div>• <strong>Conversation:</strong> #{{ previewData.time_entries?.[0]?.conversation_id || 'conversation_123' }}</div>
+              <div>• <strong>Note:</strong> "{{ previewData.time_entries?.[0]?.note || 'Investigated payment gateway issue' }}"</div>
+              <div>• <strong>Created:</strong> {{ previewData.time_entries?.[0]?.created_at || '2024-01-15 16:45' }}</div>
             </div>
           </div>
           
@@ -865,11 +865,11 @@
             <div class="space-y-2">
               <div class="font-medium text-orange-900">FreeScout Customer Message:</div>
               <div class="space-y-1 text-orange-800">
-                <div>• <strong>Thread ID:</strong> {{ mockData.conversations[0]?.threads?.[0]?.id || 'thread_456' }}</div>
+                <div>• <strong>Thread ID:</strong> {{ previewData.conversations[0]?.threads?.[0]?.id || 'thread_456' }}</div>
                 <div>• <strong>Type:</strong> "message" (customer reply)</div>
-                <div>• <strong>Author:</strong> {{ mockData.conversations[0]?.threads?.[0]?.created_by?.name || 'Customer' }}</div>
-                <div>• <strong>Body:</strong> "{{ mockData.conversations[0]?.threads?.[0]?.body?.substr(0, 50) || 'The payment failed again today. Can you help me understand why...' }}..."</div>
-                <div>• <strong>Created:</strong> {{ mockData.conversations[0]?.threads?.[0]?.created_at || '2024-01-15 14:30' }}</div>
+                <div>• <strong>Author:</strong> {{ previewData.conversations[0]?.threads?.[0]?.created_by?.name || 'Customer' }}</div>
+                <div>• <strong>Body:</strong> "{{ previewData.conversations[0]?.threads?.[0]?.body?.substr(0, 50) || 'The payment failed again today. Can you help me understand why...' }}..."</div>
+                <div>• <strong>Created:</strong> {{ previewData.conversations[0]?.threads?.[0]?.created_at || '2024-01-15 14:30' }}</div>
               </div>
             </div>
             
@@ -1045,13 +1045,13 @@
             </button>
           </div>
           <span class="text-sm text-gray-500">
-            {{ excludedMailboxes.length }} of {{ mockData.mailboxes.length }} excluded
+            {{ excludedMailboxes.length }} of {{ previewData.mailboxes.length }} excluded
           </span>
         </div>
 
         <div class="space-y-2">
           <div
-            v-for="mailbox in mockData.mailboxes"
+            v-for="mailbox in previewData.mailboxes"
             :key="mailbox.id"
             :class="[
               'flex items-start p-3 rounded-lg border transition-colors',
@@ -1088,7 +1088,7 @@
                 <div class="flex items-center space-x-4">
                   <span>{{ mailbox.email }}</span>
                   <span>•</span>
-                  <span>{{ mailbox.conversation_count.toLocaleString() }} conversations</span>
+                  <span>{{ (mailbox.conversation_count || 0).toLocaleString() }} conversations</span>
                   <span>•</span>
                   <span>{{ mailbox.user_count }} users</span>
                 </div>
@@ -1544,7 +1544,10 @@ import {
   ArrowRightIcon,
   ClockIcon,
   ChatBubbleLeftRightIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  CogIcon,
+  ChartBarIcon,
+  DocumentTextIcon
 } from '@heroicons/vue/24/outline'
 
 // Props
@@ -1553,9 +1556,13 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  mockData: {
+  previewData: {
     type: Object,
     required: true
+  },
+  loadingPreview: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -1609,7 +1616,7 @@ const excludedMailboxes = ref([])
 
 // Initialize with no mailboxes excluded by default
 const initializeMailboxes = () => {
-  if (props.mockData && props.mockData.mailboxes) {
+  if (props.previewData && props.previewData.mailboxes) {
     excludedMailboxes.value = [] // Start with no exclusions
     config.value.excluded_mailboxes = []
   }
@@ -1659,13 +1666,13 @@ const includeAllMailboxes = () => {
 }
 
 const excludeAllMailboxes = () => {
-  excludedMailboxes.value = props.mockData.mailboxes.map(m => m.id) // Exclude all
+  excludedMailboxes.value = (props.previewData.mailboxes || []).map(m => m.id) // Exclude all
 }
 
 // Computed estimated import counts
 const estimatedImportCounts = computed(() => {
   // Filter based on included mailboxes (all except excluded ones)
-  const includedMailboxData = props.mockData.mailboxes.filter(m => 
+  const includedMailboxData = (props.previewData.mailboxes || []).filter(m => 
     !excludedMailboxes.value.includes(m.id)
   )
   
@@ -1675,8 +1682,8 @@ const estimatedImportCounts = computed(() => {
   )
   
   const conversationLimit = config.value.limits.conversations || totalConversationsFromIncluded
-  const timeEntriesLimit = config.value.limits.time_entries || (props.mockData.time_entries ? props.mockData.time_entries.length : 0)
-  const customerLimit = config.value.limits.customers || props.mockData.customers.length
+  const timeEntriesLimit = config.value.limits.time_entries || (props.previewData.time_entries?.length || 0)
+  const customerLimit = config.value.limits.customers || (props.previewData.customers?.length || 0)
   const mailboxLimit = config.value.limits.mailboxes || includedMailboxData.length
   
   let accountCount = 0
@@ -1698,8 +1705,8 @@ const estimatedImportCounts = computed(() => {
   
   return {
     conversations: Math.min(conversationLimit, totalConversationsFromIncluded).toLocaleString(),
-    time_entries: Math.min(timeEntriesLimit, props.mockData.time_entries ? props.mockData.time_entries.length : 0).toLocaleString(),
-    customers: Math.min(customerLimit, props.mockData.customers.length).toLocaleString(),
+    time_entries: Math.min(timeEntriesLimit, props.previewData.time_entries ? props.previewData.time_entries.length : 0).toLocaleString(),
+    customers: Math.min(customerLimit, (props.previewData.customers || []).length).toLocaleString(),
     accounts: accountCount.toLocaleString()
   }
 })

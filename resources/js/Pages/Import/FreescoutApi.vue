@@ -31,8 +31,39 @@
           <div class="p-6">
             <!-- Profile Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <!-- Loading state -->
+              <div v-if="loading" class="col-span-full text-center py-8">
+                <div class="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-indigo-500">
+                  <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading profiles...
+                </div>
+              </div>
+
+              <!-- Error state -->
+              <div v-else-if="error" class="col-span-full bg-red-50 border border-red-200 rounded-lg p-4">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Error loading profiles</h3>
+                    <p class="mt-1 text-sm text-red-700">{{ error }}</p>
+                    <div class="mt-3">
+                      <button @click="loadProfiles" class="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200">
+                        Try again
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div
-                v-for="profile in mockProfiles"
+                v-for="profile in profiles"
                 :key="profile.id"
                 class="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-gray-300 transition-colors"
               >
@@ -110,15 +141,17 @@
                         </button>
                         <button
                           @click="configureImport(profile)"
-                          :disabled="profile.status !== 'connected'"
                           :class="[
                             'block px-4 py-2 text-sm w-full text-left',
                             profile.status === 'connected' 
                               ? 'text-gray-700 hover:bg-gray-100' 
-                              : 'text-gray-400 cursor-not-allowed'
+                              : 'text-amber-600 hover:bg-amber-50'
                           ]"
                         >
                           Configure Import
+                          <span v-if="profile.status !== 'connected'" class="text-xs text-amber-600 block">
+                            (Will test connection automatically)
+                          </span>
                         </button>
                         <button
                           @click="editProfile(profile)"
@@ -141,7 +174,7 @@
 
               <!-- Empty State -->
               <div
-                v-if="mockProfiles.length === 0"
+                v-if="!loading && !error && profiles.length === 0"
                 class="col-span-full bg-gray-50 rounded-lg p-8 text-center border-2 border-dashed border-gray-300"
               >
                 <CloudArrowUpIcon class="mx-auto h-12 w-12 text-gray-400" />
@@ -161,39 +194,6 @@
           </div>
         </div>
 
-        <!-- Import Configuration Section -->
-        <div 
-          v-if="selectedProfile && showImportConfig"
-          class="bg-white overflow-hidden shadow-sm sm:rounded-lg"
-        >
-          <div class="p-6 border-b border-gray-200">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-lg font-medium text-gray-900">Import Configuration</h3>
-                <p class="mt-1 text-sm text-gray-500">
-                  Configure import settings for {{ selectedProfile.name }}
-                </p>
-              </div>
-              <button
-                @click="closeImportConfig"
-                class="text-gray-400 hover:text-gray-500"
-              >
-                <XMarkIcon class="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          <!-- This will be the FreescoutImportConfigPanel component -->
-          <div class="p-6">
-            <FreescoutImportConfigPanel
-              v-if="selectedProfile"
-              :profile="selectedProfile"
-              :mock-data="mockImportData"
-              @preview="handlePreviewImport"
-              @execute="handleExecuteImport"
-            />
-          </div>
-        </div>
         </div>
         
         <div class="lg:col-span-1">
@@ -272,18 +272,29 @@
 
   <!-- API Profile Modal -->
   <FreescoutApiProfileModal
-    :show="showCreateProfileModal"
+    v-if="showCreateProfileModal"
     :profile="editingProfile"
     @close="closeProfileModal"
     @save="handleSaveProfile"
   />
 
+  <!-- Import Configuration Dialog -->
+  <FreescoutImportConfigDialog
+    v-if="showImportConfig && selectedProfile && previewData"
+    :profile="selectedProfile"
+    :preview-data="previewData"
+    :loading-preview="loadingPreview"
+    @close="closeImportConfig"
+    @preview="handlePreviewImport"
+    @execute="handleExecuteImport"
+  />
+
   <!-- Import Preview Dialog -->
   <FreescoutImportPreviewDialog
-    :show="showPreviewDialog"
+    v-if="showPreviewDialog && previewProfile && previewConfig"
     :profile="previewProfile"
     :config="previewConfig"
-    :import-data="mockImportData"
+    :import-data="previewData"
     @close="closePreviewDialog"
     @execute="handleExecuteFromPreview"
   />
@@ -301,7 +312,7 @@
 
   <!-- Import Execution Dialog -->
   <FreescoutImportExecutionDialog
-    :show="showExecutionDialog"
+    v-if="showExecutionDialog && executionProfile && executionConfig"
     :profile="executionProfile"
     :config="executionConfig"
     @close="closeExecutionDialog"
@@ -312,9 +323,10 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import axios from 'axios'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import FreescoutApiProfileModal from './Components/FreescoutApiProfileModal.vue'
-import FreescoutImportConfigPanel from './Components/FreescoutImportConfigPanel.vue'
+import FreescoutImportConfigDialog from './Components/FreescoutImportConfigDialog.vue'
 import FreescoutImportPreviewDialog from './Components/FreescoutImportPreviewDialog.vue'
 import FreescoutImportProgressDialog from '@/Components/Import/FreescoutImportProgressDialog.vue'
 import FreescoutImportExecutionDialog from './Components/FreescoutImportExecutionDialog.vue'
@@ -347,51 +359,12 @@ const importConfig = ref(null)
 const progressPollingInterval = ref(null)
 const progressDialogRef = ref(null)
 
-// Mock Data
-const mockProfiles = ref([
-  {
-    id: 1,
-    name: 'Production FreeScout',
-    instance_url: 'https://support.mycompany.com',
-    api_key_masked: '****-****-****-7a2f',
-    status: 'connected',
-    last_tested: '2 minutes ago',
-    stats: {
-      conversations: '1,247',
-      customers: '523',
-      mailboxes: '8'
-    },
-    created_at: '2025-08-20T10:30:00Z'
-  },
-  {
-    id: 2,
-    name: 'Staging Environment',
-    instance_url: 'https://staging-support.mycompany.com',
-    api_key_masked: '****-****-****-9b1c',
-    status: 'testing',
-    last_tested: '5 minutes ago',
-    stats: {
-      conversations: '342',
-      customers: '156',
-      mailboxes: '4'
-    },
-    created_at: '2025-08-19T14:15:00Z'
-  },
-  {
-    id: 3,
-    name: 'Legacy System',
-    instance_url: 'https://old-support.mycompany.com',
-    api_key_masked: '****-****-****-3x8d',
-    status: 'error',
-    last_tested: '1 hour ago',
-    stats: {
-      conversations: 'N/A',
-      customers: 'N/A',
-      mailboxes: 'N/A'
-    },
-    created_at: '2025-08-18T09:45:00Z'
-  }
-])
+// Real data
+const profiles = ref([])
+const loading = ref(false)
+const error = ref(null)
+const previewData = ref(null)
+const loadingPreview = ref(false)
 
 const mockImportStats = ref({
   total_imports: 12,
@@ -1015,14 +988,59 @@ const mockImportData = ref({
   ]
 })
 
+// API methods
+const loadProfiles = async () => {
+  loading.value = true
+  error.value = null
+  
+  try {
+    const response = await axios.get('/api/import/freescout/profiles')
+    
+    if (response.data && response.data.data) {
+      profiles.value = response.data.data
+    } else {
+      profiles.value = response.data || []
+    }
+  } catch (err) {
+    console.error('Failed to load FreeScout profiles:', err)
+    error.value = err.response?.data?.message || 'Failed to load profiles'
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadPreviewData = async (profile, sampleSize = 10) => {
+  loadingPreview.value = true
+  
+  try {
+    const response = await axios.get(`/api/import/freescout/profiles/${profile.id}/preview-data`, {
+      params: { sample_size: sampleSize }
+    })
+    
+    if (response.data.success) {
+      previewData.value = response.data.preview_data
+      return response.data.preview_data
+    } else {
+      console.error('Failed to load preview data:', response.data.error)
+      return null
+    }
+  } catch (err) {
+    console.error('Failed to load preview data:', err)
+    return null
+  } finally {
+    loadingPreview.value = false
+  }
+}
+
 // Methods
 const toggleProfileMenu = (profileId) => {
   activeProfileMenu.value = activeProfileMenu.value === profileId ? null : profileId
 }
 
-const testConnection = (profile) => {
+const testConnection = async (profile) => {
   console.log('Testing connection for:', profile.name)
-  // Mock connection test with loading state
+  
+  // Update profile status to testing
   profile.status = 'testing'
   profile.last_tested = 'testing...'
   
@@ -1035,37 +1053,91 @@ const testConnection = (profile) => {
     timestamp: 'just now'
   })
   
-  setTimeout(() => {
-    const success = Math.random() > 0.3
-    profile.status = success ? 'connected' : 'error'
-    profile.last_tested = 'just now'
+  try {
+    const response = await axios.post(`/api/import/freescout/profiles/${profile.id}/test-connection`)
     
-    if (success) {
-      // Update stats with fresh data
-      profile.stats = {
-        conversations: (Math.floor(Math.random() * 2000) + 500).toLocaleString(),
-        customers: (Math.floor(Math.random() * 800) + 200).toLocaleString(),
-        mailboxes: (Math.floor(Math.random() * 10) + 3).toString()
+    if (response.data.success) {
+      profile.status = 'connected'
+      profile.last_tested = 'just now'
+      
+      // Update stats if provided
+      if (response.data.connection_test.stats) {
+        profile.stats = {
+          conversations: response.data.connection_test.stats.conversations.toLocaleString(),
+          customers: response.data.connection_test.stats.customers.toLocaleString(),
+          mailboxes: response.data.connection_test.stats.mailboxes.toString()
+        }
       }
+      
+      // Update recent activity
+      mockRecentActivity.value[0] = {
+        id: mockRecentActivity.value[0].id,
+        action: 'Connection test passed',
+        profile: profile.name,
+        status: 'completed',
+        timestamp: 'just now'
+      }
+    } else {
+      profile.status = 'error'
+      profile.last_tested = 'just now'
+      
+      // Update recent activity
+      mockRecentActivity.value[0] = {
+        id: mockRecentActivity.value[0].id,
+        action: 'Connection test failed',
+        profile: profile.name,
+        status: 'failed',
+        timestamp: 'just now'
+      }
+      
+      console.error('Connection test failed:', response.data.connection_test?.error)
     }
+  } catch (error) {
+    console.error('Failed to test connection:', error)
+    profile.status = 'error'
+    profile.last_tested = 'just now'
     
     // Update recent activity
     mockRecentActivity.value[0] = {
       id: mockRecentActivity.value[0].id,
-      action: success ? 'Connection test passed' : 'Connection test failed',
+      action: 'Connection test failed',
       profile: profile.name,
-      status: success ? 'completed' : 'failed',
+      status: 'failed',
       timestamp: 'just now'
     }
-  }, 2000)
+  }
   
   activeProfileMenu.value = null
 }
 
-const configureImport = (profile) => {
+const configureImport = async (profile) => {
+  console.log('Configure import called for profile:', profile.name, 'status:', profile.status)
+  
   selectedProfile.value = profile
-  showImportConfig.value = true
   activeProfileMenu.value = null
+  
+  // If profile isn't connected, test connection first
+  if (profile.status !== 'connected') {
+    console.log('Profile not connected, testing connection first...')
+    await testConnection(profile)
+    
+    // If still not connected after test, show error
+    if (profile.status !== 'connected') {
+      alert('Unable to connect to FreeScout API. Please check your API configuration and try again.')
+      return
+    }
+  }
+  
+  // Load preview data for the profile
+  console.log('Loading preview data...')
+  const data = await loadPreviewData(profile)
+  console.log('Preview data loaded:', data ? 'success' : 'failed')
+  
+  if (data) {
+    showImportConfig.value = true
+  } else {
+    alert('Failed to load preview data from FreeScout. Please check the connection and try again.')
+  }
 }
 
 const createProfile = () => {
@@ -1079,11 +1151,21 @@ const editProfile = (profile) => {
   activeProfileMenu.value = null
 }
 
-const deleteProfile = (profile) => {
+const deleteProfile = async (profile) => {
   if (confirm(`Are you sure you want to delete "${profile.name}"? This action cannot be undone.`)) {
-    const index = mockProfiles.value.findIndex(p => p.id === profile.id)
-    if (index > -1) {
-      mockProfiles.value.splice(index, 1)
+    try {
+      const response = await axios.delete(`/api/import/freescout/profiles/${profile.id}`)
+      
+      if (response.data.success) {
+        // Remove the profile from the list
+        const index = profiles.value.findIndex(p => p.id === profile.id)
+        if (index > -1) {
+          profiles.value.splice(index, 1)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete profile:', error)
+      alert('Failed to delete profile: ' + (error.response?.data?.message || error.message))
     }
   }
   activeProfileMenu.value = null
@@ -1094,26 +1176,36 @@ const closeProfileModal = () => {
   editingProfile.value = null
 }
 
-const handleSaveProfile = (profileData) => {
-  if (editingProfile.value) {
-    // Update existing profile
-    const index = mockProfiles.value.findIndex(p => p.id === editingProfile.value.id)
-    if (index > -1) {
-      mockProfiles.value[index] = { ...mockProfiles.value[index], ...profileData }
+const handleSaveProfile = async (profileData) => {
+  try {
+    let response
+    
+    if (editingProfile.value) {
+      // Update existing profile
+      response = await axios.put(`/api/import/freescout/profiles/${editingProfile.value.id}`, profileData)
+      
+      if (response.data.success) {
+        // Update the profile in the list
+        const index = profiles.value.findIndex(p => p.id === editingProfile.value.id)
+        if (index > -1) {
+          profiles.value[index] = response.data.profile
+        }
+      }
+    } else {
+      // Create new profile
+      response = await axios.post('/api/import/freescout/profiles', profileData)
+      
+      if (response.data.success) {
+        profiles.value.push(response.data.profile)
+      }
     }
-  } else {
-    // Create new profile
-    const newProfile = {
-      id: Date.now(),
-      ...profileData,
-      status: 'testing',
-      last_tested: 'never',
-      stats: { conversations: '0', customers: '0', mailboxes: '0' },
-      created_at: new Date().toISOString()
-    }
-    mockProfiles.value.push(newProfile)
+    
+    closeProfileModal()
+  } catch (error) {
+    console.error('Failed to save profile:', error)
+    // You might want to show an error message to the user
+    alert('Failed to save profile: ' + (error.response?.data?.message || error.message))
   }
-  closeProfileModal()
 }
 
 const closeImportConfig = () => {
@@ -1316,17 +1408,27 @@ const handleExecutionFailed = (error) => {
   // Update recent activity
 }
 
-// Cleanup on component unmount
-onUnmounted(() => {
-  stopProgressPolling()
-})
-
-// Close dropdown when clicking outside
-onMounted(() => {
+// Lifecycle hooks
+onMounted(async () => {
+  // Set CSRF token for axios requests
+  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+  if (token) {
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = token
+  }
+  
+  // Load profiles on component mount
+  await loadProfiles()
+  
+  // Close dropdown when clicking outside
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.relative')) {
       activeProfileMenu.value = null
     }
   })
+})
+
+// Cleanup on component unmount
+onUnmounted(() => {
+  stopProgressPolling()
 })
 </script>

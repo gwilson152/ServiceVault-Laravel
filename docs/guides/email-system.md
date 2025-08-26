@@ -61,22 +61,30 @@ Service Vault's email system provides **application-wide email processing** that
 
 ## Configuration
 
+The email system configuration is organized into **four logical tabs** for better organization:
+
 ### Step 1: Access Email Configuration
 
 Navigate to **Settings → Email** or directly visit `/settings/email`
 
-### Step 2: Configure Incoming Email Service
+### Step 2: Basic Configuration Tab
+
+1. **System Activation**
+   - Toggle the master email system on/off
+   - Must be enabled for email processing to work
+
+### Step 3: Incoming Email Tab
 
 1. **Enable Incoming Service**
    ```
    ☑ Incoming Email Enabled
    ```
 
-2. **Select Provider**
-   - **IMAP**: Generic IMAP server
-   - **Gmail**: Google Gmail with OAuth
-   - **Outlook**: Microsoft Outlook/Office 365
-   - **Exchange**: Microsoft Exchange Server
+2. **Select Incoming Provider**
+   - **Generic IMAP**: Traditional IMAP servers
+   - **Gmail**: Google Gmail integration
+   - **Outlook/Office 365**: Microsoft email services
+   - **Microsoft 365 (Graph API)**: Advanced M365 integration with folder browser
 
 3. **Configure Connection Settings**
    ```
@@ -116,21 +124,28 @@ For Microsoft 365/Outlook configurations, the system provides an **intelligent f
 - ✅ **Message Counts**: Shows (unread/total) for each folder
 - ✅ **Smart Defaults**: Inbox pre-selected as default option
 
-### Step 3: Configure Outgoing Email Service
+### Step 4: Outgoing Email Tab
 
 1. **Enable Outgoing Service**
    ```
    ☑ Outgoing Email Enabled
    ```
 
-2. **Select Provider**
-   - **SMTP**: Generic SMTP server
-   - **Gmail**: Google Gmail SMTP
-   - **SES**: Amazon Simple Email Service
-   - **SendGrid**: SendGrid email service
-   - **Postmark**: Postmark transactional email
+2. **Select Outgoing Provider**
+   - **Generic SMTP**: Traditional SMTP servers
+   - **Gmail**: Google Gmail integration
+   - **Outlook/Office 365**: Microsoft email services
+   - **Microsoft 365 (Graph API)**: Advanced M365 integration
+   - **📧 Use same as incoming (Microsoft 365)**: When M365 is used for incoming
+   - **Amazon SES**: AWS Simple Email Service
+   - **SendGrid**: SendGrid email delivery platform
+   - **Postmark**: Postmark transactional email service
+   - **Mailgun**: Mailgun email service
 
-3. **Configure SMTP Settings**
+3. **Microsoft 365 Efficiency**
+   When using Microsoft 365 for incoming email, you can select **"Use same as incoming"** to automatically reuse the same M365 configuration for outgoing emails. This shows a helpful info panel with your current M365 settings.
+
+4. **Configure Outgoing Settings** (when not using "same as incoming")
    ```
    Host: smtp.office365.com
    Port: 587
@@ -139,36 +154,55 @@ For Microsoft 365/Outlook configurations, the system provides an **intelligent f
    Encryption: TLS
    ```
 
-4. **Set From Address Information**
+5. **Set From Address Information**
    ```
    From Address: support@yourcompany.com
    From Name: Your Company Support
    Reply-To: support@yourcompany.com (optional)
    ```
 
-### Step 4: Configure Processing Settings
+### Step 5: Processing Configuration Tab
+
+The Processing tab contains all email processing logic and settings:
+
+#### Email Processing Settings
 
 ```
 ☑ Auto-Create Tickets: Convert emails to tickets automatically
 ☑ Process Commands: Execute embedded email commands
 ☑ Send Confirmations: Send auto-reply confirmations
 Max Retries: 3
+```
 
+#### Timestamp Processing
+
+```
 Timestamp Processing:
-• Ticket Creation Time: Service Vault Processing Time (Recommended)
+• Ticket Creation Time: Original Email Timestamp (Default)
 • Timezone Handling: Preserve Original Timezone
 ```
 
 **Timestamp Processing Options**:
-- **Service Vault Processing Time (Recommended)**: Uses the timestamp when Service Vault processed the email. Ensures accurate chronological order and prevents timestamp manipulation.
-- **Original Email Timestamp**: Uses the timestamp from the email headers. May result in tickets appearing out of chronological order if emails are processed with delays.
+- **Original Email Timestamp (Default)**: Uses the timestamp from the email headers. Maintains the actual time the email was sent, which is usually what users expect to see.
+- **Service Vault Processing Time**: Uses the timestamp when Service Vault processed the email. Ensures accurate chronological order in processing sequence but may not reflect actual send time.
 
 **Timezone Handling**:
 - **Preserve Original**: Keep the timezone information from the email
 - **Convert to Server Timezone**: Convert timestamps to the server's timezone
 - **Convert to UTC**: Standardize all timestamps to UTC
 
-### Step 5: Activate System
+#### Post-Processing Actions
+
+Configure what happens to emails after they're processed into tickets:
+
+```
+Action: Mark as Read (Default)
+• Mark as Read: Leave email in folder but mark as read
+• Move to Folder: Move email to a different folder after processing
+• Delete: Permanently delete the email (not recommended)
+```
+
+### Step 6: Activate System
 
 ```
 ☑ Email System Active
@@ -176,7 +210,7 @@ Timestamp Processing:
 
 **Important**: Both incoming and outgoing services must be configured before activation.
 
-### Step 6: Test Configuration
+### Step 7: Test Configuration
 
 Click **"Test Configuration"** to verify:
 - ✅ Incoming connection successful

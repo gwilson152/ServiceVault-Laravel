@@ -155,8 +155,34 @@ class SettingController extends Controller
         foreach ($emailSettings as $key => $value) {
             // Remove 'email.' prefix from key
             $shortKey = str_replace('email.', '', $key);
+            
+            // Convert string booleans to actual booleans
+            if (in_array($value, ['true', 'false'])) {
+                $value = $value === 'true';
+            }
+            // Convert numeric strings to integers where appropriate
+            elseif (in_array($shortKey, ['smtp_port', 'imap_port', 'max_retries']) && is_numeric($value)) {
+                $value = (int) $value;
+            }
+            
             $emailData[$shortKey] = $value;
         }
+
+        // Ensure default values for critical settings that might not exist yet
+        $emailData = array_merge([
+            'system_active' => false,
+            'incoming_enabled' => false,
+            'outgoing_enabled' => false,
+            'email_provider' => 'imap',
+            'outgoing_provider' => 'smtp',
+            'use_same_provider' => false,
+            'timestamp_source' => 'original',
+            'timestamp_timezone' => 'preserve',
+            'auto_create_tickets' => true,
+            'process_commands' => true,
+            'send_confirmations' => true,
+            'max_retries' => 3,
+        ], $emailData);
 
         return response()->json([
             'data' => $emailData,
@@ -171,8 +197,15 @@ class SettingController extends Controller
         $this->authorize('system.configure');
 
         $emailSettings = [
+            // System Status
+            'system_active' => $request->boolean('system_active', false), // master email system toggle
+            'incoming_enabled' => $request->boolean('incoming_enabled', false),
+            'outgoing_enabled' => $request->boolean('outgoing_enabled', false),
+            
             // Email Provider Type
             'email_provider' => $request->input('email_provider', 'imap'), // 'imap' or 'm365'
+            'outgoing_provider' => $request->input('outgoing_provider', 'smtp'), // outgoing email provider
+            'use_same_provider' => $request->boolean('use_same_provider', false), // use same provider for M365
 
             // Outbound Email
             'smtp_host' => $request->input('smtp_host'),
@@ -207,12 +240,16 @@ class SettingController extends Controller
 
             // Email Processing
             'enable_email_to_ticket' => $request->boolean('enable_email_to_ticket', false),
+            'auto_create_tickets' => $request->boolean('auto_create_tickets', true), // alias for enable_email_to_ticket
             'auto_create_users' => $request->boolean('auto_create_users', false),
             'default_role_for_new_users' => $request->input('default_role_for_new_users'),
             'require_approval_for_new_users' => $request->boolean('require_approval_for_new_users', true),
+            'process_commands' => $request->boolean('process_commands', true),
+            'send_confirmations' => $request->boolean('send_confirmations', true),
+            'max_retries' => $request->input('max_retries', 3),
             
             // Timestamp Processing
-            'timestamp_source' => $request->input('timestamp_source', 'service_vault'), // 'service_vault' or 'original'
+            'timestamp_source' => $request->input('timestamp_source', 'original'), // 'service_vault' or 'original'
             'timestamp_timezone' => $request->input('timestamp_timezone', 'preserve'), // 'preserve', 'convert_local', or 'convert_utc'
         ];
 
