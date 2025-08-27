@@ -14,11 +14,11 @@
             <p class="text-sm text-gray-600">{{ profile.instance_url }}</p>
           </div>
           <div class="flex items-center space-x-2 text-sm text-gray-500">
-            <span>{{ (previewData.conversations?.length || 0).toLocaleString() }} conversations</span>
+            <span>{{ statistics.conversations.toLocaleString() }} conversations</span>
             <span>•</span>
-            <span>{{ (previewData.customers?.length || 0).toLocaleString() }} customers</span>
+            <span>{{ statistics.customers.toLocaleString() }} customers</span>
             <span>•</span>
-            <span>{{ (previewData.mailboxes?.length || 0).toLocaleString() }} mailboxes</span>
+            <span>{{ statistics.mailboxes.toLocaleString() }} mailboxes</span>
           </div>
         </div>
       </div>
@@ -62,6 +62,7 @@
             <BasicSettingsTab 
               :config="config"
               :preview-data="previewData"
+              :statistics="statistics"
               @update-config="updateConfig"
             />
           </div>
@@ -72,6 +73,7 @@
               :config="config"
               :preview-data="previewData"
               :profile="profile"
+              :statistics="statistics"
               @update-config="updateConfig"
             />
           </div>
@@ -81,6 +83,7 @@
             <AdvancedOptionsTab 
               :config="config"
               :preview-data="previewData"
+              :statistics="statistics"
               @update-config="updateConfig"
             />
           </div>
@@ -91,6 +94,7 @@
               :config="config"
               :preview-data="previewData"
               :profile="profile"
+              :statistics="statistics"
               @preview="$emit('preview', $event)"
               @execute="$emit('execute', $event)"
             />
@@ -113,6 +117,21 @@
             class="px-4 py-2 text-sm font-medium text-indigo-600 bg-white border border-indigo-300 rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Preview Import
+          </button>
+          
+          <button
+            @click="handleSave"
+            :disabled="savingConfig"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="savingConfig" class="flex items-center">
+              <svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </span>
+            <span v-else>Save Configuration</span>
           </button>
           
           <button
@@ -158,10 +177,13 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['close', 'preview', 'execute'])
+const emit = defineEmits(['close', 'preview', 'save', 'execute'])
 
 // Template refs
 const tabScrollContainer = ref(null)
+
+// Loading states
+const savingConfig = ref(false)
 
 // Tab configuration
 const activeTab = ref('basic')
@@ -172,6 +194,19 @@ const tabs = [
   { id: 'summary', name: 'Review & Execute', icon: DocumentCheckIcon }
 ]
 
+// Methods
+const handleSave = async () => {
+  savingConfig.value = true
+  try {
+    emit('save', config.value)
+  } finally {
+    // Let parent handle resetting this after save completes
+    setTimeout(() => {
+      savingConfig.value = false
+    }, 2000)
+  }
+}
+
 // Configuration state
 const config = ref({
   limits: {
@@ -181,9 +216,23 @@ const config = ref({
     mailboxes: null
   },
   account_strategy: 'map_mailboxes',
+  agent_access: 'all_accounts',
   user_strategy: 'map_emails',
+  unmapped_users: 'skip',
   sync_strategy: 'create_only',
+  sync_mode: 'incremental',
   duplicate_detection: 'external_id',
+  billing_rate_strategy: 'auto_select',
+  fixed_billing_rate_id: null,
+  time_entry_defaults: {
+    billable: true,
+    approved: false
+  },
+  comment_processing: {
+    preserve_html: true,
+    extract_attachments: true,
+    add_context_prefix: true
+  },
   date_range: {
     enabled: false,
     start_date: null,
@@ -196,6 +245,16 @@ const config = ref({
     preserve_thread_structure: true
   },
   time_entry_mapping: 'preserve_original'
+})
+
+// Computed statistics from profile
+const statistics = computed(() => {
+  return {
+    conversations: parseInt(props.profile.stats?.conversations?.replace(/,/g, '') || '0'),
+    customers: parseInt(props.profile.stats?.customers?.replace(/,/g, '') || '0'),
+    mailboxes: parseInt(props.profile.stats?.mailboxes?.replace(/,/g, '') || '0'),
+    time_entries: props.previewData.time_entries?.length || 0 // FreeScout doesn't always have time entry stats
+  }
 })
 
 // Methods

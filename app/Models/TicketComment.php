@@ -16,6 +16,7 @@ class TicketComment extends Model
         'ticket_id',
         'user_id',
         'content',
+        'external_id',
         'is_internal',
         'attachments',
         'parent_id',

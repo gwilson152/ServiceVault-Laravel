@@ -28,18 +28,19 @@ class FreescoutImportService
     public function testConnection(ImportProfile $profile): array
     {
         try {
-            $config = $profile->connection_config;
+            $config = $profile->getConnectionConfig();
             
-            if (!isset($config['api_url']) || !isset($config['api_key'])) {
+            if (!isset($config['host']) || !isset($config['password'])) {
                 return [
                     'success' => false,
                     'error' => 'Missing API URL or API key in profile configuration'
                 ];
             }
 
+            $apiUrl = rtrim($config['host'], '/') . '/api/mailboxes';
             $response = Http::withHeaders([
-                'X-FreeScout-API-Key' => $config['api_key']
-            ])->timeout(10)->get($config['api_url'] . '/mailboxes');
+                'X-FreeScout-API-Key' => $config['password']
+            ])->timeout(10)->get($apiUrl);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -114,9 +115,9 @@ class FreescoutImportService
     public function estimateImportCounts(ImportProfile $profile, array $config): array
     {
         try {
-            $apiConfig = $profile->connection_config;
-            $baseUrl = $apiConfig['api_url'];
-            $headers = ['X-FreeScout-API-Key' => $apiConfig['api_key']];
+            $apiConfig = $profile->getConnectionConfig();
+            $baseUrl = $apiConfig['host'];
+            $headers = ['X-FreeScout-API-Key' => $apiConfig['password']];
 
             $estimates = [
                 'conversations' => 0,
@@ -127,7 +128,7 @@ class FreescoutImportService
             ];
 
             // Get mailboxes first (excluding any excluded ones)
-            $mailboxesResponse = Http::withHeaders($headers)->get($baseUrl . '/mailboxes');
+            $mailboxesResponse = Http::withHeaders($headers)->get($baseUrl . '/api/mailboxes');
             if ($mailboxesResponse->successful()) {
                 $mailboxes = $mailboxesResponse->json()['_embedded']['mailboxes'] ?? [];
                 $excludedIds = $config['excluded_mailboxes'] ?? [];
@@ -193,9 +194,9 @@ class FreescoutImportService
      */
     public function previewImport(ImportProfile $profile, array $config, int $sampleSize = 10): array
     {
-        $apiConfig = $profile->connection_config;
-        $baseUrl = $apiConfig['api_url'];
-        $headers = ['X-FreeScout-API-Key' => $apiConfig['api_key']];
+        $apiConfig = $profile->getConnectionConfig();
+        $baseUrl = $apiConfig['host'];
+        $headers = ['X-FreeScout-API-Key' => $apiConfig['password']];
 
         $preview = [
             'conversations' => [],
@@ -208,7 +209,7 @@ class FreescoutImportService
         try {
             // Get sample conversations
             $conversationsResponse = Http::withHeaders($headers)
-                ->get($baseUrl . '/conversations', ['per_page' => $sampleSize]);
+                ->get($baseUrl . '/api/conversations', ['per_page' => $sampleSize]);
                 
             if ($conversationsResponse->successful()) {
                 $conversations = $conversationsResponse->json()['_embedded']['conversations'] ?? [];
@@ -230,7 +231,7 @@ class FreescoutImportService
                     
                     // Get threads for this conversation for comment preview
                     $threadsResponse = Http::withHeaders($headers)
-                        ->get($baseUrl . "/conversations/{$conversation['id']}/threads");
+                        ->get($baseUrl . "/api/conversations/{$conversation['id']}/threads");
                         
                     if ($threadsResponse->successful()) {
                         $threads = $threadsResponse->json()['_embedded']['threads'] ?? [];
@@ -252,14 +253,14 @@ class FreescoutImportService
 
             // Get sample customers
             $customersResponse = Http::withHeaders($headers)
-                ->get($baseUrl . '/customers', ['per_page' => $sampleSize]);
+                ->get($baseUrl . '/api/customers', ['per_page' => $sampleSize]);
                 
             if ($customersResponse->successful()) {
                 $customers = $customersResponse->json()['_embedded']['customers'] ?? [];
                 foreach ($customers as $customer) {
                     $preview['customers'][] = [
                         'freescout_id' => $customer['id'],
-                        'name' => $customer['first_name'] . ' ' . $customer['last_name'],
+                        'name' => ($customer['firstName'] ?? '') . ' ' . ($customer['lastName'] ?? ''),
                         'email' => $customer['emails'][0]['email'] ?? null,
                         'service_vault_mapping' => [
                             'user_type' => 'account_user',
@@ -473,9 +474,9 @@ class FreescoutImportService
 
     private function processFreescoutImport(ImportJob $job, ImportProfile $profile, array $config): void
     {
-        $apiConfig = $profile->connection_config;
-        $baseUrl = $apiConfig['api_url'];
-        $headers = ['X-FreeScout-API-Key' => $apiConfig['api_key']];
+        $apiConfig = $profile->getConnectionConfig();
+        $baseUrl = $apiConfig['host'];  // API URL is stored in 'host' field
+        $headers = ['X-FreeScout-API-Key' => $apiConfig['password']];  // API key is stored in 'password' field
         
         $importStats = [
             'accounts_created' => 0,
@@ -582,14 +583,49 @@ class FreescoutImportService
     private function processAccounts(string $baseUrl, array $headers, array $config): array
     {
         $accountMapping = [];
+        
+        Log::info('FreescoutImportService::processAccounts starting', [
+            'baseUrl' => $baseUrl,
+            'account_strategy' => $config['account_strategy'],
+            'excluded_mailboxes' => $config['excluded_mailboxes'] ?? []
+        ]);
 
         if ($config['account_strategy'] === 'map_mailboxes') {
             // Get all mailboxes and create accounts
-            $response = Http::withHeaders($headers)->get($baseUrl . '/mailboxes');
+            $apiUrl = rtrim($baseUrl, '/') . '/api/mailboxes';
+            Log::info('FreescoutImportService::processAccounts making API request', [
+                'url' => $apiUrl,
+                'headers' => array_keys($headers)
+            ]);
+            
+            $response = Http::withHeaders($headers)->get($apiUrl);
+            
+            Log::info('FreescoutImportService::processAccounts API response', [
+                'successful' => $response->successful(),
+                'status' => $response->status(),
+                'response_body' => $response->body(),
+                'response_json' => $response->json()
+            ]);
             
             if ($response->successful()) {
-                $mailboxes = $response->json()['_embedded']['mailboxes'] ?? [];
+                $responseData = $response->json();
+                
+                if ($responseData === null) {
+                    Log::error('FreescoutImportService::processAccounts API returned null JSON', [
+                        'response_body' => $response->body(),
+                        'content_type' => $response->header('Content-Type')
+                    ]);
+                    return $accountMapping;
+                }
+                
+                $mailboxes = $responseData['_embedded']['mailboxes'] ?? [];
                 $excludedIds = $config['excluded_mailboxes'] ?? [];
+                
+                Log::info('FreescoutImportService::processAccounts mailboxes found', [
+                    'mailboxes_count' => count($mailboxes),
+                    'excluded_count' => count($excludedIds),
+                    'response_structure' => array_keys($responseData)
+                ]);
 
                 foreach ($mailboxes as $mailbox) {
                     if (in_array($mailbox['id'], $excludedIds)) {
@@ -623,6 +659,12 @@ class FreescoutImportService
                         $accountMapping['mailbox_' . $mailbox['id']] = $existingAccount->id;
                     }
                 }
+            } else {
+                Log::error('FreescoutImportService::processAccounts API call failed', [
+                    'status' => $response->status(),
+                    'response_body' => $response->body(),
+                    'url' => $baseUrl . '/api/mailboxes'
+                ]);
             }
         } else {
             // Domain mapping strategy - use existing accounts
@@ -631,6 +673,11 @@ class FreescoutImportService
                 $accountMapping['domain_' . $mapping->id] = $mapping->account->id;
             }
         }
+        
+        Log::info('FreescoutImportService::processAccounts completed', [
+            'account_mapping_count' => count($accountMapping),
+            'account_mapping' => $accountMapping
+        ]);
 
         return $accountMapping;
     }
@@ -645,17 +692,15 @@ class FreescoutImportService
         }
 
         // Get FreeScout users (agents)
-        $response = Http::withHeaders($headers)->get($baseUrl . '/users');
+        $response = Http::withHeaders($headers)->get($baseUrl . '/api/users');
         
         if ($response->successful()) {
             $users = $response->json()['_embedded']['users'] ?? [];
             
             foreach ($users as $freescoutUser) {
-                // Skip customers - only process agents
-                if ($freescoutUser['type'] !== 'user') {
-                    continue;
-                }
-
+                // Note: /api/users endpoint only returns actual users/agents, not customers
+                // Customers are handled separately via /api/customers endpoint
+                
                 $existingUser = User::where('external_id', 'freescout_user_' . $freescoutUser['id'])->first();
                 
                 if (!$existingUser) {
@@ -677,7 +722,7 @@ class FreescoutImportService
                     }
 
                     $user = User::create([
-                        'name' => $freescoutUser['first_name'] . ' ' . $freescoutUser['last_name'],
+                        'name' => ($freescoutUser['firstName'] ?? '') . ' ' . ($freescoutUser['lastName'] ?? ''),
                         'email' => $freescoutUser['email'],
                         'user_type' => 'agent',
                         'account_id' => $accountId,
@@ -707,7 +752,7 @@ class FreescoutImportService
         }
 
         // Get FreeScout customers
-        $response = Http::withHeaders($headers)->get($baseUrl . '/customers');
+        $response = Http::withHeaders($headers)->get($baseUrl . '/api/customers');
         
         if ($response->successful()) {
             $customers = $response->json()['_embedded']['customers'] ?? [];
@@ -724,7 +769,7 @@ class FreescoutImportService
                     }
 
                     $user = User::create([
-                        'name' => trim($customer['first_name'] . ' ' . $customer['last_name']),
+                        'name' => trim(($customer['firstName'] ?? '') . ' ' . ($customer['lastName'] ?? '')),
                         'email' => $email,
                         'user_type' => 'account_user',
                         'account_id' => $accountId,
@@ -754,7 +799,7 @@ class FreescoutImportService
         $processed = 0;
 
         do {
-            $response = Http::withHeaders($headers)->get($baseUrl . '/conversations', [
+            $response = Http::withHeaders($headers)->get($baseUrl . '/api/conversations', [
                 'page' => $page,
                 'per_page' => 50
             ]);
@@ -790,8 +835,8 @@ class FreescoutImportService
                         'account_id' => $accountId,
                         'customer_id' => $customerId,
                         'external_id' => 'freescout_conversation_' . $conversation['id'],
-                        'created_at' => $conversation['created_at'],
-                        'updated_at' => $conversation['updated_at']
+                        'created_at' => $conversation['createdAt'] ?? null,
+                        'updated_at' => $conversation['updatedAt'] ?? null
                     ]);
 
                     $ticketMapping['conversation_' . $conversation['id']] = $ticket->id;
@@ -815,7 +860,7 @@ class FreescoutImportService
             
             try {
                 // Get threads for this conversation
-                $response = Http::withHeaders($headers)->timeout(30)->get($baseUrl . "/conversations/{$conversationId}/threads");
+                $response = Http::withHeaders($headers)->timeout(30)->get($baseUrl . "/api/conversations/{$conversationId}/threads");
                 
                 if ($response->successful()) {
                     $threads = $response->json()['_embedded']['threads'] ?? [];
@@ -827,10 +872,10 @@ class FreescoutImportService
                             if (!$existingComment) {
                                 // Determine comment author
                                 $userId = null;
-                                if ($thread['created_by']['type'] === 'customer') {
-                                    $userId = $customerMapping['customer_' . $thread['created_by']['id']] ?? null;
+                                if (($thread['createdBy']['type'] ?? null) === 'customer') {
+                                    $userId = $customerMapping['customer_' . $thread['createdBy']['id']] ?? null;
                                 } else {
-                                    $userId = $agentMapping['user_' . $thread['created_by']['id']] ?? null;
+                                    $userId = $agentMapping['user_' . $thread['createdBy']['id']] ?? null;
                                 }
 
                                 $content = $this->processCommentContent($thread, $config);
@@ -842,8 +887,8 @@ class FreescoutImportService
                                     'content' => $content,
                                     'is_internal' => $isInternal,
                                     'external_id' => 'freescout_thread_' . $thread['id'],
-                                    'created_at' => $thread['created_at'],
-                                    'updated_at' => $thread['updated_at'] ?? $thread['created_at']
+                                    'created_at' => $thread['createdAt'] ?? null,
+                                    'updated_at' => $thread['updatedAt'] ?? $thread['createdAt']
                                 ]);
 
                                 $commentsCreated++;
@@ -891,7 +936,7 @@ class FreescoutImportService
             $conversationId = str_replace('conversation_', '', $conversationKey);
             
             // Get time entries for this conversation
-            $response = Http::withHeaders($headers)->get($baseUrl . "/conversations/{$conversationId}/time_entries");
+            $response = Http::withHeaders($headers)->get($baseUrl . "/api/conversations/{$conversationId}/time_entries");
             
             if ($response->successful()) {
                 $timeEntries = $response->json()['_embedded']['time_entries'] ?? [];
@@ -917,7 +962,7 @@ class FreescoutImportService
                             TimeEntry::create([
                                 'description' => $timeEntry['note'] ?? 'Time entry imported from FreeScout',
                                 'duration' => $duration,
-                                'started_at' => $timeEntry['created_at'],
+                                'started_at' => $timeEntry['createdAt'] ?? null,
                                 'user_id' => $userId,
                                 'ticket_id' => $ticketId,
                                 'account_id' => $ticket->account_id,
@@ -925,8 +970,8 @@ class FreescoutImportService
                                 'billable' => $config['time_entry_defaults']['billable'],
                                 'approval_status' => $config['time_entry_defaults']['approved'] ? 'approved' : 'pending',
                                 'external_id' => 'freescout_time_' . $timeEntry['id'],
-                                'created_at' => $timeEntry['created_at'],
-                                'updated_at' => $timeEntry['updated_at'] ?? $timeEntry['created_at']
+                                'created_at' => $timeEntry['createdAt'] ?? null,
+                                'updated_at' => $timeEntry['updatedAt'] ?? $timeEntry['createdAt']
                             ]);
 
                             $timeEntriesCreated++;

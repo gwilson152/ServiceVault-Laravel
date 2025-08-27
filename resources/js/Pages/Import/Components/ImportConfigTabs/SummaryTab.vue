@@ -125,22 +125,26 @@ const props = defineProps({
   profile: {
     type: Object,
     required: true
+  },
+  statistics: {
+    type: Object,
+    required: true
   }
 })
 
 const emit = defineEmits(['preview', 'execute'])
 
 const estimatedCounts = computed(() => {
-  const conversationLimit = props.config.limits.conversations || (props.previewData.conversations?.length || 0)
-  const customerLimit = props.config.limits.customers || (props.previewData.customers?.length || 0)
-  const timeEntriesLimit = props.config.limits.time_entries || (props.previewData.time_entries?.length || 0)
+  const conversationLimit = props.config.limits.conversations || props.statistics.conversations
+  const customerLimit = props.config.limits.customers || props.statistics.customers
+  const timeEntriesLimit = props.config.limits.time_entries || props.statistics.time_entries
   
   // Estimate accounts based on strategy
   let accountCount = 1
   if (props.config.account_strategy === 'map_mailboxes') {
-    accountCount = (props.previewData.mailboxes?.length || 1) - (props.config.excluded_mailboxes?.length || 0)
+    accountCount = props.statistics.mailboxes - (props.config.excluded_mailboxes?.length || 0)
   } else if (props.config.account_strategy === 'domain_mapping') {
-    // Estimate unique domains
+    // Estimate unique domains from sample data
     const uniqueDomains = new Set(
       (props.previewData.customers || []).map(c => c.email?.split('@')[1]).filter(Boolean)
     )
@@ -148,9 +152,9 @@ const estimatedCounts = computed(() => {
   }
 
   return {
-    conversations: Math.min(conversationLimit, props.previewData.conversations?.length || 0).toLocaleString(),
-    customers: Math.min(customerLimit, props.previewData.customers?.length || 0).toLocaleString(),
-    time_entries: Math.min(timeEntriesLimit, props.previewData.time_entries?.length || 0).toLocaleString(),
+    conversations: Math.min(conversationLimit, props.statistics.conversations).toLocaleString(),
+    customers: Math.min(customerLimit, props.statistics.customers).toLocaleString(),
+    time_entries: Math.min(timeEntriesLimit, props.statistics.time_entries).toLocaleString(),
     accounts: accountCount.toLocaleString()
   }
 })

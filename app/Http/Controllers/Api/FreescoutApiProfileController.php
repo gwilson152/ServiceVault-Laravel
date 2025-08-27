@@ -378,7 +378,7 @@ class FreescoutApiProfileController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'sample_size' => 'integer|min:1|max:50',
+            'sample_size' => 'integer|min:1|max:1000',
         ]);
 
         if ($validator->fails()) {

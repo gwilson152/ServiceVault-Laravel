@@ -451,11 +451,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('timer', [SettingController::class, 'updateTimerSettings'])
             ->name('settings.timer.update');
 
-        // User Management Settings
-        Route::get('user-management', [SettingController::class, 'getUserManagementSettings'])
-            ->name('settings.user-management');
-        Route::put('user-management', [SettingController::class, 'updateUserManagementSettings'])
-            ->name('settings.user-management.update');
 
         // Tax Settings
         Route::get('tax', [SettingController::class, 'getTaxSettings'])
@@ -797,6 +792,10 @@ Route::middleware(['auth:sanctum,web'])->prefix('email-admin')->group(function (
     // Manual email retrieval
     Route::post('manual-retrieval', [EmailAdminController::class, 'manualEmailRetrieval'])
         ->name('email-admin.manual-retrieval');
+    
+    // Debug endpoint (temporary)
+    Route::get('debug-config', [EmailAdminController::class, 'debugEmailConfig'])
+        ->name('email-admin.debug-config');
 });
 
 // Manager-only routes

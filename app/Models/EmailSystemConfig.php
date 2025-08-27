@@ -51,6 +51,15 @@ class EmailSystemConfig extends Model
         'max_retries',
         'processing_rules',
         
+        // Email processing strategy
+        'enable_email_processing',
+        'auto_create_users',
+        'unmapped_domain_strategy',
+        'default_account_id',
+        'default_role_template_id',
+        'require_email_verification',
+        'require_admin_approval',
+        
         // Metadata
         'updated_by_id',
     ];
@@ -62,6 +71,10 @@ class EmailSystemConfig extends Model
         'auto_create_tickets' => 'boolean',
         'process_commands' => 'boolean',
         'send_confirmations' => 'boolean',
+        'enable_email_processing' => 'boolean',
+        'auto_create_users' => 'boolean',
+        'require_email_verification' => 'boolean',
+        'require_admin_approval' => 'boolean',
         'incoming_settings' => 'array',
         'outgoing_settings' => 'array',
         'test_results' => 'array',
@@ -83,6 +96,22 @@ class EmailSystemConfig extends Model
     }
 
     /**
+     * Get the default account for unmapped domains
+     */
+    public function defaultAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'default_account_id');
+    }
+
+    /**
+     * Get the default role template for auto-created users
+     */
+    public function defaultRoleTemplate(): BelongsTo
+    {
+        return $this->belongsTo(RoleTemplate::class, 'default_role_template_id');
+    }
+
+    /**
      * Get the singleton email system configuration
      */
     public static function getConfig(): EmailSystemConfig
@@ -98,6 +127,13 @@ class EmailSystemConfig extends Model
                 'process_commands' => true,
                 'send_confirmations' => true,
                 'max_retries' => 3,
+                
+                // Email processing strategy defaults
+                'enable_email_processing' => true,
+                'auto_create_users' => true,
+                'unmapped_domain_strategy' => 'assign_default_account',
+                'require_email_verification' => true,
+                'require_admin_approval' => true,
             ]
         );
     }
@@ -118,8 +154,20 @@ class EmailSystemConfig extends Model
      */
     public function hasIncomingConfigured(): bool
     {
-        return $this->incoming_enabled &&
-               !empty($this->incoming_host) &&
+        if (!$this->incoming_enabled) {
+            return false;
+        }
+
+        // For M365/Graph API, check different fields
+        if ($this->incoming_provider === 'm365') {
+            // M365 uses different configuration fields
+            return !empty($this->incoming_settings['tenant_id']) &&
+                   !empty($this->incoming_settings['client_id']) &&
+                   !empty($this->incoming_settings['client_secret']);
+        }
+
+        // For IMAP-based providers (imap, gmail, outlook)
+        return !empty($this->incoming_host) &&
                !empty($this->incoming_username);
     }
 

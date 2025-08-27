@@ -292,6 +292,83 @@ class FreescoutApiService
     }
 
     /**
+     * Fetch multiple pages of data to get the requested sample size.
+     * Handles FreeScout API pagination limits by fetching multiple pages if needed.
+     */
+    private function fetchMultiPageData(array $config, string $dataType, int $sampleSize): array
+    {
+        $allData = [];
+        $page = 1;
+        $perPage = 50; // FreeScout API default/max per_page
+        $maxPages = 10; // Safety limit to prevent infinite loops
+        
+        while (count($allData) < $sampleSize && $page <= $maxPages) {
+            $requestSize = min($perPage, $sampleSize - count($allData));
+            
+            if ($dataType === 'conversations') {
+                $result = $this->getConversations($config, [
+                    'limit' => $requestSize,
+                    'page' => $page,
+                ]);
+            } elseif ($dataType === 'customers') {
+                $result = $this->getCustomers($config, [
+                    'limit' => $requestSize, 
+                    'page' => $page,
+                ]);
+            } elseif ($dataType === 'time_entries') {
+                $result = $this->getTimeEntries($config, [
+                    'limit' => $requestSize,
+                    'page' => $page,
+                ]);
+                // Handle the case where time entries might not be available
+                if (!$result['success']) {
+                    Log::info("Time entries not available for this FreeScout instance");
+                    return []; // Return empty array instead of failing
+                }
+            } else {
+                Log::warning("Unknown data type for multi-page fetch: {$dataType}");
+                break;
+            }
+            
+            if (!$result['success']) {
+                Log::error("Failed to fetch {$dataType} page {$page}: " . $result['error']);
+                break;
+            }
+            
+            $pageData = $result['data'];
+            $items = [];
+            
+            // Extract items from different response formats
+            if (isset($pageData['_embedded'][$dataType])) {
+                // HAL format
+                $items = $pageData['_embedded'][$dataType];
+            } elseif (isset($pageData['data'])) {
+                // Laravel pagination format
+                $items = $pageData['data'];
+            } elseif (is_array($pageData)) {
+                // Simple array format
+                $items = $pageData;
+            }
+            
+            if (empty($items)) {
+                // No more data available
+                break;
+            }
+            
+            $allData = array_merge($allData, $items);
+            $page++;
+            
+            // If we got less than requested, we've reached the end
+            if (count($items) < $requestSize) {
+                break;
+            }
+        }
+        
+        // Return exactly the number requested
+        return array_slice($allData, 0, $sampleSize);
+    }
+
+    /**
      * Extract total count from HAL pagination links.
      */
     private function extractTotalFromHalLinks(array $links): int
@@ -559,55 +636,15 @@ class FreescoutApiService
             ];
 
             $sampleSize = $options['sample_size'] ?? 10;
+            $maxSampleSize = 5000; // Reasonable limit to prevent timeouts
+            $sampleSize = min($sampleSize, $maxSampleSize);
             $previewData = [];
 
-            // Get conversations with sample data
-            $conversationsResult = $this->getConversations($config, [
-                'limit' => $sampleSize,
-                'page' => 1,
-            ]);
+            // Get conversations with sample data (handle FreeScout API pagination limits)
+            $previewData['conversations'] = $this->fetchMultiPageData($config, 'conversations', $sampleSize);
 
-            if ($conversationsResult['success']) {
-                $conversationsData = $conversationsResult['data'];
-                if (isset($conversationsData['_embedded']['conversations'])) {
-                    // HAL format
-                    $previewData['conversations'] = array_slice($conversationsData['_embedded']['conversations'], 0, $sampleSize);
-                } elseif (isset($conversationsData['data'])) {
-                    // Laravel pagination format
-                    $previewData['conversations'] = array_slice($conversationsData['data'], 0, $sampleSize);
-                } elseif (is_array($conversationsData)) {
-                    // Simple array format
-                    $previewData['conversations'] = array_slice($conversationsData, 0, $sampleSize);
-                } else {
-                    $previewData['conversations'] = [];
-                }
-            } else {
-                $previewData['conversations'] = [];
-            }
-
-            // Get customers with sample data
-            $customersResult = $this->getCustomers($config, [
-                'limit' => $sampleSize,
-                'page' => 1,
-            ]);
-
-            if ($customersResult['success']) {
-                $customersData = $customersResult['data'];
-                if (isset($customersData['_embedded']['customers'])) {
-                    // HAL format
-                    $previewData['customers'] = array_slice($customersData['_embedded']['customers'], 0, $sampleSize);
-                } elseif (isset($customersData['data'])) {
-                    // Laravel pagination format
-                    $previewData['customers'] = array_slice($customersData['data'], 0, $sampleSize);
-                } elseif (is_array($customersData)) {
-                    // Simple array format
-                    $previewData['customers'] = array_slice($customersData, 0, $sampleSize);
-                } else {
-                    $previewData['customers'] = [];
-                }
-            } else {
-                $previewData['customers'] = [];
-            }
+            // Get customers with sample data (handle FreeScout API pagination limits)  
+            $previewData['customers'] = $this->fetchMultiPageData($config, 'customers', $sampleSize);
 
             // Get mailboxes
             $mailboxesResult = $this->getMailboxes($config);
@@ -629,30 +666,8 @@ class FreescoutApiService
                 $previewData['mailboxes'] = [];
             }
 
-            // Get time entries with sample data
-            $timeEntriesResult = $this->getTimeEntries($config, [
-                'limit' => $sampleSize,
-                'page' => 1,
-            ]);
-
-            if ($timeEntriesResult['success']) {
-                $timeEntriesData = $timeEntriesResult['data'];
-                if (isset($timeEntriesData['_embedded']['time_entries'])) {
-                    // HAL format
-                    $previewData['time_entries'] = array_slice($timeEntriesData['_embedded']['time_entries'], 0, $sampleSize);
-                } elseif (isset($timeEntriesData['data'])) {
-                    // Laravel pagination format
-                    $previewData['time_entries'] = array_slice($timeEntriesData['data'], 0, $sampleSize);
-                } elseif (is_array($timeEntriesData)) {
-                    // Simple array format
-                    $previewData['time_entries'] = array_slice($timeEntriesData, 0, $sampleSize);
-                } else {
-                    $previewData['time_entries'] = [];
-                }
-            } else {
-                // Time entries might not be available in all FreeScout instances
-                $previewData['time_entries'] = [];
-            }
+            // Get time entries with sample data (handle FreeScout API pagination limits)
+            $previewData['time_entries'] = $this->fetchMultiPageData($config, 'time_entries', $sampleSize);
 
             return [
                 'success' => true,

@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'external_id',
         'account_id',
         'user_type',
         'role_template_id',

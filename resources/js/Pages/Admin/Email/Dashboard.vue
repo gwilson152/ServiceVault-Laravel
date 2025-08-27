@@ -29,6 +29,44 @@
           Health Check
         </button>
 
+        <!-- Manual Email Retrieval -->
+        <div class="relative">
+          <button
+            @click="showRetrievalOptions = !showRetrievalOptions"
+            :disabled="retrievingEmails"
+            class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          >
+            <EnvelopeIcon class="w-4 h-4 mr-2" />
+            {{ retrievingEmails ? 'Retrieving...' : 'Fetch Emails' }}
+            <ChevronDownIcon class="w-4 h-4 ml-1" />
+          </button>
+          
+          <!-- Dropdown Menu -->
+          <div
+            v-if="showRetrievalOptions"
+            class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200"
+          >
+            <div class="py-1">
+              <button
+                @click="manualEmailRetrieval('test')"
+                :disabled="retrievingEmails"
+                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                🧪 Test Mode
+                <div class="text-xs text-gray-500">Retrieve and log only</div>
+              </button>
+              <button
+                @click="manualEmailRetrieval('process')"
+                :disabled="retrievingEmails"
+                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                ⚡ Process Mode
+                <div class="text-xs text-gray-500">Create tickets and users</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Email System Configuration -->
         <a
           :href="route('settings.index', 'email')"
@@ -108,19 +146,19 @@
                 alert.type === 'warning' ? 'text-yellow-800' :
                 'text-blue-800'
               ]">
-                {{ alert.title }}
+                {{ alert.message }}
               </h3>
-              <p :class="[
+              <p v-if="alert.details" :class="[
                 'text-sm mt-1',
                 alert.type === 'error' ? 'text-red-700' :
                 alert.type === 'warning' ? 'text-yellow-700' :
                 'text-blue-700'
               ]">
-                {{ alert.message }}
+                {{ alert.details }}
               </p>
             </div>
             <button
-              @click="dismissAlert(alert.id)"
+              @click="dismissAlert(index)"
               class="flex-shrink-0 ml-4 text-gray-400 hover:text-gray-600"
             >
               <XMarkIcon class="h-4 w-4" />
@@ -504,13 +542,22 @@
             >
               🧪 Test Email System
             </button>
-            <button
-              @click="manualEmailRetrieval"
-              :disabled="retrievingEmails"
-              class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md disabled:opacity-50"
-            >
-              📬 {{ retrievingEmails ? 'Retrieving...' : 'Manual Email Retrieval' }}
-            </button>
+            <div class="space-y-1">
+              <button
+                @click="manualEmailRetrieval('test')"
+                :disabled="retrievingEmails"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md disabled:opacity-50"
+              >
+                🧪 {{ retrievingEmails ? 'Retrieving...' : 'Test Email Retrieval' }}
+              </button>
+              <button
+                @click="manualEmailRetrieval('process')"
+                :disabled="retrievingEmails"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md disabled:opacity-50"
+              >
+                ⚡ {{ retrievingEmails ? 'Processing...' : 'Process Email Retrieval' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -563,7 +610,8 @@ import {
   QueueListIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
-  XMarkIcon
+  XMarkIcon,
+  ChevronDownIcon
 } from '@heroicons/vue/24/outline'
 
 // Components
@@ -593,6 +641,7 @@ const chartPeriod = ref('24h')
 const showSettingsModal = ref(false)
 const showLogsModal = ref(false)
 const showHealthModal = ref(false)
+const showRetrievalOptions = ref(false)
 
 // Chart reference
 const emailChart = ref(null)
@@ -768,15 +817,8 @@ async function refreshData() {
 async function runHealthCheck() {
   healthChecking.value = true
   try {
-    const response = await fetch('/api/email-admin/system-health', { 
-      method: 'POST',
-      headers: {
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      }
-    })
-    if (response.ok) {
-      await queryClient.invalidateQueries({ queryKey: ['email-system-health'] })
-    }
+    // Just refresh the dashboard data - the health check is included in dashboard API
+    await queryClient.invalidateQueries({ queryKey: ['email-admin-dashboard'] })
   } finally {
     healthChecking.value = false
   }
@@ -869,8 +911,12 @@ function testEmailSystem() {
   // This could open a modal for testing email configurations
 }
 
-async function manualEmailRetrieval() {
-  if (!confirm('Manually trigger email retrieval? This will check for new emails even if the email service is disabled.')) {
+async function manualEmailRetrieval(mode = 'test') {
+  // Close dropdown
+  showRetrievalOptions.value = false
+  
+  const modeDescription = mode === 'test' ? 'test mode (retrieve and log only)' : 'process mode (create tickets and users)'
+  if (!confirm(`Manually trigger email retrieval in ${modeDescription}? This will check for new emails even if the email service is disabled.`)) {
     return
   }
 
@@ -881,13 +927,38 @@ async function manualEmailRetrieval() {
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      }
+      },
+      body: JSON.stringify({
+        mode: mode,
+        limit: 10 // Default limit
+      })
     })
     
     if (response.ok) {
       const result = await response.json()
-      // Show success notification with count
-      alert(`Email retrieval completed successfully. ${result.emails_processed || 0} emails processed.`)
+      
+      // Build detailed success message
+      let message = `Email retrieval (${result.mode} mode) completed successfully:\n`
+      message += `• ${result.emails_retrieved || 0} emails retrieved\n`
+      message += `• ${result.emails_processed || 0} emails processed`
+      
+      if (result.mode === 'process') {
+        message += `\n• ${result.tickets_created || 0} tickets created`
+        
+        if (result.processing_details && result.processing_details.length > 0) {
+          message += '\n\nProcessing Details:'
+          result.processing_details.forEach((detail, index) => {
+            if (index < 3) { // Show first 3
+              message += `\n• ${detail.subject} (${detail.from}) - ${detail.success ? 'Success' : 'Failed'}`
+            }
+          })
+          if (result.processing_details.length > 3) {
+            message += `\n... and ${result.processing_details.length - 3} more`
+          }
+        }
+      }
+      
+      alert(message)
       // Refresh dashboard data
       await refreshData()
     } else {
@@ -902,8 +973,11 @@ async function manualEmailRetrieval() {
   }
 }
 
-function dismissAlert(alertId) {
-  systemAlerts.value = systemAlerts.value.filter(alert => alert.id !== alertId)
+function dismissAlert(alertIndex) {
+  // Since systemAlerts is now a computed property from API data, 
+  // we can't directly modify it. This would need to be implemented
+  // by storing dismissed alerts state separately or making an API call.
+  console.log('Dismiss alert not implemented for API-driven alerts')
 }
 
 function formatTimeAgo(date) {

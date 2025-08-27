@@ -85,6 +85,10 @@ const props = defineProps({
   profile: {
     type: Object,
     required: true
+  },
+  statistics: {
+    type: Object,
+    required: true
   }
 })
 

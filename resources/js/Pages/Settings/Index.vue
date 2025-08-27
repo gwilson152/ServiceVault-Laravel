@@ -58,14 +58,6 @@
                 />
             </div>
 
-            <!-- User Management Tab -->
-            <div v-show="activeTab === 'users'" class="space-y-8">
-                <UserManagement
-                    :settings="userManagementSettings"
-                    :loading="loading.users"
-                    @update="updateUserManagementSettings"
-                />
-            </div>
 
             <!-- Advanced Tab -->
             <div v-show="activeTab === 'advanced'" class="space-y-8">
@@ -109,7 +101,6 @@ import EmailConfiguration from "@/Pages/Settings/Components/EmailConfiguration.v
 import TicketConfiguration from "@/Pages/Settings/Components/TicketConfiguration.vue";
 import BillingConfiguration from "@/Pages/Settings/Components/BillingConfigurationNew.vue";
 import TimerSettings from "@/Pages/Settings/Components/TimerSettings.vue";
-import UserManagement from "@/Pages/Settings/Components/UserManagement.vue";
 import AdvancedSettings from "@/Pages/Settings/Components/AdvancedSettings.vue";
 import NuclearResetSection from "@/Components/Settings/NuclearResetSection.vue";
 
@@ -127,7 +118,7 @@ const navigationTabs = computed(() => {
         },
         { 
             id: "email", 
-            name: "Email Settings", 
+            name: "Email System", 
             icon: 'M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
         },
         { 
@@ -144,11 +135,6 @@ const navigationTabs = computed(() => {
             id: "timer", 
             name: "Timer Settings", 
             icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
-        },
-        { 
-            id: "users", 
-            name: "User Management", 
-            icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z'
         },
     ]
     
@@ -178,7 +164,6 @@ const loading = reactive({
     tickets: false,
     billing: false,
     timer: false,
-    users: false,
     advanced: false,
 });
 const testing = reactive({
@@ -192,7 +177,6 @@ const emailSettings = ref({});
 const ticketConfig = ref({});
 const billingConfig = ref({});
 const timerSettings = ref({});
-const userManagementSettings = ref({});
 const advancedSettings = ref({});
 
 // Tab change handler
@@ -288,19 +272,6 @@ const loadTimerSettings = async () => {
     }
 };
 
-const loadUserManagementSettings = async () => {
-    try {
-        loading.users = true;
-        const response = await fetch('/api/settings/user-management');
-        if (response.ok) {
-            userManagementSettings.value = await response.json();
-        }
-    } catch (error) {
-        console.error('Failed to load user management settings:', error);
-    } finally {
-        loading.users = false;
-    }
-};
 
 const loadAdvancedSettings = async () => {
     try {
@@ -383,27 +354,6 @@ const updateTimerSettings = async (data) => {
     }
 };
 
-const updateUserManagementSettings = async (data) => {
-    try {
-        loading.users = true;
-        const response = await fetch('/api/settings/user-management', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-            },
-            body: JSON.stringify(data)
-        });
-        
-        if (response.ok) {
-            userManagementSettings.value = await response.json();
-        }
-    } catch (error) {
-        console.error('Failed to update user management settings:', error);
-    } finally {
-        loading.users = false;
-    }
-};
 
 const updateAdvancedSettings = async (data) => {
     try {
@@ -495,9 +445,6 @@ const loadInitialData = () => {
             break;
         case 'timer':
             loadTimerSettings();
-            break;
-        case 'users':
-            loadUserManagementSettings();
             break;
         case 'advanced':
             if (user.value?.is_super_admin) {

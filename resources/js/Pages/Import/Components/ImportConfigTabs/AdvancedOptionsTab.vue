@@ -216,6 +216,10 @@ const props = defineProps({
   previewData: {
     type: Object,
     required: true
+  },
+  statistics: {
+    type: Object,
+    required: true
   }
 })
 

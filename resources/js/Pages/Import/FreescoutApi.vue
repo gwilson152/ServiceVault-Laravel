@@ -278,6 +278,64 @@
     @save="handleSaveProfile"
   />
 
+  <!-- Loading Configuration Dialog -->
+  <StackedDialog 
+    v-if="showImportConfig && selectedProfile && !previewData && loadingPreview"
+    :show="true"
+    title="Loading Import Configuration"
+    :closeable="true"
+    @close="closeImportConfig"
+  >
+    <div class="text-center py-12">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
+        <svg class="animate-spin w-8 h-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      
+      <h3 class="text-lg font-medium text-gray-900 mb-2">Loading FreeScout Data</h3>
+      <p class="text-sm text-gray-600 mb-4">
+        <span v-if="loadingPhase" class="inline-block min-h-[1.25rem]">{{ loadingPhase }}</span>
+        <span v-else>Preparing to fetch data from</span> <br>
+        <span class="font-medium text-gray-900">{{ selectedProfile.name }}</span>
+      </p>
+      
+      <div class="max-w-xs mx-auto">
+        <div class="bg-gray-200 rounded-full h-2 mb-2">
+          <div 
+            class="bg-indigo-600 h-2 rounded-full transition-all duration-500 ease-out"
+            :style="{ width: loadingPhase.includes('Connecting') ? '25%' : 
+                               loadingPhase.includes('Testing') ? '40%' : 
+                               loadingPhase.includes('Fetching') ? '65%' : 
+                               loadingPhase.includes('Processing') ? '85%' : 
+                               loadingPhase.includes('Finalizing') ? '95%' : '20%' }"
+          ></div>
+        </div>
+        <p class="text-xs text-gray-500">
+          <span v-if="loadingPhase.includes('Error')" class="text-red-600">
+            Please check your connection and try again
+          </span>
+          <span v-else>
+            This may take up to 30 seconds for large datasets...
+          </span>
+        </p>
+      </div>
+
+      <!-- Loading phase indicators -->
+      <div class="mt-6 flex justify-center space-x-2">
+        <div 
+          v-for="(phase, index) in ['connect', 'test', 'fetch', 'process', 'finalize']" 
+          :key="phase"
+          :class="[
+            'w-2 h-2 rounded-full transition-colors duration-300',
+            getCurrentPhaseIndex() >= index ? 'bg-indigo-600' : 'bg-gray-300'
+          ]"
+        ></div>
+      </div>
+    </div>
+  </StackedDialog>
+
   <!-- Import Configuration Dialog -->
   <FreescoutImportConfigDialog
     v-if="showImportConfig && selectedProfile && previewData"
@@ -286,6 +344,7 @@
     :loading-preview="loadingPreview"
     @close="closeImportConfig"
     @preview="handlePreviewImport"
+    @save="handleSaveConfiguration"
     @execute="handleExecuteImport"
   />
 
@@ -365,6 +424,7 @@ const loading = ref(false)
 const error = ref(null)
 const previewData = ref(null)
 const loadingPreview = ref(false)
+const loadingPhase = ref('')
 
 const mockImportStats = ref({
   total_imports: 12,
@@ -1011,13 +1071,29 @@ const loadProfiles = async () => {
 
 const loadPreviewData = async (profile, sampleSize = 10) => {
   loadingPreview.value = true
+  loadingPhase.value = 'Connecting to FreeScout API...'
   
   try {
+    // Phase 1: Initial connection
+    loadingPhase.value = 'Testing API connection...'
+    
+    // Phase 2: Data fetching
+    loadingPhase.value = 'Fetching conversations and metadata...'
+    
     const response = await axios.get(`/api/import/freescout/profiles/${profile.id}/preview-data`, {
       params: { sample_size: sampleSize }
     })
     
+    // Phase 3: Processing data
+    loadingPhase.value = 'Processing retrieved data...'
+    
     if (response.data.success) {
+      // Phase 4: Final preparation
+      loadingPhase.value = 'Finalizing configuration data...'
+      
+      // Small delay to show the final phase
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
       previewData.value = response.data.preview_data
       return response.data.preview_data
     } else {
@@ -1026,13 +1102,25 @@ const loadPreviewData = async (profile, sampleSize = 10) => {
     }
   } catch (err) {
     console.error('Failed to load preview data:', err)
+    loadingPhase.value = 'Error loading data - please try again'
     return null
   } finally {
     loadingPreview.value = false
+    loadingPhase.value = ''
   }
 }
 
 // Methods
+const getCurrentPhaseIndex = () => {
+  const phase = loadingPhase.value.toLowerCase()
+  if (phase.includes('connecting')) return 0
+  if (phase.includes('testing')) return 1
+  if (phase.includes('fetching')) return 2
+  if (phase.includes('processing')) return 3
+  if (phase.includes('finalizing')) return 4
+  return -1
+}
+
 const toggleProfileMenu = (profileId) => {
   activeProfileMenu.value = activeProfileMenu.value === profileId ? null : profileId
 }
@@ -1116,27 +1204,59 @@ const configureImport = async (profile) => {
   selectedProfile.value = profile
   activeProfileMenu.value = null
   
-  // If profile isn't connected, test connection first
-  if (profile.status !== 'connected') {
-    console.log('Profile not connected, testing connection first...')
-    await testConnection(profile)
-    
-    // If still not connected after test, show error
+  // Show loading dialog immediately
+  showImportConfig.value = true
+  loadingPreview.value = true
+  previewData.value = null // Clear any previous data
+  loadingPhase.value = 'Initializing import configuration...'
+  
+  try {
+    // If profile isn't connected, test connection first
     if (profile.status !== 'connected') {
-      alert('Unable to connect to FreeScout API. Please check your API configuration and try again.')
-      return
+      console.log('Profile not connected, testing connection first...')
+      loadingPhase.value = 'Verifying API connection...'
+      
+      await testConnection(profile)
+      
+      // If still not connected after test, show error
+      if (profile.status !== 'connected') {
+        loadingPhase.value = 'Connection failed - please check API settings'
+        setTimeout(() => {
+          alert('Unable to connect to FreeScout API. Please check your API configuration and try again.')
+          showImportConfig.value = false
+          loadingPreview.value = false
+          loadingPhase.value = ''
+        }, 1500)
+        return
+      }
     }
-  }
-  
-  // Load preview data for the profile
-  console.log('Loading preview data...')
-  const data = await loadPreviewData(profile)
-  console.log('Preview data loaded:', data ? 'success' : 'failed')
-  
-  if (data) {
-    showImportConfig.value = true
-  } else {
-    alert('Failed to load preview data from FreeScout. Please check the connection and try again.')
+    
+    // Load preview data for the profile (use large sample size for configuration)
+    console.log('Loading preview data...')
+    const data = await loadPreviewData(profile, 100) // Load reasonable sample for configuration display
+    console.log('Preview data loaded:', data ? 'success' : 'failed')
+    
+    if (!data) {
+      loadingPhase.value = 'Failed to load data - please try again'
+      setTimeout(() => {
+        alert('Failed to load preview data from FreeScout. Please check the connection and try again.')
+        showImportConfig.value = false
+        loadingPreview.value = false
+        loadingPhase.value = ''
+      }, 1500)
+    }
+    // If successful, the dialog will automatically switch to the configuration view
+    // because previewData will be populated and loadingPreview will be false
+    
+  } catch (error) {
+    console.error('Error configuring import:', error)
+    loadingPhase.value = 'Error occurred - please try again'
+    setTimeout(() => {
+      alert('An error occurred while loading the import configuration. Please try again.')
+      showImportConfig.value = false
+      loadingPreview.value = false
+      loadingPhase.value = ''
+    }, 1500)
   }
 }
 
@@ -1217,6 +1337,59 @@ const handlePreviewImport = (config) => {
   previewProfile.value = selectedProfile.value
   previewConfig.value = config
   showPreviewDialog.value = true
+}
+
+const handleSaveConfiguration = async (config) => {
+  try {
+    // Save the configuration to the selected profile
+    console.log('Saving import configuration for profile:', selectedProfile.value.name)
+    
+    const response = await axios.put(`/api/import/freescout/profiles/${selectedProfile.value.id}`, {
+      name: selectedProfile.value.name,
+      instance_url: selectedProfile.value.instance_url || selectedProfile.value.host,
+      description: selectedProfile.value.description,
+      is_active: selectedProfile.value.is_active !== false,  // Default to true
+      configuration: {
+        import_config: config
+      }
+    })
+    
+    if (response.data.success) {
+      // Update the local profile data with the new configuration
+      Object.assign(selectedProfile.value, response.data.profile)
+      
+      // Show success feedback
+      const successMessage = document.createElement('div')
+      successMessage.innerHTML = `
+        <div class="fixed top-4 right-4 bg-green-50 border border-green-200 rounded-md p-4 shadow-md z-50">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-green-800">Configuration saved successfully!</p>
+            </div>
+          </div>
+        </div>
+      `
+      document.body.appendChild(successMessage)
+      
+      // Auto-remove notification after 3 seconds
+      setTimeout(() => {
+        document.body.removeChild(successMessage)
+      }, 3000)
+      
+      closeImportConfig()
+    } else {
+      throw new Error(response.data.message || 'Failed to save configuration')
+    }
+    
+  } catch (error) {
+    console.error('Error saving configuration:', error)
+    alert('Failed to save configuration: ' + (error.response?.data?.message || error.message))
+  }
 }
 
 const handleExecuteImport = async (config) => {

@@ -16,6 +16,7 @@ class Account extends Model
         'name',
         'account_type',
         'description',
+        'external_id',
         'contact_person',
         'email',
         'phone',

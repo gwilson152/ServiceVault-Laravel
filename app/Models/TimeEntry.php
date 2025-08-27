@@ -21,6 +21,7 @@ class TimeEntry extends Model
         'user_id',
         'account_id',
         'billing_rate_id',
+        'external_id',
         'ticket_id',
         'description',
         'started_at',

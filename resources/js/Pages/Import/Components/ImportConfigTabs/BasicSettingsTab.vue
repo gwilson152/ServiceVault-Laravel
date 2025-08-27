@@ -25,7 +25,7 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ (previewData.conversations?.length || 0).toLocaleString() }}
+            Available: {{ statistics.conversations.toLocaleString() }}
           </p>
         </div>
 
@@ -43,7 +43,7 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ (previewData.time_entries?.length || 0).toLocaleString() }}
+            Available: {{ statistics.time_entries.toLocaleString() }}
           </p>
         </div>
 
@@ -61,7 +61,7 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ (previewData.customers?.length || 0).toLocaleString() }}
+            Available: {{ statistics.customers.toLocaleString() }}
           </p>
         </div>
 
@@ -79,7 +79,7 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ (previewData.mailboxes?.length || 0).toLocaleString() }}
+            Available: {{ statistics.mailboxes.toLocaleString() }}
           </p>
         </div>
       </div>
@@ -138,6 +138,49 @@
           <div class="ml-3">
             <div class="text-sm font-medium text-gray-900">Single account</div>
             <div class="text-sm text-gray-500">Import all data into one account. Simple but may not scale well.</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Agent Access Configuration Section -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="flex items-center mb-4">
+        <UserGroupIcon class="w-5 h-5 text-gray-400 mr-2" />
+        <h3 class="text-lg font-medium text-gray-900">Agent Access Configuration</h3>
+      </div>
+      <p class="text-sm text-gray-600 mb-4">
+        Configure which accounts imported agents can access in Service Vault.
+      </p>
+
+      <div class="space-y-4">
+        <label class="relative flex items-start">
+          <div class="flex items-center h-5">
+            <input
+              v-model="localConfig.agent_access"
+              value="all_accounts"
+              type="radio"
+              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+            />
+          </div>
+          <div class="ml-3">
+            <div class="text-sm font-medium text-gray-900">All accounts (recommended)</div>
+            <div class="text-sm text-gray-500">Imported agents can access all accounts created during import. Most flexible for team collaboration.</div>
+          </div>
+        </label>
+
+        <label class="relative flex items-start">
+          <div class="flex items-center h-5">
+            <input
+              v-model="localConfig.agent_access"
+              value="primary_account"
+              type="radio"
+              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+            />
+          </div>
+          <div class="ml-3">
+            <div class="text-sm font-medium text-gray-900">Primary account only</div>
+            <div class="text-sm text-gray-500">Limit agent access to their primary account. More restrictive but better for data separation.</div>
           </div>
         </label>
       </div>
@@ -208,6 +251,7 @@ import { computed, watch } from 'vue'
 import {
   AdjustmentsHorizontalIcon,
   BuildingOfficeIcon,
+  UserGroupIcon,
   UserPlusIcon
 } from '@heroicons/vue/24/outline'
 
@@ -217,6 +261,10 @@ const props = defineProps({
     required: true
   },
   previewData: {
+    type: Object,
+    required: true
+  },
+  statistics: {
     type: Object,
     required: true
   }

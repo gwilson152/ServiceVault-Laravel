@@ -6,11 +6,11 @@
         <div>
           <h2 class="text-2xl font-semibold text-gray-900">Email System Configuration</h2>
           <p class="text-gray-600 mt-2">
-            Configure your application's incoming and outgoing email services.
+            Configure email services, processing, user creation, and domain routing.
             <a :href="route('settings.email.domain-mappings')" class="text-indigo-600 hover:text-indigo-500">
               Manage domain mappings
             </a>
-            to route emails to business accounts.
+            for advanced email routing rules.
           </p>
         </div>
         
@@ -701,6 +701,15 @@
         
         <!-- Processing Configuration Tab -->
         <div v-show="activeTab === 'processing'" class="space-y-8">
+          <EmailProcessing
+            :settings="emailProcessingSettings"
+            :loading="saving"
+            @update="updateEmailProcessingSettings"
+          />
+        </div>
+
+        <!-- Legacy Processing Config (remove after migration) -->
+        <div v-show="false" class="space-y-8">
         
           <!-- Email Processing Settings -->
           <div class="bg-white shadow rounded-lg">
@@ -1252,6 +1261,7 @@ import {
   ChartBarIcon
 } from '@heroicons/vue/24/outline'
 import TabNavigation from '@/Components/Layout/TabNavigation.vue'
+import EmailProcessing from './EmailProcessing.vue'
 
 // Props
 const props = defineProps({
@@ -1334,12 +1344,20 @@ const form = useForm({
   // Email processing settings
   enable_email_to_ticket: true,
   auto_create_tickets: true, // alias for enable_email_to_ticket
-  auto_create_users: false,
+  auto_create_users: true,
   default_role_for_new_users: '',
   require_approval_for_new_users: true,
   process_commands: true,
   send_confirmations: true,
   max_retries: 3,
+  
+  // New unified email processing fields
+  enable_email_processing: true,
+  unmapped_domain_strategy: 'assign_default_account',
+  default_account_id: '',
+  default_role_template_id: '',
+  require_email_verification: true,
+  require_admin_approval: true,
   
   // Timestamp processing
   timestamp_source: 'original', // 'service_vault' or 'original'
@@ -1383,6 +1401,26 @@ const filteredMoveFolders = computed(() => {
     const name = (folder.original_name || folder.name).toLowerCase()
     return name.includes(query)
   })
+})
+
+// Email processing settings for the EmailProcessing component
+const emailProcessingSettings = computed(() => {
+  return {
+    accounts: config.value?.accounts || [],
+    role_templates: config.value?.role_templates || [],
+    domain_mappings_preview: config.value?.domain_mappings_preview || [],
+    user_stats: config.value?.user_stats || null,
+    email_processing_settings: {
+      enable_email_processing: form.enable_email_processing ?? config.value?.enable_email_processing ?? true,
+      auto_create_tickets: form.auto_create_tickets ?? config.value?.auto_create_tickets ?? true,
+      auto_create_users: form.auto_create_users ?? config.value?.auto_create_users ?? true,
+      unmapped_domain_strategy: form.unmapped_domain_strategy ?? config.value?.unmapped_domain_strategy ?? 'assign_default_account',
+      default_account_id: form.default_account_id ?? config.value?.default_account_id ?? '',
+      default_role_template_id: form.default_role_template_id ?? config.value?.default_role_template_id ?? '',
+      require_email_verification: form.require_email_verification ?? config.value?.require_email_verification ?? true,
+      require_admin_approval: form.require_admin_approval ?? config.value?.require_admin_approval ?? true,
+    }
+  }
 })
 
 // Email configuration tabs
@@ -1509,6 +1547,48 @@ const saveConfiguration = async () => {
   } finally {
     saving.value = false
   }
+}
+
+// Update email processing settings
+const updateEmailProcessingSettings = (processingSettings) => {
+  console.log('Updating email processing settings:', processingSettings)
+  
+  // Update form with processing settings
+  Object.keys(processingSettings).forEach(key => {
+    if (form.hasOwnProperty(key)) {
+      form[key] = processingSettings[key]
+    }
+  })
+  
+  // Map settings to existing form fields
+  if (processingSettings.enable_email_processing !== undefined) {
+    form.system_active = processingSettings.enable_email_processing
+    form.enable_email_processing = processingSettings.enable_email_processing
+  }
+  if (processingSettings.auto_create_tickets !== undefined) {
+    form.auto_create_tickets = processingSettings.auto_create_tickets
+  }
+  if (processingSettings.auto_create_users !== undefined) {
+    form.auto_create_users = processingSettings.auto_create_users
+  }
+  if (processingSettings.unmapped_domain_strategy !== undefined) {
+    form.unmapped_domain_strategy = processingSettings.unmapped_domain_strategy
+  }
+  if (processingSettings.default_account_id !== undefined) {
+    form.default_account_id = processingSettings.default_account_id
+  }
+  if (processingSettings.default_role_template_id !== undefined) {
+    form.default_role_template_id = processingSettings.default_role_template_id
+  }
+  if (processingSettings.require_email_verification !== undefined) {
+    form.require_email_verification = processingSettings.require_email_verification
+  }
+  if (processingSettings.require_admin_approval !== undefined) {
+    form.require_admin_approval = processingSettings.require_admin_approval
+  }
+  
+  // Trigger save to backend
+  saveConfiguration()
 }
 
 const testConfiguration = async () => {

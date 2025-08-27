@@ -143,30 +143,65 @@ class SettingController extends Controller
     }
 
     /**
-     * Get email settings
+     * Get email settings - UPDATED to use EmailSystemConfig model
      */
     public function getEmailSettings(): JsonResponse
     {
         $this->authorize('system.configure');
 
-        // Get email settings with email.* prefix
-        $emailSettings = Setting::where('key', 'like', 'email.%')->pluck('value', 'key');
-        $emailData = [];
-        foreach ($emailSettings as $key => $value) {
-            // Remove 'email.' prefix from key
-            $shortKey = str_replace('email.', '', $key);
+        // Get from new EmailSystemConfig model
+        $emailConfig = \App\Models\EmailSystemConfig::getConfig();
+        
+        // Map to frontend expected format
+        $emailData = [
+            // System Status - CRITICAL: These fields were missing!
+            'system_active' => $emailConfig->system_active ?? false,
+            'incoming_enabled' => $emailConfig->incoming_enabled ?? false,
+            'outgoing_enabled' => $emailConfig->outgoing_enabled ?? false,
             
-            // Convert string booleans to actual booleans
-            if (in_array($value, ['true', 'false'])) {
-                $value = $value === 'true';
-            }
-            // Convert numeric strings to integers where appropriate
-            elseif (in_array($shortKey, ['smtp_port', 'imap_port', 'max_retries']) && is_numeric($value)) {
-                $value = (int) $value;
-            }
+            // Provider types
+            'email_provider' => $emailConfig->incoming_provider ?? 'imap',
+            'outgoing_provider' => $emailConfig->outgoing_provider ?? 'smtp',
+            'use_same_provider' => false, // TODO: Add to model
             
-            $emailData[$shortKey] = $value;
-        }
+            // SMTP/Outgoing configuration  
+            'smtp_host' => $emailConfig->outgoing_host ?? '',
+            'smtp_port' => $emailConfig->outgoing_port ?? 587,
+            'smtp_username' => $emailConfig->outgoing_username ?? '',
+            'smtp_password' => $emailConfig->outgoing_password ?? '',
+            'smtp_encryption' => $emailConfig->outgoing_encryption ?? 'tls',
+            'from_address' => $emailConfig->from_address ?? '',
+            'from_name' => $emailConfig->from_name ?? '',
+            'reply_to_address' => $emailConfig->reply_to_address ?? '',
+            
+            // IMAP/Incoming configuration
+            'imap_host' => $emailConfig->incoming_host ?? '',
+            'imap_port' => $emailConfig->incoming_port ?? 993,
+            'imap_username' => $emailConfig->incoming_username ?? '',
+            'imap_password' => $emailConfig->incoming_password ?? '',
+            'imap_encryption' => $emailConfig->incoming_encryption ?? 'ssl',
+            'imap_folder' => $emailConfig->incoming_folder ?? 'INBOX',
+            
+            // Processing settings
+            'auto_create_tickets' => $emailConfig->auto_create_tickets ?? true,
+            'process_commands' => $emailConfig->process_commands ?? true,
+            'send_confirmations' => $emailConfig->send_confirmations ?? true,
+            'max_retries' => $emailConfig->max_retries ?? 3,
+            
+            // Microsoft 365 settings (from incoming_settings JSON)
+            'm365_tenant_id' => $emailConfig->incoming_settings['tenant_id'] ?? '',
+            'm365_client_id' => $emailConfig->incoming_settings['client_id'] ?? '',
+            'm365_client_secret' => $emailConfig->incoming_settings['client_secret'] ?? '',
+            'm365_mailbox' => $emailConfig->incoming_settings['mailbox'] ?? '',
+            'm365_folder_id' => $emailConfig->incoming_settings['folder_id'] ?? '',
+            'm365_folder_name' => $emailConfig->incoming_settings['folder_name'] ?? '',
+            
+            // Processing options
+            'timestamp_source' => $emailConfig->timestamp_source ?? 'original',
+            'timestamp_timezone' => $emailConfig->timestamp_timezone ?? 'preserve',
+        ];
+
+        // Legacy settings compatibility removed - use EmailSystemConfig only
 
         // Ensure default values for critical settings that might not exist yet
         $emailData = array_merge([
@@ -190,77 +225,83 @@ class SettingController extends Controller
     }
 
     /**
-     * Update email settings (no validation - allow incomplete saves)
+     * Update email settings - UPDATED to use EmailSystemConfig model
      */
     public function updateEmailSettings(Request $request): JsonResponse
     {
         $this->authorize('system.configure');
 
-        $emailSettings = [
-            // System Status
-            'system_active' => $request->boolean('system_active', false), // master email system toggle
+        // Get or create the email system config
+        $emailConfig = \App\Models\EmailSystemConfig::getConfig();
+        
+        // Prepare update data
+        $updateData = [
+            // System Status - CRITICAL: These were not being saved!
+            'system_active' => $request->boolean('system_active', false),
             'incoming_enabled' => $request->boolean('incoming_enabled', false),
             'outgoing_enabled' => $request->boolean('outgoing_enabled', false),
             
-            // Email Provider Type
-            'email_provider' => $request->input('email_provider', 'imap'), // 'imap' or 'm365'
-            'outgoing_provider' => $request->input('outgoing_provider', 'smtp'), // outgoing email provider
-            'use_same_provider' => $request->boolean('use_same_provider', false), // use same provider for M365
-
-            // Outbound Email
-            'smtp_host' => $request->input('smtp_host'),
-            'smtp_port' => $request->input('smtp_port'),
-            'smtp_username' => $request->input('smtp_username'),
-            'smtp_password' => $request->input('smtp_password'),
-            'smtp_encryption' => $request->input('smtp_encryption'),
+            // Provider types
+            'incoming_provider' => $request->input('email_provider', 'imap'),
+            'outgoing_provider' => $request->input('outgoing_provider', 'smtp'),
+            // use_same_provider => TODO: Add to model
+            
+            // Outgoing/SMTP settings
+            'outgoing_host' => $request->input('smtp_host'),
+            'outgoing_port' => $request->input('smtp_port'),
+            'outgoing_username' => $request->input('smtp_username'),
+            'outgoing_password' => $request->input('smtp_password'),
+            'outgoing_encryption' => $request->input('smtp_encryption'),
             'from_address' => $request->input('from_address'),
             'from_name' => $request->input('from_name'),
             'reply_to_address' => $request->input('reply_to_address'),
-
-            // Inbound Email - IMAP
-            'imap_host' => $request->input('imap_host'),
-            'imap_port' => $request->input('imap_port'),
-            'imap_username' => $request->input('imap_username'),
-            'imap_password' => $request->input('imap_password'),
-            'imap_encryption' => $request->input('imap_encryption'),
-            'imap_folder' => $request->input('imap_folder', 'INBOX'),
-
-            // Inbound Email - Microsoft 365 Graph API
-            'm365_tenant_id' => $request->input('m365_tenant_id'),
-            'm365_client_id' => $request->input('m365_client_id'),
-            'm365_client_secret' => $request->input('m365_client_secret'),
-            'm365_mailbox' => $request->input('m365_mailbox'),
-            'm365_folder_id' => $request->input('m365_folder_id', 'inbox'),
-            'm365_folder_name' => $request->input('m365_folder_name', 'Inbox'),
-
-            // Email Processing Actions
-            'post_processing_action' => $request->input('post_processing_action', 'mark_read'), // 'mark_read', 'move_folder', 'delete'
-            'move_to_folder_id' => $request->input('move_to_folder_id'),
-            'move_to_folder_name' => $request->input('move_to_folder_name'),
-
-            // Email Processing
-            'enable_email_to_ticket' => $request->boolean('enable_email_to_ticket', false),
-            'auto_create_tickets' => $request->boolean('auto_create_tickets', true), // alias for enable_email_to_ticket
-            'auto_create_users' => $request->boolean('auto_create_users', false),
-            'default_role_for_new_users' => $request->input('default_role_for_new_users'),
-            'require_approval_for_new_users' => $request->boolean('require_approval_for_new_users', true),
+            
+            // Incoming/IMAP settings  
+            'incoming_host' => $request->input('imap_host'),
+            'incoming_port' => $request->input('imap_port'),
+            'incoming_username' => $request->input('imap_username'),
+            'incoming_password' => $request->input('imap_password'),
+            'incoming_encryption' => $request->input('imap_encryption'),
+            'incoming_folder' => $request->input('imap_folder', 'INBOX'),
+            
+            // Processing settings
+            'auto_create_tickets' => $request->boolean('auto_create_tickets', true),
             'process_commands' => $request->boolean('process_commands', true),
             'send_confirmations' => $request->boolean('send_confirmations', true),
             'max_retries' => $request->input('max_retries', 3),
             
-            // Timestamp Processing
-            'timestamp_source' => $request->input('timestamp_source', 'original'), // 'service_vault' or 'original'
-            'timestamp_timezone' => $request->input('timestamp_timezone', 'preserve'), // 'preserve', 'convert_local', or 'convert_utc'
+            // Processing options  
+            'timestamp_source' => $request->input('timestamp_source', 'original'),
+            'timestamp_timezone' => $request->input('timestamp_timezone', 'preserve'),
+            
+            // Metadata
+            'updated_by_id' => auth()->id(),
         ];
-
-        foreach ($emailSettings as $key => $value) {
-            if ($value !== null) {
-                Setting::setValue("email.{$key}", $value, 'email');
-            }
+        
+        // Handle M365 settings only if provider is M365
+        $incomingProvider = $request->input('email_provider', 'imap');
+        if ($incomingProvider === 'm365') {
+            $updateData['incoming_settings'] = [
+                'tenant_id' => $request->input('m365_tenant_id', ''),
+                'client_id' => $request->input('m365_client_id', ''),
+                'client_secret' => $request->input('m365_client_secret', ''),
+                'mailbox' => $request->input('m365_mailbox', ''),
+                'folder_id' => $request->input('m365_folder_id', ''),
+                'folder_name' => $request->input('m365_folder_name', ''),
+            ];
+        } else {
+            // For non-M365 providers, clear M365 settings
+            $updateData['incoming_settings'] = null;
         }
+        
+        // Update with new values - FIXED to save enable switches!
+        $emailConfig->update($updateData);
 
         return response()->json([
             'message' => 'Email settings saved successfully',
+            'system_active' => $emailConfig->system_active,
+            'incoming_enabled' => $emailConfig->incoming_enabled,
+            'outgoing_enabled' => $emailConfig->outgoing_enabled,
         ]);
     }
 
@@ -1268,52 +1309,6 @@ class SettingController extends Controller
         }
     }
 
-    /**
-     * Get user management settings
-     */
-    public function getUserManagementSettings(): JsonResponse
-    {
-        $this->authorize('system.configure');
-
-        return response()->json([
-            'data' => [
-                'accounts' => Account::select(['id', 'name', 'account_type'])->get(),
-                'role_templates' => RoleTemplate::select(['id', 'name', 'context'])->get(),
-                'auto_user_settings' => Setting::getByType('auto_user'),
-            ],
-        ]);
-    }
-
-    /**
-     * Update user management settings
-     */
-    public function updateUserManagementSettings(Request $request): JsonResponse
-    {
-        $this->authorize('system.configure');
-
-        $validator = Validator::make($request->all(), [
-            'enable_auto_user_creation' => 'sometimes|boolean',
-            'default_account_for_new_users' => 'sometimes|nullable|exists:accounts,id',
-            'default_role_template_for_new_users' => 'sometimes|nullable|exists:role_templates,id',
-            'require_email_verification' => 'sometimes|boolean',
-            'require_admin_approval' => 'sometimes|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        foreach ($validator->validated() as $key => $value) {
-            Setting::setValue("auto_user.{$key}", $value, 'auto_user');
-        }
-
-        return response()->json([
-            'message' => 'User management settings updated successfully',
-        ]);
-    }
 
     /**
      * Get advanced settings
