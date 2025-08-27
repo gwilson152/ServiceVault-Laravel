@@ -30,7 +30,7 @@ class FreescoutApiProfileController extends Controller
         $query = ImportProfile::with(['creator', 'importJobs' => function ($q) {
             $q->latest()->take(3);
         }])
-        ->where('database_type', 'freescout_api')
+        ->where('source_type', 'api')
         ->orderBy('name');
 
         // Search by name
@@ -47,13 +47,14 @@ class FreescoutApiProfileController extends Controller
 
         // Transform profiles for frontend
         $profiles->getCollection()->transform(function ($profile) {
+            $connectionConfig = $profile->getConnectionConfig();
             return [
                 'id' => $profile->id,
                 'name' => $profile->name,
-                'instance_url' => $profile->host,
-                'api_key_masked' => $this->maskApiKey($profile->getConnectionConfig()['password'] ?? ''),
+                'instance_url' => $connectionConfig['host'] ?? '',
+                'api_key_masked' => $this->maskApiKey($connectionConfig['api_key'] ?? ''),
                 'status' => $this->getConnectionStatus($profile),
-                'last_tested' => $this->formatLastTested($profile->last_tested_at),
+                'last_tested' => $this->formatLastTested($connectionConfig['test_result']['tested_at'] ?? null),
                 'stats' => $this->getProfileStats($profile),
                 'created_at' => $profile->created_at->toISOString(),
                 'updated_at' => $profile->updated_at->toISOString(),
@@ -107,25 +108,60 @@ class FreescoutApiProfileController extends Controller
             ], 400);
         }
 
+        // Find or create FreeScout API template
+        $template = \App\Models\ImportTemplate::firstOrCreate(
+            [
+                'name' => 'FreeScout API',
+                'source_type' => 'api',
+            ],
+            [
+                'description' => 'Import data from FreeScout via REST API',
+                'default_configuration' => [
+                    'api_version' => 'v1',
+                    'endpoints' => [
+                        'mailboxes' => '/api/mailboxes',
+                        'users' => '/api/users', 
+                        'customers' => '/api/customers',
+                        'conversations' => '/api/conversations',
+                        'threads' => '/api/conversations/{id}/threads'
+                    ]
+                ],
+                'field_mappings' => [
+                    'users' => [
+                        'external_id' => 'id',
+                        'email' => 'email',
+                        'name' => 'name',
+                        'user_type' => 'agent'
+                    ],
+                    'customers' => [
+                        'external_id' => 'id',
+                        'email' => 'email', 
+                        'name' => 'name',
+                        'user_type' => 'account_user'
+                    ]
+                ],
+                'is_active' => true,
+            ]
+        );
+
         // Create the profile with FreeScout API specific settings
         $profile = ImportProfile::create([
+            'template_id' => $template->id,
             'name' => $request->name,
-            'database_type' => 'freescout_api', // Special type for API profiles
-            'host' => $request->instance_url,
-            'port' => 443, // HTTPS default
-            'database' => 'freescout_api', // Not used but required by model
-            'username' => 'api_key', // Not used but required by model
-            'password' => $request->api_key, // Will be encrypted by the model
-            'ssl_mode' => 'require', // Always use SSL for API
             'description' => $request->description,
-            'is_active' => $request->boolean('is_active', true),
-            'created_by' => Auth::id(),
-            'last_tested_at' => now(),
-            'last_test_result' => $testResult,
+            'source_type' => 'api', // API-based import profile
+            'connection_config' => [
+                'host' => $request->instance_url,
+                'port' => 443, // HTTPS default
+                'ssl_mode' => 'require', // Always use SSL for API
+                'api_key' => $request->api_key,
+                'test_result' => $testResult,
+            ],
             'configuration' => array_merge([
                 'account_strategy' => $request->account_strategy ?? 'map_mailboxes',
                 'agent_access' => $request->agent_access ?? 'all_accounts',
             ], $request->configuration ?? []),
+            'is_active' => $request->boolean('is_active', true),
         ]);
 
         // Get fresh stats after creation
@@ -146,7 +182,7 @@ class FreescoutApiProfileController extends Controller
     {
         $this->authorize('view', $profile);
 
-        if ($profile->database_type !== 'freescout_api') {
+        if ($profile->source_type !== 'api') {
             return response()->json([
                 'success' => false,
                 'message' => 'Profile is not a FreeScout API profile',
@@ -169,7 +205,7 @@ class FreescoutApiProfileController extends Controller
     {
         $this->authorize('update', $profile);
 
-        if ($profile->database_type !== 'freescout_api') {
+        if ($profile->source_type !== 'api') {
             return response()->json([
                 'success' => false,
                 'message' => 'Profile is not a FreeScout API profile',
@@ -195,11 +231,15 @@ class FreescoutApiProfileController extends Controller
             ], 422);
         }
 
+        // Get current connection config and update it
+        $connectionConfig = $profile->connection_config ?? [];
+        $connectionConfig['host'] = $request->instance_url;
+        
         $updateData = [
             'name' => $request->name,
-            'host' => $request->instance_url,
             'description' => $request->description,
             'is_active' => $request->boolean('is_active', true),
+            'connection_config' => $connectionConfig,
             'configuration' => array_merge($profile->configuration ?? [], [
                 'account_strategy' => $request->account_strategy ?? 'map_mailboxes',
                 'agent_access' => $request->agent_access ?? 'all_accounts',
@@ -208,7 +248,7 @@ class FreescoutApiProfileController extends Controller
 
         // Only update API key if provided
         if ($request->filled('api_key')) {
-            $updateData['password'] = $request->api_key;
+            $connectionConfig['api_key'] = $request->api_key;
 
             // Test new API key
             $testResult = $this->freescoutApiService->testConnection([
@@ -224,8 +264,9 @@ class FreescoutApiProfileController extends Controller
                 ], 400);
             }
 
-            $updateData['last_tested_at'] = now();
-            $updateData['last_test_result'] = $testResult;
+            $testResult['tested_at'] = now()->toISOString();
+            $connectionConfig['test_result'] = $testResult;
+            $updateData['connection_config'] = $connectionConfig;
         }
 
         $profile->update($updateData);
@@ -246,7 +287,7 @@ class FreescoutApiProfileController extends Controller
     {
         $this->authorize('delete', $profile);
 
-        if ($profile->database_type !== 'freescout_api') {
+        if ($profile->source_type !== 'api') {
             return response()->json([
                 'success' => false,
                 'message' => 'Profile is not a FreeScout API profile',
@@ -281,7 +322,7 @@ class FreescoutApiProfileController extends Controller
 
         if ($profile) {
             // Test existing profile
-            if ($profile->database_type !== 'freescout_api') {
+            if ($profile->source_type !== 'api') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Profile is not a FreeScout API profile',
@@ -289,8 +330,8 @@ class FreescoutApiProfileController extends Controller
             }
 
             $connectionConfig = [
-                'instance_url' => $profile->host,
-                'api_key' => $profile->getConnectionConfig()['password'] ?? '',
+                'instance_url' => $profile->getConnectionConfig()['host'] ?? '',
+                'api_key' => $profile->getConnectionConfig()['api_key'] ?? '',
             ];
         } else {
             // Test new connection parameters
@@ -317,9 +358,11 @@ class FreescoutApiProfileController extends Controller
 
         // Update profile's test results if testing existing profile
         if ($profile && $testResult['success']) {
+            $connectionConfig = $profile->connection_config ?? [];
+            $testResult['tested_at'] = now()->toISOString();
+            $connectionConfig['test_result'] = $testResult;
             $profile->update([
-                'last_tested_at' => now(),
-                'last_test_result' => $testResult,
+                'connection_config' => $connectionConfig,
             ]);
         }
 
@@ -336,7 +379,7 @@ class FreescoutApiProfileController extends Controller
     {
         $this->authorize('view', $profile);
 
-        if ($profile->database_type !== 'freescout_api') {
+        if ($profile->source_type !== 'api') {
             return response()->json([
                 'success' => false,
                 'message' => 'Profile is not a FreeScout API profile',
@@ -345,8 +388,8 @@ class FreescoutApiProfileController extends Controller
 
         try {
             $stats = $this->freescoutApiService->getDataStatistics([
-                'instance_url' => $profile->host,
-                'api_key' => $profile->getConnectionConfig()['password'] ?? '',
+                'instance_url' => $profile->getConnectionConfig()['host'] ?? '',
+                'api_key' => $profile->getConnectionConfig()['api_key'] ?? '',
             ]);
 
             return response()->json([
@@ -370,7 +413,7 @@ class FreescoutApiProfileController extends Controller
     {
         $this->authorize('view', $profile);
 
-        if ($profile->database_type !== 'freescout_api') {
+        if ($profile->source_type !== 'api') {
             return response()->json([
                 'success' => false,
                 'message' => 'Profile is not a FreeScout API profile',
@@ -391,8 +434,8 @@ class FreescoutApiProfileController extends Controller
 
         try {
             $previewData = $this->freescoutApiService->getPreviewData([
-                'instance_url' => $profile->host,
-                'api_key' => $profile->getConnectionConfig()['password'] ?? '',
+                'instance_url' => $profile->getConnectionConfig()['host'] ?? '',
+                'api_key' => $profile->getConnectionConfig()['api_key'] ?? '',
             ], [
                 'sample_size' => $request->get('sample_size', 10),
             ]);
@@ -424,13 +467,14 @@ class FreescoutApiProfileController extends Controller
      */
     private function transformProfileForResponse(ImportProfile $profile): array
     {
+        $connectionConfig = $profile->getConnectionConfig();
         return [
             'id' => $profile->id,
             'name' => $profile->name,
-            'instance_url' => $profile->host,
-            'api_key_masked' => $this->maskApiKey($profile->getConnectionConfig()['password'] ?? ''),
+            'instance_url' => $connectionConfig['host'] ?? '',
+            'api_key_masked' => $this->maskApiKey($connectionConfig['api_key'] ?? ''),
             'status' => $this->getConnectionStatus($profile),
-            'last_tested' => $this->formatLastTested($profile->last_tested_at),
+            'last_tested' => $this->formatLastTested($connectionConfig['test_result']['tested_at'] ?? null),
             'stats' => $this->getProfileStats($profile),
             'description' => $profile->description,
             'is_active' => $profile->is_active,
@@ -445,7 +489,7 @@ class FreescoutApiProfileController extends Controller
                 return [
                     'id' => $job->id,
                     'status' => $job->status,
-                    'progress' => $job->progress,
+                    'progress' => $job->progress ?? 0,
                     'created_at' => $job->created_at->toISOString(),
                 ];
             }),
@@ -469,13 +513,17 @@ class FreescoutApiProfileController extends Controller
      */
     private function getConnectionStatus(ImportProfile $profile): string
     {
-        if (!$profile->last_test_result) {
+        $connectionConfig = $profile->getConnectionConfig();
+        $testResult = $connectionConfig['test_result'] ?? null;
+        
+        if (!$testResult) {
             return 'pending';
         }
 
-        if ($profile->last_test_result['success'] ?? false) {
+        if ($testResult['success'] ?? false) {
             // Check if test is recent (within 24 hours)
-            if ($profile->last_tested_at && $profile->last_tested_at->gt(now()->subHours(24))) {
+            $testedAt = isset($testResult['tested_at']) ? \Carbon\Carbon::parse($testResult['tested_at']) : null;
+            if ($testedAt && $testedAt->gt(now()->subHours(24))) {
                 return 'connected';
             } else {
                 return 'pending'; // Needs retest
@@ -494,7 +542,14 @@ class FreescoutApiProfileController extends Controller
             return 'never';
         }
 
-        return $lastTested->diffForHumans();
+        try {
+            if (is_string($lastTested)) {
+                $lastTested = \Carbon\Carbon::parse($lastTested);
+            }
+            return $lastTested->diffForHumans();
+        } catch (\Exception $e) {
+            return 'never';
+        }
     }
 
     /**
@@ -509,9 +564,10 @@ class FreescoutApiProfileController extends Controller
         ];
 
         // If we have a successful test result, try to get stats from it
-        if ($profile->last_test_result && ($profile->last_test_result['success'] ?? false)) {
-            $testResult = $profile->last_test_result;
-            
+        $connectionConfig = $profile->getConnectionConfig();
+        $testResult = $connectionConfig['test_result'] ?? null;
+        
+        if ($testResult && ($testResult['success'] ?? false)) {
             // Check if we have stats in the test result
             if (isset($testResult['stats'])) {
                 return [
@@ -526,15 +582,17 @@ class FreescoutApiProfileController extends Controller
         if ($profile->is_active) {
             try {
                 $stats = $this->freescoutApiService->getDataStatistics([
-                    'instance_url' => $profile->host,
-                    'api_key' => $profile->getConnectionConfig()['password'] ?? '',
+                    'instance_url' => $connectionConfig['host'] ?? '',
+                    'api_key' => $connectionConfig['api_key'] ?? '',
                 ]);
 
                 if (!isset($stats['error'])) {
                     // Cache the stats in the test result for next time
-                    $updatedTestResult = $profile->last_test_result ?: ['success' => true];
+                    $updatedTestResult = $testResult ?: ['success' => true];
                     $updatedTestResult['stats'] = $stats;
-                    $profile->update(['last_test_result' => $updatedTestResult]);
+                    $updatedConnectionConfig = $profile->connection_config ?? [];
+                    $updatedConnectionConfig['test_result'] = $updatedTestResult;
+                    $profile->update(['connection_config' => $updatedConnectionConfig]);
 
                     return [
                         'conversations' => number_format($stats['conversations'] ?? 0),
@@ -544,7 +602,7 @@ class FreescoutApiProfileController extends Controller
                 }
             } catch (\Exception $e) {
                 // If fresh fetch fails, fall back to defaults
-                Log::warning('Failed to fetch fresh stats for profile', [
+                \Log::warning('Failed to fetch fresh stats for profile', [
                     'profile_id' => $profile->id,
                     'error' => $e->getMessage(),
                 ]);

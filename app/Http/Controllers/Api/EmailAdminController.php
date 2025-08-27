@@ -566,8 +566,10 @@ class EmailAdminController extends Controller
                             $result['tickets_created']++;
                         }
                         
-                        // Mark as read only if processing succeeded (for both modes)
-                        imap_setflag_full($connection, $uid, '\\Seen', ST_UID);
+                        // Mark as read only in process mode when processing succeeded
+                        if ($mode === 'process') {
+                            imap_setflag_full($connection, $uid, '\\Seen', ST_UID);
+                        }
                     }
                     
                     // Store processing details for response
@@ -661,8 +663,10 @@ class EmailAdminController extends Controller
                         'body_text' => $body,
                     ]);
                     
-                    // Mark as read (optional)
-                    imap_setflag_full($connection, $uid, '\\Seen', ST_UID);
+                    // Mark as read only in process mode
+                    if ($mode === 'process') {
+                        imap_setflag_full($connection, $uid, '\\Seen', ST_UID);
+                    }
                     
                     $processedCount++;
                     
@@ -771,17 +775,19 @@ class EmailAdminController extends Controller
                             $result['tickets_created']++;
                         }
                         
-                        // Mark message as read only if processing succeeded (for both modes)
-                        $markReadResponse = Http::withToken($token)
-                            ->patch("https://graph.microsoft.com/v1.0/users/{$mailbox}/messages/{$message['id']}", [
-                                'isRead' => true
-                            ]);
-                        
-                        if (!$markReadResponse->successful()) {
-                            Log::warning('Failed to mark M365 message as read', [
-                                'message_id' => $message['id'],
-                                'error' => $markReadResponse->body()
-                            ]);
+                        // Mark message as read only in process mode when processing succeeded
+                        if ($mode === 'process') {
+                            $markReadResponse = Http::withToken($token)
+                                ->patch("https://graph.microsoft.com/v1.0/users/{$mailbox}/messages/{$message['id']}", [
+                                    'isRead' => true
+                                ]);
+                            
+                            if (!$markReadResponse->successful()) {
+                                Log::warning('Failed to mark M365 message as read', [
+                                    'message_id' => $message['id'],
+                                    'error' => $markReadResponse->body()
+                                ]);
+                            }
                         }
                     }
                     
@@ -890,17 +896,19 @@ class EmailAdminController extends Controller
                             : null,
                     ]);
                     
-                    // Optionally mark message as read
-                    $markReadResponse = Http::withToken($token)
-                        ->patch("https://graph.microsoft.com/v1.0/users/{$mailbox}/messages/{$message['id']}", [
-                            'isRead' => true
-                        ]);
-                    
-                    if (!$markReadResponse->successful()) {
-                        Log::warning('Failed to mark M365 message as read', [
-                            'message_id' => $message['id'],
-                            'error' => $markReadResponse->body()
-                        ]);
+                    // Mark message as read only in process mode
+                    if ($mode === 'process') {
+                        $markReadResponse = Http::withToken($token)
+                            ->patch("https://graph.microsoft.com/v1.0/users/{$mailbox}/messages/{$message['id']}", [
+                                'isRead' => true
+                            ]);
+                        
+                        if (!$markReadResponse->successful()) {
+                            Log::warning('Failed to mark M365 message as read', [
+                                'message_id' => $message['id'],
+                                'error' => $markReadResponse->body()
+                            ]);
+                        }
                     }
                     
                     $processedCount++;
@@ -1017,6 +1025,196 @@ class EmailAdminController extends Controller
     }
 
     /**
+     * Get queued/unprocessed emails for admin review
+     */
+    public function getQueuedEmails(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'status' => 'nullable|in:pending,ignored,retry',
+                'per_page' => 'integer|min:1|max:100',
+                'page' => 'integer|min:1',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'details' => $validator->errors(),
+                ], 400);
+            }
+
+            $query = EmailProcessingLog::query()
+                ->with(['account'])
+                ->orderBy('received_at', 'desc');
+
+            // Filter by status - default to pending and ignored (queued for review)
+            $status = $request->get('status');
+            if ($status) {
+                $query->where('status', $status);
+            } else {
+                $query->whereIn('status', ['pending', 'ignored', 'retry']);
+            }
+
+            // Filter out successfully processed emails
+            $query->where('status', '!=', 'processed');
+
+            $perPage = $request->get('per_page', 20);
+            $emails = $query->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => $emails->items(),
+                'pagination' => [
+                    'current_page' => $emails->currentPage(),
+                    'per_page' => $emails->perPage(),
+                    'total' => $emails->total(),
+                    'last_page' => $emails->lastPage(),
+                    'has_more' => $emails->hasMorePages(),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch queued emails', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch queued emails',
+                'message' => 'An error occurred while loading queued emails for review',
+            ], 500);
+        }
+    }
+
+    /**
+     * Assign account to queued email and reprocess
+     */
+    public function assignEmailToAccount(Request $request, string $emailId)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'account_id' => 'required|exists:accounts,id',
+                'create_ticket' => 'boolean',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'details' => $validator->errors(),
+                ], 400);
+            }
+
+            $email = EmailProcessingLog::where('email_id', $emailId)->first();
+            if (!$email) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Email not found',
+                ], 404);
+            }
+
+            // Update email with assigned account
+            $email->update([
+                'account_id' => $request->account_id,
+                'status' => 'pending',
+            ]);
+
+            // TODO: Reprocess email with assigned account
+            // This would involve calling the EmailProcessingService again
+
+            Log::info('Email assigned to account', [
+                'email_id' => $emailId,
+                'account_id' => $request->account_id,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email assigned to account successfully',
+                'email_id' => $emailId,
+                'account_id' => $request->account_id,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to assign email to account', [
+                'email_id' => $emailId,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to assign email to account',
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject/ignore queued email permanently
+     */
+    public function rejectQueuedEmail(Request $request, string $emailId)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'reason' => 'nullable|string|max:500',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'details' => $validator->errors(),
+                ], 400);
+            }
+
+            $email = EmailProcessingLog::where('email_id', $emailId)->first();
+            if (!$email) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Email not found',
+                ], 404);
+            }
+
+            // Mark as permanently ignored
+            $email->update([
+                'status' => 'ignored',
+                'error_message' => $request->reason ? "Rejected by admin: {$request->reason}" : 'Rejected by admin',
+                'error_details' => [
+                    'rejected_by' => auth()->id(),
+                    'rejected_at' => now()->toISOString(),
+                    'reason' => $request->reason,
+                ],
+            ]);
+
+            Log::info('Email rejected by admin', [
+                'email_id' => $emailId,
+                'reason' => $request->reason,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email rejected successfully',
+                'email_id' => $emailId,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to reject queued email', [
+                'email_id' => $emailId,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to reject email',
+            ], 500);
+        }
+    }
+
+    /**
      * Get overview statistics
      */
     private function getOverviewStats(Carbon $startDate): array
@@ -1097,9 +1295,9 @@ class EmailAdminController extends Controller
         return [
             'total_mappings' => EmailDomainMapping::count(),
             'active_mappings' => EmailDomainMapping::where('is_active', true)->count(),
-            'by_type' => EmailDomainMapping::groupBy('pattern_type')
-                ->selectRaw('pattern_type, count(*) as count')
-                ->pluck('count', 'pattern_type')->toArray(),
+            'by_priority' => EmailDomainMapping::groupBy('priority')
+                ->selectRaw('priority, count(*) as count')
+                ->pluck('count', 'priority')->toArray(),
             'recent_mappings' => EmailDomainMapping::where('created_at', '>=', now()->subDays(7))->count(),
         ];
     }

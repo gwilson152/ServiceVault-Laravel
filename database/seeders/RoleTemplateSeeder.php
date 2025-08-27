@@ -14,12 +14,8 @@ class RoleTemplateSeeder extends Seeder
     {
         // Super Administrator - Full system access (NON-MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Super Admin'], [
-            'display_name' => 'Super Administrator',
             'description' => 'Full system administration with all permissions (cannot be modified)',
             'is_system_role' => true,
-            'is_default' => false,
-            'is_modifiable' => false,
-            'context' => 'service_provider',
             'permissions' => [
                 // System Administration
                 'admin.manage',
@@ -122,12 +118,8 @@ class RoleTemplateSeeder extends Seeder
 
         // Admin - Full service provider administration (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Admin'], [
-            'display_name' => 'Administrator',
             'description' => 'Full service provider administration and user management',
             'is_system_role' => false,
-            'is_default' => false,
-            'is_modifiable' => true,
-            'context' => 'service_provider',
             'permissions' => [
                 'admin.manage',
                 'accounts.create',
@@ -191,12 +183,8 @@ class RoleTemplateSeeder extends Seeder
 
         // Service Provider - Comprehensive time management and client access (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Service Provider'], [
-            'display_name' => 'Service Provider',
             'description' => 'Service provider with comprehensive time management and client account access',
             'is_system_role' => false,
-            'is_default' => false,
-            'is_modifiable' => true,
-            'context' => 'service_provider',
             'permissions' => [
                 // Account Management
                 'accounts.view',
@@ -268,12 +256,8 @@ class RoleTemplateSeeder extends Seeder
 
         // Agent - Service delivery and time tracking (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Agent'], [
-            'display_name' => 'Service Agent',
             'description' => 'Service delivery agent with ticket management and time tracking',
             'is_system_role' => false,
-            'is_default' => false,
-            'is_modifiable' => true,
-            'context' => 'service_provider',
             'permissions' => [
                 'tickets.create',
                 'tickets.create.account',
@@ -311,12 +295,8 @@ class RoleTemplateSeeder extends Seeder
 
         // Account Manager - Primary account + all subsidiaries access (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Account Manager'], [
-            'display_name' => 'Account Manager',
             'description' => 'Customer account manager with access to primary account and all subsidiaries',
             'is_system_role' => false,
-            'is_default' => false,
-            'is_modifiable' => true,
-            'context' => 'account_user',
             'permissions' => [
                 'accounts.hierarchy.access',
                 'accounts.manage.own',
@@ -343,12 +323,8 @@ class RoleTemplateSeeder extends Seeder
 
         // Account User - Basic customer account access (MODIFIABLE)
         RoleTemplate::updateOrCreate(['name' => 'Account User'], [
-            'display_name' => 'Account User',
             'description' => 'Basic customer account access with service request capabilities',
             'is_system_role' => false,
-            'is_default' => true,
-            'is_modifiable' => true,
-            'context' => 'account_user',
             'permissions' => [
                 'tickets.create.request',
                 'tickets.view.own',

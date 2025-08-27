@@ -38,9 +38,11 @@ DB_DATABASE=servicevault
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
 
-# Run migrations without setup wizard (for development)
+# Run consolidated migrations (development)
 php artisan migrate:fresh --seed
 ```
+
+**✅ Consolidated Migration System**: Service Vault uses 8 comprehensive migration files that create the complete database schema without modification migrations. This ensures clean deployments and includes the composite unique constraint solution for import compatibility.
 
 **For Production**: Skip the `--seed` flag and use the setup wizard instead.
 

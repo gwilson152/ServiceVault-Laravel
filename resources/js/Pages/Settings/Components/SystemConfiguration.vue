@@ -295,7 +295,9 @@ const form = reactive({
 
 // Watch for settings prop changes
 watch(() => props.settings, (newSettings) => {
-  Object.assign(form, newSettings)
+  if (newSettings && Object.keys(newSettings).length > 0) {
+    Object.assign(form, newSettings)
+  }
 }, { immediate: true, deep: true })
 
 // Save settings

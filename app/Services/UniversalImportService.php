@@ -7,6 +7,7 @@ use App\Models\ImportProfile;
 use App\Models\ImportQuery;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class UniversalImportService
 {
@@ -31,8 +32,10 @@ class UniversalImportService
         $job = ImportJob::create([
             'profile_id' => $profile->id,
             'status' => 'running',
-            'import_options' => $options,
+            'mode' => $options['mode'] ?? 'sync',
+            'mode_config' => $options,
             'started_at' => now(),
+            'started_by' => Auth::id(),
         ]);
 
         try {

@@ -1,6 +1,27 @@
 # Database Schema Reference
 
-Complete database schema documentation for Service Vault's PostgreSQL database.
+Complete database schema documentation for Service Vault's **consolidated PostgreSQL database**.
+
+## Migration System
+
+### Consolidated Migration Architecture ✅
+
+Service Vault uses a **consolidated migration system** with 8 comprehensive migration files that establish the complete database schema without modification migrations:
+
+1. **`0001_01_01_000003`** - Core user and account management
+2. **`0001_01_01_000004`** - Permission and role management
+3. **`0001_01_01_000005`** - Ticket and service management
+4. **`0001_01_01_000006`** - Timer and time entry system
+5. **`0001_01_01_000007`** - Billing and invoice system
+6. **`0001_01_01_000008`** - Universal import system
+7. **`0001_01_01_000009`** - Email management system
+8. **`0001_01_01_000010`** - System configuration and utilities
+
+**Benefits**:
+- ✅ Clean deployments without migration history
+- ✅ All tables created with final structure
+- ✅ PostgreSQL-optimized with triggers and constraints
+- ✅ Production-ready schema
 
 ## Core Tables
 
@@ -10,31 +31,37 @@ Complete database schema documentation for Service Vault's PostgreSQL database.
 ```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(255) UNIQUE, -- For import system
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE,
+    email VARCHAR(255) NULLABLE, -- Nullable for imported users
     email_verified_at TIMESTAMP,
-    password VARCHAR(255),
-    user_type VARCHAR(50) DEFAULT 'employee',
+    password VARCHAR(255) NULLABLE, -- Nullable for SSO/imported users
     account_id UUID REFERENCES accounts(id),
+    user_type user_type_enum DEFAULT 'account_user', -- 'agent' | 'account_user'
     role_template_id UUID REFERENCES role_templates(id),
+    visible BOOLEAN DEFAULT true,
     is_active BOOLEAN DEFAULT true,
-    is_visible BOOLEAN DEFAULT true,
+    last_active_at TIMESTAMP,
     last_login_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes
-CREATE INDEX idx_users_email ON users(email);
+-- Composite unique constraint for import system
+CREATE UNIQUE INDEX users_email_user_type_partial_unique 
+ON users (email, user_type) WHERE email IS NOT NULL;
+
+-- Standard indexes
 CREATE INDEX idx_users_account_id ON users(account_id);
 CREATE INDEX idx_users_user_type ON users(user_type);
 CREATE INDEX idx_users_active ON users(is_active);
 ```
 
-**Key Fields**:
-- `user_type`: super_admin, agent, manager, account_user, employee
-- `email`: Optional - supports users without email addresses
-- `is_visible`: Controls appearance in user selection lists
+**Key Features**:
+- **Composite Unique Constraint**: `(email, user_type)` allows same email for different user types (solves FreeScout import)
+- **Nullable Email/Password**: Supports imported users and SSO scenarios
+- **External ID**: UUID for linking to external systems during imports
+- **User Types**: `agent` (service providers) and `account_user` (customers)
 
 #### role_templates
 ```sql
@@ -42,10 +69,11 @@ CREATE TABLE role_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    is_system_role BOOLEAN DEFAULT false,
     permissions JSONB DEFAULT '[]'::jsonb,
     widget_permissions JSONB DEFAULT '[]'::jsonb,
     page_permissions JSONB DEFAULT '[]'::jsonb,
-    is_system_default BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

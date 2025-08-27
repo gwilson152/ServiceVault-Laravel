@@ -154,12 +154,13 @@ WebSocket: Live updates via Laravel Reverb
 - Reduced 10+ API calls to single request
 - Redis-backed state synchronization
 
-### Application-Wide Email System
+### Unified Email System
 
 **Architecture Overview**:
-- **Single Configuration Model**: `EmailSystemConfig` for platform-wide email settings
-- **Domain-Based Routing**: `EmailDomainMapping` routes emails to business accounts  
-- **Dual Interface Design**: Configuration (`/settings/email`) + Monitoring (`/admin/email`)
+- **Unified Configuration Model**: `EmailSystemConfig` for platform-wide email settings
+- **Integrated User Management**: Email-triggered user creation with approval workflows  
+- **Domain-Based Routing**: `EmailDomainMapping` routes emails to business accounts and creates users
+- **Single Interface Design**: All functionality consolidated in (`/settings/email`)
 - **Multi-Provider Support**: SMTP, IMAP, Gmail, Outlook, Exchange integration
 
 **System Components**:
@@ -172,14 +173,17 @@ EmailProcessingLog::class    // Processing history and monitoring
 
 **Configuration Management**:
 ```javascript
-// Settings Interface (/settings/email)
+// Unified Settings Interface (/settings/email)
 - Email service provider configuration
-- System activation controls  
-- Domain mapping management
+- User management and auto-creation settings
+- Domain mapping and routing management  
+- Approval workflows and verification
+- System activation controls
 - Test configuration functionality
 
 // Monitoring Interface (/admin/email)  
 - Real-time processing metrics
+- User creation statistics
 - Performance statistics
 - Queue health monitoring
 - Processing logs and alerts
@@ -196,11 +200,12 @@ EmailProcessingLog::class    // Processing history and monitoring
 
 **Email Processing Flow**:
 ```
-Incoming Email → Pattern Matching → Account Assignment → Ticket Creation → Command Processing
+Incoming Email → Pattern Matching → Account Assignment → User Creation (if needed) → Ticket Creation → Command Processing
 ```
 
 **API Integration**:
 - **Configuration**: `/api/email-system/config` (GET/PUT)
+- **User Management**: `/api/email-system/user-stats` (GET)
 - **Testing**: `/api/email-system/test` (POST)
 - **Monitoring**: `/api/email-admin/dashboard` (GET)
 - **Domain Mappings**: `/api/domain-mappings` (CRUD)

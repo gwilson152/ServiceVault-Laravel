@@ -24,8 +24,8 @@ npm run dev         # Vite dev server with HMR
 - **[Setup Guide](guides/setup.md)** - Installation and configuration
 - **[Timer System](guides/timers.md)** - Multi-timer usage and features
 - **[Tickets & Billing](guides/tickets-billing.md)** - Service tickets, billing, and Time & Addons management
-- **[Email System](guides/email-system.md)** - Email processing, domain routing, and monitoring
-- **[User Management](guides/users-permissions.md)** - Users, roles, and permissions
+- **[Email System](guides/email-system.md)** - Email configuration, processing, domain routing, and user management
+- **[Users & Permissions](guides/users-permissions.md)** - Role management and permission system
 - **[Import System](guides/import.md)** - PostgreSQL database import and data migration
 
 ### 🔧 [API Reference](api/)
@@ -48,7 +48,7 @@ npm run dev         # Vite dev server with HMR
 - **🎫 Service Tickets** - Complete ticketing workflow with messaging
 - **💰 Billing Integration** - Rate management and invoice generation
 - **📱 Real-Time Updates** - WebSocket broadcasting for live updates
-- **📧 Email Processing System** - Application-wide email processing with domain routing and monitoring
+- **📧 Email System** - Complete email processing with domain routing, user management, and monitoring
 - **📥 Universal Import System** - Advanced PostgreSQL database connectivity with real-time monitoring, duplicate detection, and comprehensive analytics
 
 ## Technology Stack
@@ -60,16 +60,27 @@ npm run dev         # Vite dev server with HMR
 
 ## Recent Updates (August 2025)
 
-### Complete Email Processing System (Production-Ready)
-- **✅ Application-Wide Email Configuration**: Single unified email system configuration for the entire platform
+### Consolidated Database Migration System ✅
+- **✅ Clean Migration Structure**: Consolidated 87+ fragmented migrations into 8 logical, comprehensive migration files
+- **✅ Composite Unique Constraint Solution**: Fixed FreeScout import duplicate email issues with `(email, user_type)` composite constraint
+- **✅ No Backward Compatibility**: Fresh database setup eliminates migration history baggage for clean deployments
+- **✅ Integrated Schema**: All table modifications consolidated into table creation migrations with final structure
+- **✅ Updated Models**: All Eloquent models updated to match consolidated schema with proper fillable fields and relationships
+- **✅ Fixed Seeders**: All database seeders updated to work with consolidated table structures
+- **✅ PostgreSQL Optimizations**: Leverages PostgreSQL-specific features (triggers, partial indexes, check constraints)
+- **✅ Import System Ready**: Composite constraint allows same email for different user types (agent vs account_user) while preventing true duplicates
+
+### Unified Email System (Production-Ready)
+- **✅ Consolidated Email Management**: Single unified interface combining email configuration, user creation, and domain management
 - **✅ Multi-Provider Email Support**: SMTP, IMAP, Gmail, Outlook, Microsoft 365/Exchange with intelligent provider defaults
 - **✅ Microsoft 365 Integration**: Advanced folder hierarchy browser with real-time search and visual tree structure
 - **✅ Domain-Based Email Routing**: Sophisticated pattern matching system for routing emails to business accounts
+- **✅ Automated User Management**: Email-triggered user creation with domain mapping and approval workflows
 - **✅ Real-Time Processing Monitor**: Live email activity feed with WebSocket updates, performance metrics, and queue status
-- **✅ Comprehensive Admin Dashboard**: System health monitoring, processing statistics, and performance analytics
+- **✅ Comprehensive Admin Dashboard**: System health monitoring, processing statistics, and user creation analytics
 - **✅ Advanced Email Template System**: Template management with variable substitution and multi-format support
 - **✅ Subject Command Processing**: Email-based command execution with role-based permissions and validation
-- **✅ Complete Frontend UI**: Full administrative interfaces for configuration, monitoring, templates, and command management
+- **✅ Streamlined Settings Interface**: Removed separate user management tab - all functionality integrated into Email System
 - **✅ Production-Ready Architecture**: Queue-based processing, retry mechanisms, comprehensive error handling, and audit logging
 
 ### Unified Import Preview Architecture

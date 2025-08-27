@@ -120,10 +120,128 @@
             <option value="outgoing">Outgoing Email</option>
           </select>
         </div>
+
+        <!-- Show Unprocessed Emails Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Show Unprocessed</label>
+          <div class="flex items-center h-10">
+            <input
+              type="checkbox"
+              v-model="filters.showQueuedEmails"
+              @change="loadQueuedEmails"
+              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            />
+            <span class="ml-2 text-sm text-gray-600">Unprocessed emails</span>
+          </div>
+        </div>
       </FilterSection>
     </template>
 
     <template #main-content>
+      <!-- Unprocessed Emails Management Section -->
+      <div v-if="queuedEmails.length > 0 || filters.showQueuedEmails" class="mb-8">
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Unprocessed Emails</h3>
+                <p class="text-sm text-gray-600 mt-1">
+                  Emails from unmapped domains waiting for manual assignment or review.
+                </p>
+              </div>
+              <div class="flex items-center space-x-3">
+                <button
+                  @click="refreshQueuedEmails"
+                  :disabled="loadingQueuedEmails"
+                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <ArrowPathIcon :class="['w-4 h-4 mr-2', loadingQueuedEmails ? 'animate-spin' : '']" />
+                  Refresh
+                </button>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                  {{ queuedEmails.length }} pending
+                </span>
+              </div>
+            </div>
+
+            <!-- Queued Emails Table -->
+            <div v-if="queuedEmails.length > 0" class="overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Domain</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="email in queuedEmails" :key="email.email_id" class="hover:bg-gray-50">
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-8 w-8">
+                          <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                            <EnvelopeIcon class="h-4 w-4 text-gray-500" />
+                          </div>
+                        </div>
+                        <div class="ml-3">
+                          <div class="text-sm font-medium text-gray-900">{{ email.from_name || 'Unknown Sender' }}</div>
+                          <div class="text-sm text-gray-500">{{ email.from_address }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-4">
+                      <div class="text-sm text-gray-900 max-w-xs truncate">{{ email.subject || '(No Subject)' }}</div>
+                      <div class="text-sm text-gray-500">{{ email.to_addresses?.[0] || 'Unknown recipient' }}</div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {{ formatTimeAgo(email.received_at) }}
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                        {{ getDomainFromEmail(email.from_address) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div class="flex items-center justify-end space-x-2">
+                        <button
+                          @click="previewEmail(email)"
+                          class="text-indigo-600 hover:text-indigo-900"
+                        >
+                          Preview
+                        </button>
+                        <button
+                          @click="assignEmail(email)"
+                          class="text-green-600 hover:text-green-900"
+                        >
+                          Assign
+                        </button>
+                        <button
+                          @click="rejectEmail(email)"
+                          class="text-red-600 hover:text-red-900"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="!loadingQueuedEmails" class="text-center py-6">
+              <EnvelopeIcon class="mx-auto h-12 w-12 text-gray-400" />
+              <h3 class="mt-2 text-sm font-medium text-gray-900">No unprocessed emails</h3>
+              <p class="mt-1 text-sm text-gray-500">
+                All emails are either processed or from mapped domains.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- System Status Alerts -->
       <div v-if="systemAlerts.length > 0" class="mb-6 space-y-3">
         <div v-for="(alert, index) in systemAlerts" :key="alert.id || index" 
@@ -578,6 +696,108 @@
     </template>
   </StandardPageLayout>
 
+  <!-- Email Preview Modal -->
+  <div v-if="showEmailPreview" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+      <div class="mt-3">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-medium text-gray-900">Email Preview</h3>
+          <button @click="closeEmailPreview" class="text-gray-400 hover:text-gray-600">
+            <XMarkIcon class="h-6 w-6" />
+          </button>
+        </div>
+        
+        <div v-if="selectedEmail" class="space-y-4">
+          <!-- Email Headers -->
+          <div class="bg-gray-50 p-4 rounded-md">
+            <div class="grid grid-cols-1 gap-2 text-sm">
+              <div><strong>From:</strong> {{ selectedEmail.from_address }}</div>
+              <div><strong>To:</strong> {{ selectedEmail.to_addresses?.join(', ') }}</div>
+              <div v-if="selectedEmail.cc_addresses?.length"><strong>CC:</strong> {{ selectedEmail.cc_addresses.join(', ') }}</div>
+              <div><strong>Subject:</strong> {{ selectedEmail.subject || '(No Subject)' }}</div>
+              <div><strong>Received:</strong> {{ formatDateTime(selectedEmail.received_at) }}</div>
+              <div><strong>Domain:</strong> {{ getDomainFromEmail(selectedEmail.from_address) }}</div>
+            </div>
+          </div>
+          
+          <!-- Email Body -->
+          <div class="max-h-64 overflow-y-auto border rounded-md p-4">
+            <div v-if="selectedEmail.parsed_body_html" v-html="selectedEmail.parsed_body_html" class="prose prose-sm max-w-none"></div>
+            <div v-else-if="selectedEmail.parsed_body_text" class="whitespace-pre-wrap text-sm text-gray-700">{{ selectedEmail.parsed_body_text }}</div>
+            <div v-else class="text-gray-500 italic">No content available</div>
+          </div>
+          
+          <!-- Actions -->
+          <div class="flex justify-end space-x-3 pt-4 border-t">
+            <button
+              @click="rejectEmail(selectedEmail)"
+              class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Reject Email
+            </button>
+            <button
+              @click="assignEmail(selectedEmail)"
+              class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Assign to Account
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Assignment Modal -->
+  <div v-if="showAssignModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div class="mt-3">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-medium text-gray-900">Assign Email to Account</h3>
+          <button @click="closeAssignModal" class="text-gray-400 hover:text-gray-600">
+            <XMarkIcon class="h-6 w-6" />
+          </button>
+        </div>
+        
+        <div v-if="emailToAssign">
+          <div class="mb-4">
+            <p class="text-sm text-gray-600 mb-2">
+              Assigning email from <strong>{{ emailToAssign.from_address }}</strong>
+            </p>
+            <p class="text-sm text-gray-600">
+              Subject: <strong>{{ emailToAssign.subject || '(No Subject)' }}</strong>
+            </p>
+          </div>
+          
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Select Account</label>
+            <UnifiedSelector
+              v-model="selectedAccountForAssignment"
+              type="accounts"
+              placeholder="Choose an account"
+              class="w-full"
+            />
+          </div>
+          
+          <div class="flex justify-end space-x-3">
+            <button
+              @click="closeAssignModal"
+              class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              @click="confirmAssignment"
+              :disabled="!selectedAccountForAssignment || assigningEmail"
+              class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {{ assigningEmail ? 'Assigning...' : 'Assign Email' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modals -->
   <EmailSystemSettingsModal
     :show="showSettingsModal"
@@ -631,6 +851,14 @@ defineOptions({
 
 // State
 const refreshing = ref(false)
+const loadingQueuedEmails = ref(false)
+const queuedEmails = ref([])
+const showEmailPreview = ref(false)
+const showAssignModal = ref(false)
+const selectedEmail = ref(null)
+const emailToAssign = ref(null)
+const selectedAccountForAssignment = ref(null)
+const assigningEmail = ref(false)
 const healthChecking = ref(false)
 const queueRefreshing = ref(false)
 const retryingJobs = ref(false)
@@ -650,7 +878,8 @@ const emailChart = ref(null)
 const filters = reactive({
   timeRange: '24h',
   statuses: [],
-  serviceType: ''
+  serviceType: '',
+  showQueuedEmails: false
 })
 
 // Filter Options
@@ -803,12 +1032,138 @@ async function fetchCommandStats() {
 }
 
 // Methods
+async function loadQueuedEmails() {
+  if (!filters.showQueuedEmails) {
+    queuedEmails.value = []
+    return
+  }
+  
+  loadingQueuedEmails.value = true
+  try {
+    const response = await fetch('/api/email-admin/queued-emails')
+    if (response.ok) {
+      const result = await response.json()
+      queuedEmails.value = result.data || []
+    }
+  } catch (error) {
+    console.error('Error loading queued emails:', error)
+  } finally {
+    loadingQueuedEmails.value = false
+  }
+}
+
+async function refreshQueuedEmails() {
+  await loadQueuedEmails()
+}
+
+function previewEmail(email) {
+  selectedEmail.value = email
+  showEmailPreview.value = true
+}
+
+function closeEmailPreview() {
+  showEmailPreview.value = false
+  selectedEmail.value = null
+}
+
+function assignEmail(email) {
+  emailToAssign.value = email
+  selectedAccountForAssignment.value = null
+  showEmailPreview.value = false
+  showAssignModal.value = true
+}
+
+function closeAssignModal() {
+  showAssignModal.value = false
+  emailToAssign.value = null
+  selectedAccountForAssignment.value = null
+}
+
+async function confirmAssignment() {
+  if (!emailToAssign.value || !selectedAccountForAssignment.value) return
+  
+  assigningEmail.value = true
+  try {
+    const response = await fetch(`/api/email-admin/emails/${emailToAssign.value.email_id}/assign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        account_id: selectedAccountForAssignment.value.id,
+        reason: 'Manual assignment from admin dashboard'
+      })
+    })
+    
+    if (response.ok) {
+      // Remove from queued emails list
+      queuedEmails.value = queuedEmails.value.filter(email => email.email_id !== emailToAssign.value.email_id)
+      closeAssignModal()
+      alert('Email assigned successfully and will be processed.')
+    } else {
+      const error = await response.json()
+      alert(`Assignment failed: ${error.message}`)
+    }
+  } catch (error) {
+    console.error('Error assigning email:', error)
+    alert('Assignment failed: Network error')
+  } finally {
+    assigningEmail.value = false
+  }
+}
+
+async function rejectEmail(email) {
+  const reason = prompt('Please provide a reason for rejecting this email:')
+  if (!reason) return
+  
+  try {
+    const response = await fetch(`/api/email-admin/emails/${email.email_id}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({ reason })
+    })
+    
+    if (response.ok) {
+      // Remove from queued emails list
+      queuedEmails.value = queuedEmails.value.filter(e => e.email_id !== email.email_id)
+      if (showEmailPreview.value) {
+        closeEmailPreview()
+      }
+      alert('Email rejected successfully.')
+    } else {
+      const error = await response.json()
+      alert(`Rejection failed: ${error.message}`)
+    }
+  } catch (error) {
+    console.error('Error rejecting email:', error)
+    alert('Rejection failed: Network error')
+  }
+}
+
+function getDomainFromEmail(email) {
+  if (!email) return 'Unknown'
+  const match = email.match(/@([^>]+)/)
+  return match ? match[1] : 'Unknown'
+}
+
+function formatDateTime(date) {
+  if (!date) return ''
+  return new Date(date).toLocaleString()
+}
+
 async function refreshData() {
   refreshing.value = true
   try {
     await queryClient.invalidateQueries({ queryKey: ['email-admin-dashboard'] })
     await queryClient.invalidateQueries({ queryKey: ['email-queue-status'] })
     await queryClient.invalidateQueries({ queryKey: ['email-system-health'] })
+    if (filters.showQueuedEmails) {
+      await loadQueuedEmails()
+    }
   } finally {
     refreshing.value = false
   }
@@ -997,6 +1352,11 @@ onMounted(() => {
   // Initialize chart if canvas is available
   if (emailChart.value) {
     loadChartData()
+  }
+  
+  // Load queued emails if filter is enabled
+  if (filters.showQueuedEmails) {
+    loadQueuedEmails()
   }
 })
 </script>

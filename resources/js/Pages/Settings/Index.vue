@@ -204,9 +204,10 @@ const navigateToTab = (tabId) => {
 const loadSystemSettings = async () => {
     try {
         loading.system = true;
-        const response = await fetch('/api/settings/system');
+        const response = await fetch('/api/settings');
         if (response.ok) {
-            systemSettings.value = await response.json();
+            const result = await response.json();
+            systemSettings.value = result.data.system || {};
         }
     } catch (error) {
         console.error('Failed to load system settings:', error);
@@ -220,7 +221,8 @@ const loadEmailSettings = async () => {
         loading.email = true;
         const response = await fetch('/api/settings/email');
         if (response.ok) {
-            emailSettings.value = await response.json();
+            const result = await response.json();
+            emailSettings.value = result.data || result;
         }
     } catch (error) {
         console.error('Failed to load email settings:', error);
@@ -301,7 +303,8 @@ const updateSystemSettings = async (data) => {
         });
         
         if (response.ok) {
-            systemSettings.value = await response.json();
+            // Reload system settings after successful update
+            await loadSystemSettings();
         }
     } catch (error) {
         console.error('Failed to update system settings:', error);

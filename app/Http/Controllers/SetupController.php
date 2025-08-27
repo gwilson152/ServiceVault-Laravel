@@ -183,6 +183,7 @@ class SetupController extends Controller
             'system.enable_notifications' => $request->boolean('enable_notifications', true),
             'system.timer_sync_interval' => $request->timer_sync_interval,
             'system.permission_cache_ttl' => $request->permission_cache_ttl,
+            'system.max_users' => $request->max_users,
         ];
 
         // Store tax settings with tax.* prefix

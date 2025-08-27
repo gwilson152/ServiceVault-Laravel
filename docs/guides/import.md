@@ -10,6 +10,7 @@ The universal import system enables administrators to migrate data from any Post
 -   **Visual Query Builder** for custom database structures
 -   **Advanced JOIN Support** for complex multi-table relationships
 -   **Real-Time Progress Tracking** with WebSocket updates
+-   **✅ Duplicate Email Support** - Composite unique constraint allows same email for different user types
 
 ## Key Features
 

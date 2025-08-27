@@ -14,29 +14,13 @@ class AddonTemplate extends Model
     protected $fillable = [
         'name',
         'description',
-        'category',
-        'unit_type',
-        'default_price',
-        'default_unit_price', // Virtual field that maps to default_price
-        'default_quantity',
-        'is_taxable',
-        'requires_approval',
-        'account_id',
-        'is_system',
+        'default_amount',
         'is_active',
     ];
 
     protected $casts = [
-        'default_price' => 'decimal:2',
-        'default_quantity' => 'decimal:2',
-        'is_taxable' => 'boolean',
-        'requires_approval' => 'boolean',
-        'is_system' => 'boolean',
+        'default_amount' => 'decimal:2',
         'is_active' => 'boolean',
-    ];
-
-    protected $appends = [
-        'default_unit_price',
     ];
 
     /**

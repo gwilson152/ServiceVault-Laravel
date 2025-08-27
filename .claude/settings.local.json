@@ -23,7 +23,8 @@
       "Bash(redis-cli:*)",
       "Bash(sed:*)",
       "Bash(mysql:*)",
-      "WebFetch(domain:api-docs.freescout.net)"
+      "WebFetch(domain:api-docs.freescout.net)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }

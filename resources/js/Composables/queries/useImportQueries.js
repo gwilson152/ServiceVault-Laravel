@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import axios from 'axios'
 
 export function useImportQueries() {
@@ -150,10 +150,17 @@ export function useImportQueries() {
         return useQuery({
             queryKey: ['import-job-status', jobId],
             queryFn: async () => {
-                const response = await axios.get(`/api/import/jobs/${jobId}/status`)
+                const id = typeof jobId === 'function' ? jobId() : jobId
+                if (!id) {
+                    throw new Error('Job ID is required')
+                }
+                const response = await axios.get(`/api/import/jobs/${id}/status`)
                 return response.data
             },
-            enabled: !!jobId,
+            enabled: computed(() => {
+                const id = typeof jobId === 'function' ? jobId() : jobId
+                return !!id
+            }),
             refetchInterval: (data) => {
                 // Only refetch if job is still running
                 return data?.status === 'running' ? 2000 : false

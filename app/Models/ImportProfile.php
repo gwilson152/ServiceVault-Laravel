@@ -15,58 +15,30 @@ class ImportProfile extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'name',
         'template_id',
-        'database_type',
-        'host',
-        'port',
-        'database',
-        'username',
-        'password',
-        'ssl_mode',
+        'name',
         'description',
-        'notes',
-        'connection_options',
+        'source_type',
+        'connection_config',
         'configuration',
-        'is_active',
-        'created_by',
-        'last_tested_at',
-        'last_test_result',
         'import_mode',
-        'duplicate_detection',
-        'skip_duplicates',
-        'update_duplicates',
-        'source_identifier_field',
-        'matching_strategy',
-        'import_stats',
-        'sync_enabled',
-        'sync_frequency',
-        'sync_cron_expression',
-        'sync_time',
-        'sync_timezone',
+        'enable_scheduling',
+        'schedule_frequency',
+        'schedule_time',
+        'schedule_days',
         'last_sync_at',
         'next_sync_at',
-        'sync_options',
-        'sync_stats',
+        'is_active',
     ];
 
     protected $casts = [
-        'connection_options' => 'array',
+        'connection_config' => 'array',
         'configuration' => 'array',
-        'last_test_result' => 'array',
-        'duplicate_detection' => 'array',
-        'matching_strategy' => 'array',
-        'import_stats' => 'array',
-        'sync_options' => 'array',
-        'sync_stats' => 'array',
-        'is_active' => 'boolean',
-        'skip_duplicates' => 'boolean',
-        'update_duplicates' => 'boolean',
-        'sync_enabled' => 'boolean',
-        'port' => 'integer',
-        'last_tested_at' => 'datetime',
+        'schedule_days' => 'array',
         'last_sync_at' => 'datetime',
         'next_sync_at' => 'datetime',
+        'is_active' => 'boolean',
+        'enable_scheduling' => 'boolean',
     ];
 
     protected $hidden = [
@@ -136,34 +108,68 @@ class ImportProfile extends Model
      */
     public function getConnectionConfig(): array
     {
-        // Map our database_type to Laravel's driver names
+        // Return the stored connection_config JSON or default structure
+        $config = $this->connection_config ?? [];
+        
+        // For API profiles (like FreeScout API)
+        if ($this->source_type === 'api') {
+            return [
+                'host' => $config['host'] ?? null,
+                'port' => $config['port'] ?? 443,
+                'api_key' => $config['api_key'] ?? null,
+                'password' => $config['api_key'] ?? null, // Legacy compatibility
+                'ssl_mode' => $config['ssl_mode'] ?? 'require',
+                'test_result' => $config['test_result'] ?? null,
+            ];
+        }
+        
+        // For database profiles
         $driverMap = [
             'postgresql' => 'pgsql',
-            'mysql' => 'mysql',
+            'mysql' => 'mysql', 
             'sqlite' => 'sqlite',
         ];
-
-        $driver = $driverMap[$this->database_type] ?? 'pgsql';
+        
+        $driver = $driverMap[$config['database_type'] ?? 'postgresql'] ?? 'pgsql';
 
         return [
-            'database_type' => $this->database_type,
+            'database_type' => $config['database_type'] ?? 'postgresql',
             'driver' => $driver,
             'url' => null,
-            'host' => $this->host,
-            'port' => $this->port,
-            'database' => $this->database,
-            'username' => $this->username,
-            'password' => $this->password,
+            'host' => $config['host'] ?? null,
+            'port' => $config['port'] ?? 5432,
+            'database' => $config['database'] ?? null,
+            'username' => $config['username'] ?? null,
+            'password' => $config['password'] ?? null,
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => $this->ssl_mode,
+            'sslmode' => $config['ssl_mode'] ?? 'prefer',
             'options' => array_merge([
                 \PDO::ATTR_TIMEOUT => 30,
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ], $this->connection_options ?? []),
         ];
+    }
+
+    /**
+     * Get the host attribute from connection_config for backward compatibility.
+     */
+    public function getHostAttribute()
+    {
+        return $this->connection_config['host'] ?? null;
+    }
+
+    /**
+     * Get the database_type for backward compatibility.
+     */
+    public function getDatabaseTypeAttribute()
+    {
+        if ($this->source_type === 'api') {
+            return 'freescout_api'; // Legacy compatibility for API profiles
+        }
+        return $this->connection_config['database_type'] ?? 'postgresql';
     }
 
     /**

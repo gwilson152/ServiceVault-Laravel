@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,42 +10,41 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ImportJob extends Model
 {
     /** @use HasFactory<\Database\Factories\ImportJobFactory> */
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'profile_id',
         'status',
-        'import_options',
+        'mode',
         'mode_config',
+        'total_records',
+        'processed_records',
+        'successful_records',
+        'failed_records',
+        'skipped_records',
+        'updated_records',
+        'errors',
         'started_at',
         'completed_at',
-        'records_processed',
-        'records_imported',
-        'records_updated',
-        'records_skipped',
-        'records_failed',
-        'summary',
-        'errors',
-        'progress_percentage',
-        'current_operation',
-        'created_by',
+        'duration',
+        'started_by',
     ];
 
     protected $casts = [
-        'import_options' => 'array',
         'mode_config' => 'array',
-        'summary' => 'array',
+        'errors' => 'array',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
-        'records_processed' => 'integer',
-        'records_imported' => 'integer',
-        'records_updated' => 'integer',
-        'records_skipped' => 'integer',
-        'records_failed' => 'integer',
-        'progress_percentage' => 'integer',
+        'total_records' => 'integer',
+        'processed_records' => 'integer',
+        'successful_records' => 'integer',
+        'failed_records' => 'integer',
+        'skipped_records' => 'integer',
+        'updated_records' => 'integer',
+        'duration' => 'integer',
     ];
 
-    protected $appends = ['progress'];
+    protected $appends = ['progress', 'import_options'];
 
     /**
      * Get the import profile this job belongs to.
@@ -83,13 +83,13 @@ class ImportJob extends Model
      */
     public function isSuccessful(): bool
     {
-        return $this->status === 'completed' && $this->records_failed === 0;
+        return $this->status === 'completed' && $this->failed_records === 0;
     }
 
     /**
-     * Get the duration of the job in seconds.
+     * Get the calculated duration of the job in seconds.
      */
-    public function getDurationAttribute(): ?int
+    public function getCalculatedDurationAttribute(): ?int
     {
         if ($this->started_at && $this->completed_at) {
             return $this->completed_at->diffInSeconds($this->started_at);
@@ -103,11 +103,22 @@ class ImportJob extends Model
     }
 
     /**
-     * Get progress attribute (alias for progress_percentage for frontend compatibility).
+     * Get progress attribute (calculated from processed/total records).
      */
     public function getProgressAttribute(): int
     {
-        return $this->progress_percentage ?? 0;
+        if ($this->total_records > 0) {
+            return (int) round(($this->processed_records / $this->total_records) * 100);
+        }
+        return 0;
+    }
+    
+    /**
+     * Get import_options attribute (maps mode_config for backward compatibility).
+     */
+    public function getImportOptionsAttribute(): ?array
+    {
+        return $this->mode_config;
     }
 
     /**
@@ -115,11 +126,11 @@ class ImportJob extends Model
      */
     public function getSuccessRateAttribute(): float
     {
-        if ($this->records_processed === 0) {
+        if ($this->processed_records === 0) {
             return 0;
         }
 
-        return round(($this->records_imported / $this->records_processed) * 100, 2);
+        return round(($this->successful_records / $this->processed_records) * 100, 2);
     }
 
     /**
@@ -130,7 +141,6 @@ class ImportJob extends Model
         $this->update([
             'status' => 'running',
             'started_at' => now(),
-            'progress_percentage' => 0,
         ]);
 
         $this->broadcastStatusChange('job_started');
@@ -141,11 +151,11 @@ class ImportJob extends Model
      */
     public function markAsCompleted(): void
     {
+        $duration = $this->started_at ? (int) now()->diffInSeconds($this->started_at) : null;
         $this->update([
             'status' => 'completed',
             'completed_at' => now(),
-            'progress_percentage' => 100,
-            'current_operation' => null,
+            'duration' => $duration,
         ]);
 
         $this->broadcastStatusChange('job_completed');
@@ -156,11 +166,17 @@ class ImportJob extends Model
      */
     public function markAsFailed(?string $error = null): void
     {
+        $duration = $this->started_at ? (int) now()->diffInSeconds($this->started_at) : null;
+        $errors = $this->errors ?: [];
+        if ($error) {
+            $errors[] = $error;
+        }
+        
         $this->update([
             'status' => 'failed',
             'completed_at' => now(),
-            'errors' => $error ? ($this->errors ? $this->errors."\n".$error : $error) : $this->errors,
-            'current_operation' => null,
+            'duration' => $duration,
+            'errors' => $errors,
         ]);
 
         $this->broadcastStatusChange('job_failed');
@@ -168,13 +184,24 @@ class ImportJob extends Model
 
     /**
      * Update job progress with real-time broadcasting.
+     * Supports both new signature (processed, total, operation) and legacy signature (percentage, operation).
      */
-    public function updateProgress(int $percentage, ?string $operation = null): void
+    public function updateProgress(int $processedOrPercentage, $totalOrOperation = null, ?string $operation = null): void
     {
-        $updateData = ['progress_percentage' => min(100, max(0, $percentage))];
+        // Handle legacy signature: updateProgress(percentage, 'operation')
+        if (is_string($totalOrOperation) && $operation === null) {
+            // Legacy call: (percentage, operation)
+            $percentage = $processedOrPercentage;
+            // Don't update database for legacy percentage calls, just broadcast
+            broadcast(new \App\Events\ImportProgressUpdated($this))->toOthers();
+            return;
+        }
+        
+        // Handle new signature: updateProgress(processed, total, operation)
+        $updateData = ['processed_records' => $processedOrPercentage];
 
-        if ($operation) {
-            $updateData['current_operation'] = $operation;
+        if (is_int($totalOrOperation) && $totalOrOperation > 0) {
+            $updateData['total_records'] = $totalOrOperation;
         }
 
         $this->update($updateData);

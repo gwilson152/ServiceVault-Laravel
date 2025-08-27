@@ -13,29 +13,16 @@ class TicketCategory extends Model
     use HasFactory, HasUuid;
 
     protected $fillable = [
-        'key',
         'name',
         'description',
         'color',
-        'bg_color',
-        'icon',
-        'account_id',
-        'is_system',
-        'is_active',
-        'is_default',
-        'requires_approval',
-        'default_priority_multiplier',
-        'default_estimated_hours',
         'sla_hours',
         'sort_order',
+        'is_active',
     ];
 
     protected $casts = [
-        'is_system' => 'boolean',
         'is_active' => 'boolean',
-        'is_default' => 'boolean',
-        'requires_approval' => 'boolean',
-        'default_priority_multiplier' => 'decimal:2',
     ];
 
     /**

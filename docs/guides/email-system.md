@@ -1,27 +1,29 @@
 # Email System Guide
 
-Complete guide to Service Vault's application-wide email processing system for automated ticket creation and email routing.
+Complete guide to Service Vault's unified email system combining email configuration, user management, and automated processing.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [System Architecture](#system-architecture)
 - [Configuration](#configuration)
+- [User Management](#user-management)
 - [Domain Mapping](#domain-mapping)
 - [Monitoring](#monitoring)
 - [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-Service Vault's email system provides **application-wide email processing** that automatically converts incoming emails into service tickets and routes them to the appropriate business accounts. The system supports multiple email service providers and offers comprehensive monitoring and management capabilities.
+Service Vault's unified email system provides **complete email management** including configuration, automated user creation, ticket processing, and domain routing. All email functionality is consolidated into a single interface for streamlined administration.
 
 ### Key Features
 
-- **🔧 Application-Wide Configuration**: Single email system configuration for the entire platform
+- **🔧 Unified Configuration**: Single interface for all email system management
+- **👥 Automated User Management**: Email-triggered user creation with domain mapping and approval workflows
 - **📧 Multiple Provider Support**: SMTP, IMAP, Gmail, Outlook, Exchange integration
 - **🎯 Domain-Based Routing**: Route emails to specific business accounts based on email patterns
 - **🎫 Automatic Ticket Creation**: Convert emails into service tickets automatically
-- **📊 Real-Time Monitoring**: Monitor email processing, success rates, and system health
+- **📊 Real-Time Monitoring**: Monitor email processing, user creation, and system health
 - **⚙️ Command Processing**: Execute commands embedded in email content
 - **🔄 Queue Management**: Reliable email processing with retry mechanisms
 
@@ -31,37 +33,37 @@ Service Vault's email system provides **application-wide email processing** that
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Email System                             │
+│                 Unified Email System                        │
 ├─────────────────────────────────────────────────────────────┤
 │  Configuration (/settings/email)                           │
-│  ├── Incoming Email Service (IMAP/Gmail/Outlook)           │
-│  ├── Outgoing Email Service (SMTP/Gmail/SES/etc)           │
-│  ├── Domain Mappings (Email → Account routing)             │
-│  └── Processing Settings                                    │
+│  ├── Email Service Configuration                           │
+│  ├── User Management & Auto-Creation                       │
+│  ├── Domain Mappings & Routing Rules                       │
+│  └── Processing & Workflow Settings                        │
 ├─────────────────────────────────────────────────────────────┤
 │  Monitoring (/admin/email)                                 │
 │  ├── Performance Metrics                                   │
-│  ├── Processing Statistics                                 │
-│  ├── Queue Health                                          │
-│  └── System Alerts                                         │
+│  ├── User Creation Statistics                              │
+│  ├── Processing & Queue Health                             │
+│  └── System Alerts & Monitoring                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Page Separation
 
 **Configuration Interface** (`/settings/email`)
-- **Purpose**: Setup and configure the email system
+- **Purpose**: Complete email system setup and configuration
 - **Audience**: System administrators
-- **Features**: Email service configuration, system activation, domain mapping management
+- **Features**: Email service configuration, user management settings, domain mapping management, processing workflows
 
 **Monitoring Dashboard** (`/admin/email`)
-- **Purpose**: Monitor email system operations
+- **Purpose**: Monitor email system operations and user creation
 - **Audience**: Email administrators
-- **Features**: Performance metrics, processing logs, queue monitoring, system health
+- **Features**: Performance metrics, user creation statistics, processing logs, queue monitoring, system health
 
 ## Configuration
 
-The email system configuration is organized into **four logical tabs** for better organization:
+The unified email system configuration includes **email service setup** and **user management features** organized into logical tabs:
 
 ### Step 1: Access Email Configuration
 
@@ -202,7 +204,36 @@ Action: Mark as Read (Default)
 • Delete: Permanently delete the email (not recommended)
 ```
 
-### Step 6: Activate System
+### Step 6: User Management Configuration
+
+The **User Management** section within the email system handles automated user creation from incoming emails:
+
+#### Automatic User Creation Settings
+
+```
+☑ Enable Email Processing: Enable automatic user creation from emails
+☑ Auto-Create Users: Create user accounts for unknown email senders
+☑ Require Email Verification: New users must verify their email addresses
+☑ Require Admin Approval: New users need admin approval before activation
+```
+
+#### Domain Strategy Configuration
+
+```
+Unmapped Domain Strategy:
+• Create Generic Account: Create a generic business account for unmapped domains
+• Require Manual Assignment: Hold emails for manual account assignment
+• Reject Email: Automatically reject emails from unmapped domains
+```
+
+#### Default Assignment Settings
+
+```
+Default Account: [Select Default Business Account]
+Default Role Template: [Select Default Role for New Users]
+```
+
+### Step 7: Activate System
 
 ```
 ☑ Email System Active
@@ -210,13 +241,178 @@ Action: Mark as Read (Default)
 
 **Important**: Both incoming and outgoing services must be configured before activation.
 
-### Step 7: Test Configuration
+### Step 8: Test Configuration
 
 Click **"Test Configuration"** to verify:
 - ✅ Incoming connection successful
 - ✅ Outgoing connection successful  
 - ✅ Authentication verified
 - ✅ Folder access confirmed
+
+## User Management
+
+The unified email system includes automated user management features that create user accounts based on incoming email activity. This consolidates all user creation functionality into the email system interface.
+
+### Overview
+
+When emails are processed, the system can automatically:
+
+- **Create User Accounts**: Generate user accounts for unknown email senders
+- **Domain-Based Account Assignment**: Route users to specific business accounts based on email domain
+- **Role Assignment**: Automatically assign role templates to new users
+- **Approval Workflows**: Require admin approval for new user activation
+- **Email Verification**: Send verification emails to confirm user email addresses
+
+### User Creation Workflow
+
+```
+Incoming Email → Domain Check → User Exists?
+                                     ↓ (No)
+                               Create User Account
+                                     ↓
+                            Apply Domain Mapping
+                                     ↓
+                            Assign Role Template
+                                     ↓
+                         Email Verification (Optional)
+                                     ↓
+                         Admin Approval (Optional)
+                                     ↓
+                              User Activated
+```
+
+### Configuration
+
+Access user management settings within **Settings → Email → User Management** tab.
+
+#### Enable User Creation
+
+```
+☑ Enable Email Processing: Master switch for email-based user creation
+☑ Auto-Create Users: Automatically create accounts for unknown senders
+```
+
+#### Verification & Approval
+
+```
+☑ Require Email Verification: New users must verify email addresses
+☑ Require Admin Approval: Admin approval required before user activation
+```
+
+**Verification Process**:
+- System sends verification email to new user
+- User clicks verification link to confirm email address
+- Account remains inactive until verified
+
+**Approval Process**:
+- New users appear in admin approval queue
+- Admins can approve/reject user accounts
+- Users receive notification upon approval
+
+#### Domain Strategy
+
+Configure how the system handles emails from unmapped domains:
+
+**Create Generic Account**
+```
+- Creates a default business account for unmapped domains
+- All unmapped users assigned to this generic account
+- Useful for open systems accepting any email domain
+```
+
+**Require Manual Assignment**
+```
+- Emails from unmapped domains held for manual review
+- Admin manually assigns appropriate business account
+- Ensures proper account organization
+```
+
+**Reject Email**
+```
+- Automatically rejects emails from unmapped domains
+- Sends rejection notification to sender
+- Maintains strict domain control
+```
+
+#### Default Assignments
+
+```
+Default Account: [Business Account Selector]
+Default Role Template: [Role Template Selector]
+```
+
+These defaults apply when:
+- Domain mapping doesn't specify an account
+- Role template not specified in domain mapping
+- Generic account strategy is used
+
+### User Statistics
+
+The Email System displays comprehensive user management statistics:
+
+#### User Overview
+```
+Total Users: 1,247
+Active Users: 1,156 (92.7%)
+Pending Approval: 15
+Auto-Created: 892 (71.5%)
+```
+
+#### Daily Metrics
+```
+Users Created Today: 8
+Approved Today: 12
+Verification Emails Sent: 5
+```
+
+#### Processing Statistics
+```
+Email → User Success Rate: 96.3%
+Average Processing Time: 0.8s
+Domain Mapping Success: 98.1%
+```
+
+### User Management Best Practices
+
+#### Domain Mapping Strategy
+
+**1. Comprehensive Domain Mapping**
+```
+- Map all expected client domains
+- Set appropriate default accounts
+- Configure role templates per domain type
+```
+
+**2. Role Template Assignment**
+```
+- Create specific role templates for email users
+- Limit permissions for auto-created accounts
+- Separate permissions from manually created users
+```
+
+**3. Approval Workflows**
+```
+- Enable approval for sensitive environments
+- Use verification for all auto-created accounts
+- Monitor approval queue regularly
+```
+
+#### Security Considerations
+
+**Email Verification**
+- Always enable for auto-created accounts
+- Prevents unauthorized account creation
+- Confirms email ownership
+
+**Admin Approval**
+- Required for high-security environments
+- Prevents unauthorized access
+- Allows review of new user requests
+
+**Role Limitations**
+- Auto-created users should have limited initial permissions
+- Require manual permission elevation
+- Separate auto-created from manually created users
 
 ## Domain Mapping
 
@@ -299,10 +495,12 @@ Navigate to **Admin → Email** and choose from available monitoring interfaces:
 - ✅ Active/⚠️ Configured/❌ Inactive
 - Incoming/Outgoing service status
 - Domain mappings configured
+- User creation system status
 
 **Key Performance Indicators**
 - **Total Emails Processed**: 1,247 (+5.2% vs yesterday)
 - **Success Rate**: 98.5%
+- **Users Auto-Created**: 47 (this week)
 - **Commands Executed**: 89
 - **Average Processing Time**: 1.2s
 
@@ -553,4 +751,4 @@ DELETE /api/domain-mappings/{id}     # Delete mapping
 
 ---
 
-*Last Updated: August 26, 2025 - Application-Wide Email System*
+*Last Updated: August 27, 2025 - Unified Email System with Integrated User Management*

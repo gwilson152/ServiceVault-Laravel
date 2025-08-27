@@ -1,11 +1,12 @@
 # Email System API
 
-REST API endpoints for managing Service Vault's application-wide email processing system.
+REST API endpoints for managing Service Vault's unified email system including configuration, user management, and processing.
 
 ## Table of Contents
 
 - [Authentication](#authentication)
 - [Email System Configuration](#email-system-configuration)
+- [User Management](#user-management)
 - [Domain Mappings](#domain-mappings)
 - [Email Administration](#email-administration)
 - [Error Handling](#error-handling)
@@ -314,6 +315,215 @@ POST /api/settings/email/m365-folders
 }
 ```
 
+## User Management
+
+The unified email system includes API endpoints for managing email-triggered user creation and related statistics.
+
+### Get User Management Statistics
+
+```http
+GET /api/email-system/user-stats
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "data": {
+    "user_overview": {
+      "total_users": 1247,
+      "active_users": 1156,
+      "inactive_users": 91,
+      "pending_approval": 15,
+      "auto_created_users": 892,
+      "auto_created_percentage": 71.5
+    },
+    "daily_metrics": {
+      "users_created_today": 8,
+      "users_approved_today": 12,
+      "verification_emails_sent_today": 5,
+      "approval_queue_size": 15
+    },
+    "processing_stats": {
+      "email_to_user_success_rate": 96.3,
+      "average_processing_time_ms": 800,
+      "domain_mapping_success_rate": 98.1,
+      "verification_success_rate": 89.2
+    },
+    "recent_activity": [
+      {
+        "id": 1,
+        "action": "user_created",
+        "user_email": "newuser@client.com",
+        "account_name": "Client Corporation",
+        "created_at": "2025-08-27T10:30:00Z"
+      },
+      {
+        "id": 2,
+        "action": "user_approved",
+        "user_email": "pending@company.com", 
+        "approved_by": "admin@internal.com",
+        "created_at": "2025-08-27T09:45:00Z"
+      }
+    ]
+  },
+  "generated_at": "2025-08-27T10:35:00Z"
+}
+```
+
+### Get User Management Settings
+
+```http
+GET /api/email-system/user-management-settings
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "data": {
+    "enable_email_processing": true,
+    "auto_create_users": true,
+    "require_email_verification": true,
+    "require_admin_approval": false,
+    "unmapped_domain_strategy": "create_generic_account",
+    "default_account_id": "123e4567-e89b-12d3-a456-426614174000",
+    "default_role_template_id": "987fcdeb-51a2-43d1-9f4e-123456789abc",
+    "approval_workflow_enabled": false,
+    "verification_email_template": "default",
+    "welcome_email_enabled": true,
+    "audit_user_creation": true
+  }
+}
+```
+
+### Update User Management Settings
+
+```http
+PUT /api/email-system/user-management-settings
+```
+
+**Request Body**
+```json
+{
+  "enable_email_processing": true,
+  "auto_create_users": true,
+  "require_email_verification": true,
+  "require_admin_approval": false,
+  "unmapped_domain_strategy": "create_generic_account",
+  "default_account_id": "123e4567-e89b-12d3-a456-426614174000",
+  "default_role_template_id": "987fcdeb-51a2-43d1-9f4e-123456789abc",
+  "approval_workflow_enabled": false,
+  "verification_email_template": "default",
+  "welcome_email_enabled": true,
+  "audit_user_creation": true
+}
+```
+
+**Validation Rules**
+```
+enable_email_processing: boolean
+auto_create_users: boolean
+require_email_verification: boolean
+require_admin_approval: boolean
+unmapped_domain_strategy: in:create_generic_account,require_manual_assignment,reject_email
+default_account_id: nullable|uuid|exists:accounts,id
+default_role_template_id: nullable|uuid|exists:role_templates,id
+approval_workflow_enabled: boolean
+verification_email_template: string|max:255
+welcome_email_enabled: boolean
+audit_user_creation: boolean
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "User management settings updated successfully",
+  "data": {
+    // Updated settings object
+  }
+}
+```
+
+### Bulk Approve Users
+
+```http
+POST /api/email-system/bulk-approve-users
+```
+
+**Request Body**
+```json
+{
+  "user_ids": [
+    "123e4567-e89b-12d3-a456-426614174000",
+    "987fcdeb-51a2-43d1-9f4e-123456789abc"
+  ],
+  "send_welcome_email": true,
+  "assign_default_role": true
+}
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "Successfully approved 2 users",
+  "data": {
+    "approved_users": 2,
+    "failed_approvals": 0,
+    "welcome_emails_sent": 2,
+    "roles_assigned": 2
+  }
+}
+```
+
+### Get Pending User Approvals
+
+```http
+GET /api/email-system/pending-approvals
+```
+
+**Query Parameters**
+```
+page: integer
+per_page: integer (max 100)  
+account_id: uuid (filter by account)
+created_after: date (filter by creation date)
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "name": "John Doe",
+      "email": "john@newclient.com",
+      "account": {
+        "id": "987fcdeb-51a2-43d1-9f4e-123456789abc",
+        "name": "New Client Corp"
+      },
+      "role_template": {
+        "id": "456e7890-a1b2-34c5-d6e7-f8g9h0i1j2k3",
+        "name": "Customer User"
+      },
+      "created_from_email": true,
+      "email_verified": false,
+      "pending_since": "2025-08-27T08:30:00Z",
+      "created_at": "2025-08-27T08:30:00Z"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "last_page": 2, 
+    "per_page": 25,
+    "total": 15
+  }
+}
+```
+
 ## Domain Mappings
 
 ### List Domain Mappings
@@ -493,6 +703,8 @@ statuses: string (comma-separated status list) - optional filter
       "failed_processing": 22,
       "tickets_created": 856,
       "comments_added": 391,
+      "users_auto_created": 47,
+      "pending_user_approvals": 15,
       "commands_executed": 89,
       "system_configured": true,
       "domain_mappings_active": 4
@@ -840,4 +1052,4 @@ Configuration test failure:
 
 ---
 
-*Last Updated: August 26, 2025 - Application-Wide Email System API*
+*Last Updated: August 27, 2025 - Unified Email System API with User Management*

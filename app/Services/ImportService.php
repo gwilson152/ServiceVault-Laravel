@@ -41,13 +41,20 @@ class ImportService
             ]);
         }
 
+        // Validate and ensure mode is a valid enum value
+        $validModes = ['sync', 'append', 'update'];
+        $mode = $options['mode'] ?? 'sync';
+        if (!in_array($mode, $validModes)) {
+            $mode = 'sync'; // Default to sync for invalid modes
+        }
+        
         // Create import job
         $job = ImportJob::create([
             'profile_id' => $profile->id,
             'status' => 'pending',
-            'import_options' => $options,
-            'mode_config' => $modeConfig,
-            'created_by' => Auth::id(),
+            'mode' => $mode,
+            'mode_config' => array_merge($options, $modeConfig),
+            'started_by' => Auth::id(),
         ]);
 
         // Mark job as started

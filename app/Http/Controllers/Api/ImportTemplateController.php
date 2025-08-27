@@ -18,14 +18,27 @@ class ImportTemplateController extends Controller
 
         $query = ImportTemplate::query();
 
-        // Filter by database type if specified
-        if ($request->filled('database_type')) {
-            $query->where('database_type', $request->database_type);
+        // Filter by source type if specified
+        if ($request->filled('source_type')) {
+            $query->where('source_type', $request->source_type);
         }
 
-        // Filter by platform if specified
+        // Legacy support: map database_type to source_type
+        if ($request->filled('database_type')) {
+            $query->where('source_type', 'database');
+        }
+
+        // Legacy support: map platform to source_type  
         if ($request->filled('platform')) {
-            $query->where('platform', $request->platform);
+            // Map common platform values to source_type
+            $platformMap = [
+                'freescout' => 'database',
+                'freescout_api' => 'api',
+                'csv' => 'file',
+                'excel' => 'file',
+            ];
+            $sourceType = $platformMap[$request->platform] ?? 'database';
+            $query->where('source_type', $sourceType);
         }
 
         // Filter by active status
@@ -43,7 +56,7 @@ class ImportTemplateController extends Controller
             $query->where('is_active', true);
         }
 
-        $templates = $query->orderBy('platform')
+        $templates = $query->orderBy('source_type')
             ->orderBy('name')
             ->get();
 
@@ -51,7 +64,7 @@ class ImportTemplateController extends Controller
             'data' => $templates,
             'meta' => [
                 'total' => $templates->count(),
-                'filters_applied' => $request->only(['database_type', 'platform', 'active', 'search']),
+                'filters_applied' => $request->only(['source_type', 'database_type', 'platform', 'active', 'search']),
             ],
         ]);
     }

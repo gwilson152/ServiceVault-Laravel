@@ -188,6 +188,15 @@ class SettingController extends Controller
             'send_confirmations' => $emailConfig->send_confirmations ?? true,
             'max_retries' => $emailConfig->max_retries ?? 3,
             
+            // Email processing and user management settings
+            'enable_email_processing' => $emailConfig->enable_email_processing ?? true,
+            'auto_create_users' => $emailConfig->auto_create_users ?? true,
+            'unmapped_domain_strategy' => $emailConfig->unmapped_domain_strategy ?? 'assign_default_account',
+            'default_account_id' => $emailConfig->default_account_id,
+            'default_role_template_id' => $emailConfig->default_role_template_id,
+            'require_email_verification' => $emailConfig->require_email_verification ?? true,
+            'require_admin_approval' => $emailConfig->require_admin_approval ?? true,
+            
             // Microsoft 365 settings (from incoming_settings JSON)
             'm365_tenant_id' => $emailConfig->incoming_settings['tenant_id'] ?? '',
             'm365_client_id' => $emailConfig->incoming_settings['client_id'] ?? '',
@@ -218,6 +227,34 @@ class SettingController extends Controller
             'send_confirmations' => true,
             'max_retries' => 3,
         ], $emailData);
+
+        // Add additional data for the EmailProcessing component
+        $emailData['accounts'] = \App\Models\Account::select('id', 'name', 'account_type')->get();
+        $emailData['role_templates'] = \App\Models\RoleTemplate::select('id', 'name', 'context')->get();
+        $emailData['domain_mappings_preview'] = \App\Models\EmailDomainMapping::with('account:id,name')
+            ->select('id', 'domain', 'account_id', 'priority', 'is_active')
+            ->limit(5)
+            ->get()
+            ->map(function ($mapping) {
+                return [
+                    'id' => $mapping->id,
+                    'domain_pattern' => $mapping->domain,
+                    'account_name' => $mapping->account?->name ?? 'Unknown',
+                    'priority' => $mapping->priority,
+                    'auto_create_tickets' => true, // Default for preview
+                ];
+            });
+
+        // Add user statistics (mock data for now)
+        $emailData['user_stats'] = [
+            'total_users' => \App\Models\User::count(),
+            'active_users' => \App\Models\User::where('is_active', true)->count(),
+            'pending_approval' => 0, // TODO: Implement pending approval tracking
+            'auto_created' => 0, // TODO: Implement auto-created user tracking
+            'emails_processed_today' => 0, // TODO: Implement from email processing logs
+            'tickets_created_today' => \App\Models\Ticket::whereDate('created_at', today())->count(),
+            'users_created_today' => \App\Models\User::whereDate('created_at', today())->count(),
+        ];
 
         return response()->json([
             'data' => $emailData,
@@ -269,6 +306,15 @@ class SettingController extends Controller
             'process_commands' => $request->boolean('process_commands', true),
             'send_confirmations' => $request->boolean('send_confirmations', true),
             'max_retries' => $request->input('max_retries', 3),
+            
+            // Email processing and user management settings
+            'enable_email_processing' => $request->boolean('enable_email_processing', true),
+            'auto_create_users' => $request->boolean('auto_create_users', true),
+            'unmapped_domain_strategy' => $request->input('unmapped_domain_strategy', 'assign_default_account'),
+            'default_account_id' => $request->input('default_account_id'),
+            'default_role_template_id' => $request->input('default_role_template_id'),
+            'require_email_verification' => $request->boolean('require_email_verification', true),
+            'require_admin_approval' => $request->boolean('require_admin_approval', true),
             
             // Processing options  
             'timestamp_source' => $request->input('timestamp_source', 'original'),

@@ -1,8 +1,8 @@
 # Users & Permissions Guide
 
-Complete guide to Service Vault's user management and three-dimensional permission system.
+Complete guide to Service Vault's role management and three-dimensional permission system. For email-triggered user creation, see the [Email System Guide](email-system.md#user-management).
 
-## User Management
+## Role Management
 
 ### User Types
 
@@ -16,7 +16,7 @@ Service Vault supports multiple user types for different roles:
 
 ### Creating Users
 
-**Settings → User Management**:
+**Manual User Creation** (Admin → Users):
 1. **Add New User**: Click "Create User" button
 2. **Basic Information**:
    - Name (required)
@@ -26,7 +26,7 @@ Service Vault supports multiple user types for different roles:
 3. **Role Assignment**: Select role template or custom permissions
 4. **Initial Status**: Active/Inactive, Visible/Hidden
 
-**Recent Enhancement**: Users can be created without email addresses for placeholder/inactive users with partial unique constraints.
+**Automated User Creation**: Email-triggered user creation is now handled by the [Email System](email-system.md#user-management). When emails are processed, the system automatically creates user accounts for unknown senders based on configured domain mappings and approval workflows.
 
 ### User Invitation System
 
@@ -34,7 +34,7 @@ Service Vault supports multiple user types for different roles:
 1. Create user with email address
 2. System sends invitation email
 3. User clicks link to set password and activate account
-4. Automatic account assignment based on email domain (if configured)
+4. Automatic account assignment based on email domain (via Email System)
 
 **Manual Account Creation**:
 - Users can be created without email
@@ -224,9 +224,10 @@ Service Vault supports business account relationships:
 
 Configure domain patterns to automatically assign users to accounts:
 
-**Settings → Domain Mappings**:
+Domain mappings are now managed through the [Email System](email-system.md#domain-mapping):
+
 1. **Domain Pattern**: `*.company.com`
-2. **Target Account**: Company Account
+2. **Target Account**: Company Account  
 3. **Priority**: Matching order for overlapping patterns
 4. **Auto-Assignment**: Automatic vs. manual approval
 

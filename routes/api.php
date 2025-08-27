@@ -96,10 +96,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('users/{user}/accounts', [App\Http\Controllers\Api\UserController::class, 'accounts'])
         ->name('users.accounts');
 
-    // Timer routes
-    Route::apiResource('timers', TimerController::class);
-
-    // Additional timer endpoints
+    // Timer routes - specific routes must come BEFORE resource route to avoid conflicts
     Route::get('timers/active/current', [TimerController::class, 'current'])
         ->name('timers.current');
 
@@ -108,6 +105,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('timers/active-with-controls', [TimerController::class, 'activeWithControls'])
         ->name('timers.active-with-controls');
+
+    Route::get('timers/user/statistics', [TimerController::class, 'statistics'])
+        ->name('timers.statistics');
+
+    Route::post('timers/sync', [TimerController::class, 'sync'])
+        ->name('timers.sync');
+
+    Route::post('timers/bulk', [TimerController::class, 'bulk'])
+        ->name('timers.bulk');
+
+    Route::post('timers/bulk-active-for-tickets', [TimerController::class, 'bulkActiveForTickets'])
+        ->name('timers.bulk-active-for-tickets');
+
+    // Timer resource routes (must come after specific routes)
+    Route::apiResource('timers', TimerController::class);
 
     Route::post('timers/{timer}/stop', [TimerController::class, 'stop'])
         ->name('timers.stop');
@@ -130,18 +142,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('timers/{timer}/duration', [TimerController::class, 'adjustDuration'])
         ->name('timers.adjust-duration');
 
-    Route::post('timers/sync', [TimerController::class, 'sync'])
-        ->name('timers.sync');
-
-    Route::get('timers/user/statistics', [TimerController::class, 'statistics'])
-        ->name('timers.statistics');
-
-    Route::post('timers/bulk', [TimerController::class, 'bulk'])
-        ->name('timers.bulk');
-
-    Route::post('timers/bulk-active-for-tickets', [TimerController::class, 'bulkActiveForTickets'])
-        ->name('timers.bulk-active-for-tickets');
-
     // Ticket timer endpoints
     Route::get('tickets/{ticketId}/timers', [TimerController::class, 'forTicket'])
         ->name('tickets.timers');
@@ -152,7 +152,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('tickets/{ticketId}/timers/active', [TimerController::class, 'activeForTicket'])
         ->name('tickets.timers.active');
 
-    // Time Entry routes with approval workflow
+    // Time Entry routes - specific routes must come BEFORE resource route to avoid conflicts
+    Route::get('time-entries/stats/approvals', [TimeEntryController::class, 'approvalStats'])
+        ->name('time-entries.approval-stats');
+
+    Route::get('time-entries/stats/recent', [TimeEntryController::class, 'recentStats'])
+        ->name('time-entries.recent-stats');
+
+    Route::post('time-entries/bulk/approve', [TimeEntryController::class, 'bulkApprove'])
+        ->name('time-entries.bulk-approve');
+
+    Route::post('time-entries/bulk/reject', [TimeEntryController::class, 'bulkReject'])
+        ->name('time-entries.bulk-reject');
+
+    // Time Entry resource routes (must come after specific routes)
     Route::apiResource('time-entries', TimeEntryController::class)->names([
         'index' => 'time-entries.api.index',
         'store' => 'time-entries.api.store',
@@ -161,7 +174,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         'destroy' => 'time-entries.api.destroy',
     ]);
 
-    // Time entry approval workflow endpoints
+    // Time entry approval workflow endpoints (these need {timeEntry} parameter)
     Route::post('time-entries/{timeEntry}/approve', [TimeEntryController::class, 'approve'])
         ->name('time-entries.approve');
 
@@ -170,18 +183,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('time-entries/{timeEntry}/unapprove', [TimeEntryController::class, 'unapprove'])
         ->name('time-entries.unapprove');
-
-    Route::post('time-entries/bulk/approve', [TimeEntryController::class, 'bulkApprove'])
-        ->name('time-entries.bulk-approve');
-
-    Route::post('time-entries/bulk/reject', [TimeEntryController::class, 'bulkReject'])
-        ->name('time-entries.bulk-reject');
-
-    Route::get('time-entries/stats/approvals', [TimeEntryController::class, 'approvalStats'])
-        ->name('time-entries.approval-stats');
-
-    Route::get('time-entries/stats/recent', [TimeEntryController::class, 'recentStats'])
-        ->name('time-entries.recent-stats');
 
     // Account routes (hierarchical selector support)
     Route::apiResource('accounts', AccountController::class);
@@ -792,6 +793,16 @@ Route::middleware(['auth:sanctum,web'])->prefix('email-admin')->group(function (
     // Manual email retrieval
     Route::post('manual-retrieval', [EmailAdminController::class, 'manualEmailRetrieval'])
         ->name('email-admin.manual-retrieval');
+    
+    // Queued email management endpoints
+    Route::get('queued-emails', [EmailAdminController::class, 'getQueuedEmails'])
+        ->name('email-admin.queued-emails');
+    
+    Route::post('emails/{emailId}/assign', [EmailAdminController::class, 'assignEmailToAccount'])
+        ->name('email-admin.assign-email');
+    
+    Route::post('emails/{emailId}/reject', [EmailAdminController::class, 'rejectQueuedEmail'])
+        ->name('email-admin.reject-email');
     
     // Debug endpoint (temporary)
     Route::get('debug-config', [EmailAdminController::class, 'debugEmailConfig'])

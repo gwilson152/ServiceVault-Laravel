@@ -289,12 +289,26 @@ class FreescoutImportService
      */
     public function executeImport(ImportProfile $profile, array $config): ImportJob
     {
+        // Map sync_mode to valid import mode enum values
+        $syncModeMapping = [
+            'incremental' => 'append',    // Add new records only
+            'full_scan' => 'sync',        // Full synchronization (replace)
+            'hybrid' => 'update',         // Mix of incremental and full
+            'full' => 'sync',             // Legacy full sync
+            'update_only' => 'update',    // Update existing only
+            'create_only' => 'append',    // Create new only
+        ];
+        
+        $syncMode = $config['sync_mode'] ?? 'incremental';
+        $mode = $syncModeMapping[$syncMode] ?? 'sync';
+        
         // Create import job
         $job = ImportJob::create([
             'profile_id' => $profile->id,
             'status' => 'pending',
-            'import_options' => $config,
-            'created_by' => Auth::id(),
+            'mode' => $mode,
+            'mode_config' => $config,
+            'started_by' => Auth::id(),
         ]);
 
         $job->markAsStarted();
@@ -701,7 +715,31 @@ class FreescoutImportService
                 // Note: /api/users endpoint only returns actual users/agents, not customers
                 // Customers are handled separately via /api/customers endpoint
                 
+                // Check for existing user by external_id first, then by email+user_type composite
                 $existingUser = User::where('external_id', 'freescout_user_' . $freescoutUser['id'])->first();
+                
+                if (!$existingUser) {
+                    // Also check if user exists with same email+user_type (composite constraint)
+                    $existingByEmailType = User::where('email', $freescoutUser['email'])
+                        ->where('user_type', 'agent')
+                        ->first();
+                    
+                    if ($existingByEmailType) {
+                        // User exists with same email+user_type, use existing user
+                        $existingUser = $existingByEmailType;
+                        // Update external_id to link FreeScout record
+                        if (!$existingUser->external_id) {
+                            $existingUser->update(['external_id' => 'freescout_user_' . $freescoutUser['id']]);
+                        }
+                        $agentMapping['user_' . $freescoutUser['id']] = $existingUser->id;
+                        $this->broadcastProgress($job, 'users', [
+                            'step' => 'agent_found_existing',
+                            'agent_email' => $freescoutUser['email'],
+                            'agent_id' => $existingUser->id
+                        ]);
+                        continue;
+                    }
+                }
                 
                 if (!$existingUser) {
                     // Determine account assignment for agent
@@ -729,7 +767,7 @@ class FreescoutImportService
                         'role_template_id' => $agentRole->id,
                         'external_id' => 'freescout_user_' . $freescoutUser['id'],
                         'is_active' => true,
-                        'is_visible' => true
+                        'visible' => true
                     ]);
 
                     $agentMapping['user_' . $freescoutUser['id']] = $user->id;
@@ -758,10 +796,34 @@ class FreescoutImportService
             $customers = $response->json()['_embedded']['customers'] ?? [];
             
             foreach ($customers as $customer) {
+                // Check for existing user by external_id first, then by email+user_type composite  
                 $existingUser = User::where('external_id', 'freescout_customer_' . $customer['id'])->first();
+                $email = $customer['emails'][0]['email'] ?? null;
+                
+                if (!$existingUser && $email) {
+                    // Also check if user exists with same email+user_type (composite constraint)
+                    $existingByEmailType = User::where('email', $email)
+                        ->where('user_type', 'account_user')
+                        ->first();
+                    
+                    if ($existingByEmailType) {
+                        // User exists with same email+user_type, use existing user
+                        $existingUser = $existingByEmailType;
+                        // Update external_id to link FreeScout record
+                        if (!$existingUser->external_id) {
+                            $existingUser->update(['external_id' => 'freescout_customer_' . $customer['id']]);
+                        }
+                        $customerMapping['customer_' . $customer['id']] = $existingUser->id;
+                        $this->broadcastProgress($job, 'users', [
+                            'step' => 'customer_found_existing',
+                            'customer_email' => $email,
+                            'customer_id' => $existingUser->id
+                        ]);
+                        continue;
+                    }
+                }
                 
                 if (!$existingUser) {
-                    $email = $customer['emails'][0]['email'] ?? null;
                     $accountId = $this->determineCustomerAccount($customer, $config, $accountMapping);
                     
                     if (!$accountId) {
@@ -776,7 +838,7 @@ class FreescoutImportService
                         'role_template_id' => $customerRole->id,
                         'external_id' => 'freescout_customer_' . $customer['id'],
                         'is_active' => true,
-                        'is_visible' => true
+                        'visible' => true
                     ]);
 
                     $customerMapping['customer_' . $customer['id']] = $user->id;

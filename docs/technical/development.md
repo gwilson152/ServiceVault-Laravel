@@ -110,24 +110,52 @@ php artisan make:resource AccountResource             # API responses
 
 ### Database Management
 
-**Migration Best Practices**:
-```php
-// Always check table existence
-if (Schema::hasTable('table_name')) {
-    return;
-}
+**Consolidated Migration System** ✅:
+Service Vault uses a consolidated migration approach for clean deployments:
 
-// Use transactions for complex changes
-DB::transaction(function () {
-    Schema::create('table_name', function (Blueprint $table) {
-        // Table definition
-    });
+```bash
+# Fresh database setup (recommended)
+php artisan migrate:fresh --seed
+
+# Available consolidated migrations:
+# 0001_01_01_000003 - Core user and account management
+# 0001_01_01_000004 - Permission and role management  
+# 0001_01_01_000005 - Ticket and service management
+# 0001_01_01_000006 - Timer and time entry system
+# 0001_01_01_000007 - Billing and invoice system
+# 0001_01_01_000008 - Universal import system
+# 0001_01_01_000009 - Email management system
+# 0001_01_01_000010 - System configuration and utilities
+```
+
+**Key Features**:
+- ✅ **No Migration History**: Clean deployments without fragmented migration files
+- ✅ **Composite Constraints**: `(email, user_type)` unique constraint for import system compatibility
+- ✅ **PostgreSQL Optimized**: Triggers, partial indexes, and advanced constraints
+- ✅ **Final Schema**: All tables created with complete structure (no modifications needed)
+
+**Migration Principles**:
+```php
+// Modern approach - comprehensive table creation
+Schema::create('users', function (Blueprint $table) {
+    $table->uuid('id')->primary();
+    $table->string('external_id')->nullable()->unique(); // Import support
+    $table->string('email')->nullable(); // Flexible authentication
+    $table->enum('user_type', ['agent', 'account_user'])->default('account_user');
+    // ... other fields
+    
+    // Composite constraint for import compatibility
+    $table->unique(['email', 'user_type'], 'users_email_user_type_unique');
 });
+
+// PostgreSQL partial unique index (only for non-null emails)
+DB::statement('CREATE UNIQUE INDEX users_email_user_type_partial_unique 
+               ON users (email, user_type) WHERE email IS NOT NULL');
 ```
 
 **Seeding Strategy**:
 - Development: Full dataset with realistic relationships
-- Testing: Minimal dataset for test scenarios
+- Testing: Minimal dataset for test scenarios  
 - Production: Essential system data only
 
 ## Coding Standards

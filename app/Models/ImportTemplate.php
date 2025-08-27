@@ -15,28 +15,18 @@ class ImportTemplate extends Model
 
     protected $fillable = [
         'name',
-        'platform',
         'description',
-        'database_type',
-        'configuration',
-        'is_system',
+        'source_type',
+        'default_configuration',
+        'field_mappings',
         'is_active',
-        'created_by',
     ];
 
     protected $casts = [
-        'configuration' => 'array',
-        'is_system' => 'boolean',
+        'default_configuration' => 'array',
+        'field_mappings' => 'array',
         'is_active' => 'boolean',
     ];
-
-    /**
-     * Get the user who created this template.
-     */
-    public function creator(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
 
     /**
      * Get the import profiles using this template.
@@ -55,27 +45,11 @@ class ImportTemplate extends Model
     }
 
     /**
-     * Scope to get system templates.
+     * Scope to get templates for a specific source type.
      */
-    public function scopeSystem($query)
+    public function scopeForSourceType($query, string $sourceType)
     {
-        return $query->where('is_system', true);
-    }
-
-    /**
-     * Scope to get templates for a specific platform.
-     */
-    public function scopeForPlatform($query, string $platform)
-    {
-        return $query->where('platform', $platform);
-    }
-
-    /**
-     * Scope to get templates for a specific database type.
-     */
-    public function scopeForDatabaseType($query, string $databaseType)
-    {
-        return $query->where('database_type', $databaseType);
+        return $query->where('source_type', $sourceType);
     }
 
     /**
@@ -83,7 +57,7 @@ class ImportTemplate extends Model
      */
     public function getSuggestedQueries(): array
     {
-        return $this->configuration['queries'] ?? [];
+        return $this->default_configuration['queries'] ?? [];
     }
 
     /**
@@ -91,7 +65,7 @@ class ImportTemplate extends Model
      */
     public function getDefaultSettings(): array
     {
-        return $this->configuration['settings'] ?? [];
+        return $this->default_configuration['settings'] ?? [];
     }
 
     /**
@@ -99,6 +73,6 @@ class ImportTemplate extends Model
      */
     public function getMetadata(): array
     {
-        return $this->configuration['metadata'] ?? [];
+        return $this->default_configuration['metadata'] ?? [];
     }
 }

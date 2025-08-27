@@ -13,34 +13,28 @@ class RoleTemplate extends Model
 
     protected $fillable = [
         'name',
-        'display_name',
+        'description',
+        'is_system_role',
         'permissions',
         'widget_permissions',
         'page_permissions',
-        'dashboard_layout',
-        'is_system_role',
-        'is_default',
-        'is_modifiable',
-        'context',
-        'description',
+        'is_active',
     ];
 
     protected $casts = [
         'permissions' => 'array',
         'widget_permissions' => 'array',
         'page_permissions' => 'array',
-        'dashboard_layout' => 'array',
         'is_system_role' => 'boolean',
-        'is_default' => 'boolean',
-        'is_modifiable' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     /**
-     * Get the display name attribute, falling back to name if null.
+     * Get the display name attribute, falling back to name.
      */
-    public function getDisplayNameAttribute($value)
+    public function getDisplayNameAttribute()
     {
-        return $value ?? $this->name;
+        return $this->name;
     }
 
     public function roles()
@@ -342,10 +336,10 @@ class RoleTemplate extends Model
     }
 
     /**
-     * Check if this role template can be modified
+     * Check if this role template can be modified (system roles cannot be modified)
      */
     public function isModifiable(): bool
     {
-        return $this->is_modifiable ?? true;
+        return !$this->is_system_role;
     }
 }

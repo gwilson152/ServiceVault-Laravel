@@ -100,20 +100,13 @@
 
           <div v-if="form.unmapped_domain_strategy === 'assign_default_account'" class="ml-6 pl-4 border-l-2 border-gray-200">
             <label class="block text-sm font-medium text-gray-700 mb-2">Default Account</label>
-            <select 
+            <UnifiedSelector
               v-model="form.default_account_id"
-              class="block w-full max-w-md border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              required
-            >
-              <option value="">Select Default Account...</option>
-              <option 
-                v-for="account in availableAccounts"
-                :key="account.id"
-                :value="account.id"
-              >
-                {{ account.name }} ({{ account.account_type }})
-              </option>
-            </select>
+              type="account"
+              placeholder="Select Default Account..."
+              :required="true"
+              class="max-w-md"
+            />
           </div>
 
           <label>
@@ -149,20 +142,13 @@
       
       <div class="space-y-6">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Default Role Template for New Users</label>
-          <select 
+          <label class="block text-sm font-medium text-gray-700 mb-2">Default Role Template for New Users</label>
+          <UnifiedSelector
             v-model="form.default_role_template_id"
-            class="mt-1 block w-full max-w-md border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value="">No Default Role...</option>
-            <option 
-              v-for="roleTemplate in availableRoleTemplates"
-              :key="roleTemplate.id"
-              :value="roleTemplate.id"
-            >
-              {{ roleTemplate.name }} ({{ roleTemplate.context }})
-            </option>
-          </select>
+            type="role-template"
+            placeholder="No Default Role..."
+            class="max-w-md"
+          />
           <p class="text-xs text-gray-500 mt-1">Role template to assign to new auto-created users</p>
         </div>
 
@@ -347,6 +333,7 @@
 
 <script setup>
 import { reactive, computed, watch } from 'vue'
+import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 
 const props = defineProps({
   settings: {

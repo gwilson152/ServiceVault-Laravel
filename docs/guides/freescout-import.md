@@ -4,6 +4,35 @@
 
 The FreeScout Import System provides a comprehensive solution for migrating data from FreeScout helpdesk instances to Service Vault. It includes real-time progress tracking, intelligent relationship mapping, and enterprise-grade reliability features.
 
+## ✅ Composite Constraint Solution
+
+### Duplicate Email Problem Solved
+The original FreeScout import issue where the same person exists as both an agent (support staff) and customer has been **completely resolved** with the consolidated migration system.
+
+**Problem**: 
+```
+SQLSTATE[23505]: Unique violation: 7 ERROR: duplicate key value violates unique constraint "users_email_unique"
+DETAIL: Key (email)=(grant@drivenw.com) already exists.
+```
+
+**Solution**:
+Service Vault now uses a **composite unique constraint** `(email, user_type)` that allows:
+- ✅ Same email for different user types: `grant@drivenw.com` as both `agent` and `account_user`  
+- ✅ Prevents true duplicates: Cannot have two `agent` records with same email
+- ✅ Import compatibility: FreeScout users/customers with duplicate emails import seamlessly
+
+**Database Schema**:
+```sql
+-- Composite unique constraint in users table
+CREATE UNIQUE INDEX users_email_user_type_partial_unique 
+ON users (email, user_type) WHERE email IS NOT NULL;
+
+-- Example allowed records:
+-- ('grant@drivenw.com', 'agent')     ✅ Allowed
+-- ('grant@drivenw.com', 'account_user') ✅ Allowed  
+-- ('grant@drivenw.com', 'agent')     ❌ Blocked (duplicate)
+```
+
 ## System Architecture
 
 ### Backend Components
