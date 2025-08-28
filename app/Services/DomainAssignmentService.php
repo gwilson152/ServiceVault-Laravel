@@ -59,7 +59,7 @@ class DomainAssignmentService
         Log::info('User assigned via domain mapping', [
             'user_id' => $user->id,
             'email' => $user->email,
-            'domain_pattern' => $domainMapping->domain_pattern,
+            'domain' => $domainMapping->domain,
             'account_id' => $account->id,
             'account_name' => $account->name,
             'role_template' => $roleTemplate->name,

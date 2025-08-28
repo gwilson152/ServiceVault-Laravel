@@ -209,6 +209,12 @@ class SettingController extends Controller
             // Processing options
             'timestamp_source' => $emailConfig->timestamp_source ?? 'original',
             'timestamp_timezone' => $emailConfig->timestamp_timezone ?? 'preserve',
+            
+            // Post-processing settings
+            'post_processing_action' => $emailConfig->post_processing_action ?? 'none',
+            'move_to_folder_id' => $emailConfig->move_to_folder_id ?? '',
+            'move_to_folder_name' => $emailConfig->move_to_folder_name ?? '',
+            'email_retrieval_mode' => $emailConfig->email_retrieval_mode ?? 'unread_only',
         ];
 
         // Legacy settings compatibility removed - use EmailSystemConfig only
@@ -321,6 +327,12 @@ class SettingController extends Controller
             // Processing options  
             'timestamp_source' => $request->input('timestamp_source', 'original'),
             'timestamp_timezone' => $request->input('timestamp_timezone', 'preserve'),
+            
+            // Post-processing settings
+            'post_processing_action' => $request->input('post_processing_action', 'none'),
+            'move_to_folder_id' => $request->input('move_to_folder_id'),
+            'move_to_folder_name' => $request->input('move_to_folder_name'),
+            'email_retrieval_mode' => $request->input('email_retrieval_mode', 'unread_only'),
             
             // Metadata
             'updated_by_id' => auth()->id(),

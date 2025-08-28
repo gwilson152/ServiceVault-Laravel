@@ -193,16 +193,41 @@ Timestamp Processing:
 - **Convert to Server Timezone**: Convert timestamps to the server's timezone
 - **Convert to UTC**: Standardize all timestamps to UTC
 
+#### Email Retrieval Settings
+
+Configure how emails are fetched from the server:
+
+```
+Email Retrieval Mode: Unread Only (Default)
+• Unread Only: Only retrieve emails that haven't been read (recommended)
+• All Emails: Retrieve all emails regardless of read status
+• Recent: Retrieve emails from the last 7 days only
+```
+
 #### Post-Processing Actions
 
 Configure what happens to emails after they're processed into tickets:
 
 ```
-Action: Mark as Read (Default)
-• Mark as Read: Leave email in folder but mark as read
-• Move to Folder: Move email to a different folder after processing
-• Delete: Permanently delete the email (not recommended)
+Post-Processing Action: Mark as Read (Default)
+• None: Leave emails unchanged after processing
+• Mark as Read: Mark emails as read but leave in original folder
+• Move to Folder: Move processed emails to a specified folder
+• Delete: Permanently delete processed emails (use with caution)
 ```
+
+**Move to Folder Configuration:**
+```
+Target Folder: /Processed-Tickets
+• Folder ID: [Auto-detected from folder browser]
+• Folder Name: Processed-Tickets (fallback if ID unavailable)
+```
+
+**Post-Processing Features:**
+- ✅ **Background Processing**: Actions executed via queued jobs 5 minutes after email processing
+- ✅ **Error Handling**: Failed post-processing actions are logged and retried
+- ✅ **Provider Support**: Full support for Microsoft 365 Graph API, IMAP support planned
+- ✅ **Flexible Configuration**: Per-action settings with intelligent folder detection
 
 ### Step 6: User Management Configuration
 
@@ -751,4 +776,4 @@ DELETE /api/domain-mappings/{id}     # Delete mapping
 
 ---
 
-*Last Updated: August 27, 2025 - Unified Email System with Integrated User Management*
+*Last Updated: August 28, 2025 - Complete Post-Processing System with Intelligent Email Retrieval*

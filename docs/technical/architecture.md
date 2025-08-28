@@ -200,8 +200,15 @@ EmailProcessingLog::class    // Processing history and monitoring
 
 **Email Processing Flow**:
 ```
-Incoming Email → Pattern Matching → Account Assignment → User Creation (if needed) → Ticket Creation → Command Processing
+Email Retrieval (respects retrieval mode) → Pattern Matching → Account Assignment → User Creation (if needed) → Ticket Creation → Command Processing → Post-Processing Actions (background job)
 ```
+
+**Post-Processing System**:
+- **Email Retrieval Modes**: `unread_only` (default), `all`, `recent` - respects UI configuration
+- **Post-Processing Actions**: `none`, `mark_read`, `move_folder`, `delete`
+- **Background Processing**: `ProcessEmailPostActions` job with 5-minute delay
+- **Provider Support**: Full M365 Graph API support, IMAP planned
+- **Error Handling**: Comprehensive logging and retry mechanisms
 
 **API Integration**:
 - **Configuration**: `/api/email-system/config` (GET/PUT)
@@ -536,6 +543,73 @@ invoices (id, account_id, total_amount, status, due_date, ...)
 - `TimerBroadcastOverlay`: Persistent timer interface with real-time sync
 - `QueryImportPreviewModal`: Unified import preview dialog supporting both template and query-based imports
 - `ImportExecutionDialog`: Dedicated progress dialog for import job execution
+- `FreescoutApi.vue`: Enhanced tab-based interface for FreeScout import management with comprehensive log viewer
+
+### Enhanced FreeScout Import Interface
+
+**✅ Tab-Based Architecture (Latest Update):**
+
+The FreeScout import system features a modern, tab-based interface that provides comprehensive import management through a clean, organized layout:
+
+**Component Architecture**:
+```vue
+<!-- Tab Navigation System -->
+<div class="border-b border-gray-200 mb-6">
+  <nav class="-mb-px flex space-x-8">
+    <button @click="activeTab = 'profiles'" :class="tabClasses">
+      API Profiles
+    </button>
+    <button @click="switchToLogsTab" :class="tabClasses">
+      Import Logs
+    </button>
+  </nav>
+</div>
+
+<!-- Conditional Content Rendering -->
+<div v-if="activeTab === 'profiles'" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+  <!-- Profile management with sidebar statistics -->
+</div>
+<div v-else-if="activeTab === 'logs'" class="bg-white shadow-sm sm:rounded-lg">
+  <!-- Full-width comprehensive log viewer -->
+</div>
+```
+
+**Key Architecture Features**:
+- **Reactive Tab State**: Vue 3 Composition API with reactive tab switching
+- **Conditional Content Loading**: Automatic data fetching when switching to Import Logs tab
+- **API Integration**: Direct integration with FreeScout-specific API endpoints
+- **Real-time Updates**: Live statistics and activity feeds with automatic refresh
+- **Responsive Design**: Mobile-first approach with proper breakpoint handling
+
+**API Integration Pattern**:
+```javascript
+// Enhanced data loading with proper error handling
+const switchToLogsTab = () => {
+  activeTab.value = 'logs'
+  if (!importLogs.value || !importLogs.value.data || importLogs.value.data.length === 0) {
+    loadImportLogs()
+  }
+}
+
+// Multi-endpoint data loading
+const loadImportStats = async () => {
+  const response = await axios.get('/api/import/freescout/stats')
+  importStats.value = response.data.stats
+}
+
+const loadImportLogs = async () => {
+  const response = await axios.get('/api/import/freescout/logs')
+  importLogs.value = response.data.jobs
+}
+```
+
+**Enhanced Import Logs Tab Features**:
+- **Comprehensive Job Details**: Status indicators, progress bars, and detailed record breakdowns
+- **Interactive Statistics**: Real-time summary cards showing success/failure counts
+- **Progress Visualization**: Animated progress bars for running imports with real-time updates
+- **Error Reporting**: Expandable error sections for failed imports with detailed context
+- **Performance Metrics**: Duration formatting, throughput statistics, and user attribution
+- **Full-Width Layout**: Replaces cramped sidebar approach with spacious, detailed view
 
 ### Universal Import Dialog Architecture (Enhanced)
 

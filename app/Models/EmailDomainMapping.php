@@ -84,6 +84,14 @@ class EmailDomainMapping extends Model
     }
 
     /**
+     * Alias for backward compatibility
+     */
+    public static function findMatchingDomain(string $emailAddress): ?EmailDomainMapping
+    {
+        return static::findMatchingMapping($emailAddress);
+    }
+
+    /**
      * Auto-detect pattern type from the domain pattern
      */
     public function getPatternTypeAttribute(): string

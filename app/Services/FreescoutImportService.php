@@ -103,7 +103,7 @@ class FreescoutImportService
             'success' => true,
             'mappings_count' => $domainMappings->count(),
             'mappings' => $domainMappings->map(fn($dm) => [
-                'pattern' => $dm->domain_pattern,
+                'pattern' => $dm->domain,
                 'account' => $dm->account->name
             ])
         ];
@@ -1108,7 +1108,7 @@ class FreescoutImportService
         if ($config['account_strategy'] === 'domain_mapping') {
             // Find matching domain mapping
             $domain = substr(strrchr($email, "@"), 1);
-            $domainMapping = DomainMapping::where('domain_pattern', 'like', "%{$domain}%")
+            $domainMapping = DomainMapping::where('domain', 'like', "%{$domain}%")
                 ->where('is_active', true)
                 ->first();
                 
@@ -1154,7 +1154,7 @@ class FreescoutImportService
         $customerEmail = $conversation['customer']['email'] ?? null;
         if ($customerEmail) {
             $domain = substr(strrchr($customerEmail, "@"), 1);
-            $domainMapping = DomainMapping::where('domain_pattern', 'like', "%{$domain}%")
+            $domainMapping = DomainMapping::where('domain', 'like', "%{$domain}%")
                 ->where('is_active', true)
                 ->first();
                 

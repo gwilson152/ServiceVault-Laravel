@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Account;
-use App\Models\DomainMapping;
+use App\Models\EmailDomainMapping;
 use App\Models\EmailConfig;
 use App\Models\EmailProcessingLog;
 use App\Models\EmailTemplate;
@@ -165,7 +165,7 @@ class EmailService
     {
         // Determine account from sender domain
         $senderDomain = $this->extractDomainFromEmail($emailData['from'] ?? '');
-        $domainMapping = DomainMapping::findMatchingDomain($emailData['from'] ?? '');
+        $domainMapping = EmailDomainMapping::findMatchingDomain($emailData['from'] ?? '');
         $accountId = $domainMapping?->account_id;
 
         // Create processing log
@@ -414,20 +414,23 @@ class EmailService
     /**
      * Update ticket category
      */
-    private function updateTicketCategory(Ticket $ticket, string $category): array
+    private function updateTicketCategory(Ticket $ticket, string $categoryKey): array
     {
-        $validCategories = ['support', 'maintenance', 'development', 'consulting', 'other'];
+        // Find category by key
+        $category = \App\Models\TicketCategory::where('key', $categoryKey)->first();
         
-        if (!in_array(strtolower($category), $validCategories)) {
-            throw new \Exception("Invalid category: {$category}");
+        if (!$category) {
+            throw new \Exception("Invalid category: {$categoryKey}");
         }
 
-        $ticket->update(['category' => strtolower($category)]);
+        $oldCategoryId = $ticket->category_id;
+        $ticket->update(['category_id' => $category->id]);
 
         return [
             'action' => 'category_updated',
-            'old_category' => $ticket->getOriginal('category'),
-            'new_category' => $category,
+            'old_category_id' => $oldCategoryId,
+            'new_category_id' => $category->id,
+            'new_category_key' => $categoryKey,
         ];
     }
 
@@ -516,6 +519,9 @@ class EmailService
         $fromEmail = $this->extractEmailAddress($emailData['from'] ?? '');
         $customer = User::where('email', $fromEmail)->first();
 
+        // Get default category ID
+        $defaultCategory = \App\Models\TicketCategory::where('key', 'technical_support')->first();
+        
         $ticketData = [
             'account_id' => $accountId,
             'title' => $this->cleanSubjectForTitle($emailData['subject'] ?? 'Email Support Request'),
@@ -523,17 +529,22 @@ class EmailService
             'customer_email' => $fromEmail,
             'customer_name' => $this->extractNameFromEmail($emailData['from'] ?? ''),
             'customer_id' => $customer?->id,
+            'created_by_id' => $customer?->id, // Set the customer as the creator if they exist
             'status' => 'open',
             'priority' => 'normal',
-            'category' => 'support',
+            'category_id' => $defaultCategory?->id,
         ];
 
         // Apply any priority/category from commands
         foreach ($commands as $command) {
             if ($command['command'] === 'priority' && in_array($command['value'], ['low', 'normal', 'medium', 'high', 'urgent'])) {
                 $ticketData['priority'] = $command['value'];
-            } elseif ($command['command'] === 'category' && in_array($command['value'], ['support', 'maintenance', 'development', 'consulting', 'other'])) {
-                $ticketData['category'] = $command['value'];
+            } elseif ($command['command'] === 'category') {
+                // Find category by key
+                $category = \App\Models\TicketCategory::where('key', $command['value'])->first();
+                if ($category) {
+                    $ticketData['category_id'] = $category->id;
+                }
             }
         }
 

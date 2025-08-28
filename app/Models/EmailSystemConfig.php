@@ -51,6 +51,12 @@ class EmailSystemConfig extends Model
         'max_retries',
         'processing_rules',
         
+        // Post-processing settings
+        'post_processing_action',
+        'move_to_folder_id',
+        'move_to_folder_name',
+        'email_retrieval_mode',
+        
         // Email processing strategy
         'enable_email_processing',
         'auto_create_users',
@@ -80,6 +86,7 @@ class EmailSystemConfig extends Model
         'test_results' => 'array',
         'processing_rules' => 'array',
         'last_tested_at' => 'datetime',
+        'email_retrieval_mode' => 'string',
     ];
 
     protected $hidden = [

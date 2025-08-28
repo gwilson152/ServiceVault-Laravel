@@ -1493,6 +1493,277 @@ $schedule->command('import:sync')
          ->runInBackground();
 ```
 
+## FreeScout-Specific API Endpoints
+
+Service Vault includes specialized endpoints for FreeScout import operations alongside the universal import system.
+
+### FreeScout Import Statistics
+
+```bash
+GET /api/import/freescout/stats
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "stats": {
+    "total_imports": 45,
+    "successful": 38,
+    "failed": 4,
+    "in_progress": 2,
+    "pending": 1
+  }
+}
+```
+
+### FreeScout Import Activity
+
+```bash
+GET /api/import/freescout/activity
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "activity": [
+    {
+      "id": 123,
+      "action": "Import completed (1250 records)",
+      "profile": "Production FreeScout",
+      "status": "completed",
+      "timestamp": "2 hours ago",
+      "records_processed": 1300,
+      "records_imported": 1250,
+      "duration": 45
+    }
+  ]
+}
+```
+
+### FreeScout Import Logs
+
+```bash
+GET /api/import/freescout/logs
+```
+
+**Query Parameters:**
+- `status` (string): Filter by status (`all`, `completed`, `failed`, `running`, `pending`)
+- `profile_id` (string): Filter by specific profile ID
+- `per_page` (integer): Results per page (default: 15)
+
+**Response:**
+```json
+{
+  "success": true,
+  "jobs": {
+    "data": [
+      {
+        "id": "uuid",
+        "profile_name": "Production FreeScout",
+        "status": "completed",
+        "mode": "incremental",
+        "progress_percentage": 100,
+        "current_operation": "Import completed successfully",
+        "records_processed": 1500,
+        "records_imported": 1450,
+        "records_updated": 50,
+        "records_skipped": 25,
+        "records_failed": 25,
+        "started_at": "2025-08-28T10:00:00Z",
+        "completed_at": "2025-08-28T10:45:00Z",
+        "duration": 2700,
+        "started_by": "Admin User",
+        "errors": null,
+        "summary": {
+          "total_time": "45 minutes",
+          "success_rate": 96.7,
+          "performance": "Excellent"
+        }
+      }
+    ],
+    "current_page": 1,
+    "last_page": 3,
+    "per_page": 15,
+    "total": 45
+  }
+}
+```
+
+### FreeScout Import Job Status
+
+```bash
+GET /api/import/freescout/job/{job_id}/status
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "job": {
+    "id": "uuid",
+    "status": "running",
+    "progress_percentage": 65,
+    "current_operation": "Processing conversations → tickets",
+    "records_processed": 975,
+    "records_imported": 920,
+    "records_failed": 12,
+    "started_at": "2025-08-28T10:00:00Z",
+    "estimated_completion": "2025-08-28T10:30:00Z"
+  }
+}
+```
+
+### FreeScout Import Execution
+
+```bash
+POST /api/import/freescout/execute
+```
+
+**Request Body:**
+```json
+{
+  "profile_id": "uuid",
+  "config": {
+    "limits": {
+      "conversations": 1000,
+      "customers": 500,
+      "mailboxes": null
+    },
+    "account_strategy": "map_mailboxes",
+    "agent_role_strategy": "standard_agent",
+    "unmapped_users": "auto_create",
+    "time_entry_defaults": {
+      "billable": true,
+      "approved": false
+    },
+    "billing_rate_strategy": "auto_select",
+    "comment_processing": {
+      "preserve_html": true,
+      "extract_attachments": true,
+      "add_context_prefix": true
+    },
+    "sync_strategy": "upsert",
+    "sync_mode": "incremental",
+    "duplicate_detection": "external_id",
+    "excluded_mailboxes": []
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Import job started successfully",
+  "job": {
+    "id": "uuid",
+    "status": "running",
+    "progress": 0,
+    "message": "Initializing FreeScout import...",
+    "created_at": "2025-08-28T10:00:00Z"
+  }
+}
+```
+
+### FreeScout Configuration Validation
+
+```bash
+POST /api/import/freescout/validate-config
+```
+
+**Request Body:**
+```json
+{
+  "profile_id": "uuid",
+  "config": {
+    "account_strategy": "map_mailboxes",
+    "agent_role_strategy": "standard_agent",
+    "billing_rate_strategy": "auto_select"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Configuration validated successfully",
+  "validation": {
+    "api_connection": {
+      "success": true,
+      "message": "FreeScout API connection successful"
+    },
+    "role_templates": {
+      "success": true,
+      "available_roles": ["Agent", "Account User"]
+    },
+    "domain_mappings": {
+      "success": true,
+      "active_mappings": 5
+    }
+  },
+  "estimates": {
+    "conversations": 1250,
+    "customers": 340,
+    "time_entries": 890,
+    "estimated_duration": "25-35 minutes"
+  }
+}
+```
+
+## Enhanced FreeScout Import UI Features
+
+### Tab-Based Interface
+The FreeScout import interface now features a clean tab-based design:
+
+#### API Profiles Tab
+- Profile management with connection testing
+- Statistics sidebar showing import counts and success rates  
+- Recent activity feed with real-time updates
+- Action menu for each profile (test, configure, execute, edit, delete)
+
+#### Import Logs Tab
+- **Full-width log viewer** replacing the cramped sidebar approach
+- **Comprehensive job details** with status indicators, progress bars, and error reporting
+- **Interactive statistics summary** showing totals, success, failed, and running counts
+- **Detailed record breakdowns** showing processed, imported, updated, skipped, and failed counts
+- **Real-time progress tracking** for running imports with animated progress bars
+- **Error expansion** for failed imports with detailed error messages and context
+- **Duration and performance metrics** with formatted time displays
+- **User attribution** showing who started each import operation
+
+### Frontend Implementation
+**Location**: `resources/js/Pages/Import/FreescoutApi.vue`
+
+**Key Features**:
+- Reactive tab switching with Vue 3 Composition API
+- Automatic log loading when switching to Import Logs tab
+- Real-time data updates with axios integration
+- Responsive design with proper mobile support
+- Loading states and error handling
+- Statistics integration from API endpoints
+
+**API Integration**:
+```javascript
+// Load import logs when switching tabs
+const switchToLogsTab = () => {
+  activeTab.value = 'logs'
+  if (!importLogs.value || !importLogs.value.data || importLogs.value.data.length === 0) {
+    loadImportLogs()
+  }
+}
+
+// API call to load logs
+const loadImportLogs = async () => {
+  const response = await axios.get('/api/import/freescout/logs')
+  if (response.data.success) {
+    importLogs.value = response.data.jobs
+  }
+}
+```
+
 ---
 
-*Universal Import API Reference | Service Vault Documentation | Updated: August 26, 2025*
+*Universal Import API Reference | Service Vault Documentation | Updated: August 28, 2025*

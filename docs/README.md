@@ -81,7 +81,17 @@ npm run dev         # Vite dev server with HMR
 - **✅ Advanced Email Template System**: Template management with variable substitution and multi-format support
 - **✅ Subject Command Processing**: Email-based command execution with role-based permissions and validation
 - **✅ Streamlined Settings Interface**: Removed separate user management tab - all functionality integrated into Email System
+- **✅ Post-Processing Actions**: Configurable email handling after processing (mark read, move to folder, delete) with background job execution
+- **✅ Intelligent Email Retrieval**: Respects UI-configured email retrieval modes (unread only, all emails, recent) replacing hardcoded filters
 - **✅ Production-Ready Architecture**: Queue-based processing, retry mechanisms, comprehensive error handling, and audit logging
+
+### Enhanced FreeScout Import Interface
+- **Tab-Based Interface**: Modern tab navigation replacing sidebar-based log viewer with dedicated full-width Import Logs tab
+- **Comprehensive Log Viewer**: Detailed job information with status indicators, progress bars, error reporting, and performance metrics
+- **Real-Time Statistics Integration**: Live statistics summary with success/failure counts and interactive status cards
+- **Enhanced User Experience**: Automatic data loading when switching tabs with proper loading states and error handling
+- **Responsive Design**: Mobile-first approach with proper breakpoint handling and touch-friendly interface
+- **API Integration**: Direct integration with FreeScout-specific endpoints (/api/import/freescout/stats, /logs, /activity)
 
 ### Unified Import Preview Architecture
 - **Single Preview Dialog**: Consolidated all import preview functionality into one intelligent component

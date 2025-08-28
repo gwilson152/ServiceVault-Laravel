@@ -66,6 +66,15 @@ Real-time broadcasting:
 
 ### Frontend Components
 
+#### Main FreeScout API Interface
+**Location**: `resources/js/Pages/Import/FreescoutApi.vue`
+
+Tab-based interface with enhanced user experience:
+- **API Profiles Tab**: Profile management with sidebar statistics and recent activity
+- **Import Logs Tab**: Comprehensive log viewer with detailed job information, progress tracking, and error reporting
+- Real-time data loading with automatic refresh
+- Responsive design with proper mobile support
+
 #### FreescoutImportProgressDialog
 **Location**: `resources/js/Components/Import/FreescoutImportProgressDialog.vue`
 

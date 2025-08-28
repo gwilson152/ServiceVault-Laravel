@@ -17,7 +17,36 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <!-- Tab Navigation -->
+      <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8">
+          <button
+            @click="activeTab = 'profiles'"
+            :class="[
+              'py-2 px-1 border-b-2 font-medium text-sm',
+              activeTab === 'profiles'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ]"
+          >
+            API Profiles
+          </button>
+          <button
+            @click="switchToLogsTab"
+            :class="[
+              'py-2 px-1 border-b-2 font-medium text-sm',
+              activeTab === 'logs'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ]"
+          >
+            Import Logs
+          </button>
+        </nav>
+      </div>
+
+      <!-- Tab Content -->
+      <div v-if="activeTab === 'profiles'" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div class="lg:col-span-3 space-y-6">
           <!-- API Profiles Section -->
         <div class="bg-white shadow-sm sm:rounded-lg">
@@ -280,76 +309,163 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Import Logs Section -->
-          <div class="mt-6 bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5 border-b border-gray-200 flex items-center justify-between">
-              <h3 class="text-sm font-medium text-gray-900">Import Logs</h3>
-              <button
-                @click="toggleImportLogs"
-                class="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-              >
-                {{ showImportLogs ? 'Hide' : 'Show' }} Details
-              </button>
+      <!-- Import Logs Tab Content -->
+      <div v-else-if="activeTab === 'logs'" class="bg-white shadow-sm sm:rounded-lg">
+        <div class="p-6 border-b border-gray-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-medium text-gray-900">Import Logs</h3>
+              <p class="mt-1 text-sm text-gray-500">
+                View detailed logs of all import operations and their status.
+              </p>
             </div>
-            
-            <!-- Logs List -->
-            <div v-if="showImportLogs" class="divide-y divide-gray-200">
-              <div v-if="loadingLogs" class="p-4 text-center">
-                <svg class="animate-spin h-5 w-5 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="text-sm text-gray-500 mt-2">Loading import logs...</p>
+            <div class="flex space-x-3">
+              <!-- Import Statistics Summary -->
+              <div class="bg-gray-50 rounded-lg px-4 py-2">
+                <div class="text-xs text-gray-500">Total</div>
+                <div class="text-sm font-medium text-gray-900">{{ importStats.total_imports }}</div>
               </div>
-              
-              <div 
-                v-else-if="importLogs.data?.length === 0" 
-                class="p-4 text-center text-gray-500"
-              >
-                No import logs available
+              <div class="bg-green-50 rounded-lg px-4 py-2">
+                <div class="text-xs text-green-600">Success</div>
+                <div class="text-sm font-medium text-green-700">{{ importStats.successful }}</div>
               </div>
-              
-              <div
-                v-else
-                v-for="log in importLogs.data?.slice(0, 10) || []"
-                :key="log.id"
-                class="p-4 hover:bg-gray-50"
-              >
-                <div class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <div class="flex items-center space-x-2">
-                      <span class="text-sm font-medium text-gray-900">{{ log.profile_name }}</span>
-                      <span 
+              <div class="bg-red-50 rounded-lg px-4 py-2">
+                <div class="text-xs text-red-600">Failed</div>
+                <div class="text-sm font-medium text-red-700">{{ importStats.failed }}</div>
+              </div>
+              <div class="bg-yellow-50 rounded-lg px-4 py-2">
+                <div class="text-xs text-yellow-600">Running</div>
+                <div class="text-sm font-medium text-yellow-700">{{ importStats.in_progress }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="overflow-hidden">
+          <div v-if="loadingLogs" class="p-12 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
+              <svg class="animate-spin w-8 h-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">Loading Import Logs</h3>
+            <p class="text-sm text-gray-600">Please wait while we fetch the import logs...</p>
+          </div>
+          
+          <div v-else-if="importLogs.data?.length === 0" class="p-12 text-center">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No Import Logs</h3>
+            <p class="text-sm text-gray-600 mb-4">No import operations have been performed yet.</p>
+            <button
+              @click="activeTab = 'profiles'"
+              class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Create First Import Profile
+            </button>
+          </div>
+          
+          <div v-else class="divide-y divide-gray-200">
+            <div
+              v-for="log in importLogs.data || []"
+              :key="log.id"
+              class="p-6 hover:bg-gray-50 transition-colors"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                      <div 
                         :class="[
-                          'px-2 py-1 text-xs font-medium rounded-full',
-                          log.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          log.status === 'failed' ? 'bg-red-100 text-red-800' :
-                          log.status === 'running' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
+                          'w-3 h-3 rounded-full',
+                          log.status === 'completed' ? 'bg-green-400' :
+                          log.status === 'failed' ? 'bg-red-400' :
+                          log.status === 'running' ? 'bg-blue-400 animate-pulse' :
+                          'bg-gray-400'
                         ]"
-                      >
-                        {{ log.status }}
-                      </span>
+                      ></div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">{{ log.current_operation || 'No operation details' }}</p>
-                    <div class="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                      <span>{{ log.records_processed || 0 }} processed</span>
-                      <span>{{ log.records_imported || 0 }} imported</span>
-                      <span v-if="log.duration">{{ Math.round(log.duration / 60) }}m {{ log.duration % 60 }}s</span>
-                      <span>by {{ log.started_by }}</span>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center space-x-2">
+                        <span class="text-base font-medium text-gray-900">{{ log.profile_name }}</span>
+                        <span 
+                          :class="[
+                            'px-2 py-1 text-xs font-medium rounded-full',
+                            log.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            log.status === 'failed' ? 'bg-red-100 text-red-800' :
+                            log.status === 'running' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          ]"
+                        >
+                          {{ log.status.charAt(0).toUpperCase() + log.status.slice(1) }}
+                        </span>
+                      </div>
+                      <p class="text-sm text-gray-600 mt-1">
+                        {{ log.current_operation || 'No operation details available' }}
+                      </p>
+                      <div class="flex items-center space-x-6 mt-2 text-sm text-gray-500">
+                        <span class="flex items-center">
+                          <span class="font-medium text-gray-700">{{ log.records_processed || 0 }}</span> processed
+                        </span>
+                        <span class="flex items-center">
+                          <span class="font-medium text-green-600">{{ log.records_imported || 0 }}</span> imported
+                        </span>
+                        <span v-if="log.records_updated" class="flex items-center">
+                          <span class="font-medium text-blue-600">{{ log.records_updated }}</span> updated
+                        </span>
+                        <span v-if="log.records_skipped" class="flex items-center">
+                          <span class="font-medium text-yellow-600">{{ log.records_skipped }}</span> skipped
+                        </span>
+                        <span v-if="log.records_failed" class="flex items-center">
+                          <span class="font-medium text-red-600">{{ log.records_failed }}</span> failed
+                        </span>
+                        <span v-if="log.duration" class="flex items-center">
+                          {{ Math.floor(log.duration / 60) }}m {{ log.duration % 60 }}s
+                        </span>
+                        <span class="flex items-center">
+                          by {{ log.started_by }}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <p class="text-xs text-gray-500">{{ new Date(log.started_at).toLocaleString() }}</p>
-                    <div v-if="log.status === 'running'" class="mt-1">
-                      <div class="w-20 bg-gray-200 rounded-full h-2">
-                        <div 
-                          class="bg-blue-600 h-2 rounded-full" 
-                          :style="`width: ${log.progress_percentage || 0}%`"
-                        ></div>
-                      </div>
-                      <p class="text-xs text-gray-500 mt-1">{{ log.progress_percentage || 0 }}%</p>
+                </div>
+                <div class="flex flex-col items-end space-y-2">
+                  <p class="text-sm text-gray-500">{{ new Date(log.started_at).toLocaleString() }}</p>
+                  <div v-if="log.status === 'running' && log.progress_percentage !== null" class="w-32">
+                    <div class="flex justify-between items-center mb-1">
+                      <span class="text-xs text-gray-500">Progress</span>
+                      <span class="text-xs font-medium text-blue-600">{{ log.progress_percentage }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                        :style="`width: ${log.progress_percentage || 0}%`"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Error Details -->
+              <div v-if="log.status === 'failed' && log.errors" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <h4 class="text-sm font-medium text-red-800">Import Failed</h4>
+                    <div class="mt-2 text-sm text-red-700">
+                      <p>{{ typeof log.errors === 'string' ? log.errors : JSON.stringify(log.errors) }}</p>
                     </div>
                   </div>
                 </div>
@@ -498,7 +614,7 @@
           Configure import limits for this sync operation. Leave fields empty to import all available records.
         </p>
         
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Conversations
@@ -510,6 +626,9 @@
               placeholder="All"
               class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm"
             />
+            <p class="mt-1 text-xs text-blue-600">
+              Time entries will be imported automatically
+            </p>
           </div>
           
           <div>
@@ -518,19 +637,6 @@
             </label>
             <input
               v-model.number="syncLimits.customers"
-              type="number"
-              min="1"
-              placeholder="All"
-              class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm"
-            />
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Time Entries
-            </label>
-            <input
-              v-model.number="syncLimits.time_entries"
               type="number"
               min="1"
               placeholder="All"
@@ -628,7 +734,6 @@ const syncProfile = ref(null)
 const syncLimits = ref({
   conversations: null,
   customers: null,
-  time_entries: null,
   mailboxes: null
 })
 
@@ -656,9 +761,10 @@ const importStats = ref({
 })
 
 const recentActivity = ref([])
-const importLogs = ref([])
-const showImportLogs = ref(false)
+const importLogs = ref({ data: [] })
 const loadingLogs = ref(false)
+const showImportLogs = ref(false)
+const activeTab = ref('profiles')
 
 const mockImportData = ref({
   conversations: [
@@ -1791,7 +1897,6 @@ const executeSync = (profile) => {
   syncLimits.value = {
     conversations: null,
     customers: null,
-    time_entries: null,
     mailboxes: null
   }
   showExecuteSyncDialog.value = true
@@ -1804,7 +1909,6 @@ const closeExecuteSyncDialog = () => {
   syncLimits.value = {
     conversations: null,
     customers: null,
-    time_entries: null,
     mailboxes: null
   }
 }
@@ -1816,12 +1920,11 @@ const confirmExecuteSync = async () => {
       limits: {
         conversations: syncLimits.value.conversations || null,
         customers: syncLimits.value.customers || null,
-        time_entries: syncLimits.value.time_entries || null,
         mailboxes: syncLimits.value.mailboxes || null
       },
       // Default configuration - should be loaded from profile if available
       account_strategy: 'map_mailboxes',
-      agent_access: 'all_accounts',
+      agent_role_strategy: 'standard_agent',
       unmapped_users: 'auto_create',
       time_entry_defaults: {
         billable: true,
@@ -1980,9 +2083,12 @@ const loadImportLogs = async () => {
   
   loadingLogs.value = true
   try {
+    console.log('Making API request to /api/import/freescout/logs')
     const response = await axios.get('/api/import/freescout/logs')
+    console.log('API response:', response.data)
     if (response.data.success) {
       importLogs.value = response.data.jobs
+      console.log('Updated importLogs.value:', importLogs.value)
     }
   } catch (error) {
     console.error('Failed to load import logs:', error)
@@ -1995,6 +2101,17 @@ const loadImportLogs = async () => {
 const toggleImportLogs = () => {
   showImportLogs.value = !showImportLogs.value
   if (showImportLogs.value && importLogs.value.data?.length === 0) {
+    loadImportLogs()
+  }
+}
+
+// Switch to logs tab and load logs
+const switchToLogsTab = () => {
+  activeTab.value = 'logs'
+  // Always load logs when switching to the tab if we don't have data yet
+  console.log('Switching to logs tab. Current importLogs:', importLogs.value)
+  if (!importLogs.value || !importLogs.value.data || importLogs.value.data.length === 0) {
+    console.log('Loading import logs...')
     loadImportLogs()
   }
 }

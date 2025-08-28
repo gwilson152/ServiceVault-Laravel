@@ -76,6 +76,11 @@ GET /api/email-system/config
   "timestamp_source": "original",
   "timestamp_timezone": "preserve",
   
+  "post_processing_action": "mark_read",
+  "move_to_folder_id": "AAMkAGU3ZGExOTBjLTU2NzMtNDg5MS05MTg4LWQ2NmFlMmI0NjhhMwAu...",
+  "move_to_folder_name": "Processed-Tickets", 
+  "email_retrieval_mode": "unread_only",
+  
   "created_at": "2025-08-25T23:22:50.000000Z",
   "updated_at": "2025-08-25T23:55:04.000000Z"
 }
@@ -119,7 +124,12 @@ PUT /api/email-system/config
   "max_retries": 3,
   
   "timestamp_source": "original",
-  "timestamp_timezone": "preserve"
+  "timestamp_timezone": "preserve",
+  
+  "post_processing_action": "mark_read",
+  "move_to_folder_id": "AAMkAGU3ZGExOTBjLTU2NzMtNDg5MS05MTg4LWQ2NmFlMmI0NjhhMwAu...",
+  "move_to_folder_name": "Processed-Tickets", 
+  "email_retrieval_mode": "unread_only"
 }
 ```
 
@@ -155,6 +165,11 @@ max_retries: integer|min:0|max:10
 
 timestamp_source: string|in:service_vault,original
 timestamp_timezone: string|in:preserve,convert_local,convert_utc
+
+post_processing_action: string|in:none,mark_read,move_folder,delete
+move_to_folder_id: nullable|string|max:255
+move_to_folder_name: nullable|string|max:255
+email_retrieval_mode: string|in:unread_only,all,recent
 ```
 
 **Response**
@@ -1249,4 +1264,4 @@ Configuration test failure:
 
 ---
 
-*Last Updated: August 27, 2025 - Unified Email System API with User Management*
+*Last Updated: August 28, 2025 - Complete Post-Processing API with Email Retrieval Configuration*
