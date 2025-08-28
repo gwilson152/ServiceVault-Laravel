@@ -180,8 +180,8 @@ class FreescoutImportController extends Controller
         $config = $request->config;
 
         try {
-            // Start the import job
-            $job = $this->freescoutImportService->executeImport($profile, $config);
+            // Start the import job asynchronously
+            $job = $this->freescoutImportService->executeImportAsync($profile, $config);
 
             return response()->json([
                 'success' => true,
@@ -259,6 +259,159 @@ class FreescoutImportController extends Controller
                 'message' => 'Relationship analysis failed',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Get import statistics for the dashboard.
+     */
+    public function getImportStats(): JsonResponse
+    {
+        try {
+            $stats = [
+                'total_imports' => \App\Models\ImportJob::count(),
+                'successful' => \App\Models\ImportJob::where('status', 'completed')->count(),
+                'failed' => \App\Models\ImportJob::where('status', 'failed')->count(),
+                'in_progress' => \App\Models\ImportJob::where('status', 'running')->count(),
+                'pending' => \App\Models\ImportJob::where('status', 'pending')->count(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'stats' => $stats
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load import statistics',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get recent import activity.
+     */
+    public function getRecentActivity(): JsonResponse
+    {
+        try {
+            $recentJobs = \App\Models\ImportJob::with(['profile', 'startedByUser'])
+                ->latest()
+                ->limit(10)
+                ->get()
+                ->map(function ($job) {
+                    return [
+                        'id' => $job->id,
+                        'action' => $this->getActionDescription($job),
+                        'profile' => $job->profile->name ?? 'Unknown Profile',
+                        'status' => $job->status,
+                        'timestamp' => $job->created_at->diffForHumans(),
+                        'records_processed' => $job->records_processed ?? 0,
+                        'records_imported' => $job->records_imported ?? 0,
+                        'duration' => $job->completed_at && $job->started_at 
+                            ? $job->started_at->diffInSeconds($job->completed_at) 
+                            : null,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'activity' => $recentJobs
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load recent activity',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get import job logs with details.
+     */
+    public function getImportLogs(Request $request): JsonResponse
+    {
+        try {
+            $query = \App\Models\ImportJob::with(['profile', 'startedByUser'])
+                ->latest();
+
+            // Filter by status if provided
+            if ($request->has('status') && $request->status !== 'all') {
+                $query->where('status', $request->status);
+            }
+
+            // Filter by profile if provided
+            if ($request->has('profile_id')) {
+                $query->where('profile_id', $request->profile_id);
+            }
+
+            $perPage = $request->input('per_page', 15);
+            $jobs = $query->paginate($perPage);
+
+            $formattedJobs = $jobs->getCollection()->map(function ($job) {
+                return [
+                    'id' => $job->id,
+                    'profile_name' => $job->profile->name ?? 'Unknown',
+                    'status' => $job->status,
+                    'mode' => $job->mode,
+                    'progress_percentage' => $job->progress_percentage ?? 0,
+                    'current_operation' => $job->current_operation,
+                    'records_processed' => $job->records_processed ?? 0,
+                    'records_imported' => $job->records_imported ?? 0,
+                    'records_updated' => $job->records_updated ?? 0,
+                    'records_skipped' => $job->records_skipped ?? 0,
+                    'records_failed' => $job->records_failed ?? 0,
+                    'started_at' => $job->started_at,
+                    'completed_at' => $job->completed_at,
+                    'duration' => $job->completed_at && $job->started_at 
+                        ? $job->started_at->diffInSeconds($job->completed_at) 
+                        : null,
+                    'started_by' => $job->startedByUser->name ?? 'System',
+                    'errors' => $job->errors,
+                    'summary' => $job->summary,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'jobs' => [
+                    'data' => $formattedJobs,
+                    'current_page' => $jobs->currentPage(),
+                    'last_page' => $jobs->lastPage(),
+                    'per_page' => $jobs->perPage(),
+                    'total' => $jobs->total(),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load import logs',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get action description for job status.
+     */
+    private function getActionDescription(\App\Models\ImportJob $job): string
+    {
+        switch ($job->status) {
+            case 'pending':
+                return 'Import queued';
+            case 'running':
+                return 'Import in progress';
+            case 'completed':
+                $imported = $job->records_imported ?? 0;
+                return "Import completed ($imported records)";
+            case 'failed':
+                return 'Import failed';
+            default:
+                return 'Import status unknown';
         }
     }
 }

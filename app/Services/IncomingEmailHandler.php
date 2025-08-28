@@ -38,6 +38,27 @@ class IncomingEmailHandler
             // Parse the raw email
             $parsedEmail = $this->parser->parse($rawEmail);
             
+            // Check for duplicate emails using message_id
+            $messageId = $parsedEmail['message_id'] ?? null;
+            if ($messageId) {
+                $existingLog = EmailProcessingLog::where('message_id', $messageId)->first();
+                if ($existingLog) {
+                    Log::info('Duplicate email detected and skipped', [
+                        'message_id' => $messageId,
+                        'existing_email_id' => $existingLog->email_id,
+                        'status' => $existingLog->status,
+                    ]);
+                    
+                    return [
+                        'success' => true,
+                        'email_id' => $existingLog->email_id,
+                        'message' => 'Email already processed (duplicate detected)',
+                        'duplicate' => true,
+                        'existing_status' => $existingLog->status,
+                    ];
+                }
+            }
+            
             // Prepare email data for processing
             $emailData = $this->prepareEmailData($parsedEmail);
             
@@ -78,6 +99,22 @@ class IncomingEmailHandler
     public function processEmailImmediate(string $rawEmail): EmailProcessingLog
     {
         $parsedEmail = $this->parser->parse($rawEmail);
+        
+        // Check for duplicate emails using message_id
+        $messageId = $parsedEmail['message_id'] ?? null;
+        if ($messageId) {
+            $existingLog = EmailProcessingLog::where('message_id', $messageId)->first();
+            if ($existingLog) {
+                Log::info('Duplicate email detected in immediate processing', [
+                    'message_id' => $messageId,
+                    'existing_email_id' => $existingLog->email_id,
+                    'status' => $existingLog->status,
+                ]);
+                
+                return $existingLog;
+            }
+        }
+        
         $emailData = $this->prepareEmailData($parsedEmail);
         
         return $this->emailService->processIncomingEmail($emailData);

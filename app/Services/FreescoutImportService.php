@@ -159,13 +159,10 @@ class FreescoutImportService
                 $estimates['customers'] = min($estimates['customers'], $config['limits']['customers']);
             }
 
-            // Estimate time entries - sample a few conversations to get average
+            // Estimate time entries - automatically imported with conversations
             $sampleConversations = $this->sampleConversationsForTimeEntries($profile, 5);
             $avgTimeEntriesPerConversation = $sampleConversations['avg_time_entries'] ?? 0.2;
             $estimates['time_entries'] = intval($estimates['conversations'] * $avgTimeEntriesPerConversation);
-            if (!empty($config['limits']['time_entries'])) {
-                $estimates['time_entries'] = min($estimates['time_entries'], $config['limits']['time_entries']);
-            }
 
             // Estimate comments - typically 3-5 comments per conversation
             $estimates['comments'] = intval($estimates['conversations'] * 4);
@@ -285,7 +282,9 @@ class FreescoutImportService
     }
 
     /**
-     * Execute the actual import process.
+     * Execute the actual import process (synchronous - deprecated).
+     * 
+     * @deprecated Use executeImportAsync() instead
      */
     public function executeImport(ImportProfile $profile, array $config): ImportJob
     {
@@ -329,10 +328,10 @@ class FreescoutImportService
                 'user_id' => Auth::id(),
                 'records_imported' => $job->records_imported,
                 'records_processed' => $job->records_processed,
-                'duration_seconds' => $job->started_at ? now()->diffInSeconds($job->started_at) : null,
+                'duration_seconds' => $job->started_at ? $job->started_at->diffInSeconds(now()) : null,
                 'config_summary' => [
                     'account_strategy' => $config['account_strategy'],
-                    'agent_access' => $config['agent_access'],
+                    'agent_role_strategy' => $config['agent_role_strategy'] ?? 'standard_agent',
                     'billing_rate_strategy' => $config['billing_rate_strategy'],
                     'sync_strategy' => $config['sync_strategy'],
                     'duplicate_detection' => $config['duplicate_detection']
@@ -357,7 +356,7 @@ class FreescoutImportService
                 'progress_before_failure' => $job->progress ?? 0,
                 'config_summary' => [
                     'account_strategy' => $config['account_strategy'],
-                    'agent_access' => $config['agent_access'],
+                    'agent_role_strategy' => $config['agent_role_strategy'] ?? 'standard_agent',
                     'billing_rate_strategy' => $config['billing_rate_strategy']
                 ]
             ]);
@@ -367,6 +366,46 @@ class FreescoutImportService
             
             throw $e;
         }
+
+        return $job;
+    }
+
+    /**
+     * Execute the import process asynchronously via job queue.
+     */
+    public function executeImportAsync(ImportProfile $profile, array $config): ImportJob
+    {
+        // Map sync_mode to valid import mode enum values
+        $syncModeMapping = [
+            'incremental' => 'append',    // Add new records only
+            'full_scan' => 'sync',        // Full synchronization (replace)
+            'hybrid' => 'update',         // Mix of incremental and full
+            'full' => 'sync',             // Legacy full sync
+            'update_only' => 'update',    // Update existing only
+            'create_only' => 'append',    // Create new only
+        ];
+        
+        $syncMode = $config['sync_mode'] ?? 'incremental';
+        $mode = $syncModeMapping[$syncMode] ?? 'sync';
+        
+        // Create import job
+        $job = ImportJob::create([
+            'profile_id' => $profile->id,
+            'status' => 'pending',
+            'mode' => $mode,
+            'mode_config' => $config,
+            'started_by' => Auth::id(),
+        ]);
+
+        // Dispatch the import job to the queue
+        \App\Jobs\ProcessFreescoutImportJob::dispatch($job, $profile, $config);
+
+        Log::info('FreeScout import job queued', [
+            'job_id' => $job->id,
+            'profile_id' => $profile->id,
+            'profile_name' => $profile->name,
+            'user_id' => Auth::id()
+        ]);
 
         return $job;
     }
@@ -409,7 +448,7 @@ class FreescoutImportService
             'account_strategy' => $config['account_strategy'],
             'estimated_accounts' => $this->estimateAccountsCount($profile, $config),
             'user_mapping_strategy' => [
-                'agents_access' => $config['agent_access'],
+                'agent_role_strategy' => $config['agent_role_strategy'] ?? 'standard_agent',
                 'role_templates' => ['Agent', 'Account User']
             ],
             'relationship_flow' => [
@@ -486,7 +525,7 @@ class FreescoutImportService
         return DomainMapping::where('is_active', true)->count();
     }
 
-    private function processFreescoutImport(ImportJob $job, ImportProfile $profile, array $config): void
+    public function processFreescoutImport(ImportJob $job, ImportProfile $profile, array $config): void
     {
         $apiConfig = $profile->getConnectionConfig();
         $baseUrl = $apiConfig['host'];  // API URL is stored in 'host' field
@@ -516,7 +555,7 @@ class FreescoutImportService
 
         // Step 2: Process Users (Agents and Customers)
         $job->updateProgress(25, 'Processing agents...');
-        $this->broadcastProgress($job, 'users', ['step' => 'agents_starting', 'access_strategy' => $config['agent_access']]);
+        $this->broadcastProgress($job, 'users', ['step' => 'agents_starting', 'role_strategy' => $config['agent_role_strategy'] ?? 'standard_agent']);
         
         $agentMapping = $this->processAgents($job, $baseUrl, $headers, $config, $accountMapping);
         
@@ -748,28 +787,19 @@ class FreescoutImportService
                 }
                 
                 if (!$existingUser) {
-                    // Determine account assignment for agent
-                    $accountId = null;
-                    if ($config['agent_access'] === 'primary_account') {
-                        // Create or use "FreeScout Import" account
-                        $primaryAccount = Account::firstOrCreate(
-                            ['name' => 'FreeScout Import'],
-                            [
-                                'description' => 'Primary account for imported FreeScout agents',
-                                'is_active' => true
-                            ]
-                        );
-                        $accountId = $primaryAccount->id;
-                    } else {
-                        // For 'all_accounts', we'll handle permissions separately
-                        $accountId = null;
+                    // Skip agent import if configured to do so
+                    if (($config['agent_role_strategy'] ?? 'standard_agent') === 'skip_agents') {
+                        $this->broadcastProgress($job, 'users', [
+                            'step' => 'agent_skipped',
+                            'agent_email' => $freescoutUser['email']
+                        ]);
+                        continue;
                     }
 
                     $user = User::create([
                         'name' => ($freescoutUser['firstName'] ?? '') . ' ' . ($freescoutUser['lastName'] ?? ''),
                         'email' => $freescoutUser['email'],
                         'user_type' => 'agent',
-                        'account_id' => $accountId,
                         'role_template_id' => $agentRole->id,
                         'external_id' => 'freescout_user_' . $freescoutUser['id'],
                         'is_active' => true,
@@ -1009,14 +1039,10 @@ class FreescoutImportService
     private function processTimeEntries(string $baseUrl, array $headers, array $config, array $ticketMapping, array $agentMapping): int
     {
         $timeEntriesCreated = 0;
-        $limit = $config['limits']['time_entries'] ?? null;
         $processed = 0;
 
         // Process time entries for each conversation
         foreach ($ticketMapping as $conversationKey => $ticketId) {
-            if ($limit && $processed >= $limit) {
-                break;
-            }
 
             $conversationId = str_replace('conversation_', '', $conversationKey);
             

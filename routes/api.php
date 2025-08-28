@@ -687,6 +687,14 @@ Route::prefix('import')->middleware('check_permission:system.import')->group(fun
         
         Route::post('analyze-relationships', [FreescoutImportController::class, 'analyzeRelationships'])
             ->name('import.freescout.analyze-relationships');
+            
+        // Statistics and activity endpoints
+        Route::get('stats', [FreescoutImportController::class, 'getImportStats'])
+            ->name('import.freescout.stats');
+        Route::get('activity', [FreescoutImportController::class, 'getRecentActivity'])
+            ->name('import.freescout.activity');
+        Route::get('logs', [FreescoutImportController::class, 'getImportLogs'])
+            ->name('import.freescout.logs');
     });
 });
 
@@ -790,9 +798,9 @@ Route::middleware(['auth:sanctum,web'])->prefix('email-admin')->group(function (
     Route::get('system-health', [EmailAdminController::class, 'getSystemHealth'])
         ->name('email-admin.system-health');
     
-    // Manual email retrieval
-    Route::post('manual-retrieval', [EmailAdminController::class, 'manualEmailRetrieval'])
-        ->name('email-admin.manual-retrieval');
+    // Unified email processing endpoint
+    Route::post('process-emails', [EmailAdminController::class, 'processEmails'])
+        ->name('email-admin.process-emails');
     
     // Queued email management endpoints
     Route::get('queued-emails', [EmailAdminController::class, 'getQueuedEmails'])
@@ -803,6 +811,10 @@ Route::middleware(['auth:sanctum,web'])->prefix('email-admin')->group(function (
     
     Route::post('emails/{emailId}/reject', [EmailAdminController::class, 'rejectQueuedEmail'])
         ->name('email-admin.reject-email');
+    
+    // Check unprocessed emails for domain mappings
+    Route::post('check-domain-mappings', [EmailAdminController::class, 'checkDomainMappings'])
+        ->name('email-admin.check-domain-mappings');
     
     // Debug endpoint (temporary)
     Route::get('debug-config', [EmailAdminController::class, 'debugEmailConfig'])

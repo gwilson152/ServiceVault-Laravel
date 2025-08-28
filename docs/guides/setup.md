@@ -27,7 +27,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-### 3. Database Setup
+### 3. Database Setup (Consolidated Migration System)
 
 ```bash
 # Configure database in .env
@@ -38,13 +38,36 @@ DB_DATABASE=servicevault
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
 
-# Run consolidated migrations (development)
+# Fresh deployment - creates complete schema
 php artisan migrate:fresh --seed
 ```
 
-**✅ Consolidated Migration System**: Service Vault uses 8 comprehensive migration files that create the complete database schema without modification migrations. This ensures clean deployments and includes the composite unique constraint solution for import compatibility.
+**✅ Clean Migration Architecture (August 2025)**:
 
-**For Production**: Skip the `--seed` flag and use the setup wizard instead.
+Service Vault implements a **consolidated migration system** with no migration history baggage:
+
+- **8 Comprehensive Migrations**: Replaced 87+ fragmented migrations with logical, comprehensive files
+- **Fresh Deployments**: `migrate:fresh` creates complete schema without incremental changes
+- **FreeScout Import Ready**: Built-in composite unique constraint `(email, user_type)` allows duplicate emails across user types
+- **PostgreSQL Optimized**: UUID primary keys, external IDs for import system, and PostgreSQL-specific optimizations
+- **Production Ready**: Enterprise-grade schema suitable for immediate deployment
+
+**Migration Files**:
+```
+├── 0001_01_01_000003_create_core_user_and_account_management.php
+├── 0001_01_01_000004_create_permission_and_role_management.php  
+├── 0001_01_01_000005_create_ticket_and_service_management.php
+├── 0001_01_01_000006_create_timer_and_time_entry_system.php
+├── 0001_01_01_000007_create_billing_and_invoice_system.php
+├── 0001_01_01_000008_create_universal_import_system.php
+├── 0001_01_01_000009_create_email_management_system.php
+└── 0001_01_01_000010_create_system_configuration_and_utilities.php
+```
+
+**For Production**: Skip the `--seed` flag and use the setup wizard instead:
+```bash
+php artisan migrate:fresh
+```
 
 ### 4. Initial Setup Wizard
 

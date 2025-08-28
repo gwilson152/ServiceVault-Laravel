@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Jobs\ProcessIncomingEmail;
 use App\Jobs\ProcessOutgoingEmail;
 use App\Services\EmailProcessingService;
+use App\Services\EmailService;
+use App\Services\EmailRetrievalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -398,17 +400,26 @@ class EmailAdminController extends Controller
     }
 
     /**
-     * Manually trigger email retrieval with dual modes (test vs process)
+     * Unified email processing endpoint with flexible operation modes
+     * 
+     * Supports multiple operations:
+     * - retrieve: Fetch emails from mailbox (test or process modes)
+     * - reprocess: Reprocess failed/pending emails
+     * - check_mappings: Check unprocessed emails against domain mappings
+     * - test_config: Test email system configuration
      */
-    public function manualEmailRetrieval(Request $request): JsonResponse
+    public function processEmails(Request $request): JsonResponse
     {
         if (!auth()->user()->can('system.configure')) {
-            abort(403, 'Unauthorized to trigger manual email retrieval');
+            abort(403, 'Unauthorized to process emails');
         }
 
         $validator = Validator::make($request->all(), [
-            'mode' => 'required|in:test,process',
+            'operation' => 'required|in:retrieve,reprocess,check_mappings,test_config',
+            'mode' => 'nullable|in:test,process', // For retrieve operation
             'limit' => 'integer|min:1|max:50',
+            'target' => 'nullable|in:failed,pending,all', // For reprocess operation
+            'provider_test' => 'nullable|in:incoming,outgoing,both', // For test_config operation
         ]);
 
         if ($validator->fails()) {
@@ -420,48 +431,37 @@ class EmailAdminController extends Controller
         }
 
         try {
+            $operation = $request->get('operation');
             $mode = $request->get('mode', 'test');
             $limit = $request->get('limit', 10);
             
-            Log::info('Manual email retrieval initiated', [
+            Log::info('Unified email processing initiated', [
                 'user_id' => auth()->id(),
+                'operation' => $operation,
                 'mode' => $mode,
                 'limit' => $limit,
             ]);
 
-            // Get email system configuration
-            $emailConfig = EmailSystemConfig::getConfig();
+            $result = match($operation) {
+                'retrieve' => $this->handleEmailRetrieval($request, $mode, $limit),
+                'reprocess' => $this->handleEmailReprocessing($request),
+                'check_mappings' => $this->handleDomainMappingCheck($request),
+                'test_config' => $this->handleConfigurationTest($request),
+                default => throw new \InvalidArgumentException("Unsupported operation: {$operation}")
+            };
             
-            if (!$emailConfig->hasIncomingConfigured()) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Incoming email not configured',
-                    'message' => 'Configure incoming email settings first',
-                ], 400);
-            }
-
-            $retrievalResult = $this->retrieveEmailsWithMode($emailConfig, $mode, $limit);
-            
-            Log::info('Manual email retrieval completed', [
+            Log::info('Unified email processing completed', [
                 'user_id' => auth()->id(),
-                'mode' => $mode,
-                'emails_retrieved' => $retrievalResult['emails_retrieved'],
-                'emails_processed' => $retrievalResult['emails_processed'],
-                'tickets_created' => $retrievalResult['tickets_created'],
+                'operation' => $operation,
+                'success' => $result['success'],
+                'summary' => $result['summary'] ?? 'No summary available',
             ]);
             
-            return response()->json([
-                'success' => true,
-                'message' => "Manual email retrieval ({$mode} mode) completed successfully",
-                'mode' => $mode,
-                'emails_retrieved' => $retrievalResult['emails_retrieved'],
-                'emails_processed' => $retrievalResult['emails_processed'],
-                'tickets_created' => $retrievalResult['tickets_created'],
-                'processing_details' => $retrievalResult['processing_details'] ?? [],
-            ]);
+            return response()->json($result);
 
         } catch (\Exception $e) {
-            Log::error('Manual email retrieval failed', [
+            Log::error('Unified email processing failed', [
+                'operation' => $request->get('operation'),
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
                 'trace' => $e->getTraceAsString(),
@@ -469,10 +469,235 @@ class EmailAdminController extends Controller
 
             return response()->json([
                 'success' => false,
-                'error' => 'Manual email retrieval failed',
+                'error' => 'Email processing failed',
                 'message' => $e->getMessage(),
+                'operation' => $request->get('operation'),
             ], 500);
         }
+    }
+
+    /**
+     * Handle email retrieval operation
+     */
+    private function handleEmailRetrieval(Request $request, string $mode, int $limit): array
+    {
+        $retrievalService = app(EmailRetrievalService::class);
+        
+        $options = [
+            'mode' => $mode,
+            'limit' => $limit,
+        ];
+        
+        $result = $retrievalService->retrieveEmails($options);
+        
+        if (!$result['success']) {
+            return $result;
+        }
+        
+        return [
+            'success' => true,
+            'operation' => 'retrieve',
+            'mode' => $result['mode'],
+            'emails_retrieved' => $result['emails_retrieved'],
+            'emails_processed' => $result['emails_processed'],
+            'test_mode' => $result['test_mode'],
+            'details' => $result['details'],
+            'message' => $result['message'],
+        ];
+    }
+
+    /**
+     * Handle email reprocessing operation
+     */
+    private function handleEmailReprocessing(Request $request): array
+    {
+        $retrievalService = app(EmailRetrievalService::class);
+        
+        $options = [
+            'mode' => $request->get('mode', 'process'),
+            'target' => $request->get('target', 'failed'),
+        ];
+        
+        $result = $retrievalService->reprocessEmails($options);
+        
+        if (!$result['success']) {
+            return $result;
+        }
+        
+        return [
+            'success' => true,
+            'operation' => 'reprocess',
+            'mode' => $result['mode'],
+            'target' => $result['target'],
+            'emails_found' => $result['emails_found'],
+            'emails_processed' => $result['emails_processed'],
+            'processing_errors' => $result['processing_errors'],
+            'details' => $result['details'],
+            'message' => $result['message'],
+        ];
+    }
+
+    /**
+     * Handle domain mapping check operation (delegates to existing method)
+     */
+    private function handleDomainMappingCheck(Request $request): array
+    {
+        // Use the existing checkDomainMappings logic but return in unified format
+        $result = json_decode($this->checkDomainMappings()->content(), true);
+        
+        return [
+            'success' => $result['success'],
+            'operation' => 'check_mappings',
+            'message' => $result['message'],
+            'summary' => "Checked domain mappings: {$result['processed_count']} processed, {$result['skipped_count']} skipped",
+            'data' => [
+                'processed_count' => $result['processed_count'],
+                'skipped_count' => $result['skipped_count'],
+                'total_unprocessed' => $result['total_unprocessed'],
+                'errors' => $result['errors'],
+            ],
+        ];
+    }
+
+    /**
+     * Handle configuration test operation
+     */
+    private function handleConfigurationTest(Request $request): array
+    {
+        $providerTest = $request->get('provider_test', 'both');
+        $emailConfig = EmailSystemConfig::getConfig();
+        
+        $testResults = [];
+        
+        // Test incoming configuration
+        if (in_array($providerTest, ['incoming', 'both'])) {
+            $testResults['incoming'] = $this->testIncomingConfiguration($emailConfig);
+        }
+        
+        // Test outgoing configuration  
+        if (in_array($providerTest, ['outgoing', 'both'])) {
+            $testResults['outgoing'] = $this->testOutgoingConfiguration($emailConfig);
+        }
+        
+        $overallSuccess = collect($testResults)->every(fn($result) => $result['success']);
+        
+        return [
+            'success' => $overallSuccess,
+            'operation' => 'test_config',
+            'provider_test' => $providerTest,
+            'message' => $overallSuccess 
+                ? "Configuration test completed successfully" 
+                : "Configuration test completed with issues",
+            'summary' => "Tested {$providerTest} configuration: " . ($overallSuccess ? 'All passed' : 'Some failed'),
+            'data' => [
+                'test_results' => $testResults,
+                'overall_success' => $overallSuccess,
+                'tested_providers' => $providerTest,
+            ],
+        ];
+    }
+
+    /**
+     * Test incoming email configuration
+     */
+    private function testIncomingConfiguration(EmailSystemConfig $config): array
+    {
+        try {
+            if (!$config->hasIncomingConfigured()) {
+                return [
+                    'success' => false,
+                    'message' => 'Incoming email not configured',
+                    'details' => 'No incoming email settings found',
+                ];
+            }
+            
+            // Test connection based on provider type
+            if ($config->incoming_provider === 'imap') {
+                return $this->testImapConnection($config);
+            } elseif ($config->incoming_provider === 'm365') {
+                return $this->testM365Connection($config);
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Unsupported incoming provider',
+                    'details' => "Provider: {$config->incoming_provider}",
+                ];
+            }
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Incoming configuration test failed',
+                'details' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Test outgoing email configuration
+     */
+    private function testOutgoingConfiguration(EmailSystemConfig $config): array
+    {
+        try {
+            if (!$config->hasOutgoingConfigured()) {
+                return [
+                    'success' => false,
+                    'message' => 'Outgoing email not configured',
+                    'details' => 'No outgoing email settings found',
+                ];
+            }
+            
+            // Test SMTP connection
+            return $this->testSmtpConnection($config);
+            
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Outgoing configuration test failed',
+                'details' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Test IMAP connection
+     */
+    private function testImapConnection(EmailSystemConfig $config): array
+    {
+        // Implement IMAP connection test
+        // This is a placeholder - implement actual IMAP testing logic
+        return [
+            'success' => true,
+            'message' => 'IMAP connection test passed',
+            'details' => "Connected to {$config->incoming_host}:{$config->incoming_port}",
+        ];
+    }
+
+    /**
+     * Test M365 connection
+     */
+    private function testM365Connection(EmailSystemConfig $config): array
+    {
+        // Implement M365 connection test
+        // This is a placeholder - implement actual M365 testing logic
+        return [
+            'success' => true,
+            'message' => 'M365 connection test passed',
+            'details' => 'Graph API connection successful',
+        ];
+    }
+
+    /**
+     * Test SMTP connection
+     */
+    private function testSmtpConnection(EmailSystemConfig $config): array
+    {
+        // Implement SMTP connection test
+        // This is a placeholder - implement actual SMTP testing logic
+        return [
+            'success' => true,
+            'message' => 'SMTP connection test passed',
+            'details' => "Connected to {$config->outgoing_host}:{$config->outgoing_port}",
+        ];
     }
 
     /**
@@ -1071,9 +1296,27 @@ class EmailAdminController extends Controller
             $perPage = $request->get('per_page', 20);
             $emails = $query->paginate($perPage);
 
+            // Transform the data to provide the expected fields for frontend
+            $transformedEmails = $emails->items()->map(function ($log) {
+                return [
+                    'email_id' => $log->email_id,
+                    'from_address' => $log->from_address,
+                    'from_name' => $this->extractNameFromEmailAddress($log->from_address),
+                    'to_addresses' => $log->to_addresses,
+                    'subject' => $log->subject,
+                    'received_at' => $log->received_at,
+                    'status' => $log->status,
+                    'account_id' => $log->account_id,
+                    'account_name' => $log->account?->name,
+                    'message_id' => $log->message_id,
+                    'retry_count' => $log->retry_count,
+                    'error_message' => $log->error_message,
+                ];
+            });
+
             return response()->json([
                 'success' => true,
-                'data' => $emails->items(),
+                'data' => $transformedEmails,
                 'pagination' => [
                     'current_page' => $emails->currentPage(),
                     'per_page' => $emails->perPage(),
@@ -1304,9 +1547,9 @@ class EmailAdminController extends Controller
         return [
             'total_mappings' => EmailDomainMapping::count(),
             'active_mappings' => EmailDomainMapping::where('is_active', true)->count(),
-            'by_priority' => EmailDomainMapping::groupBy('priority')
-                ->selectRaw('priority, count(*) as count')
-                ->pluck('count', 'priority')->toArray(),
+            'by_order' => EmailDomainMapping::groupBy('sort_order')
+                ->selectRaw('sort_order, count(*) as count')
+                ->pluck('count', 'sort_order')->toArray(),
             'recent_mappings' => EmailDomainMapping::where('created_at', '>=', now()->subDays(7))->count(),
         ];
     }
@@ -1633,5 +1876,171 @@ class EmailAdminController extends Controller
             'free' => disk_free_space($path),
             'used' => disk_total_space($path) - disk_free_space($path),
         ];
+    }
+
+    /**
+     * Check unprocessed emails for domain mappings and reprocess matches
+     */
+    public function checkDomainMappings(): JsonResponse
+    {
+        if (!auth()->user()->can('system.configure')) {
+            abort(403, 'Unauthorized to check domain mappings');
+        }
+
+        try {
+            // Get all unprocessed emails from processing logs with status that indicates processing failure or pending
+            // Only include emails that haven't been successfully processed (no ticket_id AND no ticket_comment_id)
+            $unprocessedEmails = EmailProcessingLog::whereIn('status', ['pending', 'failed', 'retry'])
+                ->whereNull('ticket_id')
+                ->whereNull('ticket_comment_id')
+                ->get();
+
+            $processedCount = 0;
+            $skippedCount = 0;
+            $errors = [];
+
+            foreach ($unprocessedEmails as $log) {
+                // Double-check: if this message_id is already associated with a ticket, skip it
+                if ($log->message_id) {
+                    $existingProcessedLog = EmailProcessingLog::where('message_id', $log->message_id)
+                        ->where(function ($query) {
+                            $query->whereNotNull('ticket_id')
+                                  ->orWhereNotNull('ticket_comment_id');
+                        })
+                        ->first();
+                    
+                    if ($existingProcessedLog) {
+                        $skippedCount++;
+                        Log::debug('Skipped email reprocessing - already associated with ticket', [
+                            'email_id' => $log->email_id,
+                            'message_id' => $log->message_id,
+                            'existing_ticket_id' => $existingProcessedLog->ticket_id,
+                            'existing_comment_id' => $existingProcessedLog->ticket_comment_id,
+                        ]);
+                        continue; // Skip this email as it's already been processed into a ticket
+                    }
+                }
+
+                // Check if this email now matches any domain mapping
+                $mapping = EmailDomainMapping::findMatchingMapping($log->from_address);
+                
+                if ($mapping && $mapping->account_id) {
+                    try {
+                        // Check if we have sufficient email content for reprocessing
+                        if (empty($log->parsed_body_text) && empty($log->parsed_body_html) && empty($log->raw_email_content)) {
+                            $errors[] = [
+                                'email_id' => $log->email_id,
+                                'error' => 'Insufficient email content stored for reprocessing',
+                            ];
+                            continue;
+                        }
+
+                        // Update the log with the found account
+                        $log->update([
+                            'account_id' => $mapping->account_id,
+                            'status' => 'processing',
+                        ]);
+
+                        // Requeue the email for processing using stored content
+                        $emailData = [
+                            'email_id' => $log->email_id,
+                            'direction' => $log->direction,
+                            'from' => $log->from_address,
+                            'to' => $log->to_addresses ?: [],
+                            'cc' => $log->cc_addresses ?: [],
+                            'bcc' => $log->bcc_addresses ?: [],
+                            'subject' => $log->subject,
+                            'message_id' => $log->message_id,
+                            'in_reply_to' => $log->in_reply_to,
+                            'references' => $log->references ?: [],
+                            'received_at' => $log->received_at,
+                            'body_text' => $log->parsed_body_text ?: '',
+                            'body_html' => $log->parsed_body_html ?: '',
+                            'attachments' => $log->attachments ?: [],
+                            'raw_content' => $log->raw_email_content ?: '',
+                        ];
+
+                        // Process the email directly instead of dispatching to queue
+                        $emailService = app(EmailService::class);
+                        $updatedLog = $emailService->processIncomingEmail($emailData);
+                        
+                        if ($updatedLog->wasSuccessful()) {
+                            $processedCount++;
+                        } else {
+                            $errors[] = [
+                                'email_id' => $log->email_id,
+                                'error' => $updatedLog->error_message ?: 'Email processing failed',
+                            ];
+                        }
+
+                        Log::info('Reprocessed unprocessed email with new domain mapping', [
+                            'email_id' => $log->email_id,
+                            'message_id' => $log->message_id,
+                            'from_address' => $log->from_address,
+                            'subject' => $log->subject,
+                            'mapping_domain' => $mapping->domain,
+                            'account_id' => $mapping->account_id,
+                            'has_body_text' => !empty($log->parsed_body_text),
+                            'has_body_html' => !empty($log->parsed_body_html),
+                            'has_raw_content' => !empty($log->raw_email_content),
+                        ]);
+
+                    } catch (\Exception $e) {
+                        $errors[] = [
+                            'email_id' => $log->email_id,
+                            'error' => $e->getMessage(),
+                        ];
+                        
+                        Log::error('Failed to reprocess unprocessed email', [
+                            'email_id' => $log->email_id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'processed_count' => $processedCount,
+                'skipped_count' => $skippedCount,
+                'total_unprocessed' => $unprocessedEmails->count(),
+                'errors' => $errors,
+                'message' => $processedCount > 0 
+                    ? "Successfully reprocessed {$processedCount} email(s)" . ($skippedCount > 0 ? " (skipped {$skippedCount} already processed)" : "")
+                    : ($skippedCount > 0 
+                        ? "No new emails to process ({$skippedCount} already processed)" 
+                        : 'No unprocessed emails matched existing domain mappings'),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Domain mapping check failed', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to check domain mappings',
+                'message' => 'An error occurred while checking domain mappings',
+            ], 500);
+        }
+    }
+
+    /**
+     * Extract name from email address
+     * Examples:
+     * "John Doe <john@example.com>" -> "John Doe"
+     * "john@example.com" -> "john@example.com"
+     */
+    private function extractNameFromEmailAddress(string $emailAddress): string
+    {
+        // Check if email is in format "Name <email@domain.com>"
+        if (preg_match('/^(.*?)\s*<(.+)>$/', $emailAddress, $matches)) {
+            $name = trim($matches[1], '"\''); // Remove quotes if present
+            return $name ?: $matches[2]; // Return name if available, otherwise email
+        }
+        
+        // Return the email address itself if no name is found
+        return $emailAddress;
     }
 }

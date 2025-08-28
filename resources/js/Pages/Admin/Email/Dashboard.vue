@@ -149,7 +149,7 @@
 
     <template #main-content>
       <!-- Unprocessed Emails Management Section -->
-      <div v-if="queuedEmails.length > 0 || filters.showQueuedEmails" class="mb-8">
+      <div v-if="queuedEmails.length > 0 || filters.showQueuedEmails" class="mb-8" data-section="unprocessed-emails">
         <div class="bg-white shadow rounded-lg">
           <div class="px-4 py-5 sm:p-6">
             <div class="flex items-center justify-between mb-4">
@@ -160,6 +160,15 @@
                 </p>
               </div>
               <div class="flex items-center space-x-3">
+                <button
+                  @click="checkForDomainMappings"
+                  :disabled="checkingDomainMappings"
+                  class="inline-flex items-center px-3 py-2 border border-green-300 text-sm leading-4 font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100"
+                  title="Check if any unprocessed emails now match domain mappings"
+                >
+                  <CheckCircleIcon :class="['w-4 h-4 mr-2', checkingDomainMappings ? 'animate-spin' : '']" />
+                  {{ checkingDomainMappings ? 'Checking...' : 'Check Mappings' }}
+                </button>
                 <button
                   @click="refreshQueuedEmails"
                   :disabled="loadingQueuedEmails"
@@ -779,12 +788,9 @@
           </div>
           
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Select Account</label>
-            <UnifiedSelector
-              v-model="selectedAccountForAssignment"
-              type="accounts"
-              placeholder="Choose an account"
-              class="w-full"
+            <SimpleAccountUserSelector
+              v-model:accountId="selectedAccountIdForAssignment"
+              :showUserSelector="false"
             />
           </div>
           
@@ -797,7 +803,7 @@
             </button>
             <button
               @click="confirmAssignment"
-              :disabled="!selectedAccountForAssignment || assigningEmail"
+              :disabled="!selectedAccountIdForAssignment || assigningEmail"
               class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
             >
               {{ assigningEmail ? 'Assigning...' : 'Assign Email' }}
@@ -850,6 +856,7 @@ import StandardPageLayout from '@/Layouts/StandardPageLayout.vue'
 import FilterSection from '@/Components/Layout/FilterSection.vue'
 import MultiSelect from '@/Components/UI/MultiSelect.vue'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
+import SimpleAccountUserSelector from '@/Components/UI/SimpleAccountUserSelector.vue'
 import EmailSystemSettingsModal from './Components/EmailSystemSettingsModal.vue'
 import ProcessingLogsModal from './Components/ProcessingLogsModal.vue'
 import SystemHealthModal from './Components/SystemHealthModal.vue'
@@ -862,12 +869,14 @@ defineOptions({
 // State
 const refreshing = ref(false)
 const loadingQueuedEmails = ref(false)
+const checkingDomainMappings = ref(false)
 const queuedEmails = ref([])
 const showEmailPreview = ref(false)
 const showAssignModal = ref(false)
 const selectedEmail = ref(null)
 const emailToAssign = ref(null)
 const selectedAccountForAssignment = ref(null)
+const selectedAccountIdForAssignment = ref(null)
 const assigningEmail = ref(false)
 const healthChecking = ref(false)
 const queueRefreshing = ref(false)
@@ -1087,10 +1096,11 @@ function closeAssignModal() {
   showAssignModal.value = false
   emailToAssign.value = null
   selectedAccountForAssignment.value = null
+  selectedAccountIdForAssignment.value = null
 }
 
 async function confirmAssignment() {
-  if (!emailToAssign.value || !selectedAccountForAssignment.value) return
+  if (!emailToAssign.value || !selectedAccountIdForAssignment.value) return
   
   assigningEmail.value = true
   try {
@@ -1101,7 +1111,7 @@ async function confirmAssignment() {
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
       },
       body: JSON.stringify({
-        account_id: selectedAccountForAssignment.value.id,
+        account_id: selectedAccountIdForAssignment.value,
         reason: 'Manual assignment from admin dashboard'
       })
     })
@@ -1278,6 +1288,46 @@ function showUnprocessedEmails() {
   }, 100)
 }
 
+async function checkForDomainMappings() {
+  if (queuedEmails.value.length === 0) {
+    alert('No unprocessed emails to check.')
+    return
+  }
+
+  checkingDomainMappings.value = true
+  try {
+    const response = await fetch('/api/email-admin/process-emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        operation: 'check_mappings'
+      })
+    })
+    
+    if (response.ok) {
+      const result = await response.json()
+      if (result.processed_count > 0) {
+        alert(`Successfully reprocessed ${result.processed_count} email(s) that now match domain mappings.`)
+        // Refresh the queued emails list to remove processed ones
+        await refreshQueuedEmails()
+      } else {
+        alert('No unprocessed emails matched existing domain mappings.')
+      }
+    } else {
+      const error = await response.json()
+      alert(`Failed to check domain mappings: ${error.message || 'Unknown error'}`)
+    }
+  } catch (error) {
+    console.error('Error checking domain mappings:', error)
+    alert('Failed to check domain mappings: Network error')
+  } finally {
+    checkingDomainMappings.value = false
+  }
+}
+
 function exportLogs() {
   // Implement log export functionality
   const params = new URLSearchParams(filters)
@@ -1300,13 +1350,14 @@ async function manualEmailRetrieval(mode = 'test') {
 
   retrievingEmails.value = true
   try {
-    const response = await fetch('/api/email-admin/manual-retrieval', {
+    const response = await fetch('/api/email-admin/process-emails', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
       },
       body: JSON.stringify({
+        operation: 'retrieve',
         mode: mode,
         limit: 10 // Default limit
       })

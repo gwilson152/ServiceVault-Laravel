@@ -10,7 +10,7 @@
         Set limits for each data type to control the size of your import. Leave empty for no limit.
       </p>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Conversations Limit -->
         <div>
           <label for="conversations-limit" class="block text-sm font-medium text-gray-700 mb-2">
@@ -27,23 +27,8 @@
           <p class="mt-1 text-xs text-gray-500">
             Available: {{ statistics.conversations.toLocaleString() }}
           </p>
-        </div>
-
-        <!-- Time Entries Limit -->
-        <div>
-          <label for="time-entries-limit" class="block text-sm font-medium text-gray-700 mb-2">
-            Time Entries
-          </label>
-          <input
-            id="time-entries-limit"
-            v-model.number="localConfig.limits.time_entries"
-            type="number"
-            min="0"
-            placeholder="No limit"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-          <p class="mt-1 text-xs text-gray-500">
-            Available: {{ statistics.time_entries.toLocaleString() }}
+          <p class="mt-1 text-xs text-blue-600">
+            Time entries will be imported automatically with conversations
           </p>
         </div>
 
@@ -143,44 +128,59 @@
       </div>
     </div>
 
-    <!-- Agent Access Configuration Section -->
+    <!-- Agent Role Configuration Section -->
     <div class="bg-white border border-gray-200 rounded-lg p-6">
       <div class="flex items-center mb-4">
         <UserGroupIcon class="w-5 h-5 text-gray-400 mr-2" />
-        <h3 class="text-lg font-medium text-gray-900">Agent Access Configuration</h3>
+        <h3 class="text-lg font-medium text-gray-900">Agent Role Configuration</h3>
       </div>
       <p class="text-sm text-gray-600 mb-4">
-        Configure which accounts imported agents can access in Service Vault.
+        Configure how imported FreeScout users should be assigned agent roles in Service Vault.
       </p>
 
       <div class="space-y-4">
         <label class="relative flex items-start">
           <div class="flex items-center h-5">
             <input
-              v-model="localConfig.agent_access"
-              value="all_accounts"
+              v-model="localConfig.agent_role_strategy"
+              value="standard_agent"
               type="radio"
               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
             />
           </div>
           <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">All accounts (recommended)</div>
-            <div class="text-sm text-gray-500">Imported agents can access all accounts created during import. Most flexible for team collaboration.</div>
+            <div class="text-sm font-medium text-gray-900">Standard Agent role (recommended)</div>
+            <div class="text-sm text-gray-500">Import FreeScout users with the standard Agent role template. Provides system-wide access based on role permissions.</div>
           </div>
         </label>
 
         <label class="relative flex items-start">
           <div class="flex items-center h-5">
             <input
-              v-model="localConfig.agent_access"
-              value="primary_account"
+              v-model="localConfig.agent_role_strategy"
+              value="selective_import"
               type="radio"
               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
             />
           </div>
           <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Primary account only</div>
-            <div class="text-sm text-gray-500">Limit agent access to their primary account. More restrictive but better for data separation.</div>
+            <div class="text-sm font-medium text-gray-900">Selective import</div>
+            <div class="text-sm text-gray-500">Choose specific FreeScout users to import as agents. Non-selected users will be imported as account users for customer data.</div>
+          </div>
+        </label>
+
+        <label class="relative flex items-start">
+          <div class="flex items-center h-5">
+            <input
+              v-model="localConfig.agent_role_strategy"
+              value="skip_agents"
+              type="radio"
+              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+            />
+          </div>
+          <div class="ml-3">
+            <div class="text-sm font-medium text-gray-900">Skip agent import</div>
+            <div class="text-sm text-gray-500">Don't import FreeScout users as agents. All imported tickets and data will be unassigned or assigned to the current user.</div>
           </div>
         </label>
       </div>

@@ -81,6 +81,14 @@ class ImportJob extends Model
     }
 
     /**
+     * Get the user who started this import job.
+     */
+    public function startedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'started_by');
+    }
+
+    /**
      * Check if the job is currently running.
      */
     public function isRunning(): bool
@@ -169,7 +177,7 @@ class ImportJob extends Model
      */
     public function markAsCompleted(): void
     {
-        $duration = $this->started_at ? (int) now()->diffInSeconds($this->started_at) : null;
+        $duration = $this->started_at ? (int) $this->started_at->diffInSeconds(now()) : null;
         $this->update([
             'status' => 'completed',
             'completed_at' => now(),
@@ -184,7 +192,7 @@ class ImportJob extends Model
      */
     public function markAsFailed(?string $error = null): void
     {
-        $duration = $this->started_at ? (int) now()->diffInSeconds($this->started_at) : null;
+        $duration = $this->started_at ? (int) $this->started_at->diffInSeconds(now()) : null;
         $errors = $this->errors ?: [];
         if ($error) {
             $errors[] = $error;
@@ -210,7 +218,13 @@ class ImportJob extends Model
         if (is_string($totalOrOperation) && $operation === null) {
             // Legacy call: (percentage, operation)
             $percentage = $processedOrPercentage;
-            // Don't update database for legacy percentage calls, just broadcast
+            
+            // Update legacy progress fields for backward compatibility
+            $this->update([
+                'progress_percentage' => $percentage,
+                'current_operation' => $totalOrOperation
+            ]);
+            
             broadcast(new \App\Events\ImportProgressUpdated($this))->toOthers();
             return;
         }

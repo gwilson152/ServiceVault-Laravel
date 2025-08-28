@@ -10,7 +10,7 @@ The universal import system enables administrators to migrate data from any Post
 -   **Visual Query Builder** for custom database structures
 -   **Advanced JOIN Support** for complex multi-table relationships
 -   **Real-Time Progress Tracking** with WebSocket updates
--   **✅ Duplicate Email Support** - Composite unique constraint allows same email for different user types
+-   **✅ FreeScout Import Ready** - Composite unique constraint solution resolves duplicate email issues
 
 ## Key Features
 
@@ -221,6 +221,36 @@ Service Vault now provides a **unified import preview experience** that intellig
 2. **Click "Execute Import"** - Progress dialog opens immediately
 3. **Monitor Progress** - Real-time job creation and execution feedback
 4. **Completion Handling** - Success confirmation with option to view import jobs
+
+## FreeScout Import Solution ✅
+
+### Composite Constraint Solution (August 2025)
+
+Service Vault has **completely resolved FreeScout duplicate email issues** through a consolidated database migration system with a composite unique constraint:
+
+**The Problem**: FreeScout allows both agents and customers to share the same email address (e.g., `john@company.com` can be both an agent and a customer). Service Vault's original schema prevented this with a simple unique constraint on the email field.
+
+**The Solution**: Implemented composite unique constraint `(email, user_type)` in the users table:
+
+```sql
+-- Consolidated migration creates users table with composite constraint
+CREATE UNIQUE INDEX users_email_user_type_partial_unique 
+ON users (email, user_type) WHERE email IS NOT NULL;
+```
+
+**Benefits**:
+- ✅ **Same Email, Different Types**: `john@company.com` can exist as both `agent` and `account_user`
+- ✅ **Prevents True Duplicates**: Cannot have duplicate `john@company.com` agents
+- ✅ **FreeScout Ready**: Direct import from FreeScout without email conflicts
+- ✅ **Production Tested**: Consolidated migration system includes this solution from deployment
+
+**Import Flow**:
+```
+FreeScout Users Table → Service Vault agents (user_type: 'agent')
+FreeScout Customers Table → Service Vault account_users (user_type: 'account_user')
+```
+
+Both can share emails without constraint violations.
 
 ## Platform Templates
 

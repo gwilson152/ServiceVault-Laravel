@@ -409,6 +409,75 @@ const getDefaultStatuses = () => {
 
 ## Database Design
 
+### Consolidated Migration System (Production-Ready)
+
+Service Vault implements a clean, consolidated database migration architecture designed for enterprise-grade deployments:
+
+**Migration Structure**:
+```
+database/migrations/
+├── 0001_01_01_000000_create_users_table.php          # Laravel framework
+├── 0001_01_01_000001_create_cache_table.php          # Laravel framework  
+├── 0001_01_01_000002_create_jobs_table.php           # Laravel framework
+├── 0001_01_01_000003_create_core_user_and_account_management.php
+├── 0001_01_01_000004_create_permission_and_role_management.php
+├── 0001_01_01_000005_create_ticket_and_service_management.php
+├── 0001_01_01_000006_create_timer_and_time_entry_system.php
+├── 0001_01_01_000007_create_billing_and_invoice_system.php
+├── 0001_01_01_000008_create_universal_import_system.php
+├── 0001_01_01_000009_create_email_management_system.php
+└── 0001_01_01_000010_create_system_configuration_and_utilities.php
+```
+
+**Key Features**:
+
+**🎯 Clean Architecture**: 
+- Consolidated 87+ fragmented migrations into 8 logical, comprehensive files
+- No migration history baggage - all tables created in final structure
+- Fresh deployment creates complete schema without incremental changes
+
+**🔧 Composite Constraint Solution**:
+- Fixed FreeScout import duplicate email issues
+- `UNIQUE (email, user_type)` constraint on users table
+- Allows same email for different user types (agent vs account_user)
+- Prevents true duplicates within same user type
+
+**⚡ PostgreSQL Optimized**:
+- UUID primary keys for all user-facing entities
+- External ID fields for import system integration
+- Partial unique indexes for performance
+- PostgreSQL triggers and check constraints
+- Optimized foreign key relationships
+
+**🛠️ Import System Ready**:
+```sql
+-- Universal import support built into schema
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(255),  -- Import system integration
+    email VARCHAR(255),
+    user_type VARCHAR(50),
+    -- Composite constraint allows duplicate emails across user types
+    UNIQUE(email, user_type)
+);
+
+-- All importable models include external_id
+accounts, tickets, time_entries, etc. -- All support external_id mapping
+```
+
+**📊 Model Compatibility**:
+- Updated all Eloquent models with correct fillable fields
+- Proper relationship definitions match consolidated schema
+- Fixed all database seeders for clean data setup
+- Model casts align with PostgreSQL column types
+
+**Benefits**:
+- **Clean Development**: No migration fragmentation or conflicts
+- **Production-Ready**: Enterprise deployment without legacy migration baggage  
+- **Import-Friendly**: Full support for external system integration
+- **Performance Optimized**: PostgreSQL-specific optimizations from day one
+- **Maintainable**: Clear, logical migration organization
+
 ### Core Tables
 
 **Users & Authentication**:

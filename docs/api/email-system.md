@@ -666,6 +666,203 @@ POST /api/domain-mappings/preview
 }
 ```
 
+## Unified Email Processing API
+
+### POST `/api/email-admin/process-emails`
+
+A unified endpoint that consolidates all manual email processing operations with flexible operation modes.
+
+**Authentication:** Required (Admin/Super Admin)
+
+**Parameters:**
+
+| Parameter | Type | Required | Description | Values |
+|-----------|------|----------|-------------|---------|
+| `operation` | string | Yes | Type of email operation to perform | `retrieve`, `reprocess`, `check_mappings`, `test_config` |
+| `mode` | string | No | Processing mode (for retrieve/reprocess operations) | `test`, `process` |
+| `limit` | integer | No | Maximum number of emails to process (1-50) | Default: 10 |
+| `target` | string | No | Target emails for reprocessing | `failed`, `pending`, `all` |
+| `provider_test` | string | No | Provider type for configuration testing | `incoming`, `outgoing`, `both` |
+
+#### Operation Types
+
+##### 1. Email Retrieval (`retrieve`)
+Manually fetch new emails from configured email sources.
+
+**Request:**
+```json
+{
+  "operation": "retrieve",
+  "mode": "test",
+  "limit": 10
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "operation": "retrieve",
+  "mode": "test",
+  "emails_retrieved": 5,
+  "emails_processed": 0,
+  "test_mode": true,
+  "details": {
+    "new_emails": 5,
+    "duplicates_skipped": 2,
+    "processing_errors": 0
+  },
+  "message": "Email retrieval completed successfully"
+}
+```
+
+##### 2. Email Reprocessing (`reprocess`)
+Reprocess previously failed or queued emails.
+
+**Request:**
+```json
+{
+  "operation": "reprocess",
+  "mode": "process",
+  "target": "failed"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "operation": "reprocess",
+  "mode": "process",
+  "emails_found": 12,
+  "emails_processed": 10,
+  "processing_errors": 2,
+  "target": "failed",
+  "details": {
+    "tickets_created": 8,
+    "comments_added": 2,
+    "errors": [
+      {
+        "email_id": "uuid-123",
+        "error": "Invalid sender domain"
+      }
+    ]
+  },
+  "message": "Email reprocessing completed"
+}
+```
+
+##### 3. Domain Mapping Check (`check_mappings`)
+Check unprocessed emails against current domain mappings and reprocess matches.
+
+**Request:**
+```json
+{
+  "operation": "check_mappings"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "operation": "check_mappings",
+  "emails_checked": 25,
+  "processed_count": 8,
+  "matched_mappings": [
+    {
+      "pattern": "support@example.com",
+      "account_name": "Example Corp",
+      "emails_processed": 3
+    },
+    {
+      "pattern": "*.acme.com",
+      "account_name": "Acme Industries",
+      "emails_processed": 5
+    }
+  ],
+  "message": "Domain mapping check completed"
+}
+```
+
+##### 4. Configuration Testing (`test_config`)
+Test email system configuration and connectivity.
+
+**Request:**
+```json
+{
+  "operation": "test_config",
+  "provider_test": "both"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "operation": "test_config",
+  "provider_test": "both",
+  "results": {
+    "incoming": {
+      "status": "success",
+      "provider": "microsoft365",
+      "connection_time": 1.23,
+      "folders_accessible": 5,
+      "test_message": "Successfully connected to Microsoft 365"
+    },
+    "outgoing": {
+      "status": "success", 
+      "provider": "smtp",
+      "connection_time": 0.89,
+      "test_email_sent": true,
+      "test_message": "SMTP connection successful"
+    }
+  },
+  "message": "Configuration testing completed"
+}
+```
+
+#### Error Responses
+
+**400 Bad Request:**
+```json
+{
+  "success": false,
+  "error": "Validation failed",
+  "message": "The operation field is required.",
+  "errors": {
+    "operation": ["The operation field is required."]
+  }
+}
+```
+
+**422 Validation Error:**
+```json
+{
+  "success": false,
+  "error": "Invalid operation",
+  "message": "The selected operation is invalid.",
+  "valid_operations": ["retrieve", "reprocess", "check_mappings", "test_config"]
+}
+```
+
+**500 Server Error:**
+```json
+{
+  "success": false,
+  "error": "Processing failed",
+  "message": "Email processing encountered an unexpected error",
+  "details": "Connection timeout to email server"
+}
+```
+
+#### Legacy Endpoints (Deprecated)
+
+The following endpoints are deprecated and will be removed in a future version. Use the unified `/api/email-admin/process-emails` endpoint instead:
+
+- `POST /api/email-admin/manual-retrieval` → Use `operation: "retrieve"`
+- `POST /api/email-admin/check-domain-mappings` → Use `operation: "check_mappings"`
+
 ## Email Administration
 
 ### Dashboard Data

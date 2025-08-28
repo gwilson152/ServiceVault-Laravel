@@ -4,24 +4,55 @@ Complete database schema documentation for Service Vault's **consolidated Postgr
 
 ## Migration System
 
-### Consolidated Migration Architecture ✅
+### Consolidated Migration Architecture ✅ (August 2025)
 
-Service Vault uses a **consolidated migration system** with 8 comprehensive migration files that establish the complete database schema without modification migrations:
+Service Vault implements a **consolidated migration system** that replaced 87+ fragmented migrations with 8 logical, comprehensive migration files for enterprise-grade deployments:
 
-1. **`0001_01_01_000003`** - Core user and account management
-2. **`0001_01_01_000004`** - Permission and role management
-3. **`0001_01_01_000005`** - Ticket and service management
-4. **`0001_01_01_000006`** - Timer and time entry system
-5. **`0001_01_01_000007`** - Billing and invoice system
-6. **`0001_01_01_000008`** - Universal import system
-7. **`0001_01_01_000009`** - Email management system
-8. **`0001_01_01_000010`** - System configuration and utilities
+**Migration Structure**:
+```
+database/migrations/
+├── 0001_01_01_000000_create_users_table.php          # Laravel framework
+├── 0001_01_01_000001_create_cache_table.php          # Laravel framework  
+├── 0001_01_01_000002_create_jobs_table.php           # Laravel framework
+├── 0001_01_01_000003_create_core_user_and_account_management.php
+├── 0001_01_01_000004_create_permission_and_role_management.php
+├── 0001_01_01_000005_create_ticket_and_service_management.php
+├── 0001_01_01_000006_create_timer_and_time_entry_system.php
+├── 0001_01_01_000007_create_billing_and_invoice_system.php
+├── 0001_01_01_000008_create_universal_import_system.php
+├── 0001_01_01_000009_create_email_management_system.php
+└── 0001_01_01_000010_create_system_configuration_and_utilities.php
+```
+
+**Key Achievements**:
+
+**🎯 Clean Architecture**: 
+- Consolidated 87+ fragmented migrations into 8 logical, comprehensive files
+- No migration history baggage - all tables created with final structure
+- Fresh deployment creates complete schema without incremental changes
+
+**🔧 Composite Constraint Solution**:
+- **Fixed FreeScout import duplicate email issues**
+- `UNIQUE (email, user_type)` constraint on users table allows same email for different user types
+- Prevents true duplicates within same user type (agent vs account_user)
+
+**⚡ PostgreSQL Optimized**:
+- UUID primary keys for all user-facing entities 
+- External ID fields for import system integration
+- Partial unique indexes and check constraints
+- PostgreSQL triggers for enhanced functionality
+
+**📊 Model & Seeder Compatibility**:
+- Updated all Eloquent models with correct fillable fields and relationships
+- Fixed all database seeders to work with consolidated schema
+- Model casts align with PostgreSQL column types
 
 **Benefits**:
-- ✅ Clean deployments without migration history
-- ✅ All tables created with final structure
+- ✅ Clean deployments without migration history baggage
+- ✅ All tables created with final structure in production-ready state  
+- ✅ FreeScout import system fully functional with duplicate email handling
 - ✅ PostgreSQL-optimized with triggers and constraints
-- ✅ Production-ready schema
+- ✅ Enterprise-grade schema suitable for immediate deployment
 
 ## Core Tables
 
