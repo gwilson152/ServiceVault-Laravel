@@ -874,6 +874,9 @@ Route::prefix('email-system')->middleware(['auth'])->group(function () {
     Route::post('domain-mappings/test', [EmailSystemController::class, 'testDomainMapping'])
         ->name('email-system.domain-mappings.test');
     
+    Route::post('domain-mappings/reorder', [EmailSystemController::class, 'reorderDomainMappings'])
+        ->name('email-system.domain-mappings.reorder');
+    
     // Helper endpoints
     Route::get('pattern-examples', [EmailSystemController::class, 'getPatternExamples'])
         ->name('email-system.pattern-examples');

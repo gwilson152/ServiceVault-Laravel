@@ -10,7 +10,7 @@
         <input
           v-model="accountSearchTerm"
           type="text"
-          :placeholder="selectedAccount ? selectedAccount.name : 'Search and select an account...'"
+          :placeholder="selectedAccount ? `${selectedAccount.name}${selectedAccount.description ? ' • ' + selectedAccount.description : ''}` : 'Search and select an account...'"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           @focus="showAccountDropdown = true"
           @blur="handleAccountBlur"
@@ -42,21 +42,25 @@
             v-for="account in filteredAccounts"
             :key="account.id"
             @mousedown.prevent="selectAccount(account)"
-            class="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+            class="px-3 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
             :class="{ 'bg-blue-50': selectedAccount?.id === account.id }"
           >
             <div class="flex items-center">
-              <div :style="{ marginLeft: `${(account.depth || 0) * 16}px` }" class="flex items-center flex-1">
-                <div v-if="account.depth > 0" class="flex items-center mr-2">
-                  <div class="w-3 border-t border-gray-300"></div>
-                  <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-                
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-900">{{ account.name }}</p>
-                </div>
+              <!-- Icon -->
+              <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              
+              <!-- Content -->
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate">
+                  {{ account.name }}
+                </p>
+                <p class="text-xs text-gray-500 truncate">
+                  {{ account.description || 'Business Account' }}
+                </p>
               </div>
             </div>
           </div>
@@ -152,7 +156,7 @@ const filteredAccounts = computed(() => {
   
   const term = accountSearchTerm.value.toLowerCase()
   return accounts.value.filter(account => 
-    account.name.toLowerCase().includes(term) ||
+    account.name.toLowerCase().includes(term)
   )
 })
 
@@ -181,8 +185,8 @@ const usersByAccount = computed(() => {
 const loadAccounts = async () => {
   isLoadingAccounts.value = true
   try {
-    const response = await axios.get('/api/accounts/selector/hierarchical')
-    accounts.value = flattenHierarchy(response.data.data)
+    const response = await axios.get('/api/accounts')
+    accounts.value = response.data.data || []
   } catch (error) {
     console.error('Failed to load accounts:', error)
   } finally {
@@ -190,22 +194,6 @@ const loadAccounts = async () => {
   }
 }
 
-const flattenHierarchy = (hierarchical, depth = 0) => {
-  const flattened = []
-  
-  for (const account of hierarchical) {
-    flattened.push({
-      ...account,
-      depth
-    })
-    
-    if (account.children && account.children.length > 0) {
-      flattened.push(...flattenHierarchy(account.children, depth + 1))
-    }
-  }
-  
-  return flattened
-}
 
 const selectAccount = (account) => {
   selectedAccount.value = account

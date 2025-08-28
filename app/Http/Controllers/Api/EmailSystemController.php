@@ -96,11 +96,36 @@ class EmailSystemController extends Controller
      */
     public function getDomainMappings(): JsonResponse
     {
-        $mappings = EmailDomainMapping::with(['account', 'defaultAssignedUser', 'createdBy'])
-            ->byPriority()
+        $mappings = EmailDomainMapping::with(['account'])
+            ->byOrder()
             ->get();
 
-        return response()->json($mappings);
+        return response()->json([
+            'success' => true,
+            'data' => $mappings
+        ]);
+    }
+    
+    /**
+     * Reorder domain mappings
+     */
+    public function reorderDomainMappings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'mappings' => 'required|array',
+            'mappings.*.id' => 'required|uuid|exists:email_domain_mappings,id',
+            'mappings.*.sort_order' => 'required|integer|min:0'
+        ]);
+        
+        foreach ($validated['mappings'] as $mappingData) {
+            EmailDomainMapping::where('id', $mappingData['id'])
+                ->update(['sort_order' => $mappingData['sort_order']]);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Domain mappings reordered successfully'
+        ]);
     }
 
     /**
@@ -109,33 +134,16 @@ class EmailSystemController extends Controller
     public function createDomainMapping(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'domain_pattern' => 'required|string|max:255',
-            'pattern_type' => 'required|in:domain,email,wildcard',
+            'domain' => 'required|string|max:255',
             'account_id' => 'required|uuid|exists:accounts,id',
-            'default_assigned_user_id' => 'nullable|uuid|exists:users,id',
-            'default_category' => 'nullable|string|max:255',
-            'default_priority' => 'nullable|in:low,medium,high,urgent',
-            'auto_create_tickets' => 'boolean',
-            'send_auto_reply' => 'boolean',
-            'auto_reply_template' => 'nullable|string',
             'is_active' => 'boolean',
-            'priority' => 'integer|min:1|max:1000',
         ]);
-
-        // Validate pattern format
-        $patternErrors = EmailDomainMapping::validatePattern(
-            $validated['domain_pattern'], 
-            $validated['pattern_type']
-        );
-
-        if (!empty($patternErrors)) {
-            return response()->json([
-                'message' => 'Invalid domain pattern',
-                'errors' => ['domain_pattern' => $patternErrors]
-            ], 422);
-        }
-
-        $validated['created_by_id'] = auth()->id();
+        
+        // Domain field is already correctly named
+        
+        // Get the highest sort_order and add 10
+        $maxSortOrder = EmailDomainMapping::max('sort_order') ?? 0;
+        $validated['sort_order'] = $maxSortOrder + 10;
 
         $mapping = EmailDomainMapping::create($validated);
 
@@ -151,33 +159,12 @@ class EmailSystemController extends Controller
     public function updateDomainMapping(Request $request, EmailDomainMapping $mapping): JsonResponse
     {
         $validated = $request->validate([
-            'domain_pattern' => 'sometimes|string|max:255',
-            'pattern_type' => 'sometimes|in:domain,email,wildcard',
+            'domain' => 'sometimes|string|max:255',
             'account_id' => 'sometimes|uuid|exists:accounts,id',
-            'default_assigned_user_id' => 'nullable|uuid|exists:users,id',
-            'default_category' => 'nullable|string|max:255',
-            'default_priority' => 'nullable|in:low,medium,high,urgent',
-            'auto_create_tickets' => 'boolean',
-            'send_auto_reply' => 'boolean',
-            'auto_reply_template' => 'nullable|string',
-            'is_active' => 'boolean',
-            'priority' => 'integer|min:1|max:1000',
+            'is_active' => 'sometimes|boolean',
         ]);
-
-        // Validate pattern format if changed
-        if (isset($validated['domain_pattern']) || isset($validated['pattern_type'])) {
-            $pattern = $validated['domain_pattern'] ?? $mapping->domain_pattern;
-            $type = $validated['pattern_type'] ?? $mapping->pattern_type;
-            
-            $patternErrors = EmailDomainMapping::validatePattern($pattern, $type);
-            
-            if (!empty($patternErrors)) {
-                return response()->json([
-                    'message' => 'Invalid domain pattern',
-                    'errors' => ['domain_pattern' => $patternErrors]
-                ], 422);
-            }
-        }
+        
+        // Domain field is already correctly named
 
         $mapping->update($validated);
 

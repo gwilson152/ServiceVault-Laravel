@@ -9,6 +9,16 @@
   >
     <template #header-actions>
       <div class="flex items-center space-x-3">
+        <!-- Unprocessed Emails Button -->
+        <button
+          v-if="queuedEmails.length > 0"
+          @click="showUnprocessedEmails"
+          class="inline-flex items-center px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+        >
+          <ExclamationTriangleIcon class="w-4 h-4 mr-2" />
+          {{ queuedEmails.length }} Unprocessed Email{{ queuedEmails.length === 1 ? '' : 's' }}
+        </button>
+        
         <!-- Refresh Data -->
         <button
           @click="refreshData"
@@ -1255,6 +1265,19 @@ function showSystemHealth() {
   showHealthModal.value = true
 }
 
+function showUnprocessedEmails() {
+  // Enable the unprocessed emails filter to show the section
+  filters.showQueuedEmails = true
+  
+  // Scroll to the unprocessed emails section
+  setTimeout(() => {
+    const unprocessedSection = document.querySelector('[data-section="unprocessed-emails"]')
+    if (unprocessedSection) {
+      unprocessedSection.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, 100)
+}
+
 function exportLogs() {
   // Implement log export functionality
   const params = new URLSearchParams(filters)
@@ -1352,6 +1375,12 @@ onMounted(() => {
   // Initialize chart if canvas is available
   if (emailChart.value) {
     loadChartData()
+  }
+  
+  // Check URL parameter for showing unprocessed emails automatically
+  const urlParams = new URLSearchParams(window.location.search)
+  if (urlParams.get('showUnprocessed') === 'true') {
+    filters.showQueuedEmails = true
   }
   
   // Load queued emails if filter is enabled

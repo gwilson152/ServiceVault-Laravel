@@ -1058,6 +1058,15 @@ class EmailAdminController extends Controller
 
             // Filter out successfully processed emails
             $query->where('status', '!=', 'processed');
+            
+            // If only count is requested, return just the count
+            if ($request->boolean('count_only')) {
+                $count = $query->count();
+                return response()->json([
+                    'success' => true,
+                    'count' => $count
+                ]);
+            }
 
             $perPage = $request->get('per_page', 20);
             $emails = $query->paginate($perPage);

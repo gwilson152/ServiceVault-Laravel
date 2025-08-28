@@ -65,6 +65,22 @@
       </div>
     </div>
 
+    <!-- Unprocessed Emails Alert (if any) -->
+    <div v-if="queuedEmailsCount > 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+      <div class="flex items-start">
+        <ExclamationTriangleIcon class="h-5 w-5 text-yellow-400 mt-0.5" />
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-yellow-800">Unprocessed Emails Awaiting Review</h3>
+          <p class="text-sm text-yellow-700 mt-1">
+            You have <strong>{{ queuedEmailsCount }} emails</strong> from unmapped domains waiting for manual assignment.
+            <a :href="route('admin.email.dashboard') + '?showUnprocessed=true'" class="underline hover:no-underline">
+              View and manage them in the Admin Dashboard
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Unmapped Domain Strategy -->
     <div class="bg-white border border-gray-200 rounded-lg p-6">
       <h3 class="text-lg font-medium text-gray-900 mb-6">Unmapped Domain Strategy</h3>
@@ -118,7 +134,11 @@
               class="mr-3"
             />
             <span class="text-sm font-medium text-gray-700">Queue for Manual Review</span>
-            <p class="text-xs text-gray-500 ml-6">Hold emails for admin to manually assign domain mappings</p>
+            <p class="text-xs text-gray-500 ml-6">
+              Hold emails for admin to manually assign domain mappings
+              <br />
+              <span class="text-indigo-600 font-medium">→ Use the Email Admin Dashboard to manage queued emails</span>
+            </p>
           </label>
 
           <label>
@@ -332,7 +352,8 @@
 </template>
 
 <script setup>
-import { reactive, computed, watch } from 'vue'
+import { reactive, computed, watch, ref, onMounted } from 'vue'
+import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import UnifiedSelector from '@/Components/UI/UnifiedSelector.vue'
 
 const props = defineProps({
@@ -347,6 +368,27 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update'])
+
+// State for queued emails count
+const queuedEmailsCount = ref(0)
+
+// Load queued emails count
+const loadQueuedEmailsCount = async () => {
+  try {
+    const response = await fetch('/api/email-admin/queued-emails?count_only=true')
+    if (response.ok) {
+      const result = await response.json()
+      queuedEmailsCount.value = result.count || 0
+    }
+  } catch (error) {
+    console.warn('Could not load queued emails count:', error)
+  }
+}
+
+// Load count on mount
+onMounted(() => {
+  loadQueuedEmailsCount()
+})
 
 // Form data with defaults
 const form = reactive({

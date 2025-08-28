@@ -434,7 +434,7 @@ class FreescoutImportService
     private function determineAccountForConversation(array $conversation, array $config): ?string
     {
         if ($config['account_strategy'] === 'map_mailboxes') {
-            return $conversation['mailbox']['name'] . ' Account';
+            return ($conversation['mailbox']['name'] ?? 'Unknown') . ' Account';
         }
         
         // Domain mapping logic would go here
@@ -518,12 +518,12 @@ class FreescoutImportService
         $job->updateProgress(25, 'Processing agents...');
         $this->broadcastProgress($job, 'users', ['step' => 'agents_starting', 'access_strategy' => $config['agent_access']]);
         
-        $agentMapping = $this->processAgents($baseUrl, $headers, $config, $accountMapping);
+        $agentMapping = $this->processAgents($job, $baseUrl, $headers, $config, $accountMapping);
         
         $job->updateProgress(35, 'Processing customers...');
         $this->broadcastProgress($job, 'users', ['step' => 'customers_starting', 'agents_created' => count($agentMapping)]);
         
-        $customerMapping = $this->processCustomers($baseUrl, $headers, $config, $accountMapping);
+        $customerMapping = $this->processCustomers($job, $baseUrl, $headers, $config, $accountMapping);
         
         $importStats['users_created'] = count($agentMapping) + count($customerMapping);
         $job->updateProgress(45, "Created {$importStats['users_created']} users");
@@ -696,7 +696,7 @@ class FreescoutImportService
         return $accountMapping;
     }
 
-    private function processAgents(string $baseUrl, array $headers, array $config, array $accountMapping): array
+    private function processAgents(ImportJob $job, string $baseUrl, array $headers, array $config, array $accountMapping): array
     {
         $agentMapping = [];
         $agentRole = RoleTemplate::where('name', 'Agent')->first();
@@ -711,9 +711,15 @@ class FreescoutImportService
         if ($response->successful()) {
             $users = $response->json()['_embedded']['users'] ?? [];
             
+            // Get list of FreeScout user IDs that should be imported as agents
+            // Default to Grant and Jami Wilson (known DRIVE NW staff) if not configured
+            $selectedAgentIds = $config['selected_agent_ids'] ?? [1, 2]; // Grant Wilson, Jami Wilson
+            
             foreach ($users as $freescoutUser) {
-                // Note: /api/users endpoint only returns actual users/agents, not customers
-                // Customers are handled separately via /api/customers endpoint
+                // Only process users selected as agents in the import configuration
+                if (!in_array($freescoutUser['id'], $selectedAgentIds)) {
+                    continue; // Skip non-selected users - they'll be processed as customers
+                }
                 
                 // Check for existing user by external_id first, then by email+user_type composite
                 $existingUser = User::where('external_id', 'freescout_user_' . $freescoutUser['id'])->first();
@@ -767,7 +773,7 @@ class FreescoutImportService
                         'role_template_id' => $agentRole->id,
                         'external_id' => 'freescout_user_' . $freescoutUser['id'],
                         'is_active' => true,
-                        'visible' => true
+                        'is_visible' => true
                     ]);
 
                     $agentMapping['user_' . $freescoutUser['id']] = $user->id;
@@ -780,7 +786,7 @@ class FreescoutImportService
         return $agentMapping;
     }
 
-    private function processCustomers(string $baseUrl, array $headers, array $config, array $accountMapping): array
+    private function processCustomers(ImportJob $job, string $baseUrl, array $headers, array $config, array $accountMapping): array
     {
         $customerMapping = [];
         $customerRole = RoleTemplate::where('name', 'Account User')->first();
@@ -789,16 +795,23 @@ class FreescoutImportService
             throw new Exception('Account User role template not found');
         }
 
-        // Get FreeScout customers
-        $response = Http::withHeaders($headers)->get($baseUrl . '/api/customers');
+        // Get FreeScout users and filter for customers (non-selected agents)
+        $response = Http::withHeaders($headers)->get($baseUrl . '/api/users');
         
         if ($response->successful()) {
-            $customers = $response->json()['_embedded']['customers'] ?? [];
+            $allUsers = $response->json()['_embedded']['users'] ?? [];
+            // Default to Grant and Jami Wilson (known DRIVE NW staff) if not configured
+            $selectedAgentIds = $config['selected_agent_ids'] ?? [1, 2]; // Grant Wilson, Jami Wilson
+            
+            // Filter for users NOT selected as agents - these become customers
+            $customers = array_filter($allUsers, function($user) use ($selectedAgentIds) {
+                return !in_array($user['id'], $selectedAgentIds);
+            });
             
             foreach ($customers as $customer) {
                 // Check for existing user by external_id first, then by email+user_type composite  
                 $existingUser = User::where('external_id', 'freescout_customer_' . $customer['id'])->first();
-                $email = $customer['emails'][0]['email'] ?? null;
+                $email = $customer['email'] ?? null; // FreeScout users have direct email field, not nested
                 
                 if (!$existingUser && $email) {
                     // Also check if user exists with same email+user_type (composite constraint)
@@ -838,7 +851,7 @@ class FreescoutImportService
                         'role_template_id' => $customerRole->id,
                         'external_id' => 'freescout_customer_' . $customer['id'],
                         'is_active' => true,
-                        'visible' => true
+                        'is_visible' => true
                     ]);
 
                     $customerMapping['customer_' . $customer['id']] = $user->id;
@@ -879,7 +892,7 @@ class FreescoutImportService
                 }
 
                 // Skip if mailbox is excluded
-                if (in_array($conversation['mailbox']['id'], $config['excluded_mailboxes'] ?? [])) {
+                if (isset($conversation['mailbox']['id']) && in_array($conversation['mailbox']['id'], $config['excluded_mailboxes'] ?? [])) {
                     continue;
                 }
 
@@ -887,6 +900,16 @@ class FreescoutImportService
                 
                 if (!$existingTicket) {
                     $accountId = $this->getAccountForConversation($conversation, $config, $accountMapping);
+                    
+                    // Skip ticket creation if no valid account can be determined
+                    if (!$accountId) {
+                        Log::warning('Skipping conversation - no valid account found', [
+                            'conversation_id' => $conversation['id'] ?? 'unknown',
+                            'has_mailbox' => isset($conversation['mailbox']),
+                        ]);
+                        continue;
+                    }
+                    
                     $customerId = $customerMapping['customer_' . $conversation['customer']['id']] ?? null;
 
                     $ticket = Ticket::create([
@@ -1091,10 +1114,14 @@ class FreescoutImportService
         return reset($accountMapping) ?: null;
     }
 
-    private function getAccountForConversation(array $conversation, array $config, array $accountMapping): string
+    private function getAccountForConversation(array $conversation, array $config, array $accountMapping): ?string
     {
         if ($config['account_strategy'] === 'map_mailboxes') {
-            return $accountMapping['mailbox_' . $conversation['mailbox']['id']];
+            if (!isset($conversation['mailbox']['id'])) {
+                Log::warning('Conversation missing mailbox data', ['conversation_id' => $conversation['id'] ?? 'unknown']);
+                return null;
+            }
+            return $accountMapping['mailbox_' . $conversation['mailbox']['id']] ?? null;
         }
         
         // For domain mapping, determine from customer email
@@ -1163,4 +1190,5 @@ class FreescoutImportService
             ]);
         }
     }
+
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\AddonTemplate;
 use App\Models\BillingRate;
+use App\Models\EmailDomainMapping;
 use App\Models\RoleTemplate;
 use App\Models\Setting;
 use App\Models\TicketCategory;
@@ -232,7 +233,8 @@ class SettingController extends Controller
         $emailData['accounts'] = \App\Models\Account::select('id', 'name', 'account_type')->get();
         $emailData['role_templates'] = \App\Models\RoleTemplate::select('id', 'name', 'context')->get();
         $emailData['domain_mappings_preview'] = \App\Models\EmailDomainMapping::with('account:id,name')
-            ->select('id', 'domain', 'account_id', 'priority', 'is_active')
+            ->select('id', 'domain', 'account_id', 'sort_order', 'is_active')
+            ->byOrder()
             ->limit(5)
             ->get()
             ->map(function ($mapping) {
@@ -240,7 +242,7 @@ class SettingController extends Controller
                     'id' => $mapping->id,
                     'domain_pattern' => $mapping->domain,
                     'account_name' => $mapping->account?->name ?? 'Unknown',
-                    'priority' => $mapping->priority,
+                    'sort_order' => $mapping->sort_order,
                     'auto_create_tickets' => true, // Default for preview
                 ];
             });

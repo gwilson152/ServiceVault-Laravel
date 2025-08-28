@@ -2,33 +2,24 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
 
 class EmailDomainMapping extends Model
 {
+    use HasUuid;
     protected $fillable = [
-        'domain_pattern',
-        'pattern_type',
+        'domain',
         'account_id',
-        'default_assigned_user_id',
-        'default_category',
-        'default_priority',
-        'auto_create_tickets',
-        'send_auto_reply',
-        'auto_reply_template',
-        'custom_rules',
         'is_active',
-        'priority',
-        'created_by_id',
+        'sort_order',
     ];
 
     protected $casts = [
-        'auto_create_tickets' => 'boolean',
-        'send_auto_reply' => 'boolean',
         'is_active' => 'boolean',
-        'custom_rules' => 'array',
+        'sort_order' => 'integer',
     ];
 
     /**
@@ -64,11 +55,11 @@ class EmailDomainMapping extends Model
     }
 
     /**
-     * Scope to order by priority (highest first)
+     * Scope to order by sort order (lowest first)
      */
-    public function scopeByPriority(Builder $query): Builder
+    public function scopeByOrder(Builder $query): Builder
     {
-        return $query->orderBy('priority', 'desc');
+        return $query->orderBy('sort_order', 'asc')->orderBy('created_at', 'asc');
     }
 
     /**
@@ -78,9 +69,9 @@ class EmailDomainMapping extends Model
     {
         $domain = substr(strrchr($emailAddress, "@"), 1); // Extract domain part
         
-        // Get all active mappings ordered by priority
+        // Get all active mappings ordered by sort order
         $mappings = static::active()
-            ->byPriority()
+            ->byOrder()
             ->get();
 
         foreach ($mappings as $mapping) {
@@ -93,6 +84,41 @@ class EmailDomainMapping extends Model
     }
 
     /**
+     * Auto-detect pattern type from the domain pattern
+     */
+    public function getPatternTypeAttribute(): string
+    {
+        return static::detectPatternType($this->domain);
+    }
+    
+    /**
+     * Alias for backward compatibility
+     */
+    public function getDomainPatternAttribute(): string
+    {
+        return $this->domain;
+    }
+    
+    /**
+     * Detect pattern type from a domain pattern string
+     */
+    public static function detectPatternType(string $pattern): string
+    {
+        // Check for wildcards
+        if (str_contains($pattern, '*')) {
+            return 'wildcard';
+        }
+        
+        // Check if it's a full email address
+        if (str_contains($pattern, '@') && !str_starts_with($pattern, '@')) {
+            return 'email';
+        }
+        
+        // Default to domain pattern (@example.com or example.com)
+        return 'domain';
+    }
+
+    /**
      * Check if this mapping matches the given email address
      */
     public function matches(string $emailAddress, ?string $domain = null): bool
@@ -102,20 +128,21 @@ class EmailDomainMapping extends Model
         }
 
         $domain = $domain ?? substr(strrchr($emailAddress, "@"), 1);
+        $patternType = $this->pattern_type; // Uses the accessor above
         
-        switch ($this->pattern_type) {
+        switch ($patternType) {
             case 'email':
                 // Exact email match: support@acme.com
-                return strcasecmp($emailAddress, $this->domain_pattern) === 0;
+                return strcasecmp($emailAddress, $this->domain) === 0;
                 
             case 'domain':
-                // Domain match: @acme.com
-                $pattern = ltrim($this->domain_pattern, '@');
+                // Domain match: @acme.com or acme.com
+                $pattern = ltrim($this->domain, '@');
                 return strcasecmp($domain, $pattern) === 0;
                 
             case 'wildcard':
                 // Wildcard match: *@acme.com or *.acme.com
-                $pattern = str_replace('*', '.*', preg_quote($this->domain_pattern, '/'));
+                $pattern = str_replace('*', '.*', preg_quote($this->domain, '/'));
                 return preg_match("/^{$pattern}$/i", $emailAddress) === 1;
                 
             default:

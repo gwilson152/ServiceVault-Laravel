@@ -28,11 +28,22 @@ class ImportJob extends Model
         'completed_at',
         'duration',
         'started_by',
+        // Legacy field names for backward compatibility
+        'records_processed',
+        'records_imported',
+        'records_updated',
+        'records_skipped',
+        'records_failed',
+        'summary',
+        'progress_percentage',
+        'current_operation',
+        'created_by',
     ];
 
     protected $casts = [
         'mode_config' => 'array',
         'errors' => 'array',
+        'summary' => 'array',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'total_records' => 'integer',
@@ -42,6 +53,13 @@ class ImportJob extends Model
         'skipped_records' => 'integer',
         'updated_records' => 'integer',
         'duration' => 'integer',
+        // Legacy field casts
+        'records_processed' => 'integer',
+        'records_imported' => 'integer',
+        'records_updated' => 'integer',
+        'records_skipped' => 'integer',
+        'records_failed' => 'integer',
+        'progress_percentage' => 'integer',
     ];
 
     protected $appends = ['progress', 'import_options'];

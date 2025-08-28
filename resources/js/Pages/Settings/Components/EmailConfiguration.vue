@@ -23,6 +23,20 @@
             <ChartBarIcon class="w-4 h-4 mr-2" />
             View Monitoring Dashboard
           </a>
+          
+          <!-- Manage Unprocessed Emails (if any exist) -->
+          <div v-if="config?.unprocessed_emails_count > 0" class="relative">
+            <a
+              :href="route('admin.email.dashboard') + '?showUnprocessed=true'"
+              class="inline-flex items-center px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+            >
+              <ExclamationTriangleIcon class="w-4 h-4 mr-2" />
+              Manage Unprocessed Emails
+              <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
+                {{ config.unprocessed_emails_count }}
+              </span>
+            </a>
+          </div>
 
           <!-- Test Configuration Button -->
           <button

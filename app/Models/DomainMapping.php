@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DomainMapping extends Model
 {
+    // Specify the table name
+    protected $table = 'email_domain_mappings';
+
     /** @use HasFactory<\Database\Factories\DomainMappingFactory> */
     use HasFactory;
 
@@ -21,7 +24,7 @@ class DomainMapping extends Model
         'account_id',
         'role_template_id',
         'is_active',
-        'priority',
+        'sort_order',
         'description',
     ];
 
@@ -32,7 +35,7 @@ class DomainMapping extends Model
      */
     protected $casts = [
         'is_active' => 'boolean',
-        'priority' => 'integer',
+        'sort_order' => 'integer',
     ];
 
     /**
@@ -60,11 +63,11 @@ class DomainMapping extends Model
     }
 
     /**
-     * Scope a query to order by priority (highest first).
+     * Scope a query to order by sort order (lowest first - top to bottom).
      */
-    public function scopeByPriority($query)
+    public function scopeByOrder($query)
     {
-        return $query->orderBy('priority', 'desc')->orderBy('created_at', 'asc');
+        return $query->orderBy('sort_order', 'asc')->orderBy('created_at', 'asc');
     }
 
     /**
@@ -101,10 +104,10 @@ class DomainMapping extends Model
             return null;
         }
 
-        // Get all active domain mappings ordered by priority
+        // Get all active domain mappings ordered by sort order
         $mappings = self::active()
             ->with(['account', 'roleTemplate'])
-            ->byPriority()
+            ->byOrder()
             ->get();
 
         // Find the first matching pattern
