@@ -27,28 +27,17 @@ class FreescoutImportController extends Controller
         $validator = Validator::make($request->all(), [
             'profile_id' => 'required|exists:import_profiles,id',
             'config' => 'required|array',
-            'config.limits' => 'required|array',
-            'config.limits.conversations' => 'nullable|integer|min:1',
-            'config.limits.time_entries' => 'nullable|integer|min:1',
-            'config.limits.customers' => 'nullable|integer|min:1',
-            'config.limits.mailboxes' => 'nullable|integer|min:1',
-            'config.account_strategy' => ['required', Rule::in(['map_mailboxes', 'domain_mapping'])],
-            'config.agent_access' => ['required', Rule::in(['all_accounts', 'primary_account'])],
-            'config.unmapped_users' => [Rule::in(['auto_create', 'skip', 'default_account'])],
-            'config.time_entry_defaults' => 'required|array',
-            'config.time_entry_defaults.billable' => 'required|boolean',
-            'config.time_entry_defaults.approved' => 'required|boolean',
-            'config.billing_rate_strategy' => ['required', Rule::in(['auto_select', 'no_rate', 'fixed_rate'])],
-            'config.fixed_billing_rate_id' => 'nullable|exists:billing_rates,id',
-            'config.comment_processing' => 'required|array',
-            'config.comment_processing.preserve_html' => 'required|boolean',
-            'config.comment_processing.extract_attachments' => 'required|boolean',
-            'config.comment_processing.add_context_prefix' => 'required|boolean',
-            'config.sync_strategy' => ['required', Rule::in(['create_only', 'update_only', 'upsert'])],
-            'config.sync_mode' => ['required', Rule::in(['incremental', 'full_scan', 'hybrid'])],
-            'config.duplicate_detection' => ['required', Rule::in(['external_id', 'content_match'])],
-            'config.excluded_mailboxes' => 'array',
-            'config.excluded_mailboxes.*' => 'integer',
+            
+            // Date range filtering for conversations
+            'config.date_range' => 'required|array',
+            'config.date_range.start_date' => 'nullable|date',
+            'config.date_range.end_date' => 'nullable|date|after_or_equal:config.date_range.start_date',
+            
+            // Simplified configuration options  
+            'config.account_strategy' => ['required', Rule::in(['mailbox_per_account', 'single_account', 'domain_mapping', 'domain_mapping_strict'])],
+            'config.agent_import_strategy' => ['required', Rule::in(['create_new', 'match_existing', 'skip'])],
+            'config.continue_on_error' => 'required|boolean'
+            // Note: duplicate detection is always by external_id - no configuration needed
         ]);
 
         if ($validator->fails()) {
@@ -73,24 +62,27 @@ class FreescoutImportController extends Controller
                 ], 400);
             }
 
-            // Validate role templates exist
-            $roleValidation = $this->freescoutImportService->validateRoleTemplates();
-            if (!$roleValidation['success']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Required role templates not found',
-                    'missing_roles' => $roleValidation['missing_roles']
-                ], 400);
+            // Validate role templates exist (if creating new agents)
+            if ($config['agent_import_strategy'] === 'create_new') {
+                $roleValidation = $this->freescoutImportService->validateRoleTemplates();
+                if (!$roleValidation['success']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Required role templates not found for agent creation',
+                        'missing_roles' => $roleValidation['missing_roles']
+                    ], 400);
+                }
             }
 
-            // Validate domain mappings if using domain mapping strategy
-            if ($config['account_strategy'] === 'domain_mapping') {
+            // Validate domain mappings exist (if using domain mapping strategies)
+            if (in_array($config['account_strategy'], ['domain_mapping', 'domain_mapping_strict'])) {
                 $domainValidation = $this->freescoutImportService->validateDomainMappings();
                 if (!$domainValidation['success']) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Domain mapping validation failed',
-                        'error' => $domainValidation['error']
+                        'message' => 'Domain mapping strategy requires existing domain mappings',
+                        'error' => $domainValidation['error'],
+                        'mappings_count' => $domainValidation['mappings_count'] ?? 0
                     ], 400);
                 }
             }
@@ -103,8 +95,10 @@ class FreescoutImportController extends Controller
                 'message' => 'Configuration validated successfully',
                 'validation' => [
                     'api_connection' => $connectionTest,
-                    'role_templates' => $roleValidation,
-                    'domain_mappings' => $domainValidation ?? null,
+                    'role_templates' => $config['import_agents'] ? ($roleValidation ?? ['success' => true]) : ['success' => true, 'message' => 'Agent import disabled'],
+                    'domain_mappings' => in_array($config['account_strategy'], ['domain_mapping', 'domain_mapping_strict']) 
+                        ? ($domainValidation ?? ['success' => true]) 
+                        : ['success' => true, 'message' => 'Domain mapping not required for this strategy'],
                 ],
                 'estimates' => $estimates
             ]);

@@ -216,19 +216,31 @@ CREATE INDEX idx_tickets_due_date ON tickets(due_date);
 ```sql
 CREATE TABLE ticket_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(255) UNIQUE, -- For import system
     ticket_id UUID REFERENCES tickets(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id),
-    comment TEXT NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    parent_id UUID REFERENCES ticket_comments(id) ON DELETE CASCADE,
     is_internal BOOLEAN DEFAULT false,
+    attachments JSONB,
+    edited_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes
-CREATE INDEX idx_ticket_comments_ticket ON ticket_comments(ticket_id);
-CREATE INDEX idx_ticket_comments_user ON ticket_comments(user_id);
+CREATE INDEX idx_ticket_comments_ticket_parent ON ticket_comments(ticket_id, parent_id);
+CREATE INDEX idx_ticket_comments_user_internal ON ticket_comments(user_id, is_internal);
+CREATE INDEX idx_ticket_comments_parent ON ticket_comments(parent_id);
 CREATE INDEX idx_ticket_comments_created ON ticket_comments(created_at);
 ```
+
+**Key Features**:
+- **Comment Threading**: `parent_id` enables nested comment structures
+- **External ID**: Support for import system linking
+- **Edit Tracking**: `edited_at` timestamp for comment modifications
+- **Internal/External**: Boolean flag for comment visibility (replaces enum type)
+- **Attachments**: JSONB array for file attachments
 
 #### ticket_categories, ticket_statuses, ticket_priorities
 ```sql
@@ -457,6 +469,21 @@ CREATE TABLE email_system_config (
     max_retries INTEGER DEFAULT 3,
     processing_rules JSONB, -- Advanced processing rules
     
+    -- Post-Processing Settings (August 2025)
+    post_processing_action VARCHAR(20) DEFAULT 'none', -- none, mark_read, move_folder, delete
+    move_to_folder_id VARCHAR(255), -- Target folder ID for move operations
+    move_to_folder_name VARCHAR(255), -- Fallback folder name
+    email_retrieval_mode VARCHAR(20) DEFAULT 'unread_only', -- unread_only, all, recent
+    
+    -- Email Processing Strategy
+    enable_email_processing BOOLEAN DEFAULT true,
+    auto_create_users BOOLEAN DEFAULT true,
+    unmapped_domain_strategy VARCHAR(50) DEFAULT 'assign_default_account', -- assign_default_account, require_manual_assignment, reject_email
+    default_account_id UUID REFERENCES accounts(id),
+    default_role_template_id UUID REFERENCES role_templates(id),
+    require_email_verification BOOLEAN DEFAULT true,
+    require_admin_approval BOOLEAN DEFAULT true,
+    
     -- Testing & Monitoring
     last_tested_at TIMESTAMP,
     test_results JSONB,
@@ -473,9 +500,13 @@ CREATE UNIQUE INDEX idx_email_config_singleton ON email_system_config(id) WHERE 
 
 **Key Features**:
 - **Application-Wide**: Single configuration for entire platform
-- **Multi-Provider**: Support for multiple email services
+- **Multi-Provider**: Support for multiple email services (IMAP, SMTP, Microsoft 365, Gmail, etc.)
 - **Encrypted Credentials**: Password fields are encrypted in storage
 - **Test Integration**: Built-in configuration testing and results storage
+- **Post-Processing Actions**: Configurable email handling after processing (mark read, move, delete)
+- **Intelligent Retrieval**: Respects UI-configured email retrieval modes
+- **User Management**: Automated user creation with domain mapping and approval workflows
+- **Background Processing**: Queue-based post-processing with retry mechanisms
 
 ### email_domain_mappings
 ```sql
@@ -784,3 +815,7 @@ PostgreSQL JSONB used for:
 - Document breaking changes in migration comments
 
 For development setup and migration commands, see [Setup Guide](../guides/setup.md).
+
+---
+
+*Last Updated: August 28, 2025 - Enhanced Email System Schema & Fixed Ticket Comments Threading*

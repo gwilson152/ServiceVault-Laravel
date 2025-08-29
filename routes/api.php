@@ -465,6 +465,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('advanced', [SettingController::class, 'updateAdvancedSettings'])
             ->name('settings.advanced.update');
 
+        // Configuration Backup & Restore (Super Admin only)
+        Route::post('export', [SettingController::class, 'exportConfiguration'])
+            ->name('settings.export');
+        Route::post('validate-import', [SettingController::class, 'validateConfiguration'])
+            ->name('settings.validate-import');
+        Route::post('preview-import', [SettingController::class, 'previewImport'])
+            ->name('settings.preview-import');
+        Route::post('import', [SettingController::class, 'importConfiguration'])
+            ->name('settings.import');
+
         // Nuclear Reset (Super Admin only)
         Route::post('nuclear-reset', [SettingController::class, 'nuclearReset'])
             ->name('settings.nuclear-reset');

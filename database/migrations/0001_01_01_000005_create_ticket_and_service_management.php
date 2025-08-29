@@ -175,15 +175,18 @@ return new class extends Migration
             $table->uuid('ticket_id');
             $table->uuid('user_id');
             $table->text('content');
-            $table->enum('type', ['comment', 'internal_note', 'system'])->default('comment');
-            $table->boolean('is_public')->default(true);
+            $table->uuid('parent_id')->nullable(); // For comment threading
+            $table->boolean('is_internal')->default(false); // Match model field
             $table->json('attachments')->nullable();
+            $table->timestamp('edited_at')->nullable(); // For edit tracking
             $table->timestamps();
 
             $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->index(['ticket_id', 'type']);
-            $table->index(['user_id', 'type']);
+            $table->foreign('parent_id')->references('id')->on('ticket_comments')->onDelete('cascade');
+            $table->index(['ticket_id', 'parent_id']);
+            $table->index(['user_id', 'is_internal']);
+            $table->index(['parent_id']);
         });
 
         // Ticket addons table

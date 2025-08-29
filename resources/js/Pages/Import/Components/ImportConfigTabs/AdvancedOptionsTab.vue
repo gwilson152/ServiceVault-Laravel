@@ -1,16 +1,16 @@
 <template>
   <div class="space-y-8">
-    <!-- Sync Strategy & Duplicate Detection -->
+    <!-- Sync Strategy -->
     <div class="bg-white border border-gray-200 rounded-lg p-6">
       <div class="flex items-center mb-4">
         <ArrowPathIcon class="w-5 h-5 text-gray-400 mr-2" />
         <h3 class="text-lg font-medium text-gray-900">Sync Strategy & Duplicate Detection</h3>
       </div>
       <p class="text-sm text-gray-600 mb-6">
-        Configure how the import handles existing data and duplicates.
+        Configure how the import handles existing data.
       </p>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div class="max-w-md">
         <!-- Sync Strategy -->
         <div>
           <h4 class="text-sm font-medium text-gray-900 mb-3">Sync Strategy</h4>
@@ -62,91 +62,9 @@
           </div>
         </div>
 
-        <!-- Duplicate Detection -->
-        <div>
-          <h4 class="text-sm font-medium text-gray-900 mb-3">Duplicate Detection</h4>
-          <div class="space-y-3">
-            <label class="relative flex items-start">
-              <div class="flex items-center h-5">
-                <input
-                  v-model="localConfig.duplicate_detection"
-                  value="external_id"
-                  type="radio"
-                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                />
-              </div>
-              <div class="ml-3">
-                <div class="text-sm font-medium text-gray-900">External ID matching</div>
-                <div class="text-sm text-gray-500">Use FreeScout IDs for exact matching</div>
-              </div>
-            </label>
-
-            <label class="relative flex items-start">
-              <div class="flex items-center h-5">
-                <input
-                  v-model="localConfig.duplicate_detection"
-                  value="content_match"
-                  type="radio"
-                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                />
-              </div>
-              <div class="ml-3">
-                <div class="text-sm font-medium text-gray-900">Content matching</div>
-                <div class="text-sm text-gray-500">Match by content, timestamps, etc.</div>
-              </div>
-            </label>
-          </div>
-        </div>
       </div>
     </div>
 
-    <!-- Date Range Filter -->
-    <div class="bg-white border border-gray-200 rounded-lg p-6">
-      <div class="flex items-center mb-4">
-        <CalendarIcon class="w-5 h-5 text-gray-400 mr-2" />
-        <h3 class="text-lg font-medium text-gray-900">Date Range Filter</h3>
-      </div>
-      <p class="text-sm text-gray-600 mb-4">
-        Optionally filter imported data by date range.
-      </p>
-
-      <div class="space-y-4">
-        <label class="flex items-center">
-          <input
-            v-model="localConfig.date_range.enabled"
-            type="checkbox"
-            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-          />
-          <span class="ml-2 text-sm font-medium text-gray-900">Enable date range filtering</span>
-        </label>
-
-        <div v-if="localConfig.date_range.enabled" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div>
-            <label for="start-date" class="block text-sm font-medium text-gray-700 mb-2">
-              Start Date
-            </label>
-            <input
-              id="start-date"
-              v-model="localConfig.date_range.start_date"
-              type="date"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label for="end-date" class="block text-sm font-medium text-gray-700 mb-2">
-              End Date
-            </label>
-            <input
-              id="end-date"
-              v-model="localConfig.date_range.end_date"
-              type="date"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Mailbox Exclusions -->
     <div class="bg-white border border-gray-200 rounded-lg p-6">
@@ -204,7 +122,6 @@
 import { computed } from 'vue'
 import {
   ArrowPathIcon,
-  CalendarIcon,
   InboxIcon
 } from '@heroicons/vue/24/outline'
 

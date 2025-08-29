@@ -27,6 +27,7 @@ npm run dev         # Vite dev server with HMR
 - **[Email System](guides/email-system.md)** - Email configuration, processing, domain routing, and user management
 - **[Users & Permissions](guides/users-permissions.md)** - Role management and permission system
 - **[Import System](guides/import.md)** - PostgreSQL database import and data migration
+- **[Configuration Backup](guides/configuration-backup.md)** - System configuration backup and restore
 
 ### 🔧 [API Reference](api/)
 - **[Authentication](api/auth.md)** - Login, tokens, and session management
@@ -34,6 +35,7 @@ npm run dev         # Vite dev server with HMR
 - **[Email System](api/email-system.md)** - Email configuration, domain mappings, and monitoring
 - **[Billing](api/billing.md)** - Billing rates, invoices, payments
 - **[Import API](api/import.md)** - Database import profiles and job management
+- **[Configuration API](api/configuration.md)** - Configuration backup and restore endpoints
 
 ### ⚙️ [Technical Documentation](technical/)
 - **[System Architecture](technical/architecture.md)** - Overall system design
@@ -50,6 +52,7 @@ npm run dev         # Vite dev server with HMR
 - **📱 Real-Time Updates** - WebSocket broadcasting for live updates
 - **📧 Email System** - Complete email processing with domain routing, user management, and monitoring
 - **📥 Universal Import System** - Advanced PostgreSQL database connectivity with real-time monitoring, duplicate detection, and comprehensive analytics
+- **🔧 Configuration Management** - Comprehensive backup and restore system with selective category management
 
 ## Technology Stack
 
@@ -85,13 +88,13 @@ npm run dev         # Vite dev server with HMR
 - **✅ Intelligent Email Retrieval**: Respects UI-configured email retrieval modes (unread only, all emails, recent) replacing hardcoded filters
 - **✅ Production-Ready Architecture**: Queue-based processing, retry mechanisms, comprehensive error handling, and audit logging
 
-### Enhanced FreeScout Import Interface
-- **Tab-Based Interface**: Modern tab navigation replacing sidebar-based log viewer with dedicated full-width Import Logs tab
-- **Comprehensive Log Viewer**: Detailed job information with status indicators, progress bars, error reporting, and performance metrics
-- **Real-Time Statistics Integration**: Live statistics summary with success/failure counts and interactive status cards
-- **Enhanced User Experience**: Automatic data loading when switching tabs with proper loading states and error handling
-- **Responsive Design**: Mobile-first approach with proper breakpoint handling and touch-friendly interface
-- **API Integration**: Direct integration with FreeScout-specific endpoints (/api/import/freescout/stats, /logs, /activity)
+### Ultra-Simplified FreeScout Import System  
+- **✅ Eliminated All Complexity**: Removed data analysis tab, duplicate detection options, redundant date filters, and 1100+ lines of deprecated code
+- **✅ Always External ID Detection**: FreeScout IDs used for duplicate prevention - no configuration complexity
+- **✅ One-Time Time Entry Sync**: Time entries import once with original timestamps, never overwritten  
+- **✅ Automatic Dependency Resolution**: Only imports users, customers, and mailboxes actually needed for conversations
+- **✅ Three-Option Configuration**: Account strategy, agent import, error handling - that's it
+- **✅ Ultra-Clean UI**: Streamlined configuration with essential options only
 
 ### Unified Import Preview Architecture
 - **Single Preview Dialog**: Consolidated all import preview functionality into one intelligent component
@@ -148,6 +151,18 @@ npm run dev         # Vite dev server with HMR
 - **✅ Consistent Query Generation**: Unified SQL generation for validation and sample data with proper field aliases and filtering
 - **✅ Comprehensive Analytics**: Import dashboard with trend analysis, performance metrics, and duplicate effectiveness
 
+### Configuration Backup & Restore System (Production-Ready)
+- **✅ Selective Configuration Export**: Choose specific categories (System, Email, Timer, Advanced, Tax, Tickets, Billing, Import Profiles) for targeted backups
+- **✅ Comprehensive Data Coverage**: Complete system, email, timer, advanced, tax, ticket workflow, billing, and import profile configurations
+- **✅ Security-First Design**: Automatic credential masking in exports with clear user warnings about password/API key requirements
+- **✅ Preview Before Import**: Visual diff showing additions, modifications, and unchanged settings with detailed change analysis
+- **✅ Granular Import Control**: Select which categories to restore with overwrite protection for existing configurations
+- **✅ Super Admin Only Access**: Restricted to super administrator users with password confirmation for all import operations
+- **✅ Audit Trail Integration**: Complete logging of all backup and restore operations with user attribution and timestamps
+- **✅ Cross-Environment Migration**: Seamless configuration transfer between development, staging, and production environments
+- **✅ Import Profile Backup**: Full import templates and profiles backup with automatic credential masking and template relationship resolution
+- **✅ Production-Ready Architecture**: Enterprise-grade validation, error handling, and rollback capabilities with comprehensive security measures
+
 ---
 
-*Service Vault - B2B Service Management Platform | Last Updated: August 26, 2025*
+*Service Vault - B2B Service Management Platform | Last Updated: August 28, 2025*

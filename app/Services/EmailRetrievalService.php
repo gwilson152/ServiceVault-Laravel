@@ -79,9 +79,6 @@ class EmailRetrievalService
                             } else {
                                 $results['emails_processed']++;
                                 $results['details']['new_emails']++;
-                                
-                                // Schedule post-processing for successfully processed email
-                                $this->schedulePostProcessing($rawEmail, $config);
                             }
                         } else {
                             $results['processing_errors']++;
@@ -297,16 +294,19 @@ class EmailRetrievalService
             switch ($retrievalMode) {
                 case 'all':
                     // No filter - get all emails
+                    Log::info('M365 retrieval: Getting ALL emails (no read filter)');
                     break;
                 case 'recent':
                     // Get emails from last 7 days
                     $since = now()->subDays(7)->toIso8601String();
                     $queryParams['$filter'] = "receivedDateTime ge {$since}";
+                    Log::info('M365 retrieval: Getting RECENT emails since', ['since' => $since]);
                     break;
                 case 'unread_only':
                 default:
                     // Default behavior - only unread emails
                     $queryParams['$filter'] = 'isRead eq false';
+                    Log::info('M365 retrieval: Getting UNREAD ONLY emails with filter', ['filter' => 'isRead eq false']);
                     break;
             }
 
@@ -318,10 +318,24 @@ class EmailRetrievalService
             
             $messages = $messagesResponse->json()['value'] ?? [];
             
+            // Debug: Log detailed info about retrieved emails
             Log::info('Retrieved messages from M365', [
                 'count' => count($messages),
-                'mailbox' => $mailbox,
+                'retrieval_mode' => $retrievalMode,
+                'query_params' => $queryParams,
+                'messages_url' => $messagesUrl,
             ]);
+            
+            // Debug: Log each email's read status and details
+            foreach ($messages as $index => $message) {
+                Log::info("M365 Email #{$index}", [
+                    'subject' => $message['subject'] ?? 'No Subject',
+                    'from' => $message['from']['emailAddress']['address'] ?? 'unknown',
+                    'isRead' => $message['isRead'] ?? 'not set',
+                    'receivedDateTime' => $message['receivedDateTime'] ?? 'not set',
+                    'id' => $message['id'] ?? 'no id',
+                ]);
+            }
             
             // Step 3: Convert messages to raw email format and store message info for post-processing
             $rawEmails = [];

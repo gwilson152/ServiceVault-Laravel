@@ -249,4 +249,35 @@ class ImportJob extends Model
     {
         broadcast(new \App\Events\ImportJobStatusChanged($this, $event))->toOthers();
     }
+
+    /**
+     * Clean up stale import jobs that have been "running" for too long.
+     * Jobs running for more than 2 hours are considered stale.
+     */
+    public static function cleanupStaleJobs(): int
+    {
+        $staleThreshold = now()->subHours(2);
+        
+        $staleJobs = static::where('status', 'running')
+            ->where('started_at', '<', $staleThreshold)
+            ->get();
+
+        $cleanedCount = 0;
+        foreach ($staleJobs as $job) {
+            $job->markAsFailed('Import job timed out - marked as stale after 2 hours of running');
+            $cleanedCount++;
+        }
+
+        return $cleanedCount;
+    }
+
+    /**
+     * Check if this job is considered stale (running for more than 2 hours).
+     */
+    public function isStale(): bool
+    {
+        return $this->status === 'running' 
+            && $this->started_at 
+            && $this->started_at->diffInHours(now()) > 2;
+    }
 }

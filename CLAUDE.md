@@ -60,6 +60,9 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 - **`TimerCard`**: Individual timer display component
 - **`TimerControls`**: Timer action buttons (start, stop, pause, commit)
 
+**Notification Components**:
+- **`useToast`**: Glassy toast notification system with multi-positioning and promise handling ([docs](docs/technical/ui-components.md#toast-system))
+
 ### Component Usage Examples
 
 ```vue
@@ -83,6 +86,11 @@ Service Vault is a comprehensive B2B service ticket and time management platform
 
 <!-- Multi-Select Filters -->
 <MultiSelect v-model="selectedStatuses" :options="ticketStatuses" value-key="key" label-key="name" />
+
+<!-- Toast Notifications -->
+const { success, error, promise } = useToast()
+success('Operation completed successfully!')
+await promise(apiCall(), { loading: 'Saving...', success: 'Saved!' })
 ```
 
 ### Security Conventions

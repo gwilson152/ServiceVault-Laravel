@@ -68,6 +68,11 @@
                 />
             </div>
 
+            <!-- Configuration Backup & Restore Tab -->
+            <div v-show="activeTab === 'config-backup'" class="space-y-8">
+                <ConfigurationBackup />
+            </div>
+
             <!-- Nuclear Reset Tab -->
             <div v-show="activeTab === 'reset'" class="space-y-8">
                 <NuclearResetSection />
@@ -82,6 +87,7 @@ import { router, usePage } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import StandardPageLayout from "@/Layouts/StandardPageLayout.vue";
 import TabNavigation from "@/Components/Layout/TabNavigation.vue";
+import { useToast } from "@/Composables/useToast";
 
 // Define persistent layout
 defineOptions({
@@ -102,11 +108,15 @@ import TicketConfiguration from "@/Pages/Settings/Components/TicketConfiguration
 import BillingConfiguration from "@/Pages/Settings/Components/BillingConfigurationNew.vue";
 import TimerSettings from "@/Pages/Settings/Components/TimerSettings.vue";
 import AdvancedSettings from "@/Pages/Settings/Components/AdvancedSettings.vue";
+import ConfigurationBackup from "@/Pages/Settings/Components/ConfigurationBackup.vue";
 import NuclearResetSection from "@/Components/Settings/NuclearResetSection.vue";
 
 // Get current user from page props
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
+
+// Toast notifications
+const { success, error, promise, apiError } = useToast()
 
 // Navigation tabs configuration
 const navigationTabs = computed(() => {
@@ -144,6 +154,12 @@ const navigationTabs = computed(() => {
             id: "advanced", 
             name: "Advanced", 
             icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+        })
+        
+        baseTabs.push({ 
+            id: "config-backup", 
+            name: "Configuration", 
+            icon: 'M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h1a1 1 0 110 2h-1v12a2 2 0 01-2 2H8a2 2 0 01-2-2V6H5a1 1 0 010-2h2zM8 6v12h8V6H8zM9 8v8h2V8H9zm4 0v8h2V8h-2z'
         })
     }
     
@@ -208,9 +224,12 @@ const loadSystemSettings = async () => {
         if (response.ok) {
             const result = await response.json();
             systemSettings.value = result.data.system || {};
+        } else {
+            throw new Error('Failed to load system settings')
         }
-    } catch (error) {
-        console.error('Failed to load system settings:', error);
+    } catch (err) {
+        console.error('Failed to load system settings:', err);
+        apiError(err, 'Failed to load system settings')
     } finally {
         loading.system = false;
     }
@@ -292,24 +311,29 @@ const loadAdvancedSettings = async () => {
 // Update functions for each tab
 const updateSystemSettings = async (data) => {
     try {
-        loading.system = true;
-        const response = await fetch('/api/settings/system', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-            },
-            body: JSON.stringify(data)
-        });
+        await promise(
+            fetch('/api/settings/system', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                },
+                body: JSON.stringify(data)
+            }).then(response => {
+                if (!response.ok) throw new Error('Failed to update system settings')
+                return response.json()
+            }),
+            {
+                loading: 'Saving system settings...',
+                success: 'System settings saved successfully',
+                error: 'Failed to save system settings'
+            }
+        );
         
-        if (response.ok) {
-            // Reload system settings after successful update
-            await loadSystemSettings();
-        }
-    } catch (error) {
-        console.error('Failed to update system settings:', error);
-    } finally {
-        loading.system = false;
+        // Reload system settings after successful update
+        await loadSystemSettings();
+    } catch (err) {
+        console.error('Failed to update system settings:', err);
     }
 };
 
@@ -337,46 +361,56 @@ const updateEmailSettings = async (data) => {
 
 const updateTimerSettings = async (data) => {
     try {
-        loading.timer = true;
-        const response = await fetch('/api/settings/timer', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-            },
-            body: JSON.stringify(data)
-        });
+        const result = await promise(
+            fetch('/api/settings/timer', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                },
+                body: JSON.stringify(data)
+            }).then(response => {
+                if (!response.ok) throw new Error('Failed to update timer settings')
+                return response.json()
+            }),
+            {
+                loading: 'Saving timer settings...',
+                success: 'Timer settings saved successfully',
+                error: 'Failed to save timer settings'
+            }
+        );
         
-        if (response.ok) {
-            timerSettings.value = await response.json();
-        }
-    } catch (error) {
-        console.error('Failed to update timer settings:', error);
-    } finally {
-        loading.timer = false;
+        timerSettings.value = result;
+    } catch (err) {
+        console.error('Failed to update timer settings:', err);
     }
 };
 
 
 const updateAdvancedSettings = async (data) => {
     try {
-        loading.advanced = true;
-        const response = await fetch('/api/settings/advanced', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-            },
-            body: JSON.stringify(data)
-        });
+        const result = await promise(
+            fetch('/api/settings/advanced', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                },
+                body: JSON.stringify(data)
+            }).then(response => {
+                if (!response.ok) throw new Error('Failed to update advanced settings')
+                return response.json()
+            }),
+            {
+                loading: 'Saving advanced settings...',
+                success: 'Advanced settings saved successfully',
+                error: 'Failed to save advanced settings'
+            }
+        );
         
-        if (response.ok) {
-            advancedSettings.value = await response.json();
-        }
-    } catch (error) {
-        console.error('Failed to update advanced settings:', error);
-    } finally {
-        loading.advanced = false;
+        advancedSettings.value = result;
+    } catch (err) {
+        console.error('Failed to update advanced settings:', err);
     }
 };
 
@@ -384,23 +418,29 @@ const updateAdvancedSettings = async (data) => {
 const testSmtp = async () => {
     try {
         testing.smtp = true;
-        const response = await fetch('/api/settings/email/test-smtp', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        await promise(
+            fetch('/api/settings/email/test-smtp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'SMTP test failed')
+                    })
+                }
+                return response.json()
+            }),
+            {
+                loading: 'Testing SMTP connection...',
+                success: 'SMTP test successful!',
+                error: (err) => `SMTP test failed: ${err.message}`
             }
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            alert('SMTP test successful!');
-        } else {
-            alert(`SMTP test failed: ${result.message}`);
-        }
-    } catch (error) {
-        console.error('SMTP test failed:', error);
-        alert('SMTP test failed: ' + error.message);
+        );
+    } catch (err) {
+        console.error('SMTP test failed:', err);
     } finally {
         testing.smtp = false;
     }
@@ -409,23 +449,29 @@ const testSmtp = async () => {
 const testImap = async () => {
     try {
         testing.imap = true;
-        const response = await fetch('/api/settings/email/test-imap', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        await promise(
+            fetch('/api/settings/email/test-imap', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'IMAP test failed')
+                    })
+                }
+                return response.json()
+            }),
+            {
+                loading: 'Testing IMAP connection...',
+                success: 'IMAP test successful!',
+                error: (err) => `IMAP test failed: ${err.message}`
             }
-        });
-        
-        const result = await response.json();
-        if (response.ok) {
-            alert('IMAP test successful!');
-        } else {
-            alert(`IMAP test failed: ${result.message}`);
-        }
-    } catch (error) {
-        console.error('IMAP test failed:', error);
-        alert('IMAP test failed: ' + error.message);
+        );
+    } catch (err) {
+        console.error('IMAP test failed:', err);
     } finally {
         testing.imap = false;
     }

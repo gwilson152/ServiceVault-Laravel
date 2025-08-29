@@ -67,16 +67,6 @@
             />
           </div>
 
-          <!-- Data Analysis Tab -->
-          <div v-show="activeTab === 'analysis'" class="space-y-8">
-            <DataAnalysisTab 
-              :config="config"
-              :preview-data="previewData"
-              :profile="profile"
-              :statistics="statistics"
-              @update-config="updateConfig"
-            />
-          </div>
 
           <!-- Advanced Options Tab -->
           <div v-show="activeTab === 'advanced'" class="space-y-8">
@@ -150,12 +140,10 @@
 import { ref, computed } from 'vue'
 import StackedDialog from '@/Components/StackedDialog.vue'
 import BasicSettingsTab from './ImportConfigTabs/BasicSettingsTab.vue'
-import DataAnalysisTab from './ImportConfigTabs/DataAnalysisTab.vue'
 import AdvancedOptionsTab from './ImportConfigTabs/AdvancedOptionsTab.vue'
 import SummaryTab from './ImportConfigTabs/SummaryTab.vue'
 import {
   AdjustmentsHorizontalIcon,
-  ChartBarIcon,
   CogIcon,
   DocumentCheckIcon
 } from '@heroicons/vue/24/outline'
@@ -189,7 +177,6 @@ const savingConfig = ref(false)
 const activeTab = ref('basic')
 const tabs = [
   { id: 'basic', name: 'Import Settings', icon: AdjustmentsHorizontalIcon },
-  { id: 'analysis', name: 'Data Analysis & Mapping', icon: ChartBarIcon },
   { id: 'advanced', name: 'Advanced Configuration', icon: CogIcon },
   { id: 'summary', name: 'Review & Execute', icon: DocumentCheckIcon }
 ]
@@ -207,44 +194,19 @@ const handleSave = async () => {
   }
 }
 
-// Configuration state
+// Configuration state (simplified)
 const config = ref({
-  limits: {
-    conversations: null,
-    time_entries: null,
-    customers: null,
-    mailboxes: null
-  },
-  account_strategy: 'map_mailboxes',
-  agent_access: 'all_accounts',
-  user_strategy: 'map_emails',
-  unmapped_users: 'skip',
-  sync_strategy: 'create_only',
-  sync_mode: 'incremental',
-  duplicate_detection: 'external_id',
-  billing_rate_strategy: 'auto_select',
-  fixed_billing_rate_id: null,
-  time_entry_defaults: {
-    billable: true,
-    approved: false
-  },
-  comment_processing: {
-    preserve_html: true,
-    extract_attachments: true,
-    add_context_prefix: true
-  },
   date_range: {
-    enabled: false,
     start_date: null,
     end_date: null
   },
-  excluded_mailboxes: [],
-  unmapped_user_handling: 'skip',
-  conversation_mapping: {
-    map_threads_to_comments: true,
-    preserve_thread_structure: true
-  },
-  time_entry_mapping: 'preserve_original'
+  account_strategy: 'domain_mapping_strict',
+  agent_import_strategy: 'match_existing',
+  continue_on_error: true,
+  // Deprecated fields for backward compatibility with advanced tab
+  sync_strategy: 'create_only',
+  duplicate_detection: 'external_id',
+  excluded_mailboxes: []
 })
 
 // Computed statistics from profile
@@ -253,7 +215,7 @@ const statistics = computed(() => {
     conversations: parseInt(props.profile.stats?.conversations?.replace(/,/g, '') || '0'),
     customers: parseInt(props.profile.stats?.customers?.replace(/,/g, '') || '0'),
     mailboxes: parseInt(props.profile.stats?.mailboxes?.replace(/,/g, '') || '0'),
-    time_entries: props.previewData.time_entries?.length || 0 // FreeScout doesn't always have time entry stats
+    time_entries: props.previewData?.time_entries?.length || 0 // FreeScout doesn't always have time entry stats
   }
 })
 

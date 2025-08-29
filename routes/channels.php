@@ -55,3 +55,14 @@ Broadcast::channel('ticket.{ticketId}', function (User $user, string $ticketId) 
 
     return $ticket && $ticket->canBeViewedBy($user);
 });
+
+// Import job progress channels
+Broadcast::channel('import.freescout.job.{jobId}', function (User $user, string $jobId) {
+    $job = \App\Models\ImportJob::find($jobId);
+    
+    // Allow access if user started the import or has import permissions
+    return $job && (
+        $job->started_by === $user->id || 
+        $user->hasAnyPermission(['manage_system', 'manage_import', 'import.execute'])
+    );
+});

@@ -7,6 +7,8 @@ use App\Models\Account;
 use App\Models\AddonTemplate;
 use App\Models\BillingRate;
 use App\Models\EmailDomainMapping;
+use App\Models\ImportProfile;
+use App\Models\ImportTemplate;
 use App\Models\RoleTemplate;
 use App\Models\Setting;
 use App\Models\TicketCategory;
@@ -1604,5 +1606,745 @@ class SettingController extends Controller
         return response()->json([
             'message' => 'Tax settings updated successfully',
         ]);
+    }
+
+    /**
+     * Export configuration data for selected categories
+     */
+    public function exportConfiguration(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        // Only super admin can export configuration
+        if (!auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'message' => 'Access denied. Only Super Administrators can export configuration.',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'categories' => 'required|array|min:1',
+            'categories.*' => 'string|in:system,email,timer,advanced,tax,tickets,billing,import-profiles',
+            'include_metadata' => 'boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $categories = $request->input('categories', []);
+            $includeMetadata = $request->boolean('include_metadata', true);
+            
+            $exportData = [];
+
+            // Export system settings
+            if (in_array('system', $categories)) {
+                $systemSettings = Setting::where('key', 'like', 'system.%')->pluck('value', 'key');
+                $systemData = [];
+                foreach ($systemSettings as $key => $value) {
+                    $shortKey = str_replace('system.', '', $key);
+                    $systemData[$shortKey] = $value;
+                }
+
+                // Include company information from internal account
+                $companyAccount = Account::where('account_type', 'internal')->first();
+                if ($companyAccount) {
+                    $systemData['company_name'] = $companyAccount->name;
+                    $systemData['company_email'] = $companyAccount->email;
+                    $systemData['company_website'] = $companyAccount->website;
+                    $systemData['company_address'] = $companyAccount->address;
+                    $systemData['company_phone'] = $companyAccount->phone;
+                }
+
+                $exportData['system'] = $systemData;
+            }
+
+            // Export email configuration
+            if (in_array('email', $categories)) {
+                $emailConfig = \App\Models\EmailSystemConfig::getConfig();
+                $exportData['email'] = [
+                    'system_active' => $emailConfig->system_active ?? false,
+                    'incoming_enabled' => $emailConfig->incoming_enabled ?? false,
+                    'outgoing_enabled' => $emailConfig->outgoing_enabled ?? false,
+                    'incoming_provider' => $emailConfig->incoming_provider ?? 'imap',
+                    'outgoing_provider' => $emailConfig->outgoing_provider ?? 'smtp',
+                    'outgoing_host' => $emailConfig->outgoing_host ?? '',
+                    'outgoing_port' => $emailConfig->outgoing_port ?? 587,
+                    'outgoing_username' => $emailConfig->outgoing_username ?? '',
+                    'outgoing_encryption' => $emailConfig->outgoing_encryption ?? 'tls',
+                    'from_address' => $emailConfig->from_address ?? '',
+                    'from_name' => $emailConfig->from_name ?? '',
+                    'reply_to_address' => $emailConfig->reply_to_address ?? '',
+                    'incoming_host' => $emailConfig->incoming_host ?? '',
+                    'incoming_port' => $emailConfig->incoming_port ?? 993,
+                    'incoming_username' => $emailConfig->incoming_username ?? '',
+                    'incoming_encryption' => $emailConfig->incoming_encryption ?? 'ssl',
+                    'incoming_folder' => $emailConfig->incoming_folder ?? 'INBOX',
+                    'auto_create_tickets' => $emailConfig->auto_create_tickets ?? true,
+                    'process_commands' => $emailConfig->process_commands ?? true,
+                    'send_confirmations' => $emailConfig->send_confirmations ?? true,
+                    'max_retries' => $emailConfig->max_retries ?? 3,
+                    'enable_email_processing' => $emailConfig->enable_email_processing ?? true,
+                    'auto_create_users' => $emailConfig->auto_create_users ?? true,
+                    'unmapped_domain_strategy' => $emailConfig->unmapped_domain_strategy ?? 'assign_default_account',
+                    'default_account_id' => $emailConfig->default_account_id,
+                    'default_role_template_id' => $emailConfig->default_role_template_id,
+                    'require_email_verification' => $emailConfig->require_email_verification ?? true,
+                    'require_admin_approval' => $emailConfig->require_admin_approval ?? true,
+                    'incoming_settings' => $emailConfig->incoming_settings,
+                    'timestamp_source' => $emailConfig->timestamp_source ?? 'original',
+                    'timestamp_timezone' => $emailConfig->timestamp_timezone ?? 'preserve',
+                    'post_processing_action' => $emailConfig->post_processing_action ?? 'none',
+                    'move_to_folder_id' => $emailConfig->move_to_folder_id ?? '',
+                    'move_to_folder_name' => $emailConfig->move_to_folder_name ?? '',
+                    'email_retrieval_mode' => $emailConfig->email_retrieval_mode ?? 'unread_only',
+                ];
+            }
+
+            // Export timer settings
+            if (in_array('timer', $categories)) {
+                $timerSettings = Setting::where('key', 'like', 'timer.%')->pluck('value', 'key');
+                $timerData = [];
+                foreach ($timerSettings as $key => $value) {
+                    $shortKey = str_replace('timer.', '', $key);
+                    $timerData[$shortKey] = $value;
+                }
+                $exportData['timer'] = $timerData;
+            }
+
+            // Export advanced settings
+            if (in_array('advanced', $categories)) {
+                $advancedSettings = Setting::where('key', 'like', 'advanced.%')->pluck('value', 'key');
+                $advancedData = [];
+                foreach ($advancedSettings as $key => $value) {
+                    $shortKey = str_replace('advanced.', '', $key);
+                    $advancedData[$shortKey] = $value;
+                }
+                $exportData['advanced'] = $advancedData;
+            }
+
+            // Export tax settings
+            if (in_array('tax', $categories)) {
+                $taxSettings = Setting::where('key', 'like', 'tax.%')->pluck('value', 'key');
+                $taxData = [];
+                foreach ($taxSettings as $key => $value) {
+                    $shortKey = str_replace('tax.', '', $key);
+                    $taxData[$shortKey] = $value;
+                }
+                $exportData['tax'] = $taxData;
+            }
+
+            // Export ticket configuration
+            if (in_array('tickets', $categories)) {
+                $exportData['tickets'] = [
+                    'statuses' => TicketStatus::active()->ordered()->get()->toArray(),
+                    'categories' => TicketCategory::active()->ordered()->get()->toArray(),
+                    'priorities' => TicketPriority::active()->ordered()->get()->toArray(),
+                    'workflow_transitions' => TicketStatus::getWorkflowTransitions(),
+                ];
+            }
+
+            // Export billing configuration
+            if (in_array('billing', $categories)) {
+                $exportData['billing'] = [
+                    'billing_rates' => BillingRate::with(['account:id,name', 'user:id,name'])
+                        ->where('is_active', true)
+                        ->get()
+                        ->toArray(),
+                    'addon_templates' => AddonTemplate::active()->ordered()->get()->toArray(),
+                ];
+            }
+
+            // Export import profiles configuration
+            if (in_array('import-profiles', $categories)) {
+                $exportData['import-profiles'] = [
+                    'import_templates' => ImportTemplate::active()->get()->toArray(),
+                    'import_profiles' => ImportProfile::with(['template:id,name,source_type'])
+                        ->where('is_active', true)
+                        ->get()
+                        ->map(function ($profile) {
+                            // Remove sensitive connection data for security
+                            $profileData = $profile->toArray();
+                            
+                            // Mask sensitive connection config data
+                            if (isset($profileData['connection_config'])) {
+                                $config = $profileData['connection_config'];
+                                if (isset($config['password'])) {
+                                    $config['password'] = '***MASKED***';
+                                }
+                                if (isset($config['api_key'])) {
+                                    $config['api_key'] = '***MASKED***';
+                                }
+                                $profileData['connection_config'] = $config;
+                            }
+                            
+                            return $profileData;
+                        })
+                        ->toArray(),
+                ];
+            }
+
+            // Add metadata if requested
+            if ($includeMetadata) {
+                $exportData['_metadata'] = [
+                    'exported_at' => now()->toISOString(),
+                    'exported_by' => auth()->user()->name,
+                    'exported_by_email' => auth()->user()->email,
+                    'system_version' => config('app.version', '1.0.0'),
+                    'categories' => $categories,
+                    'total_categories' => count($categories),
+                ];
+            }
+
+            // Generate filename
+            $timestamp = now()->format('Y-m-d_H-i-s');
+            $filename = "servicevault_config_export_{$timestamp}.json";
+
+            Log::info('Configuration export completed', [
+                'user_id' => auth()->id(),
+                'categories' => $categories,
+                'filename' => $filename,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $exportData,
+                'filename' => $filename,
+                'message' => 'Configuration exported successfully',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Configuration export failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Configuration export failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Validate uploaded configuration file and return available categories
+     */
+    public function validateConfiguration(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        if (!auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'message' => 'Access denied. Only Super Administrators can import configuration.',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'config_file' => 'required|file|mimes:json|max:10240', // 10MB max
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $file = $request->file('config_file');
+            $content = file_get_contents($file->getPathname());
+            $configData = json_decode($content, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid JSON file: ' . json_last_error_msg(),
+                ], 422);
+            }
+
+            // Detect available categories
+            $availableCategories = [];
+            $validCategories = ['system', 'email', 'timer', 'advanced', 'tax', 'tickets', 'billing', 'import-profiles'];
+
+            foreach ($validCategories as $category) {
+                if (isset($configData[$category]) && !empty($configData[$category])) {
+                    $categoryName = $category === 'import-profiles' ? 'Import Profiles' : ucfirst(str_replace('-', ' ', $category));
+                    $count = is_array($configData[$category]) ? count($configData[$category]) : 1;
+                    
+                    // For import-profiles, count templates and profiles separately
+                    if ($category === 'import-profiles' && is_array($configData[$category])) {
+                        $count = (count($configData[$category]['import_templates'] ?? []) + 
+                                 count($configData[$category]['import_profiles'] ?? []));
+                    }
+                    
+                    $availableCategories[] = [
+                        'id' => $category,
+                        'name' => $categoryName,
+                        'count' => $count,
+                    ];
+                }
+            }
+
+            // Extract metadata if available
+            $metadata = $configData['_metadata'] ?? null;
+
+            return response()->json([
+                'success' => true,
+                'available_categories' => $availableCategories,
+                'metadata' => $metadata,
+                'total_categories' => count($availableCategories),
+                'message' => 'Configuration file validated successfully',
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to validate configuration file: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Preview configuration import changes
+     */
+    public function previewImport(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        if (!auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'message' => 'Access denied. Only Super Administrators can import configuration.',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'config_file' => 'required|file|mimes:json|max:10240',
+            'categories' => 'required|array|min:1',
+            'categories.*' => 'string|in:system,email,timer,advanced,tax,tickets,billing,import-profiles',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $file = $request->file('config_file');
+            $content = file_get_contents($file->getPathname());
+            $configData = json_decode($content, true);
+            $categories = $request->input('categories', []);
+
+            $preview = [];
+
+            // Preview system settings changes
+            if (in_array('system', $categories) && isset($configData['system'])) {
+                $currentSystemSettings = Setting::where('key', 'like', 'system.%')->pluck('value', 'key');
+                $currentData = [];
+                foreach ($currentSystemSettings as $key => $value) {
+                    $shortKey = str_replace('system.', '', $key);
+                    $currentData[$shortKey] = $value;
+                }
+
+                // Include current company info
+                $companyAccount = Account::where('account_type', 'internal')->first();
+                if ($companyAccount) {
+                    $currentData['company_name'] = $companyAccount->name;
+                    $currentData['company_email'] = $companyAccount->email;
+                    $currentData['company_website'] = $companyAccount->website;
+                    $currentData['company_address'] = $companyAccount->address;
+                    $currentData['company_phone'] = $companyAccount->phone;
+                }
+
+                $preview['system'] = $this->generatePreviewDiff($currentData, $configData['system']);
+            }
+
+            // Preview email settings changes
+            if (in_array('email', $categories) && isset($configData['email'])) {
+                $emailConfig = \App\Models\EmailSystemConfig::getConfig();
+                $currentEmailData = [
+                    'system_active' => $emailConfig->system_active ?? false,
+                    'incoming_enabled' => $emailConfig->incoming_enabled ?? false,
+                    'outgoing_enabled' => $emailConfig->outgoing_enabled ?? false,
+                    'from_address' => $emailConfig->from_address ?? '',
+                    'from_name' => $emailConfig->from_name ?? '',
+                ];
+
+                $preview['email'] = $this->generatePreviewDiff($currentEmailData, $configData['email']);
+            }
+
+            // Preview timer settings changes
+            if (in_array('timer', $categories) && isset($configData['timer'])) {
+                $currentTimerSettings = Setting::where('key', 'like', 'timer.%')->pluck('value', 'key');
+                $currentData = [];
+                foreach ($currentTimerSettings as $key => $value) {
+                    $shortKey = str_replace('timer.', '', $key);
+                    $currentData[$shortKey] = $value;
+                }
+
+                $preview['timer'] = $this->generatePreviewDiff($currentData, $configData['timer']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'preview' => $preview,
+                'message' => 'Import preview generated successfully',
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to preview import: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Import configuration from uploaded file
+     */
+    public function importConfiguration(Request $request): JsonResponse
+    {
+        $this->authorize('system.configure');
+
+        if (!auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'message' => 'Access denied. Only Super Administrators can import configuration.',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'config_file' => 'required|file|mimes:json|max:10240',
+            'categories' => 'required|array|min:1',
+            'categories.*' => 'string|in:system,email,timer,advanced,tax,tickets,billing,import-profiles',
+            'password' => 'required|string',
+            'overwrite_existing' => 'boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Verify password
+        if (!Hash::check($request->password, auth()->user()->password)) {
+            Log::warning('Configuration import attempted with invalid password', [
+                'user_id' => auth()->id(),
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'message' => 'Invalid password. Import cancelled.',
+            ], 422);
+        }
+
+        try {
+            $file = $request->file('config_file');
+            $content = file_get_contents($file->getPathname());
+            $configData = json_decode($content, true);
+            $categories = $request->input('categories', []);
+            $overwriteExisting = $request->boolean('overwrite_existing', true);
+
+            Log::info('Configuration import started', [
+                'user_id' => auth()->id(),
+                'categories' => $categories,
+                'overwrite_existing' => $overwriteExisting,
+            ]);
+
+            // Import system settings
+            if (in_array('system', $categories) && isset($configData['system'])) {
+                $this->importSystemSettings($configData['system'], $overwriteExisting);
+            }
+
+            // Import email settings
+            if (in_array('email', $categories) && isset($configData['email'])) {
+                $this->importEmailSettings($configData['email'], $overwriteExisting);
+            }
+
+            // Import timer settings
+            if (in_array('timer', $categories) && isset($configData['timer'])) {
+                $this->importTimerSettings($configData['timer'], $overwriteExisting);
+            }
+
+            // Import advanced settings
+            if (in_array('advanced', $categories) && isset($configData['advanced'])) {
+                $this->importAdvancedSettings($configData['advanced'], $overwriteExisting);
+            }
+
+            // Import tax settings
+            if (in_array('tax', $categories) && isset($configData['tax'])) {
+                $this->importTaxSettings($configData['tax'], $overwriteExisting);
+            }
+
+            // Import import profiles
+            if (in_array('import-profiles', $categories) && isset($configData['import-profiles'])) {
+                $this->importImportProfiles($configData['import-profiles'], $overwriteExisting);
+            }
+
+            Log::info('Configuration import completed successfully', [
+                'user_id' => auth()->id(),
+                'categories' => $categories,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuration imported successfully',
+                'imported_categories' => $categories,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Configuration import failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Configuration import failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate preview diff between current and import data
+     */
+    private function generatePreviewDiff(array $current, array $import): array
+    {
+        $changes = [
+            'additions' => [],
+            'modifications' => [],
+            'unchanged' => [],
+        ];
+
+        foreach ($import as $key => $value) {
+            if (!isset($current[$key])) {
+                $changes['additions'][] = [
+                    'key' => $key,
+                    'new_value' => $value,
+                ];
+            } elseif ($current[$key] !== $value) {
+                $changes['modifications'][] = [
+                    'key' => $key,
+                    'current_value' => $current[$key],
+                    'new_value' => $value,
+                ];
+            } else {
+                $changes['unchanged'][] = [
+                    'key' => $key,
+                    'value' => $value,
+                ];
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * Import system settings
+     */
+    private function importSystemSettings(array $systemData, bool $overwrite): void
+    {
+        $companyFields = ['company_name', 'company_email', 'company_website', 'company_address', 'company_phone'];
+        $companyAccount = Account::where('account_type', 'internal')->first();
+
+        // Update company information
+        if ($companyAccount) {
+            $companyUpdates = [];
+            foreach ($companyFields as $field) {
+                if (isset($systemData[$field])) {
+                    $accountField = str_replace('company_', '', $field);
+                    if ($field === 'company_name') {
+                        $accountField = 'name';
+                    }
+                    $companyUpdates[$accountField] = $systemData[$field];
+                }
+            }
+            if (!empty($companyUpdates)) {
+                $companyAccount->update($companyUpdates);
+            }
+        }
+
+        // Update system settings
+        foreach ($systemData as $key => $value) {
+            if (!in_array($key, $companyFields)) {
+                if ($overwrite || !Setting::where('key', "system.{$key}")->exists()) {
+                    Setting::setValue("system.{$key}", $value, 'system');
+                }
+            }
+        }
+    }
+
+    /**
+     * Import email settings
+     */
+    private function importEmailSettings(array $emailData, bool $overwrite): void
+    {
+        $emailConfig = \App\Models\EmailSystemConfig::getConfig();
+        
+        $updateData = [];
+        $emailFields = [
+            'system_active', 'incoming_enabled', 'outgoing_enabled', 'incoming_provider', 'outgoing_provider',
+            'outgoing_host', 'outgoing_port', 'outgoing_username', 'outgoing_encryption',
+            'from_address', 'from_name', 'reply_to_address', 'incoming_host', 'incoming_port',
+            'incoming_username', 'incoming_encryption', 'incoming_folder', 'auto_create_tickets',
+            'process_commands', 'send_confirmations', 'max_retries', 'enable_email_processing',
+            'auto_create_users', 'unmapped_domain_strategy', 'default_account_id',
+            'default_role_template_id', 'require_email_verification', 'require_admin_approval',
+            'timestamp_source', 'timestamp_timezone', 'post_processing_action',
+            'move_to_folder_id', 'move_to_folder_name', 'email_retrieval_mode'
+        ];
+
+        foreach ($emailFields as $field) {
+            if (isset($emailData[$field])) {
+                $updateData[$field] = $emailData[$field];
+            }
+        }
+
+        if (isset($emailData['incoming_settings'])) {
+            $updateData['incoming_settings'] = $emailData['incoming_settings'];
+        }
+
+        if (!empty($updateData)) {
+            $updateData['updated_by_id'] = auth()->id();
+            $emailConfig->update($updateData);
+        }
+    }
+
+    /**
+     * Import timer settings
+     */
+    private function importTimerSettings(array $timerData, bool $overwrite): void
+    {
+        foreach ($timerData as $key => $value) {
+            if ($overwrite || !Setting::where('key', "timer.{$key}")->exists()) {
+                Setting::setValue("timer.{$key}", $value, 'timer');
+            }
+        }
+    }
+
+    /**
+     * Import advanced settings
+     */
+    private function importAdvancedSettings(array $advancedData, bool $overwrite): void
+    {
+        foreach ($advancedData as $key => $value) {
+            if ($overwrite || !Setting::where('key', "advanced.{$key}")->exists()) {
+                Setting::setValue("advanced.{$key}", $value, 'advanced');
+            }
+        }
+    }
+
+    /**
+     * Import tax settings
+     */
+    private function importTaxSettings(array $taxData, bool $overwrite): void
+    {
+        foreach ($taxData as $key => $value) {
+            if ($overwrite || !Setting::where('key', "tax.{$key}")->exists()) {
+                Setting::setValue("tax.{$key}", $value, 'system');
+            }
+        }
+    }
+
+    /**
+     * Import import profiles
+     */
+    private function importImportProfiles(array $importProfilesData, bool $overwrite): void
+    {
+        // Import templates first
+        if (isset($importProfilesData['import_templates'])) {
+            foreach ($importProfilesData['import_templates'] as $templateData) {
+                // Skip if template exists and not overwriting
+                $existingTemplate = ImportTemplate::where('name', $templateData['name'])
+                    ->where('source_type', $templateData['source_type'])
+                    ->first();
+
+                if ($existingTemplate && !$overwrite) {
+                    continue;
+                }
+
+                // Remove ID and timestamps from imported data
+                unset($templateData['id'], $templateData['created_at'], $templateData['updated_at']);
+
+                if ($existingTemplate && $overwrite) {
+                    $existingTemplate->update($templateData);
+                } else {
+                    ImportTemplate::create($templateData);
+                }
+            }
+        }
+
+        // Import profiles
+        if (isset($importProfilesData['import_profiles'])) {
+            foreach ($importProfilesData['import_profiles'] as $profileData) {
+                // Skip if profile exists and not overwriting
+                $existingProfile = ImportProfile::where('name', $profileData['name'])->first();
+
+                if ($existingProfile && !$overwrite) {
+                    continue;
+                }
+
+                // Remove ID and timestamps from imported data
+                unset($profileData['id'], $profileData['created_at'], $profileData['updated_at']);
+
+                // Find the template by name if template relationship exists
+                if (isset($profileData['template']) && is_array($profileData['template'])) {
+                    $template = ImportTemplate::where('name', $profileData['template']['name'])
+                        ->where('source_type', $profileData['template']['source_type'])
+                        ->first();
+                    if ($template) {
+                        $profileData['template_id'] = $template->id;
+                    }
+                    unset($profileData['template']);
+                } elseif (isset($profileData['template_id']) && is_string($profileData['template_id'])) {
+                    // If template_id is a UUID string, try to find matching template
+                    $template = ImportTemplate::find($profileData['template_id']);
+                    if (!$template) {
+                        // If template not found, try to find by name from the imported templates
+                        $template = ImportTemplate::where('name', 'like', '%' . ($profileData['name'] ?? '') . '%')->first();
+                        if ($template) {
+                            $profileData['template_id'] = $template->id;
+                        }
+                    }
+                }
+
+                // Handle connection config - restore masked credentials warning
+                if (isset($profileData['connection_config'])) {
+                    $config = $profileData['connection_config'];
+                    if (isset($config['password']) && $config['password'] === '***MASKED***') {
+                        unset($config['password']); // Remove masked password
+                    }
+                    if (isset($config['api_key']) && $config['api_key'] === '***MASKED***') {
+                        unset($config['api_key']); // Remove masked API key
+                    }
+                    $profileData['connection_config'] = $config;
+                }
+
+                // Set created_by to current user
+                $profileData['created_by'] = auth()->id();
+
+                // Reset sync and test data for imported profiles
+                $profileData['last_sync_at'] = null;
+                $profileData['next_sync_at'] = null;
+                $profileData['sync_stats'] = null;
+                $profileData['import_stats'] = null;
+                $profileData['last_tested_at'] = null;
+                $profileData['last_test_result'] = null;
+
+                if ($existingProfile && $overwrite) {
+                    $existingProfile->update($profileData);
+                } else {
+                    ImportProfile::create($profileData);
+                }
+            }
+        }
     }
 }

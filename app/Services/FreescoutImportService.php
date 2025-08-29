@@ -90,12 +90,15 @@ class FreescoutImportService
      */
     public function validateDomainMappings(): array
     {
-        $domainMappings = DomainMapping::where('is_active', true)->get();
+        $domainMappings = DomainMapping::where('is_active', true)->with('account')->get();
 
         if ($domainMappings->isEmpty()) {
             return [
                 'success' => false,
-                'error' => 'No active domain mappings found. Domain mapping strategy requires existing domain mappings.'
+                'error' => 'No active domain mappings found. You need to create domain mappings first.',
+                'suggestion' => 'Go to Settings > Email > Domain Mappings to create domain patterns that map email domains to accounts.',
+                'mappings_count' => 0,
+                'warning' => 'Domain mapping strategy requires existing domain mappings. Please configure domain mappings or choose a different account strategy.'
             ];
         }
 
@@ -103,9 +106,9 @@ class FreescoutImportService
             'success' => true,
             'mappings_count' => $domainMappings->count(),
             'mappings' => $domainMappings->map(fn($dm) => [
-                'pattern' => $dm->domain,
-                'account' => $dm->account->name
-            ])
+                'pattern' => $dm->domain_pattern,
+                'account' => $dm->account->name ?? 'Unknown Account'
+            ])->toArray()
         ];
     }
 
@@ -135,11 +138,18 @@ class FreescoutImportService
                 $includedMailboxes = array_filter($mailboxes, fn($mb) => !in_array($mb['id'], $excludedIds));
 
                 // Estimate accounts based on strategy
-                if ($config['account_strategy'] === 'map_mailboxes') {
+                $accountStrategy = $config['account_strategy'] ?? 'domain_mapping_strict';
+                if ($accountStrategy === 'mailbox_per_account') {
                     $estimates['accounts'] = count($includedMailboxes);
+                } elseif ($accountStrategy === 'single_account') {
+                    $estimates['accounts'] = 1;
+                } elseif (in_array($accountStrategy, ['domain_mapping', 'domain_mapping_strict'])) {
+                    // Uses existing domain mappings - count mapped accounts
+                    $estimates['accounts'] = DomainMapping::where('is_active', true)
+                        ->distinct('account_id')
+                        ->count('account_id');
                 } else {
-                    // Domain mapping - rough estimate based on existing mappings
-                    $estimates['accounts'] = DomainMapping::where('is_active', true)->count();
+                    $estimates['accounts'] = count($includedMailboxes);
                 }
 
                 // Estimate conversations from included mailboxes
@@ -200,6 +210,7 @@ class FreescoutImportService
             'customers' => [],
             'time_entries' => [],
             'users' => [],
+            'mailboxes' => [],
             'relationship_mapping' => []
         ];
 
@@ -258,13 +269,27 @@ class FreescoutImportService
                     $preview['customers'][] = [
                         'freescout_id' => $customer['id'],
                         'name' => ($customer['firstName'] ?? '') . ' ' . ($customer['lastName'] ?? ''),
-                        'email' => $customer['emails'][0]['email'] ?? null,
+                        'email' => $customer['_embedded']['emails'][0]['value'] ?? null,
                         'service_vault_mapping' => [
                             'user_type' => 'account_user',
                             'account_id' => $this->determineAccountForCustomer($customer, $config),
                             'role_template' => 'Account User',
                             'external_id' => $customer['id']
                         ]
+                    ];
+                }
+            }
+
+            // Get mailboxes with conversation counts
+            $mailboxesResponse = Http::withHeaders($headers)->get($baseUrl . '/api/mailboxes');
+            if ($mailboxesResponse->successful()) {
+                $mailboxes = $mailboxesResponse->json()['_embedded']['mailboxes'] ?? [];
+                foreach ($mailboxes as $mailbox) {
+                    $preview['mailboxes'][] = [
+                        'id' => $mailbox['id'],
+                        'name' => $mailbox['name'],
+                        'email' => $mailbox['email'],
+                        'conversation_count' => $mailbox['conversation_count'] ?? 0
                     ];
                 }
             }
@@ -314,9 +339,7 @@ class FreescoutImportService
         $job->updateProgress(0, 'Starting FreeScout import...');
 
         try {
-            DB::transaction(function () use ($job, $profile, $config) {
-                $this->processFreescoutImport($job, $profile, $config);
-            });
+            $this->processFreescoutImport($job, $profile, $config);
 
             $job->markAsCompleted();
             
@@ -482,8 +505,27 @@ class FreescoutImportService
 
     private function determineAccountForCustomer(array $customer, array $config): ?string
     {
-        // Account determination logic based on strategy
-        return 'Customer Account';
+        $email = $customer['_embedded']['emails'][0]['value'] ?? null;
+        
+        if (!$email) {
+            return 'No Account (missing email)';
+        }
+
+        if ($config['account_strategy'] === 'domain_mapping') {
+            $domain = substr(strrchr($email, "@"), 1);
+            $domainMapping = DomainMapping::where('domain', 'like', "%{$domain}%")
+                ->where('is_active', true)
+                ->first();
+                
+            if ($domainMapping) {
+                return $domainMapping->account->name ?? 'Mapped Account';
+            }
+            
+            return 'Default Account (unmapped domain)';
+        } else {
+            // map_mailboxes strategy - will be determined during import
+            return 'Account from Mailbox';
+        }
     }
 
     private function mapFreescoutStatus(string $freescoutStatus): string
@@ -528,693 +570,1049 @@ class FreescoutImportService
     public function processFreescoutImport(ImportJob $job, ImportProfile $profile, array $config): void
     {
         $apiConfig = $profile->getConnectionConfig();
-        $baseUrl = $apiConfig['host'];  // API URL is stored in 'host' field
-        $headers = ['X-FreeScout-API-Key' => $apiConfig['password']];  // API key is stored in 'password' field
+        $baseUrl = rtrim($apiConfig['host'], '/');
+        $headers = ['X-FreeScout-API-Key' => $apiConfig['password']];
         
+        // Initialize import tracking
         $importStats = [
             'accounts_created' => 0,
-            'users_created' => 0,
+            'users_created' => 0, 
+            'customers_created' => 0,
             'tickets_created' => 0,
             'comments_created' => 0,
-            'time_entries_created' => 0
+            'time_entries_created' => 0,
+            'records_skipped' => 0,
+            'validation_errors' => []
+        ];
+        
+        // Validate domain mapping configuration before starting import
+        $accountStrategy = $config['account_strategy'] ?? 'mailbox_per_account';
+        if (in_array($accountStrategy, ['domain_mapping', 'domain_mapping_strict'])) {
+            $domainValidation = $this->validateDomainMappings();
+            if (!$domainValidation['success']) {
+                $job->markAsFailed([
+                    'error' => $domainValidation['error'],
+                    'suggestion' => $domainValidation['suggestion'] ?? null,
+                    'warning' => $domainValidation['warning'] ?? null
+                ]);
+                return;
+            }
+        }
+
+        // Track needed and imported entities for dependency resolution
+        $dependencyTracker = [
+            'accounts' => [],      // mailbox_id => account_id (imported accounts)
+            'agents' => [],        // freescout_user_id => service_vault_user_id (imported agents)
+            'customers' => [],     // freescout_customer_id => service_vault_user_id (imported customers)
+            'tickets' => [],       // freescout_conversation_id => service_vault_ticket_id (imported tickets)
+            'needed_mailboxes' => [],    // Track mailboxes that need to be imported
+            'needed_agents' => [],       // Track users that need to be imported as agents
+            'needed_customers' => []     // Track customers that need to be imported
         ];
 
-        // Step 1: Process Accounts (based on strategy)
-        $job->updateProgress(10, 'Creating accounts...');
-        $this->broadcastProgress($job, 'accounts', ['step' => 'starting', 'strategy' => $config['account_strategy']]);
-        
-        $accountMapping = $this->processAccounts($baseUrl, $headers, $config);
-        $importStats['accounts_created'] = count($accountMapping);
-        
-        $job->updateProgress(20, "Created {$importStats['accounts_created']} accounts");
-        $this->broadcastProgress($job, 'accounts', [
-            'step' => 'completed',
-            'accounts_created' => $importStats['accounts_created'],
-            'strategy' => $config['account_strategy']
-        ]);
-
-        // Step 2: Process Users (Agents and Customers)
-        $job->updateProgress(25, 'Processing agents...');
-        $this->broadcastProgress($job, 'users', ['step' => 'agents_starting', 'role_strategy' => $config['agent_role_strategy'] ?? 'standard_agent']);
-        
-        $agentMapping = $this->processAgents($job, $baseUrl, $headers, $config, $accountMapping);
-        
-        $job->updateProgress(35, 'Processing customers...');
-        $this->broadcastProgress($job, 'users', ['step' => 'customers_starting', 'agents_created' => count($agentMapping)]);
-        
-        $customerMapping = $this->processCustomers($job, $baseUrl, $headers, $config, $accountMapping);
-        
-        $importStats['users_created'] = count($agentMapping) + count($customerMapping);
-        $job->updateProgress(45, "Created {$importStats['users_created']} users");
-        $this->broadcastProgress($job, 'users', [
-            'step' => 'completed',
-            'agents_created' => count($agentMapping),
-            'customers_created' => count($customerMapping),
-            'total_users' => $importStats['users_created']
-        ]);
-
-        // Step 3: Process Conversations -> Tickets
-        $job->updateProgress(50, 'Processing conversations as tickets...');
-        $this->broadcastProgress($job, 'tickets', ['step' => 'starting']);
-        
-        $ticketMapping = $this->processConversations($baseUrl, $headers, $config, $accountMapping, $customerMapping);
-        $importStats['tickets_created'] = count($ticketMapping);
-        
-        $job->updateProgress(65, "Created {$importStats['tickets_created']} tickets");
-        $this->broadcastProgress($job, 'tickets', [
-            'step' => 'completed',
-            'tickets_created' => $importStats['tickets_created']
-        ]);
-
-        // Step 4: Process Conversation Threads -> Comments
-        $job->updateProgress(70, 'Processing conversation threads as comments...');
-        $this->broadcastProgress($job, 'comments', [
-            'step' => 'starting',
-            'preserve_html' => $config['comment_processing']['preserve_html'],
-            'add_context_prefix' => $config['comment_processing']['add_context_prefix']
-        ]);
-        
-        $commentsCreated = $this->processConversationThreads($baseUrl, $headers, $config, $ticketMapping, $agentMapping, $customerMapping);
-        $importStats['comments_created'] = $commentsCreated;
-        
-        $job->updateProgress(85, "Created {$importStats['comments_created']} comments");
-        $this->broadcastProgress($job, 'comments', [
-            'step' => 'completed',
-            'comments_created' => $commentsCreated
-        ]);
-
-        // Step 5: Process Time Entries
-        $job->updateProgress(90, 'Processing time entries...');
-        $this->broadcastProgress($job, 'time_entries', [
-            'step' => 'starting',
-            'billing_strategy' => $config['billing_rate_strategy'],
-            'billable_default' => $config['time_entry_defaults']['billable']
-        ]);
-        
-        $timeEntriesCreated = $this->processTimeEntries($baseUrl, $headers, $config, $ticketMapping, $agentMapping);
-        $importStats['time_entries_created'] = $timeEntriesCreated;
-        
-        $job->updateProgress(95, "Created {$importStats['time_entries_created']} time entries");
-        $this->broadcastProgress($job, 'time_entries', [
-            'step' => 'completed',
-            'time_entries_created' => $timeEntriesCreated
-        ]);
-
-        // Update job statistics
-        $job->records_processed = array_sum($importStats);
-        $job->records_imported = array_sum($importStats);
-        $job->save();
-        
-        $job->updateProgress(100, 'FreeScout import completed successfully');
-        $this->broadcastProgress($job, 'completed', [
-            'step' => 'finished',
-            'final_stats' => $importStats,
-            'total_records' => array_sum($importStats)
-        ]);
-    }
-
-    private function processAccounts(string $baseUrl, array $headers, array $config): array
-    {
-        $accountMapping = [];
-        
-        Log::info('FreescoutImportService::processAccounts starting', [
-            'baseUrl' => $baseUrl,
-            'account_strategy' => $config['account_strategy'],
-            'excluded_mailboxes' => $config['excluded_mailboxes'] ?? []
-        ]);
-
-        if ($config['account_strategy'] === 'map_mailboxes') {
-            // Get all mailboxes and create accounts
-            $apiUrl = rtrim($baseUrl, '/') . '/api/mailboxes';
-            Log::info('FreescoutImportService::processAccounts making API request', [
-                'url' => $apiUrl,
-                'headers' => array_keys($headers)
+        try {
+            $job->updateProgress(10, 'Analyzing conversations in date range...');
+            
+            // Step 1: Find conversations in date range and identify dependencies
+            $conversationsToImport = $this->findConversationsInDateRange($baseUrl, $headers, $config, $dependencyTracker, $importStats);
+            
+            if (empty($conversationsToImport)) {
+                $job->updateProgress(100, 'No conversations found in specified date range');
+                return;
+            }
+            
+            Log::info('Found conversations to import', [
+                'count' => count($conversationsToImport),
+                'date_range' => $config['date_range'] ?? 'all',
+                'needed_mailboxes' => count($dependencyTracker['needed_mailboxes']),
+                'needed_agents' => count($dependencyTracker['needed_agents']),
+                'needed_customers' => count($dependencyTracker['needed_customers'])
             ]);
             
-            $response = Http::withHeaders($headers)->get($apiUrl);
+            // Step 2: Import conversations with just-in-time dependency creation
+            $job->updateProgress(25, 'Importing conversations with dependencies...');
+            $this->importConversationsWithDependencies($job, $conversationsToImport, $baseUrl, $headers, $config, $importStats);
             
-            Log::info('FreescoutImportService::processAccounts API response', [
-                'successful' => $response->successful(),
-                'status' => $response->status(),
-                'response_body' => $response->body(),
-                'response_json' => $response->json()
+            // Finalize import statistics
+            $totalCreated = array_sum(array_filter($importStats, 'is_numeric'));
+                          
+            $job->update([
+                'records_processed' => $totalCreated + $importStats['records_skipped'],
+                'records_imported' => $totalCreated,
+                'records_skipped' => $importStats['records_skipped'],
+                'summary' => $importStats
             ]);
             
-            if ($response->successful()) {
-                $responseData = $response->json();
-                
-                if ($responseData === null) {
-                    Log::error('FreescoutImportService::processAccounts API returned null JSON', [
-                        'response_body' => $response->body(),
-                        'content_type' => $response->header('Content-Type')
-                    ]);
-                    return $accountMapping;
-                }
-                
-                $mailboxes = $responseData['_embedded']['mailboxes'] ?? [];
-                $excludedIds = $config['excluded_mailboxes'] ?? [];
-                
-                Log::info('FreescoutImportService::processAccounts mailboxes found', [
-                    'mailboxes_count' => count($mailboxes),
-                    'excluded_count' => count($excludedIds),
-                    'response_structure' => array_keys($responseData)
-                ]);
-
-                foreach ($mailboxes as $mailbox) {
-                    if (in_array($mailbox['id'], $excludedIds)) {
-                        continue;
-                    }
-
-                    // Check if account already exists by external_id
-                    $existingAccount = Account::where('external_id', 'freescout_mailbox_' . $mailbox['id'])->first();
-                    
-                    if (!$existingAccount) {
-                        $account = Account::create([
-                            'name' => $mailbox['name'] . ' Account',
-                            'description' => 'Account created from FreeScout mailbox: ' . $mailbox['name'],
-                            'external_id' => 'freescout_mailbox_' . $mailbox['id'],
-                            'is_active' => true
-                        ]);
-                        
-                        Log::info('FreeScout import: Account created', [
-                            'account_id' => $account->id,
-                            'account_name' => $account->name,
-                            'freescout_mailbox_id' => $mailbox['id'],
-                            'freescout_mailbox_name' => $mailbox['name']
-                        ]);
-                        
-                        $accountMapping['mailbox_' . $mailbox['id']] = $account->id;
-                    } else {
-                        Log::info('FreeScout import: Existing account found', [
-                            'account_id' => $existingAccount->id,
-                            'freescout_mailbox_id' => $mailbox['id']
-                        ]);
-                        $accountMapping['mailbox_' . $mailbox['id']] = $existingAccount->id;
-                    }
-                }
-            } else {
-                Log::error('FreescoutImportService::processAccounts API call failed', [
-                    'status' => $response->status(),
-                    'response_body' => $response->body(),
-                    'url' => $baseUrl . '/api/mailboxes'
-                ]);
-            }
-        } else {
-            // Domain mapping strategy - use existing accounts
-            $domainMappings = DomainMapping::where('is_active', true)->with('account')->get();
-            foreach ($domainMappings as $mapping) {
-                $accountMapping['domain_' . $mapping->id] = $mapping->account->id;
-            }
-        }
-        
-        Log::info('FreescoutImportService::processAccounts completed', [
-            'account_mapping_count' => count($accountMapping),
-            'account_mapping' => $accountMapping
-        ]);
-
-        return $accountMapping;
-    }
-
-    private function processAgents(ImportJob $job, string $baseUrl, array $headers, array $config, array $accountMapping): array
-    {
-        $agentMapping = [];
-        $agentRole = RoleTemplate::where('name', 'Agent')->first();
-        
-        if (!$agentRole) {
-            throw new Exception('Agent role template not found');
-        }
-
-        // Get FreeScout users (agents)
-        $response = Http::withHeaders($headers)->get($baseUrl . '/api/users');
-        
-        if ($response->successful()) {
-            $users = $response->json()['_embedded']['users'] ?? [];
+            $job->updateProgress(100, 'FreeScout import completed successfully');
             
-            // Get list of FreeScout user IDs that should be imported as agents
-            // Default to Grant and Jami Wilson (known DRIVE NW staff) if not configured
-            $selectedAgentIds = $config['selected_agent_ids'] ?? [1, 2]; // Grant Wilson, Jami Wilson
-            
-            foreach ($users as $freescoutUser) {
-                // Only process users selected as agents in the import configuration
-                if (!in_array($freescoutUser['id'], $selectedAgentIds)) {
-                    continue; // Skip non-selected users - they'll be processed as customers
-                }
-                
-                // Check for existing user by external_id first, then by email+user_type composite
-                $existingUser = User::where('external_id', 'freescout_user_' . $freescoutUser['id'])->first();
-                
-                if (!$existingUser) {
-                    // Also check if user exists with same email+user_type (composite constraint)
-                    $existingByEmailType = User::where('email', $freescoutUser['email'])
-                        ->where('user_type', 'agent')
-                        ->first();
-                    
-                    if ($existingByEmailType) {
-                        // User exists with same email+user_type, use existing user
-                        $existingUser = $existingByEmailType;
-                        // Update external_id to link FreeScout record
-                        if (!$existingUser->external_id) {
-                            $existingUser->update(['external_id' => 'freescout_user_' . $freescoutUser['id']]);
-                        }
-                        $agentMapping['user_' . $freescoutUser['id']] = $existingUser->id;
-                        $this->broadcastProgress($job, 'users', [
-                            'step' => 'agent_found_existing',
-                            'agent_email' => $freescoutUser['email'],
-                            'agent_id' => $existingUser->id
-                        ]);
-                        continue;
-                    }
-                }
-                
-                if (!$existingUser) {
-                    // Skip agent import if configured to do so
-                    if (($config['agent_role_strategy'] ?? 'standard_agent') === 'skip_agents') {
-                        $this->broadcastProgress($job, 'users', [
-                            'step' => 'agent_skipped',
-                            'agent_email' => $freescoutUser['email']
-                        ]);
-                        continue;
-                    }
-
-                    $user = User::create([
-                        'name' => ($freescoutUser['firstName'] ?? '') . ' ' . ($freescoutUser['lastName'] ?? ''),
-                        'email' => $freescoutUser['email'],
-                        'user_type' => 'agent',
-                        'role_template_id' => $agentRole->id,
-                        'external_id' => 'freescout_user_' . $freescoutUser['id'],
-                        'is_active' => true,
-                        'is_visible' => true
-                    ]);
-
-                    $agentMapping['user_' . $freescoutUser['id']] = $user->id;
-                } else {
-                    $agentMapping['user_' . $freescoutUser['id']] = $existingUser->id;
-                }
-            }
-        }
-
-        return $agentMapping;
-    }
-
-    private function processCustomers(ImportJob $job, string $baseUrl, array $headers, array $config, array $accountMapping): array
-    {
-        $customerMapping = [];
-        $customerRole = RoleTemplate::where('name', 'Account User')->first();
-        
-        if (!$customerRole) {
-            throw new Exception('Account User role template not found');
-        }
-
-        // Get FreeScout users and filter for customers (non-selected agents)
-        $response = Http::withHeaders($headers)->get($baseUrl . '/api/users');
-        
-        if ($response->successful()) {
-            $allUsers = $response->json()['_embedded']['users'] ?? [];
-            // Default to Grant and Jami Wilson (known DRIVE NW staff) if not configured
-            $selectedAgentIds = $config['selected_agent_ids'] ?? [1, 2]; // Grant Wilson, Jami Wilson
-            
-            // Filter for users NOT selected as agents - these become customers
-            $customers = array_filter($allUsers, function($user) use ($selectedAgentIds) {
-                return !in_array($user['id'], $selectedAgentIds);
-            });
-            
-            foreach ($customers as $customer) {
-                // Check for existing user by external_id first, then by email+user_type composite  
-                $existingUser = User::where('external_id', 'freescout_customer_' . $customer['id'])->first();
-                $email = $customer['email'] ?? null; // FreeScout users have direct email field, not nested
-                
-                if (!$existingUser && $email) {
-                    // Also check if user exists with same email+user_type (composite constraint)
-                    $existingByEmailType = User::where('email', $email)
-                        ->where('user_type', 'account_user')
-                        ->first();
-                    
-                    if ($existingByEmailType) {
-                        // User exists with same email+user_type, use existing user
-                        $existingUser = $existingByEmailType;
-                        // Update external_id to link FreeScout record
-                        if (!$existingUser->external_id) {
-                            $existingUser->update(['external_id' => 'freescout_customer_' . $customer['id']]);
-                        }
-                        $customerMapping['customer_' . $customer['id']] = $existingUser->id;
-                        $this->broadcastProgress($job, 'users', [
-                            'step' => 'customer_found_existing',
-                            'customer_email' => $email,
-                            'customer_id' => $existingUser->id
-                        ]);
-                        continue;
-                    }
-                }
-                
-                if (!$existingUser) {
-                    $accountId = $this->determineCustomerAccount($customer, $config, $accountMapping);
-                    
-                    if (!$accountId) {
-                        continue; // Skip if no account can be determined
-                    }
-
-                    $user = User::create([
-                        'name' => trim(($customer['firstName'] ?? '') . ' ' . ($customer['lastName'] ?? '')),
-                        'email' => $email,
-                        'user_type' => 'account_user',
-                        'account_id' => $accountId,
-                        'role_template_id' => $customerRole->id,
-                        'external_id' => 'freescout_customer_' . $customer['id'],
-                        'is_active' => true,
-                        'is_visible' => true
-                    ]);
-
-                    $customerMapping['customer_' . $customer['id']] = $user->id;
-                } else {
-                    $customerMapping['customer_' . $customer['id']] = $existingUser->id;
-                }
-            }
-        }
-
-        return $customerMapping;
-    }
-
-    private function processConversations(string $baseUrl, array $headers, array $config, array $accountMapping, array $customerMapping): array
-    {
-        $ticketMapping = [];
-        
-        // Get conversations with pagination
-        $page = 1;
-        $limit = $config['limits']['conversations'] ?? null;
-        $processed = 0;
-
-        do {
-            $response = Http::withHeaders($headers)->get($baseUrl . '/api/conversations', [
-                'page' => $page,
-                'per_page' => 50
+        } catch (Exception $e) {
+            Log::error('FreeScout import failed', [
+                'job_id' => $job->id,
+                'profile_id' => $profile->id,
+                'error' => $e->getMessage(),
+                'partial_stats' => $importStats
             ]);
-
-            if (!$response->successful()) {
-                break;
-            }
-
-            $data = $response->json();
-            $conversations = $data['_embedded']['conversations'] ?? [];
-
-            foreach ($conversations as $conversation) {
-                if ($limit && $processed >= $limit) {
-                    break 2;
-                }
-
-                // Skip if mailbox is excluded
-                if (isset($conversation['mailbox']['id']) && in_array($conversation['mailbox']['id'], $config['excluded_mailboxes'] ?? [])) {
-                    continue;
-                }
-
-                $existingTicket = Ticket::where('external_id', 'freescout_conversation_' . $conversation['id'])->first();
-                
-                if (!$existingTicket) {
-                    $accountId = $this->getAccountForConversation($conversation, $config, $accountMapping);
-                    
-                    // Skip ticket creation if no valid account can be determined
-                    if (!$accountId) {
-                        Log::warning('Skipping conversation - no valid account found', [
-                            'conversation_id' => $conversation['id'] ?? 'unknown',
-                            'has_mailbox' => isset($conversation['mailbox']),
-                        ]);
-                        continue;
-                    }
-                    
-                    $customerId = $customerMapping['customer_' . $conversation['customer']['id']] ?? null;
-
-                    $ticket = Ticket::create([
-                        'title' => $conversation['subject'],
-                        'description' => $conversation['preview'] ?? '',
-                        'status' => $this->mapFreescoutStatus($conversation['status']),
-                        'priority' => 'medium', // FreeScout doesn't have priority
-                        'account_id' => $accountId,
-                        'customer_id' => $customerId,
-                        'external_id' => 'freescout_conversation_' . $conversation['id'],
-                        'created_at' => $conversation['createdAt'] ?? null,
-                        'updated_at' => $conversation['updatedAt'] ?? null
-                    ]);
-
-                    $ticketMapping['conversation_' . $conversation['id']] = $ticket->id;
-                }
-
-                $processed++;
-            }
-
-            $page++;
-        } while (!empty($conversations) && (!$limit || $processed < $limit));
-
-        return $ticketMapping;
-    }
-
-    private function processConversationThreads(string $baseUrl, array $headers, array $config, array $ticketMapping, array $agentMapping, array $customerMapping): int
-    {
-        $commentsCreated = 0;
-
-        foreach ($ticketMapping as $conversationKey => $ticketId) {
-            $conversationId = str_replace('conversation_', '', $conversationKey);
-            
-            try {
-                // Get threads for this conversation
-                $response = Http::withHeaders($headers)->timeout(30)->get($baseUrl . "/api/conversations/{$conversationId}/threads");
-                
-                if ($response->successful()) {
-                    $threads = $response->json()['_embedded']['threads'] ?? [];
-                    
-                    foreach ($threads as $thread) {
-                        try {
-                            $existingComment = TicketComment::where('external_id', 'freescout_thread_' . $thread['id'])->first();
-                            
-                            if (!$existingComment) {
-                                // Determine comment author
-                                $userId = null;
-                                if (($thread['createdBy']['type'] ?? null) === 'customer') {
-                                    $userId = $customerMapping['customer_' . $thread['createdBy']['id']] ?? null;
-                                } else {
-                                    $userId = $agentMapping['user_' . $thread['createdBy']['id']] ?? null;
-                                }
-
-                                $content = $this->processCommentContent($thread, $config);
-                                $isInternal = $thread['type'] === 'note';
-
-                                TicketComment::create([
-                                    'ticket_id' => $ticketId,
-                                    'user_id' => $userId,
-                                    'content' => $content,
-                                    'is_internal' => $isInternal,
-                                    'external_id' => 'freescout_thread_' . $thread['id'],
-                                    'created_at' => $thread['createdAt'] ?? null,
-                                    'updated_at' => $thread['updatedAt'] ?? $thread['createdAt']
-                                ]);
-
-                                $commentsCreated++;
-                            }
-                        } catch (Exception $e) {
-                            Log::warning('FreeScout import: Failed to process thread', [
-                                'conversation_id' => $conversationId,
-                                'thread_id' => $thread['id'] ?? 'unknown',
-                                'error' => $e->getMessage()
-                            ]);
-                            // Continue processing other threads
-                        }
-                    }
-                } else {
-                    Log::warning('FreeScout import: Failed to fetch threads for conversation', [
-                        'conversation_id' => $conversationId,
-                        'status_code' => $response->status(),
-                        'response_body' => $response->body()
-                    ]);
-                }
-            } catch (Exception $e) {
-                Log::warning('FreeScout import: Failed to process conversation threads', [
-                    'conversation_id' => $conversationId,
-                    'error' => $e->getMessage()
-                ]);
-                // Continue with next conversation
-            }
+            throw $e;
         }
-
-        return $commentsCreated;
-    }
-
-    private function processTimeEntries(string $baseUrl, array $headers, array $config, array $ticketMapping, array $agentMapping): int
-    {
-        $timeEntriesCreated = 0;
-        $processed = 0;
-
-        // Process time entries for each conversation
-        foreach ($ticketMapping as $conversationKey => $ticketId) {
-
-            $conversationId = str_replace('conversation_', '', $conversationKey);
-            
-            // Get time entries for this conversation
-            $response = Http::withHeaders($headers)->get($baseUrl . "/api/conversations/{$conversationId}/time_entries");
-            
-            if ($response->successful()) {
-                $timeEntries = $response->json()['_embedded']['time_entries'] ?? [];
-                
-                foreach ($timeEntries as $timeEntry) {
-                    if ($limit && $processed >= $limit) {
-                        break 2;
-                    }
-
-                    $existingTimeEntry = TimeEntry::where('external_id', 'freescout_time_' . $timeEntry['id'])->first();
-                    
-                    if (!$existingTimeEntry) {
-                        $userId = $agentMapping['user_' . $timeEntry['user']['id']] ?? null;
-                        $ticket = Ticket::find($ticketId);
-                        
-                        if ($userId && $ticket) {
-                            // Convert time to minutes
-                            $duration = $this->convertTimeToMinutes($timeEntry['time']);
-                            
-                            // Determine billing rate
-                            $billingRateId = $this->determineBillingRate($config, $ticket->account_id);
-
-                            TimeEntry::create([
-                                'description' => $timeEntry['note'] ?? 'Time entry imported from FreeScout',
-                                'duration' => $duration,
-                                'started_at' => $timeEntry['createdAt'] ?? null,
-                                'user_id' => $userId,
-                                'ticket_id' => $ticketId,
-                                'account_id' => $ticket->account_id,
-                                'billing_rate_id' => $billingRateId,
-                                'billable' => $config['time_entry_defaults']['billable'],
-                                'approval_status' => $config['time_entry_defaults']['approved'] ? 'approved' : 'pending',
-                                'external_id' => 'freescout_time_' . $timeEntry['id'],
-                                'created_at' => $timeEntry['createdAt'] ?? null,
-                                'updated_at' => $timeEntry['updatedAt'] ?? $timeEntry['createdAt']
-                            ]);
-
-                            $timeEntriesCreated++;
-                        }
-                    }
-
-                    $processed++;
-                }
-            }
-        }
-
-        return $timeEntriesCreated;
-    }
-
-    private function determineCustomerAccount(array $customer, array $config, array $accountMapping): ?string
-    {
-        $email = $customer['emails'][0]['email'] ?? null;
-        
-        if (!$email) {
-            return null;
-        }
-
-        if ($config['account_strategy'] === 'domain_mapping') {
-            // Find matching domain mapping
-            $domain = substr(strrchr($email, "@"), 1);
-            $domainMapping = DomainMapping::where('domain', 'like', "%{$domain}%")
-                ->where('is_active', true)
-                ->first();
-                
-            if ($domainMapping) {
-                return $domainMapping->account_id;
-            }
-            
-            // Handle unmapped users based on strategy
-            if ($config['unmapped_users'] === 'auto_create') {
-                $account = Account::create([
-                    'name' => ucfirst($domain) . ' Account',
-                    'description' => 'Auto-created account for domain: ' . $domain,
-                    'is_active' => true
-                ]);
-                return $account->id;
-            } elseif ($config['unmapped_users'] === 'default_account') {
-                $defaultAccount = Account::firstOrCreate(
-                    ['name' => 'Imported Customers'],
-                    ['description' => 'Default account for unmapped imported customers', 'is_active' => true]
-                );
-                return $defaultAccount->id;
-            }
-            
-            return null; // Skip unmapped users
-        }
-        
-        // For mailbox strategy, we need to find which conversations this customer is in
-        // This is simplified - in practice we'd need to map customer to their primary mailbox
-        return reset($accountMapping) ?: null;
-    }
-
-    private function getAccountForConversation(array $conversation, array $config, array $accountMapping): ?string
-    {
-        if ($config['account_strategy'] === 'map_mailboxes') {
-            if (!isset($conversation['mailbox']['id'])) {
-                Log::warning('Conversation missing mailbox data', ['conversation_id' => $conversation['id'] ?? 'unknown']);
-                return null;
-            }
-            return $accountMapping['mailbox_' . $conversation['mailbox']['id']] ?? null;
-        }
-        
-        // For domain mapping, determine from customer email
-        $customerEmail = $conversation['customer']['email'] ?? null;
-        if ($customerEmail) {
-            $domain = substr(strrchr($customerEmail, "@"), 1);
-            $domainMapping = DomainMapping::where('domain', 'like', "%{$domain}%")
-                ->where('is_active', true)
-                ->first();
-                
-            if ($domainMapping) {
-                return $domainMapping->account_id;
-            }
-        }
-        
-        // Fallback to first available account
-        return reset($accountMapping) ?: null;
-    }
-
-    private function convertTimeToMinutes(string $timeString): int
-    {
-        // Handle different time formats: "2.5", "2:30", etc.
-        if (strpos($timeString, ':') !== false) {
-            // Format like "2:30"
-            [$hours, $minutes] = explode(':', $timeString);
-            return (int)$hours * 60 + (int)$minutes;
-        }
-        
-        // Decimal hours format like "2.5"
-        return (int)(floatval($timeString) * 60);
-    }
-
-    private function determineBillingRate(array $config, string $accountId): ?string
-    {
-        if ($config['billing_rate_strategy'] === 'no_rate') {
-            return null;
-        }
-        
-        if ($config['billing_rate_strategy'] === 'fixed_rate') {
-            return $config['fixed_billing_rate_id'];
-        }
-        
-        // Auto-select: account default -> global default
-        $account = Account::find($accountId);
-        if ($account && $account->settings['default_billing_rate_id'] ?? null) {
-            return $account->settings['default_billing_rate_id'];
-        }
-        
-        // Fall back to global default
-        $globalDefault = BillingRate::where('is_default', true)->first();
-        return $globalDefault?->id;
     }
 
     /**
-     * Broadcast import progress with detailed step information.
+     * Find conversations within date range and identify all dependencies
      */
-    private function broadcastProgress(ImportJob $job, string $currentStep, array $stepDetails = []): void
+    private function findConversationsInDateRange(string $baseUrl, array $headers, array $config, array &$dependencyTracker, array &$importStats): array
     {
+        $conversations = [];
+        $dateRange = $config['date_range'] ?? [];
+        $page = 1;
+        
         try {
-            event(new FreescoutImportProgressUpdated($job, $currentStep, $stepDetails));
-        } catch (Exception $e) {
-            // Don't let broadcasting errors interrupt the import
-            Log::warning('Failed to broadcast FreeScout import progress', [
-                'job_id' => $job->id,
-                'error' => $e->getMessage()
+            do {
+                $params = ['page' => $page, 'per_page' => 100];
+                
+                // Add date filtering if specified
+                if (!empty($dateRange['start_date'])) {
+                    $params['created_since'] = $dateRange['start_date'];
+                }
+                if (!empty($dateRange['end_date'])) {
+                    $params['created_until'] = $dateRange['end_date'];
+                }
+                
+                $response = Http::withHeaders($headers)->get("$baseUrl/api/conversations", $params);
+                
+                if (!$response->successful()) {
+                    throw new Exception("Failed to fetch conversations: " . $response->status());
+                }
+                
+                $data = $response->json();
+                $pageConversations = $data['_embedded']['conversations'] ?? [];
+                
+                foreach ($pageConversations as $conversation) {
+                    // Skip conversations that already exist (check by external_id)
+                    if (Ticket::where('external_id', "freescout_conversation_{$conversation['id']}")->exists()) {
+                        continue;
+                    }
+                    
+                    $conversations[] = $conversation;
+                    
+                    // Track needed mailbox
+                    if (isset($conversation['mailbox']['id'])) {
+                        $dependencyTracker['needed_mailboxes'][$conversation['mailbox']['id']] = $conversation['mailbox'];
+                    }
+                    
+                    // Track needed customer
+                    if (isset($conversation['customer']['id'])) {
+                        $dependencyTracker['needed_customers'][$conversation['customer']['id']] = $conversation['customer'];
+                    }
+                    
+                    // Track needed agent (if assigned)
+                    if (isset($conversation['user']['id'])) {
+                        $dependencyTracker['needed_agents'][$conversation['user']['id']] = $conversation['user'];
+                    }
+                }
+                
+                $page++;
+            } while (!empty($pageConversations));
+            
+            Log::info('Found conversations for import', [
+                'total_conversations' => count($conversations),
+                'unique_mailboxes' => count($dependencyTracker['needed_mailboxes']),
+                'unique_customers' => count($dependencyTracker['needed_customers']),
+                'unique_agents' => count($dependencyTracker['needed_agents']),
+                'date_range' => $dateRange
             ]);
+            
+            return $conversations;
+            
+        } catch (Exception $e) {
+            Log::error('Failed to find conversations in date range', ['error' => $e->getMessage()]);
+            if (!($config['continue_on_error'] ?? true)) {
+                throw $e;
+            }
+            return [];
         }
     }
-
+    
+    /**
+     * Import only the mailboxes that are needed for the conversations
+     */
+    private function importRequiredMailboxes(string $baseUrl, array $headers, array $config, array &$dependencyTracker, array &$importStats): void
+    {
+        $accountStrategy = $config['account_strategy'] ?? 'mailbox_per_account';
+        
+        if ($accountStrategy === 'single_account') {
+            // Create single account for all data
+            $account = Account::firstOrCreate(
+                ['external_id' => 'freescout_single_account'],
+                [
+                    'name' => 'FreeScout Import Account',
+                    'description' => 'Consolidated account for all imported FreeScout data'
+                ]
+            );
+            
+            // Map all needed mailboxes to this single account
+            foreach ($dependencyTracker['needed_mailboxes'] as $mailboxId => $mailbox) {
+                $dependencyTracker['accounts'][$mailboxId] = $account->id;
+            }
+            
+            $importStats['accounts_created'] = $account->wasRecentlyCreated ? 1 : 0;
+            
+        } elseif (in_array($accountStrategy, ['domain_mapping', 'domain_mapping_strict'])) {
+            // Domain mapping strategies - don't create accounts, use existing mappings
+            // Account assignment will be handled during customer/conversation import
+            $importStats['accounts_created'] = 0;
+            
+            Log::info('Using domain mapping strategy - no accounts created, will use existing mapped accounts', [
+                'strategy' => $accountStrategy,
+                'needed_mailboxes' => count($dependencyTracker['needed_mailboxes'])
+            ]);
+            
+        } else {
+            // Create one account per needed mailbox (mailbox_per_account)
+            foreach ($dependencyTracker['needed_mailboxes'] as $mailboxId => $mailbox) {
+                $externalId = "freescout_mailbox_{$mailboxId}";
+                
+                $account = Account::firstOrCreate(
+                    ['external_id' => $externalId],
+                    [
+                        'name' => $mailbox['name'] ?? "Mailbox {$mailboxId}",
+                        'description' => "Account created from FreeScout mailbox: " . ($mailbox['name'] ?? $mailboxId)
+                    ]
+                );
+                
+                $dependencyTracker['accounts'][$mailboxId] = $account->id;
+                
+                if ($account->wasRecentlyCreated) {
+                    $importStats['accounts_created']++;
+                }
+            }
+        }
+        
+        Log::info('Imported required mailboxes', [
+            'accounts_created' => $importStats['accounts_created'],
+            'strategy' => $accountStrategy
+        ]);
+    }
+    
+    /**
+     * Import only the agents that are needed for the conversations  
+     */
+    private function importRequiredAgents(string $baseUrl, array $headers, array $config, array &$dependencyTracker, array &$importStats): void
+    {
+        if (empty($dependencyTracker['needed_agents'])) {
+            return;
+        }
+        
+        $agentRole = RoleTemplate::where('name', 'Agent')->first();
+        if (!$agentRole) {
+            $importStats['validation_errors'][] = 'Agent role template not found - skipping agent import';
+            return;
+        }
+        
+        foreach ($dependencyTracker['needed_agents'] as $userId => $userInfo) {
+            try {
+                // Fetch full user details from FreeScout
+                $response = Http::withHeaders($headers)->get("$baseUrl/api/users/$userId");
+                
+                if (!$response->successful()) {
+                    $importStats['validation_errors'][] = "Failed to fetch user $userId from FreeScout API";
+                    continue;
+                }
+                
+                $freescoutUser = $response->json();
+                
+                if (empty($freescoutUser['email'])) {
+                    $importStats['validation_errors'][] = "User $userId missing required email - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                $externalId = "freescout_user_{$userId}";
+                
+                // Check if user already exists
+                $user = User::where('external_id', $externalId)->first();
+                if (!$user) {
+                    // Create new agent
+                    $user = User::create([
+                        'first_name' => $freescoutUser['firstName'] ?? '',
+                        'last_name' => $freescoutUser['lastName'] ?? '',
+                        'email' => $freescoutUser['email'],
+                        'user_type' => 'agent',
+                        'external_id' => $externalId,
+                        'password' => bcrypt(str()->random(16))
+                    ]);
+                    
+                    // Assign Agent role
+                    $user->roleTemplates()->attach($agentRole->id);
+                    $importStats['users_created']++;
+                }
+                
+                $dependencyTracker['agents'][$userId] = $user->id;
+                
+            } catch (Exception $e) {
+                $importStats['validation_errors'][] = "Failed to import user $userId: " . $e->getMessage();
+                $importStats['records_skipped']++;
+                
+                if (!($config['continue_on_error'] ?? true)) {
+                    throw $e;
+                }
+            }
+        }
+        
+        Log::info('Imported required agents', ['agents_created' => $importStats['users_created']]);
+    }
+    
+    /**
+     * Import only the customers that are needed for the conversations
+     */
+    private function importRequiredCustomers(string $baseUrl, array $headers, array $config, array &$dependencyTracker, array &$importStats): void
+    {
+        if (empty($dependencyTracker['needed_customers'])) {
+            return;
+        }
+        
+        $accountUserRole = RoleTemplate::where('name', 'Account User')->first();
+        if (!$accountUserRole) {
+            $importStats['validation_errors'][] = 'Account User role template not found - skipping customer import';
+            return;
+        }
+        
+        foreach ($dependencyTracker['needed_customers'] as $customerId => $customerInfo) {
+            try {
+                // Fetch full customer details from FreeScout
+                $response = Http::withHeaders($headers)->get("$baseUrl/api/customers/$customerId");
+                
+                if (!$response->successful()) {
+                    $importStats['validation_errors'][] = "Failed to fetch customer $customerId from FreeScout API";
+                    continue;
+                }
+                
+                $freescoutCustomer = $response->json();
+                $email = $freescoutCustomer['_embedded']['emails'][0]['value'] ?? null;
+                
+                if (empty($email)) {
+                    $importStats['validation_errors'][] = "Customer $customerId missing required email - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Handle domain mapping strategies
+                $accountStrategy = $config['account_strategy'] ?? 'mailbox_per_account';
+                if (in_array($accountStrategy, ['domain_mapping', 'domain_mapping_strict'])) {
+                    $domain = substr(strrchr($email, "@"), 1);
+                    $domainMapping = DomainMapping::where('is_active', true)
+                        ->where('domain_pattern', 'like', "%{$domain}%")
+                        ->first();
+                    
+                    if (!$domainMapping) {
+                        if ($accountStrategy === 'domain_mapping_strict') {
+                            // Skip customers without domain mapping in strict mode
+                            $importStats['validation_errors'][] = "Customer $customerId email domain '$domain' not mapped - skipped (strict mode)";
+                            $importStats['records_skipped']++;
+                            continue;
+                        } else {
+                            // Log warning for unmapped domain but continue
+                            $importStats['validation_errors'][] = "Customer $customerId email domain '$domain' not mapped - will need manual assignment";
+                        }
+                    }
+                }
+                
+                $externalId = "freescout_customer_{$customerId}";
+                
+                // Check if customer already exists
+                $user = User::where('external_id', $externalId)->first();
+                if (!$user) {
+                    // Create new customer user
+                    $user = User::create([
+                        'first_name' => $freescoutCustomer['firstName'] ?? '',
+                        'last_name' => $freescoutCustomer['lastName'] ?? '',
+                        'email' => $email,
+                        'user_type' => 'account_user',
+                        'external_id' => $externalId,
+                        'password' => bcrypt(str()->random(16))
+                    ]);
+                    
+                    // Assign Account User role
+                    $user->roleTemplates()->attach($accountUserRole->id);
+                    
+                    // Assign to account based on domain mapping if available
+                    if (isset($domainMapping) && $domainMapping) {
+                        $user->accounts()->attach($domainMapping->account_id);
+                    }
+                    
+                    $importStats['customers_created']++;
+                }
+                
+                $dependencyTracker['customers'][$customerId] = $user->id;
+                
+            } catch (Exception $e) {
+                $importStats['validation_errors'][] = "Failed to import customer $customerId: " . $e->getMessage();
+                $importStats['records_skipped']++;
+                
+                if (!($config['continue_on_error'] ?? true)) {
+                    throw $e;
+                }
+            }
+        }
+        
+        Log::info('Imported required customers', ['customers_created' => $importStats['customers_created']]);
+    }
+    
+    /**
+     * Import the conversations as tickets
+     */
+    private function importConversationsAsTickets(ImportJob $job, array $conversations, array $config, array &$dependencyTracker, array &$importStats): void
+    {
+        $totalConversations = count($conversations);
+        $processedCount = 0;
+        
+        foreach ($conversations as $conversation) {
+            $processedCount++;
+            
+            // Update progress every 10 conversations or for the last conversation
+            if ($processedCount % 10 === 0 || $processedCount === $totalConversations) {
+                $progressPercentage = 70 + (($processedCount / $totalConversations) * 15); // 70% to 85%
+                $job->updateProgress($progressPercentage, "Importing conversations as tickets... ({$processedCount}/{$totalConversations})");
+            }
+            try {
+                if (empty($conversation['subject'])) {
+                    $importStats['validation_errors'][] = "Conversation {$conversation['id']} missing required subject - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Determine account ID based on strategy
+                $accountStrategy = $config['account_strategy'] ?? 'mailbox_per_account';
+                $accountId = null;
+                
+                if (in_array($accountStrategy, ['domain_mapping', 'domain_mapping_strict'])) {
+                    // Use domain mapping to determine account
+                    $customerEmail = $conversation['customer']['email'] ?? null;
+                    if ($customerEmail) {
+                        $domain = substr(strrchr($customerEmail, "@"), 1);
+                        $domainMapping = DomainMapping::where('is_active', true)
+                            ->where('domain_pattern', 'like', "%{$domain}%")
+                            ->first();
+                        
+                        if ($domainMapping) {
+                            $accountId = $domainMapping->account_id;
+                        } elseif ($accountStrategy === 'domain_mapping_strict') {
+                            // Skip conversation without domain mapping in strict mode
+                            $importStats['validation_errors'][] = "Conversation {$conversation['id']} - customer domain '$domain' not mapped - skipped (strict mode)";
+                            $importStats['records_skipped']++;
+                            continue;
+                        } else {
+                            // Non-strict mode: fallback to mailbox mapping when domain mapping fails
+                            $accountId = $dependencyTracker['accounts'][$conversation['mailbox']['id']] ?? null;
+                            if ($accountId) {
+                                $importStats['validation_errors'][] = "Conversation {$conversation['id']} - domain '$domain' not mapped, using mailbox fallback";
+                            }
+                        }
+                    }
+                } else {
+                    // Use mailbox mapping for other strategies
+                    $accountId = $dependencyTracker['accounts'][$conversation['mailbox']['id']] ?? null;
+                }
+                
+                if (!$accountId) {
+                    $importStats['validation_errors'][] = "Conversation {$conversation['id']} - unable to determine account - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Get customer and agent mappings
+                $customerId = isset($conversation['customer']['id']) 
+                    ? ($dependencyTracker['customers'][$conversation['customer']['id']] ?? null) 
+                    : null;
+                $agentId = isset($conversation['user']['id']) 
+                    ? ($dependencyTracker['agents'][$conversation['user']['id']] ?? null) 
+                    : null;
+                
+                // Create ticket
+                $ticket = Ticket::create([
+                    'account_id' => $accountId,
+                    'title' => $conversation['subject'],
+                    'description' => $conversation['preview'] ?? '',
+                    'status' => $this->mapFreescoutStatus($conversation['status']),
+                    'priority' => $this->mapFreescoutPriority($conversation['type'] ?? 'email'),
+                    'agent_id' => $agentId,
+                    'customer_id' => $customerId,
+                    'customer_email' => $conversation['customer']['email'] ?? null,
+                    'external_id' => "freescout_conversation_{$conversation['id']}",
+                    'created_by_id' => Auth::id()
+                ]);
+                
+                $dependencyTracker['tickets'][$conversation['id']] = $ticket->id;
+                $importStats['tickets_created']++;
+                
+            } catch (Exception $e) {
+                $importStats['validation_errors'][] = "Failed to import conversation {$conversation['id']}: " . $e->getMessage();
+                $importStats['records_skipped']++;
+                
+                if (!($config['continue_on_error'] ?? true)) {
+                    throw $e;
+                }
+            }
+        }
+        
+        Log::info('Imported conversations as tickets', ['tickets_created' => $importStats['tickets_created']]);
+    }
+    
+    /**
+     * Import conversations with just-in-time dependency creation
+     */
+    private function importConversationsWithDependencies(ImportJob $job, array $conversations, string $baseUrl, array $headers, array $config, array &$importStats): void
+    {
+        $totalConversations = count($conversations);
+        $processedCount = 0;
+        $accountsCreated = [];
+        $agentsCreated = [];
+        $customersCreated = [];
+        $ticketsCreated = [];
+        
+        foreach ($conversations as $conversation) {
+            $processedCount++;
+            
+            // Update progress outside any transactions
+            if ($processedCount % 10 === 0 || $processedCount === $totalConversations) {
+                $progressPercentage = 25 + (($processedCount / $totalConversations) * 70); // 25% to 95%
+                $job->updateProgress($progressPercentage, "Processing conversation {$processedCount}/{$totalConversations}...");
+            }
+            
+            try {
+                // Validate conversation has required fields
+                if (empty($conversation['subject'])) {
+                    $importStats['validation_errors'][] = "Conversation {$conversation['id']} missing required subject - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Step 1: Determine account based on domain mapping strategy
+                $accountId = $this->determineOrCreateAccount($conversation, $config, $accountsCreated, $importStats);
+                if (!$accountId) {
+                    continue; // Already logged and counted in determineOrCreateAccount
+                }
+                
+                // Step 2: Handle customer creation/matching
+                $customerId = $this->createOrFindCustomer($conversation, $config, $customersCreated, $importStats);
+                
+                // Step 3: Handle agent creation/matching based on import strategy
+                $agentId = $this->handleAgentImport($conversation, $config, $baseUrl, $headers, $agentsCreated, $importStats);
+                
+                // Step 4: Create the ticket in its own transaction
+                $ticketId = null;
+                DB::transaction(function () use ($conversation, $accountId, $customerId, $agentId, &$ticketId, &$importStats) {
+                    $ticket = Ticket::create([
+                        'account_id' => $accountId,
+                        'title' => $conversation['subject'],
+                        'description' => $conversation['preview'] ?? '',
+                        'status' => $this->mapFreescoutStatus($conversation['status']),
+                        'priority' => $this->mapFreescoutPriority($conversation['type'] ?? 'email'),
+                        'agent_id' => $agentId,
+                        'customer_id' => $customerId,
+                        'customer_email' => $conversation['customer']['email'] ?? null,
+                        'external_id' => "freescout_conversation_{$conversation['id']}",
+                        'created_by_id' => Auth::id()
+                    ]);
+                    
+                    $ticketId = $ticket->id;
+                    $importStats['tickets_created']++;
+                });
+                
+                $ticketsCreated[$conversation['id']] = $ticketId;
+                
+                // Step 5: Import threads and time entries for this specific conversation
+                $this->importThreadsForConversation($conversation['id'], $ticketId, $baseUrl, $headers, $config, $importStats);
+                $this->importTimeEntriesForConversation($conversation['id'], $ticketId, $baseUrl, $headers, $config, $importStats);
+                
+            } catch (Exception $e) {
+                $importStats['validation_errors'][] = "Failed to import conversation {$conversation['id']}: " . $e->getMessage();
+                $importStats['records_skipped']++;
+                
+                if (!($config['continue_on_error'] ?? true)) {
+                    throw $e;
+                }
+            }
+        }
+        
+        // Update final statistics
+        $importStats['accounts_created'] = count($accountsCreated);
+        $importStats['users_created'] = count($agentsCreated);
+        $importStats['customers_created'] = count($customersCreated);
+        
+        Log::info('Imported conversations with dependencies', [
+            'conversations_processed' => $processedCount,
+            'tickets_created' => $importStats['tickets_created'],
+            'accounts_created' => $importStats['accounts_created'],
+            'agents_created' => $importStats['users_created'],
+            'customers_created' => $importStats['customers_created']
+        ]);
+    }
+    
+    /**
+     * Determine or create account based on domain mapping strategy
+     */
+    private function determineOrCreateAccount(array $conversation, array $config, array &$accountsCreated, array &$importStats): ?string
+    {
+        $accountStrategy = $config['account_strategy'] ?? 'domain_mapping_strict';
+        $customerEmail = $conversation['customer']['email'] ?? null;
+        
+        if (in_array($accountStrategy, ['domain_mapping', 'domain_mapping_strict'])) {
+            if (!$customerEmail) {
+                $importStats['validation_errors'][] = "Conversation {$conversation['id']} - no customer email for domain mapping - skipped";
+                $importStats['records_skipped']++;
+                return null;
+            }
+            
+            $domain = substr(strrchr($customerEmail, "@"), 1);
+            $domainMapping = DomainMapping::where('is_active', true)
+                ->where('domain_pattern', 'like', "%{$domain}%")
+                ->first();
+            
+            if ($domainMapping) {
+                return $domainMapping->account_id;
+            }
+            
+            if ($accountStrategy === 'domain_mapping_strict') {
+                // Skip conversation without domain mapping in strict mode
+                $importStats['validation_errors'][] = "Conversation {$conversation['id']} - customer domain '$domain' not mapped - skipped (strict mode)";
+                $importStats['records_skipped']++;
+                return null;
+            }
+            
+            // Fallback mode: create account based on customer information
+            return $this->createAccountFromCustomer($conversation['customer'], $accountsCreated, $importStats);
+            
+        } elseif ($accountStrategy === 'single_account') {
+            // Find or create the single account
+            $account = Account::firstOrCreate(
+                ['name' => 'FreeScout Import Account'],
+                ['description' => 'Single account for all FreeScout imported data']
+            );
+            
+            if ($account->wasRecentlyCreated) {
+                $accountsCreated[] = $account->id;
+            }
+            
+            return $account->id;
+            
+        } elseif ($accountStrategy === 'mailbox_per_account') {
+            // Create account based on mailbox
+            $mailboxName = $conversation['mailbox']['name'] ?? 'Unknown Mailbox';
+            $account = Account::firstOrCreate(
+                ['name' => $mailboxName],
+                ['description' => "Account for FreeScout mailbox: {$mailboxName}"]
+            );
+            
+            if ($account->wasRecentlyCreated) {
+                $accountsCreated[] = $account->id;
+            }
+            
+            return $account->id;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Create account based on customer information
+     */
+    private function createAccountFromCustomer(array $customer, array &$accountsCreated, array &$importStats): string
+    {
+        $customerName = trim(($customer['firstName'] ?? '') . ' ' . ($customer['lastName'] ?? ''));
+        if (empty($customerName)) {
+            $customerName = $customer['email'] ?? 'Unknown Customer';
+        }
+        
+        // Create account name from customer info
+        $accountName = !empty($customer['organization']) 
+            ? $customer['organization'] 
+            : $customerName . ' Account';
+        
+        $account = Account::firstOrCreate(
+            ['name' => $accountName],
+            ['description' => "Customer-based account for: {$customerName}"]
+        );
+        
+        if ($account->wasRecentlyCreated) {
+            $accountsCreated[] = $account->id;
+        }
+        
+        return $account->id;
+    }
+    
+    /**
+     * Create or find customer user
+     */
+    private function createOrFindCustomer(array $conversation, array $config, array &$customersCreated, array &$importStats): ?string
+    {
+        $customer = $conversation['customer'] ?? null;
+        if (!$customer || empty($customer['email'])) {
+            return null;
+        }
+        
+        $externalId = "freescout_customer_{$customer['id']}";
+        
+        // Check if customer already exists
+        $user = User::where('external_id', $externalId)->first();
+        if (!$user) {
+            DB::transaction(function () use ($customer, $externalId, &$user, &$customersCreated, &$importStats) {
+                $user = User::create([
+                    'first_name' => $customer['firstName'] ?? '',
+                    'last_name' => $customer['lastName'] ?? '',
+                    'email' => $customer['email'],
+                    'user_type' => 'account_user',
+                    'external_id' => $externalId,
+                    'created_by_id' => Auth::id()
+                ]);
+                
+                $customersCreated[] = $user->id;
+                $importStats['customers_created']++;
+            });
+        }
+        
+        return $user->id;
+    }
+    
+    /**
+     * Handle agent import based on strategy
+     */
+    private function handleAgentImport(array $conversation, array $config, string $baseUrl, array $headers, array &$agentsCreated, array &$importStats): ?string
+    {
+        $agentImportStrategy = $config['agent_import_strategy'] ?? 'skip';
+        $freescoutUser = $conversation['user'] ?? null;
+        
+        if (!$freescoutUser || empty($freescoutUser['email'])) {
+            return null; // No agent to import/match
+        }
+        
+        switch ($agentImportStrategy) {
+            case 'create_new':
+                return $this->createNewAgent($freescoutUser, $baseUrl, $headers, $agentsCreated, $importStats);
+                
+            case 'match_existing':
+                return $this->matchExistingAgent($freescoutUser, $importStats);
+                
+            case 'skip':
+            default:
+                return null; // No agent assignment
+        }
+    }
+    
+    /**
+     * Create new agent from FreeScout user
+     */
+    private function createNewAgent(array $freescoutUser, string $baseUrl, array $headers, array &$agentsCreated, array &$importStats): ?string
+    {
+        $externalId = "freescout_user_{$freescoutUser['id']}";
+        
+        // Check if agent already exists
+        $user = User::where('external_id', $externalId)->first();
+        if ($user) {
+            return $user->id;
+        }
+        
+        // Get the Agent role template
+        $agentRole = RoleTemplate::where('name', 'Agent')->first();
+        if (!$agentRole) {
+            $importStats['validation_errors'][] = "Agent role template not found - cannot create agent {$freescoutUser['id']}";
+            return null;
+        }
+        
+        // Fetch full user details from FreeScout API if needed
+        try {
+            $response = Http::withHeaders($headers)->get("{$baseUrl}/api/users/{$freescoutUser['id']}");
+            if ($response->successful()) {
+                $fullUserData = $response->json();
+            } else {
+                $fullUserData = $freescoutUser; // Use basic data if API call fails
+            }
+        } catch (Exception $e) {
+            $fullUserData = $freescoutUser; // Use basic data if API call fails
+        }
+        
+        $user = null;
+        DB::transaction(function () use ($fullUserData, $externalId, $agentRole, &$user, &$agentsCreated, &$importStats) {
+            $user = User::create([
+                'first_name' => $fullUserData['first_name'] ?? $fullUserData['firstName'] ?? '',
+                'last_name' => $fullUserData['last_name'] ?? $fullUserData['lastName'] ?? '',
+                'email' => $fullUserData['email'],
+                'user_type' => 'agent',
+                'role_template_id' => $agentRole->id,
+                'external_id' => $externalId,
+                'created_by_id' => Auth::id()
+            ]);
+            
+            $agentsCreated[] = $user->id;
+            $importStats['users_created']++;
+        });
+        
+        return $user->id;
+    }
+    
+    /**
+     * Match existing agent by email
+     */
+    private function matchExistingAgent(array $freescoutUser, array &$importStats): ?string
+    {
+        $email = $freescoutUser['email'];
+        
+        // Look for existing agent with matching email
+        $existingAgent = User::where('email', $email)
+            ->where('user_type', 'agent')
+            ->first();
+            
+        if ($existingAgent) {
+            return $existingAgent->id;
+        }
+        
+        // Log when no matching agent is found
+        $importStats['validation_errors'][] = "No existing agent found with email '{$email}' - conversation will be unassigned";
+        
+        return null;
+    }
+    
+    /**
+     * Import threads for a specific conversation
+     */
+    private function importThreadsForConversation(int $conversationId, string $ticketId, string $baseUrl, array $headers, array $config, array &$importStats): void
+    {
+        try {
+            $response = Http::withHeaders($headers)->get("$baseUrl/api/conversations/$conversationId/threads");
+            
+            if (!$response->successful()) {
+                return; // Some conversations may not have threads
+            }
+            
+            $threads = $response->json()['_embedded']['threads'] ?? [];
+            
+            foreach ($threads as $thread) {
+                // Skip if already imported
+                $externalId = "freescout_thread_{$thread['id']}";
+                if (TicketComment::where('external_id', $externalId)->exists()) {
+                    continue;
+                }
+                
+                DB::transaction(function () use ($thread, $ticketId, $externalId, &$importStats) {
+                    TicketComment::create([
+                        'ticket_id' => $ticketId,
+                        'comment' => $thread['body'] ?? '',
+                        'is_internal' => ($thread['type'] ?? 'message') === 'note',
+                        'external_id' => $externalId,
+                        'created_by_id' => Auth::id(),
+                        'created_at' => $thread['created_at'] ?? now()
+                    ]);
+                    
+                    $importStats['comments_created']++;
+                });
+            }
+        } catch (Exception $e) {
+            $importStats['validation_errors'][] = "Failed to import threads for conversation {$conversationId}: " . $e->getMessage();
+            
+            if (!($config['continue_on_error'] ?? true)) {
+                throw $e;
+            }
+        }
+    }
+    
+    /**
+     * Import time entries for a specific conversation
+     */
+    private function importTimeEntriesForConversation(int $conversationId, string $ticketId, string $baseUrl, array $headers, array $config, array &$importStats): void
+    {
+        try {
+            $response = Http::withHeaders($headers)->get("$baseUrl/api/conversations/$conversationId/time-tracking");
+            
+            if (!$response->successful()) {
+                return; // Some conversations may not have time entries
+            }
+            
+            $timeEntries = $response->json()['_embedded']['time_entries'] ?? [];
+            
+            foreach ($timeEntries as $timeEntry) {
+                // Skip if already imported
+                $externalId = "freescout_time_entry_{$timeEntry['id']}";
+                if (TimeEntry::where('external_id', $externalId)->exists()) {
+                    continue;
+                }
+                
+                DB::transaction(function () use ($timeEntry, $ticketId, $externalId, &$importStats) {
+                    TimeEntry::create([
+                        'ticket_id' => $ticketId,
+                        'description' => $timeEntry['description'] ?? 'Imported from FreeScout',
+                        'duration' => intval($timeEntry['time_spent'] ?? 0), // Convert to minutes
+                        'started_at' => $timeEntry['created_at'] ?? now(),
+                        'billable' => true, // Default to billable
+                        'external_id' => $externalId,
+                        'user_id' => Auth::id(),
+                        'created_by_id' => Auth::id()
+                    ]);
+                    
+                    $importStats['time_entries_created']++;
+                });
+            }
+        } catch (Exception $e) {
+            $importStats['validation_errors'][] = "Failed to import time entries for conversation {$conversationId}: " . $e->getMessage();
+            
+            if (!($config['continue_on_error'] ?? true)) {
+                throw $e;
+            }
+        }
+    }
+    
+    /**
+     * Import threads and time entries for all imported tickets
+     */
+    private function importThreadsAndTimeEntries(ImportJob $job, string $baseUrl, array $headers, array $config, array &$dependencyTracker, array &$importStats): void
+    {
+        foreach ($dependencyTracker['tickets'] as $conversationId => $ticketId) {
+            // Import threads for this conversation
+            $this->importThreadsForTicket($baseUrl, $headers, $conversationId, $ticketId, $config, $dependencyTracker, $importStats);
+            
+            // Import time entries for this conversation (using natural dates)
+            $this->importTimeEntriesForTicket($baseUrl, $headers, $conversationId, $ticketId, $config, $dependencyTracker, $importStats);
+        }
+    }
+    
+    /**
+     * Import threads for a specific ticket
+     */
+    private function importThreadsForTicket(string $baseUrl, array $headers, int $conversationId, string $ticketId, array $config, array &$dependencyTracker, array &$importStats): void
+    {
+        try {
+            $response = Http::withHeaders($headers)->get("$baseUrl/api/conversations/$conversationId/threads");
+            
+            if (!$response->successful()) {
+                return; // Some conversations may not have threads
+            }
+            
+            $threads = $response->json()['_embedded']['threads'] ?? [];
+            
+            foreach ($threads as $thread) {
+                // Skip if already imported
+                if (TicketComment::where('external_id', "freescout_thread_{$thread['id']}")->exists()) {
+                    continue;
+                }
+                
+                if (empty($thread['body'])) {
+                    $importStats['validation_errors'][] = "Thread {$thread['id']} missing required body - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Determine author
+                $authorId = null;
+                if (isset($thread['createdBy'])) {
+                    if ($thread['createdBy']['type'] === 'user' && isset($thread['createdBy']['id'])) {
+                        $authorId = $dependencyTracker['agents'][$thread['createdBy']['id']] ?? null;
+                    } elseif ($thread['createdBy']['type'] === 'customer' && isset($thread['createdBy']['id'])) {
+                        $authorId = $dependencyTracker['customers'][$thread['createdBy']['id']] ?? null;
+                    }
+                }
+                
+                if (!$authorId) {
+                    $authorId = Auth::id(); // Fallback to current user
+                }
+                
+                // Create comment
+                TicketComment::create([
+                    'ticket_id' => $ticketId,
+                    'user_id' => $authorId,
+                    'content' => $thread['body'],
+                    'is_internal' => ($thread['type'] ?? '') === 'note',
+                    'external_id' => "freescout_thread_{$thread['id']}",
+                    'created_at' => isset($thread['createdAt']) ? \Carbon\Carbon::parse($thread['createdAt']) : now()
+                ]);
+                
+                $importStats['comments_created']++;
+            }
+            
+        } catch (Exception $e) {
+            if ($config['continue_on_error'] ?? true) {
+                $importStats['validation_errors'][] = "Failed to import threads for conversation $conversationId: " . $e->getMessage();
+            } else {
+                throw $e;
+            }
+        }
+    }
+    
+    /**
+     * Import time entries for a specific ticket (using their natural dates)
+     */
+    private function importTimeEntriesForTicket(string $baseUrl, array $headers, int $conversationId, string $ticketId, array $config, array &$dependencyTracker, array &$importStats): void
+    {
+        try {
+            $response = Http::withHeaders($headers)->get("$baseUrl/api/conversations/$conversationId/time-entries");
+            
+            if (!$response->successful()) {
+                return; // Not all conversations have time entries
+            }
+            
+            $timeEntries = $response->json()['_embedded']['time-entries'] ?? [];
+            
+            foreach ($timeEntries as $timeEntry) {
+                // Skip if already imported (don't re-import existing time entries)
+                if (TimeEntry::where('external_id', "freescout_time_entry_{$timeEntry['id']}")->exists()) {
+                    continue;
+                }
+                
+                if (empty($timeEntry['time']) || empty($timeEntry['user']['id'])) {
+                    $importStats['validation_errors'][] = "Time entry {$timeEntry['id']} missing required fields - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Find the user who created this time entry
+                $userId = $dependencyTracker['agents'][$timeEntry['user']['id']] ?? null;
+                if (!$userId) {
+                    $importStats['validation_errors'][] = "Time entry {$timeEntry['id']} - user not found in agent mapping - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Get the ticket to determine account
+                $ticket = Ticket::find($ticketId);
+                if (!$ticket) {
+                    $importStats['validation_errors'][] = "Time entry {$timeEntry['id']} - ticket not found - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Convert time from seconds to minutes
+                $durationMinutes = (int) ($timeEntry['time'] / 60);
+                
+                if ($durationMinutes < 1) {
+                    $importStats['validation_errors'][] = "Time entry {$timeEntry['id']} - duration too short (< 1 minute) - skipped";
+                    $importStats['records_skipped']++;
+                    continue;
+                }
+                
+                // Use the time entry's natural creation date
+                $startedAt = isset($timeEntry['created_at']) 
+                    ? \Carbon\Carbon::parse($timeEntry['created_at'])
+                    : now();
+                
+                // Create time entry with natural date
+                TimeEntry::create([
+                    'user_id' => $userId,
+                    'account_id' => $ticket->account_id,
+                    'ticket_id' => $ticketId,
+                    'description' => $timeEntry['note'] ?? 'Time entry imported from FreeScout',
+                    'duration' => $durationMinutes,
+                    'started_at' => $startedAt,
+                    'billable' => true,
+                    'external_id' => "freescout_time_entry_{$timeEntry['id']}"
+                ]);
+                
+                $importStats['time_entries_created']++;
+            }
+            
+        } catch (Exception $e) {
+            if ($config['continue_on_error'] ?? true) {
+                $importStats['validation_errors'][] = "Failed to import time entries for conversation $conversationId: " . $e->getMessage();
+            } else {
+                throw $e;
+            }
+        }
+    }
 }
+

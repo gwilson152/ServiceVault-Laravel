@@ -1182,12 +1182,12 @@ CREATE TABLE public.ticket_comments (
     ticket_id uuid NOT NULL,
     user_id uuid NOT NULL,
     content text NOT NULL,
-    type character varying(255) DEFAULT 'comment'::character varying NOT NULL,
-    is_public boolean DEFAULT true NOT NULL,
+    parent_id uuid,
+    is_internal boolean DEFAULT false NOT NULL,
     attachments json,
+    edited_at timestamp(0) without time zone,
     created_at timestamp(0) without time zone,
-    updated_at timestamp(0) without time zone,
-    CONSTRAINT ticket_comments_type_check CHECK (((type)::text = ANY ((ARRAY['comment'::character varying, 'internal_note'::character varying, 'system'::character varying])::text[])))
+    updated_at timestamp(0) without time zone
 );
 
 
@@ -2670,17 +2670,23 @@ CREATE INDEX ticket_categories_is_active_sort_order_index ON public.ticket_categ
 
 
 --
--- Name: ticket_comments_ticket_id_type_index; Type: INDEX; Schema: public; Owner: -
+-- Name: ticket_comments_ticket_id_parent_id_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ticket_comments_ticket_id_type_index ON public.ticket_comments USING btree (ticket_id, type);
+CREATE INDEX ticket_comments_ticket_id_parent_id_index ON public.ticket_comments USING btree (ticket_id, parent_id);
 
 
 --
--- Name: ticket_comments_user_id_type_index; Type: INDEX; Schema: public; Owner: -
+-- Name: ticket_comments_user_id_is_internal_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ticket_comments_user_id_type_index ON public.ticket_comments USING btree (user_id, type);
+CREATE INDEX ticket_comments_user_id_is_internal_index ON public.ticket_comments USING btree (user_id, is_internal);
+
+--
+-- Name: ticket_comments_parent_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ticket_comments_parent_id_index ON public.ticket_comments USING btree (parent_id);
 
 
 --
@@ -3199,6 +3205,14 @@ ALTER TABLE ONLY public.ticket_comments
 
 ALTER TABLE ONLY public.ticket_comments
     ADD CONSTRAINT ticket_comments_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ticket_comments ticket_comments_parent_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ticket_comments
+    ADD CONSTRAINT ticket_comments_parent_id_foreign FOREIGN KEY (parent_id) REFERENCES public.ticket_comments(id) ON DELETE CASCADE;
 
 
 --

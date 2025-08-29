@@ -47,15 +47,23 @@ Complete API endpoints for import management:
 - `GET /api/import/freescout/job/{id}/status` - Job progress tracking
 - `POST /api/import/freescout/analyze-relationships` - Relationship analysis
 
-#### FreescoutImportService  
+#### FreescoutImportService (Dependency-Driven)
 **Location**: `app/Services/FreescoutImportService.php`
 
-Five-step import processing pipeline:
-1. **Account Creation** - Maps FreeScout mailboxes or domains to Service Vault accounts
-2. **User Processing** - Imports agents and customers with proper role assignment
-3. **Conversation Import** - Converts FreeScout conversations to Service Vault tickets
-4. **Thread Processing** - Maps conversation threads to ticket comments
-5. **Time Entry Import** - Imports time tracking with billing rate integration
+**Automatic dependency resolution approach**:
+1. **Find Conversations** - Query conversations in date range, identify all dependencies
+2. **Import Required Accounts** - Only import mailboxes needed for found conversations
+3. **Import Required Users** - Only import agents and customers referenced by conversations  
+4. **Import Conversations** - Create tickets with validated relationships
+5. **Import Complete Data** - Import all threads and time entries for each ticket
+
+**Key Features**:
+- ✅ **Date Range Filtering**: Primary filter on conversation creation dates
+- ✅ **Automatic Dependencies**: Only imports users/accounts needed for conversations
+- ✅ **External ID Detection**: Always uses FreeScout IDs for duplicate prevention - no configuration needed
+- ✅ **One-Time Sync**: Time entries sync only once, never overwritten
+- ✅ **Original Timestamps**: Time entries preserve their FreeScout creation dates
+- ✅ **Ultra-Clean UI**: Removed data analysis tab and redundant configuration options
 
 #### WebSocket Events
 **Location**: `app/Events/FreescoutImportProgressUpdated.php`
@@ -108,17 +116,102 @@ Comprehensive job details viewer:
 ### Core Challenge
 FreeScout uses a **mailbox-centric** architecture while Service Vault uses an **account-centric** architecture. The import system bridges this gap through intelligent relationship mapping.
 
-### Account Mapping Strategies
+## Dependency-Driven Configuration
 
-#### 1. Map Mailboxes to Accounts
-- Each FreeScout mailbox becomes a Service Vault account
-- Simple 1:1 mapping for straightforward migrations
-- Maintains organizational structure from FreeScout
+### Date Range Filtering (Primary Control)
 
-#### 2. Domain Mapping Strategy
-- Uses existing Service Vault domain mappings
-- Groups customers by email domain
-- Leverages pre-configured account relationships
+#### From Date (Optional)
+- Import conversations created on or after this date
+- **Configuration**: `"date_range.start_date": "2023-01-01"`
+
+#### To Date (Optional) 
+- Import conversations created on or before this date
+- **Configuration**: `"date_range.end_date": "2023-12-31"`
+
+#### No Date Range
+- Import all conversations if no dates specified
+- System automatically finds required dependencies
+
+### Account Organization
+
+#### One Account Per Mailbox (Recommended)
+- Each required mailbox becomes a separate Service Vault account
+- **Configuration**: `"account_strategy": "mailbox_per_account"`
+
+#### Single Account for All Data
+- All imported data goes into one consolidated account
+- **Configuration**: `"account_strategy": "single_account"`
+
+### Agent Import
+
+#### Import Agents (Recommended)
+- FreeScout users referenced by conversations become Service Vault agents
+- **Configuration**: `"import_agents": true`
+
+#### Skip Agent Import
+- Don't import FreeScout users as agents, tickets remain unassigned
+- **Configuration**: `"import_agents": false`
+
+### Error Handling
+
+#### Continue on Errors (Recommended)
+- Skip invalid records, continue processing, log all errors
+- **Configuration**: `"continue_on_error": true`
+
+#### Stop on First Error
+- Halt import when first validation error occurs
+- **Configuration**: `"continue_on_error": false`
+
+## Validation and Error Handling
+
+### Required Field Validation
+
+The system validates all required fields before creating records:
+
+**Tickets (from Conversations)**:
+- `account_id` (required) - Must map to an imported mailbox/account
+- `title` (required) - From conversation subject
+- `status` (required) - Mapped from FreeScout status
+
+**Time Entries**:
+- `user_id` (required) - Must map to imported agent
+- `account_id` (required) - Derived from ticket's account
+- `ticket_id` (required) - Always linked to imported conversation/ticket
+- `description` (required) - From time entry note or default description
+- `duration` (required) - Minimum 1 minute, converted from seconds
+- `started_at` (required) - **Original FreeScout creation timestamp (no mapping)**
+- `external_id` (unique) - Prevents duplicate imports, sync only once
+
+**Ticket Comments (from Threads)**:
+- `ticket_id` (required) - Must link to imported conversation/ticket  
+- `user_id` (required) - Maps to agent or customer, fallback to current user
+- `content` (required) - From thread body
+
+**Users (from Customers)**:
+- `email` (required) - Extracted from FreeScout customer emails array
+- Composite unique constraint: `(email, user_type)` allows same email for different user types
+
+### Error Logging and Skipping
+
+**Skip Reasons Tracked**:
+- Missing required fields (specific field names logged)
+- Relationship mapping failures (e.g., "Time entry references conversation X but ticket import failed")
+- Validation failures (e.g., "Duration too short (< 1 minute)")
+- Dependency failures (e.g., "Conversation mailbox not found in account mapping")
+
+**Import Statistics**:
+```json
+{
+  "accounts_created": 5,
+  "users_created": 12,
+  "customers_created": 150,
+  "tickets_created": 89,
+  "comments_created": 245,
+  "time_entries_created": 67,
+  "records_skipped": 8,
+  "validation_errors": ["Specific error messages with reasons"]
+}
+```
 
 ### User Classification
 

@@ -137,6 +137,7 @@
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { ref, reactive, computed, watch } from 'vue'
 import { useCreateBillingRateMutation, useUpdateBillingRateMutation } from '@/Composables/queries/useBillingQuery'
+import { useToast } from '@/Composables/useToast'
 
 const props = defineProps({
   show: Boolean,
@@ -144,6 +145,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+
+// Toast notifications
+const { apiError } = useToast()
 
 // Mutations
 const createRateMutation = useCreateBillingRateMutation()
@@ -198,7 +202,7 @@ const saveRate = async () => {
     emit('close')
   } catch (error) {
     console.error('Failed to save billing rate:', error)
-    alert('Failed to save rate. Please try again.')
+    apiError(error, 'Failed to save rate. Please try again.')
   }
 }
 </script>

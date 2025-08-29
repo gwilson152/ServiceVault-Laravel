@@ -14,18 +14,20 @@
               <div class="text-xs text-indigo-500">{{ profile.instance_url }}</div>
             </div>
             <div>
-              <span class="font-medium text-indigo-700">Import Limits:</span>
+              <span class="font-medium text-indigo-700">Date Range:</span>
               <div class="text-indigo-600">
-                {{ config.limits.conversations || 'All' }} conversations,
-                {{ config.limits.time_entries || 'All' }} time entries,
-                {{ config.limits.customers || 'All' }} customers,
-                {{ config.limits.mailboxes || 'All' }} mailboxes
+                {{ config.date_range?.start_date ? `From ${config.date_range.start_date}` : 'No start date' }}
+                {{ config.date_range?.end_date ? ` to ${config.date_range.end_date}` : ' to no end date' }}
+                {{ !config.date_range?.start_date && !config.date_range?.end_date ? 'All dates' : '' }}
               </div>
             </div>
             <div>
               <span class="font-medium text-indigo-700">Account Strategy:</span>
               <div class="text-indigo-600">
-                {{ config.account_strategy === 'map_mailboxes' ? 'Map mailboxes to accounts' : 'Use domain mapping' }}
+                {{ config.account_strategy === 'mailbox_per_account' ? 'One account per mailbox' :
+                   config.account_strategy === 'single_account' ? 'Single account for all data' :
+                   config.account_strategy === 'domain_mapping' ? 'Domain-based user matching' :
+                   config.account_strategy === 'domain_mapping_strict' ? 'Domain-based strict matching' : 'Unknown strategy' }}
               </div>
             </div>
             <div>
@@ -622,37 +624,28 @@ const previewTabs = computed(() => [
 ])
 
 const estimatedCounts = computed(() => {
-  const conversations = Math.min(
-    props.config.limits.conversations || mockConversations.value.length,
-    mockConversations.value.length
-  )
-  const timeEntries = Math.min(
-    props.config.limits.time_entries || mockTimeEntries.value.length,
-    mockTimeEntries.value.length
-  )
-  const customers = Math.min(
-    props.config.limits.customers || mockCustomers.value.length,
-    mockCustomers.value.length
-  )
+  // With ultra-simplified system: no limits, all data determined by date range and dependencies
+  const conversations = mockConversations.value.length
+  const timeEntries = mockTimeEntries.value.length
+  const customers = mockCustomers.value.length
   
   let accounts = 0
-  if (props.config.account_strategy === 'map_mailboxes') {
-    accounts = Math.min(
-      props.config.limits.mailboxes || mockMailboxes.value.length,
-      mockMailboxes.value.length
-    )
-  } else {
-    accounts = 5 // Existing domain mappings
+  if (props.config.account_strategy === 'mailbox_per_account') {
+    accounts = mockMailboxes.value.length
+  } else if (props.config.account_strategy === 'single_account') {
+    accounts = 1
+  } else if (props.config.account_strategy === 'domain_mapping' || props.config.account_strategy === 'domain_mapping_strict') {
+    accounts = 'Uses existing accounts'
   }
   
   return {
     conversations: conversations.toLocaleString(),
     time_entries: timeEntries.toLocaleString(),
     customers: customers.toLocaleString(),
-    accounts: accounts.toLocaleString(),
+    accounts: typeof accounts === 'string' ? accounts : accounts.toLocaleString(),
     threads: (conversations * 4).toLocaleString(), // Estimated 4 messages per conversation
     new_customers: Math.floor(customers * 0.7).toLocaleString(), // 70% estimated as new
-    new_accounts: accounts.toLocaleString()
+    new_accounts: typeof accounts === 'string' ? '0' : accounts.toLocaleString()
   }
 })
 
@@ -664,11 +657,13 @@ const estimatedDuration = computed(() => {
 const importWarnings = computed(() => {
   const warnings = []
   
-  if (props.config.account_strategy === 'domain_mapping' && props.config.unmapped_users === 'skip') {
-    warnings.push('Some customers may be skipped if their email domains don\'t match existing mappings')
+  if (props.config.account_strategy === 'domain_mapping_strict') {
+    warnings.push('Users and conversations with unmapped email domains will be skipped entirely')
+  } else if (props.config.account_strategy === 'domain_mapping') {
+    warnings.push('Users with unmapped email domains will need manual account assignment')
   }
   
-  if (!props.config.limits.conversations && mockConversations.value.length > 1000) {
+  if (mockConversations.value.length > 1000) {
     warnings.push('Large number of conversations may impact import performance')
   }
   
@@ -681,8 +676,10 @@ const importWarnings = computed(() => {
 
 // Methods
 const getAccountForCustomer = (customer) => {
-  if (props.config.account_strategy === 'map_mailboxes') {
+  if (props.config.account_strategy === 'mailbox_per_account') {
     return 'Based on conversation mailbox'
+  } else if (props.config.account_strategy === 'single_account') {
+    return 'FreeScout Import Account'
   }
   
   const domain = customer.email.split('@')[1]

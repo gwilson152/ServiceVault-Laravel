@@ -203,9 +203,10 @@ class EmailService
                 }
             }
 
-            // Update log entry
+            // Update log entry with ticket and user information
             $logEntry->update([
                 'ticket_id' => $ticket->id,
+                'user_id' => $ticket->customer_id,
                 'created_new_ticket' => !$logEntry->ticket_id,
             ]);
 
@@ -519,6 +520,26 @@ class EmailService
         $fromEmail = $this->extractEmailAddress($emailData['from'] ?? '');
         $customer = User::where('email', $fromEmail)->first();
 
+        // If no customer exists, create one
+        if (!$customer) {
+            $customerName = $this->extractNameFromEmail($emailData['from'] ?? '') ?: 'Unknown Customer';
+            $customer = User::create([
+                'name' => $customerName,
+                'email' => $fromEmail,
+                'user_type' => 'account_user', // Use account_user instead of customer
+                'account_id' => $accountId,
+                'password' => bcrypt(Str::random(32)), // Random password, they can reset if needed
+                'email_verified_at' => now(), // Auto-verify for email-created customers
+            ]);
+
+            Log::info('Auto-created customer from email', [
+                'customer_id' => $customer->id,
+                'email' => $fromEmail,
+                'name' => $customerName,
+                'account_id' => $accountId,
+            ]);
+        }
+
         // Get default category ID
         $defaultCategory = \App\Models\TicketCategory::where('key', 'technical_support')->first();
         
@@ -527,9 +548,9 @@ class EmailService
             'title' => $this->cleanSubjectForTitle($emailData['subject'] ?? 'Email Support Request'),
             'description' => $emailData['body_text'] ?? '',
             'customer_email' => $fromEmail,
-            'customer_name' => $this->extractNameFromEmail($emailData['from'] ?? ''),
-            'customer_id' => $customer?->id,
-            'created_by_id' => $customer?->id, // Set the customer as the creator if they exist
+            'customer_name' => $customer->name,
+            'customer_id' => $customer->id,
+            'created_by_id' => $customer->id, // Now we always have a customer
             'status' => 'open',
             'priority' => 'normal',
             'category_id' => $defaultCategory?->id,

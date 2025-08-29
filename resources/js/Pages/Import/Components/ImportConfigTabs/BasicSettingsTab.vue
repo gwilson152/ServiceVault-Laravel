@@ -1,246 +1,242 @@
 <template>
   <div class="space-y-8">
-    <!-- Import Limits Section -->
+    <!-- Date Range Filter Section -->
     <div class="bg-gray-50 rounded-lg p-6">
       <div class="flex items-center mb-4">
-        <AdjustmentsHorizontalIcon class="w-5 h-5 text-gray-400 mr-2" />
-        <h3 class="text-lg font-medium text-gray-900">Import Limits</h3>
+        <CalendarDaysIcon class="w-5 h-5 text-gray-400 mr-2" />
+        <h3 class="text-lg font-medium text-gray-900">Import Date Range</h3>
       </div>
       <p class="text-sm text-gray-600 mb-6">
-        Set limits for each data type to control the size of your import. Leave empty for no limit.
+        Filter conversations by creation date. All related users, comments, and time entries will be automatically imported as needed.
       </p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Conversations Limit -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Start Date -->
         <div>
-          <label for="conversations-limit" class="block text-sm font-medium text-gray-700 mb-2">
-            Conversations
+          <label for="start-date" class="block text-sm font-medium text-gray-700 mb-2">
+            From Date (optional)
           </label>
           <input
-            id="conversations-limit"
-            v-model.number="localConfig.limits.conversations"
-            type="number"
-            min="0"
-            placeholder="No limit"
+            id="start-date"
+            v-model="localConfig.date_range.start_date"
+            type="date"
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ statistics.conversations.toLocaleString() }}
-          </p>
-          <p class="mt-1 text-xs text-blue-600">
-            Time entries will be imported automatically with conversations
+            Import conversations created on or after this date
           </p>
         </div>
 
-        <!-- Customers Limit -->
+        <!-- End Date -->
         <div>
-          <label for="customers-limit" class="block text-sm font-medium text-gray-700 mb-2">
-            Customers
+          <label for="end-date" class="block text-sm font-medium text-gray-700 mb-2">
+            To Date (optional)
           </label>
           <input
-            id="customers-limit"
-            v-model.number="localConfig.limits.customers"
-            type="number"
-            min="0"
-            placeholder="No limit"
+            id="end-date"
+            v-model="localConfig.date_range.end_date"
+            type="date"
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
           <p class="mt-1 text-xs text-gray-500">
-            Available: {{ statistics.customers.toLocaleString() }}
+            Import conversations created on or before this date
           </p>
         </div>
+      </div>
 
-        <!-- Mailboxes Limit -->
-        <div>
-          <label for="mailboxes-limit" class="block text-sm font-medium text-gray-700 mb-2">
-            Mailboxes
-          </label>
-          <input
-            id="mailboxes-limit"
-            v-model.number="localConfig.limits.mailboxes"
-            type="number"
-            min="0"
-            placeholder="No limit"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-          <p class="mt-1 text-xs text-gray-500">
-            Available: {{ statistics.mailboxes.toLocaleString() }}
-          </p>
+      <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <InformationCircleIcon class="h-5 w-5 text-blue-400" />
+          </div>
+          <div class="ml-3">
+            <p class="text-sm text-blue-800">
+              <strong>Automatic Dependency Resolution:</strong> When importing conversations in this date range, 
+              the system will automatically import any required users, customers, and mailboxes that don't already exist.
+            </p>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Account Mapping Strategy Section -->
+    <!-- Simple Configuration Section -->
     <div class="bg-white border border-gray-200 rounded-lg p-6">
       <div class="flex items-center mb-4">
-        <BuildingOfficeIcon class="w-5 h-5 text-gray-400 mr-2" />
-        <h3 class="text-lg font-medium text-gray-900">Account Mapping Strategy</h3>
+        <CogIcon class="w-5 h-5 text-gray-400 mr-2" />
+        <h3 class="text-lg font-medium text-gray-900">Import Configuration</h3>
       </div>
-      <p class="text-sm text-gray-600 mb-4">
-        Choose how FreeScout data should be organized into Service Vault accounts.
+      <p class="text-sm text-gray-600 mb-6">
+        Configure how FreeScout data should be imported into Service Vault.
       </p>
 
-      <div class="space-y-4">
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.account_strategy"
-              value="map_mailboxes"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
-          </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Map mailboxes to accounts</div>
-            <div class="text-sm text-gray-500">Create a separate account for each FreeScout mailbox. Recommended for organized data separation.</div>
-          </div>
-        </label>
+      <div class="space-y-6">
+        <!-- Account Organization -->
+        <div>
+          <h4 class="text-sm font-medium text-gray-900 mb-3">Account Organization</h4>
+          <div class="space-y-3">
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.account_strategy"
+                  value="mailbox_per_account"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">One account per mailbox</div>
+                <div class="text-sm text-gray-500">Each FreeScout mailbox becomes a separate Service Vault account.</div>
+              </div>
+            </label>
 
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.account_strategy"
-              value="domain_mapping"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
-          </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Use domain mapping</div>
-            <div class="text-sm text-gray-500">Group customers by email domain into accounts. Good for B2B customer organization.</div>
-          </div>
-        </label>
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.account_strategy"
+                  value="single_account"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Single account for all data</div>
+                <div class="text-sm text-gray-500">Import all FreeScout data into one Service Vault account.</div>
+              </div>
+            </label>
 
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.account_strategy"
-              value="single_account"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.account_strategy"
+                  value="domain_mapping"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Domain-based with fallback</div>
+                <div class="text-sm text-gray-500">Use domain mappings where they exist, create accounts based on customer information for unmapped domains.</div>
+              </div>
+            </label>
+
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.account_strategy"
+                  value="domain_mapping_strict"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Domain-based strict matching (recommended)</div>
+                <div class="text-sm text-gray-500">Skip users and conversations with unmapped domains entirely. Only import records with matching domain mappings.</div>
+              </div>
+            </label>
           </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Single account</div>
-            <div class="text-sm text-gray-500">Import all data into one account. Simple but may not scale well.</div>
+        </div>
+
+        <!-- Agent Import -->
+        <div>
+          <h4 class="text-sm font-medium text-gray-900 mb-3">Agent Import</h4>
+          <div class="space-y-3">
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.agent_import_strategy"
+                  value="create_new"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Import FreeScout users as new agents</div>
+                <div class="text-sm text-gray-500">Creates new Service Vault agents from FreeScout users with Agent role.</div>
+              </div>
+            </label>
+
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.agent_import_strategy"
+                  value="match_existing"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Match to existing agents by email (recommended)</div>
+                <div class="text-sm text-gray-500">Links FreeScout users to existing Service Vault agents based on email matching. No new agents created.</div>
+              </div>
+            </label>
+
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.agent_import_strategy"
+                  value="skip"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Skip agent import</div>
+                <div class="text-sm text-gray-500">Don't import or match FreeScout users. All imported data will be unassigned.</div>
+              </div>
+            </label>
           </div>
-        </label>
+        </div>
+
+        <!-- Error Handling -->
+        <div>
+          <h4 class="text-sm font-medium text-gray-900 mb-3">Error Handling</h4>
+          <div class="space-y-3">
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.continue_on_error"
+                  :value="true"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Continue on validation errors (recommended)</div>
+                <div class="text-sm text-gray-500">Skip invalid records and continue importing. All errors will be logged.</div>
+              </div>
+            </label>
+
+            <label class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  v-model="localConfig.continue_on_error"
+                  :value="false"
+                  type="radio"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+              </div>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Stop on first error</div>
+                <div class="text-sm text-gray-500">Stop the import process when the first validation error occurs.</div>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Agent Role Configuration Section -->
-    <div class="bg-white border border-gray-200 rounded-lg p-6">
-      <div class="flex items-center mb-4">
-        <UserGroupIcon class="w-5 h-5 text-gray-400 mr-2" />
-        <h3 class="text-lg font-medium text-gray-900">Agent Role Configuration</h3>
+    <!-- Import Information -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <div class="flex items-center mb-3">
+        <InformationCircleIcon class="w-5 h-5 text-blue-600 mr-2" />
+        <h3 class="text-lg font-medium text-blue-900">Import Process</h3>
       </div>
-      <p class="text-sm text-gray-600 mb-4">
-        Configure how imported FreeScout users should be assigned agent roles in Service Vault.
-      </p>
-
-      <div class="space-y-4">
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.agent_role_strategy"
-              value="standard_agent"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
-          </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Standard Agent role (recommended)</div>
-            <div class="text-sm text-gray-500">Import FreeScout users with the standard Agent role template. Provides system-wide access based on role permissions.</div>
-          </div>
-        </label>
-
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.agent_role_strategy"
-              value="selective_import"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
-          </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Selective import</div>
-            <div class="text-sm text-gray-500">Choose specific FreeScout users to import as agents. Non-selected users will be imported as account users for customer data.</div>
-          </div>
-        </label>
-
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.agent_role_strategy"
-              value="skip_agents"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
-          </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Skip agent import</div>
-            <div class="text-sm text-gray-500">Don't import FreeScout users as agents. All imported tickets and data will be unassigned or assigned to the current user.</div>
-          </div>
-        </label>
-      </div>
-    </div>
-
-    <!-- User Import Strategy Section -->
-    <div class="bg-white border border-gray-200 rounded-lg p-6">
-      <div class="flex items-center mb-4">
-        <UserPlusIcon class="w-5 h-5 text-gray-400 mr-2" />
-        <h3 class="text-lg font-medium text-gray-900">User Import Strategy</h3>
-      </div>
-      <p class="text-sm text-gray-600 mb-4">
-        Configure how FreeScout users should be handled during import.
-      </p>
-
-      <div class="space-y-4">
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.user_strategy"
-              value="map_emails"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
-          </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Map by email address</div>
-            <div class="text-sm text-gray-500">Match FreeScout users to Service Vault users by email. Create new users if no match found.</div>
-          </div>
-        </label>
-
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.user_strategy"
-              value="create_new"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
-          </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Create new users</div>
-            <div class="text-sm text-gray-500">Always create new users from FreeScout data, even if emails match existing users.</div>
-          </div>
-        </label>
-
-        <label class="relative flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              v-model="localConfig.user_strategy"
-              value="skip_users"
-              type="radio"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-            />
-          </div>
-          <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">Skip user import</div>
-            <div class="text-sm text-gray-500">Don't import FreeScout users. Assign all imported data to current user.</div>
-          </div>
-        </label>
+      <div class="text-sm text-blue-800 space-y-2">
+        <p><strong>Primary Import:</strong> Conversations (tickets) within the specified date range</p>
+        <p><strong>Automatic Dependencies:</strong> Required users, customers, mailboxes imported automatically as needed</p>
+        <p><strong>Complete Data:</strong> All threads (comments) and time entries for imported conversations are included</p>
+        <p><strong>Relationships:</strong> Time entries always linked to their conversation tickets, comments to tickets and users</p>
+        <p><strong>Validation:</strong> Records missing required fields will be skipped and logged with specific reasons</p>
       </div>
     </div>
   </div>
@@ -249,10 +245,9 @@
 <script setup>
 import { computed, watch } from 'vue'
 import {
-  AdjustmentsHorizontalIcon,
-  BuildingOfficeIcon,
-  UserGroupIcon,
-  UserPlusIcon
+  CalendarDaysIcon,
+  CogIcon,
+  InformationCircleIcon
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({

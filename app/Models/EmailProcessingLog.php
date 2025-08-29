@@ -73,6 +73,9 @@ class EmailProcessingLog extends Model
         'processing_duration_ms' => 'integer',
         'retry_count' => 'integer',
         'job_attempts' => 'integer',
+        'commands_processed' => 'integer',
+        'commands_executed_count' => 'integer',
+        'commands_failed_count' => 'integer',
     ];
 
     protected static function boot()

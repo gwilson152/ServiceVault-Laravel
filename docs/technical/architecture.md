@@ -506,7 +506,7 @@ tickets (id, ticket_number, title, description, status, priority, ...)
 ticket_categories (id, name, color, sla_hours, ...)
 ticket_statuses (id, name, color, workflow_order, ...)
 ticket_priorities (id, name, level, escalation_hours, ...)
-ticket_comments (id, ticket_id, user_id, comment, is_internal, ...)
+ticket_comments (id, ticket_id, user_id, content, parent_id, is_internal, edited_at, ...)
 ```
 
 **Time & Billing**:
@@ -806,6 +806,192 @@ await queryBuilder.setBaseTable(table) // Safe, async, controlled
 - Encrypted sensitive data at rest
 - Secure password hashing (bcrypt)
 - Audit logging for sensitive operations
+
+## Configuration Management System
+
+### Architecture Overview
+
+Service Vault implements a comprehensive configuration backup and restore system designed for enterprise-grade environment management and disaster recovery.
+
+**Core Design Principles**:
+- **Selective Export**: Granular control over configuration categories
+- **Security-First**: Automatic credential masking and access control
+- **Preview-Driven**: Visual diff before applying changes
+- **Audit-Complete**: Full operation logging and user attribution
+- **Cross-Environment**: Seamless configuration migration
+
+### System Components
+
+**Backend Architecture**:
+```php
+// SettingController - Configuration API endpoints
+POST /api/settings/export         // Export configuration categories
+POST /api/settings/validate-import // Validate uploaded configuration
+POST /api/settings/preview-import  // Preview import changes
+POST /api/settings/import          // Apply configuration import
+
+// Core Methods
+exportConfiguration()    // Selective category export with masking
+importConfiguration()    // Validated import with rollback capability
+previewImport()         // Generate change diff without applying
+validateConfiguration() // File structure and content validation
+```
+
+**Frontend Architecture**:
+```vue
+<!-- ConfigurationBackup.vue - Main component -->
+<template>
+  <div class="space-y-8">
+    <!-- Export Section: Category selection, options, security warnings -->
+    <!-- Import Section: File upload, validation, preview, apply -->
+    <!-- Preview Modal: Visual diff with additions/modifications/unchanged -->
+  </div>
+</template>
+
+// Reactive state management for export/import workflows
+const exportState = reactive({
+  selectedCategories: [],
+  includeMetadata: true,
+  isExporting: false
+})
+```
+
+### Configuration Categories
+
+**Data Architecture**:
+```
+system: {
+  timezone, currency, date_format, company_info
+} → Settings table (system.* keys) + Account (internal)
+
+email: {
+  smtp/imap_config, processing_rules, domain_mappings
+} → EmailSystemConfig table (complete record)
+
+timer: {
+  limits, preferences, auto_stop_settings  
+} → Settings table (timer.* keys)
+
+advanced: {
+  debug_settings, logging_levels, performance_options
+} → Settings table (advanced.* keys)
+
+tax: {
+  rates, application_modes, regional_settings
+} → Settings table (tax.* keys)
+
+tickets: {
+  statuses, categories, priorities, workflow_transitions
+} → TicketStatus, TicketCategory, TicketPriority tables
+
+billing: {
+  billing_rates, addon_templates, invoice_settings
+} → BillingRate, AddonTemplate tables
+
+import-profiles: {
+  import_templates, import_profiles (credentials_masked)
+} → ImportTemplate, ImportProfile tables
+```
+
+### Security Architecture
+
+**Access Control Layer**:
+```php
+// Multi-layer authorization
+middleware(['auth:sanctum'])              // Valid session required
+$this->authorize('system.configure')      // Permission check
+auth()->user()->isSuperAdmin()           // Super admin only
+Hash::check($password, auth()->user()->password) // Password confirmation
+```
+
+**Credential Protection**:
+```php
+// Automatic masking for sensitive fields
+if (isset($config['password'])) {
+    $config['password'] = '***MASKED***';
+}
+if (isset($config['api_key'])) {
+    $config['api_key'] = '***MASKED***';
+}
+
+// Import validation removes masked values
+if ($config['password'] === '***MASKED***') {
+    unset($config['password']); // Requires manual reconfiguration
+}
+```
+
+**Audit Trail**:
+```php
+Log::info('Configuration export completed', [
+    'user_id' => auth()->id(),
+    'categories' => $categories,
+    'filename' => $filename,
+    'ip_address' => request()->ip()
+]);
+```
+
+### Import/Export Workflow
+
+**Export Process**:
+1. **Category Selection** → User selects from 8 available categories
+2. **Data Aggregation** → System queries relevant tables/models
+3. **Credential Masking** → Sensitive data automatically masked
+4. **JSON Generation** → Structured export with metadata
+5. **File Download** → Browser receives timestamped JSON file
+6. **Audit Logging** → Complete operation tracking
+
+**Import Process**:
+1. **File Upload** → JSON file validation and parsing
+2. **Category Detection** → Available categories identified
+3. **User Selection** → Categories chosen for import
+4. **Preview Generation** → Diff showing additions/modifications/unchanged
+5. **Password Confirmation** → Current user password required
+6. **Data Application** → Validated import with transaction safety
+7. **Audit Completion** → Success/failure logging with details
+
+### Data Flow Architecture
+
+**Export Data Flow**:
+```
+User Request → Category Selection → Data Query → Credential Masking → 
+JSON Serialization → File Generation → Browser Download → Audit Log
+```
+
+**Import Data Flow**:
+```
+File Upload → JSON Validation → Category Detection → User Selection → 
+Preview Generation → Password Confirmation → Transaction Begin → 
+Data Import → Relationship Resolution → Transaction Commit → Audit Log
+```
+
+### Error Handling & Recovery
+
+**Validation Layers**:
+- **File Format**: JSON structure and size validation
+- **Content Schema**: Required fields and data types
+- **Category Availability**: Valid category names and structure
+- **Permission Verification**: Super admin and password confirmation
+- **Data Integrity**: Foreign key relationships and constraints
+
+**Recovery Mechanisms**:
+- **Transaction Safety**: Database transactions for atomicity
+- **Rollback Capability**: Failed imports leave system unchanged
+- **Audit Trail**: Complete operation history for forensics
+- **Backup Recommendations**: System prompts for pre-import backups
+
+### Performance Considerations
+
+**Optimization Strategies**:
+- **Selective Queries**: Only load requested categories
+- **Lazy Loading**: Relationships loaded only when needed
+- **Memory Management**: Large exports streamed to avoid memory limits
+- **Caching**: Repeated validations cached during import process
+
+**Scalability Limits**:
+- **File Size**: 10MB maximum for JSON uploads
+- **Processing Time**: 60-second timeout for complex imports
+- **Concurrent Operations**: Rate limited to prevent system overload
+- **Memory Usage**: Monitored during large configuration processing
 
 ## Deployment Architecture
 

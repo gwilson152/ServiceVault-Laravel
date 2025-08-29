@@ -8,6 +8,7 @@ import { createApp, h } from "vue";
 import { ZiggyVue } from "../../vendor/tightenco/ziggy";
 import { VueQueryPlugin } from "@tanstack/vue-query";
 import { queryClient } from "./Services/queryClient.js";
+import { createPinia } from "pinia";
 
 const appName = import.meta.env.VITE_APP_NAME || "Service Vault";
 
@@ -31,6 +32,7 @@ createInertiaApp({
 
         return createApp({ render: () => h(App, props) })
             .use(plugin)
+            .use(createPinia())
             .use(ZiggyVue)
             .use(VueQueryPlugin, {
                 queryClient,

@@ -359,6 +359,7 @@ import {
     useUpdateAddonTemplateMutation,
 } from "@/Composables/queries/useAddonTemplatesQuery";
 import { useAddonCategoriesQuery } from "@/Composables/queries/useBillingQuery";
+import { useToast } from '@/Composables/useToast';
 
 const props = defineProps({
     show: Boolean,
@@ -366,6 +367,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close"]);
+
+// Toast notifications
+const { apiError } = useToast();
 
 // Mutations
 const createTemplateMutation = useCreateAddonTemplateMutation();
@@ -461,7 +465,7 @@ const saveTemplate = async () => {
         emit("close");
     } catch (error) {
         console.error("Failed to save addon template:", error);
-        alert("Failed to save template. Please try again.");
+        apiError(error, "Failed to save template. Please try again.");
     }
 };
 </script>

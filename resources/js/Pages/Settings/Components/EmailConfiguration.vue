@@ -105,18 +105,6 @@
       </div>
     </div>
 
-    <!-- Success Message -->
-    <div v-if="saveSuccess" class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-      <div class="flex items-start">
-        <CheckCircleIcon class="h-5 w-5 text-green-400 mt-0.5" />
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-green-800">Configuration Saved</h3>
-          <p class="text-sm text-green-700 mt-1">
-            {{ saveMessage }}
-          </p>
-        </div>
-      </div>
-    </div>
 
     <!-- Tab Navigation -->
     <div class="mb-6">
@@ -816,6 +804,32 @@
             </div>
           </div>
         
+      <!-- Email Retrieval Settings -->
+      <div v-show="form.incoming_enabled" class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Email Retrieval Settings</h3>
+          <p class="text-sm text-gray-500 mt-1">Configure which emails to retrieve from the server</p>
+        </div>
+        <div class="p-6 space-y-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Email Retrieval Mode</label>
+            <select 
+              v-model="form.email_retrieval_mode" 
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="unread_only">Unread Only (Default - Most Efficient)</option>
+              <option value="recent">Recent Emails (Last 7 Days)</option>
+              <option value="all">All Emails (Use with Caution)</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              <strong>Unread Only:</strong> Only processes new, unread emails (recommended)<br>
+              <strong>Recent:</strong> Processes all emails from the last 7 days<br>
+              <strong>All:</strong> Processes all emails in the folder (may cause duplicates)
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Email Processing Actions -->
       <div v-show="form.incoming_enabled" class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -1276,6 +1290,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import TabNavigation from '@/Components/Layout/TabNavigation.vue'
 import EmailProcessing from './EmailProcessing.vue'
+import { useToast } from "@/Composables/useToast"
 
 // Props
 const props = defineProps({
@@ -1284,6 +1299,9 @@ const props = defineProps({
     default: () => ({})
   }
 })
+
+// Toast notifications
+const { success, error, promise, apiError } = useToast()
 
 // State
 const saving = ref(false)
@@ -1295,8 +1313,6 @@ const showIncomingPassword = ref(false)
 const showOutgoingPassword = ref(false)
 const showM365Secret = ref(false)
 const testResults = ref(null)
-const saveSuccess = ref(false)
-const saveMessage = ref('')
 const m365Folders = ref([])
 const showM365Instructions = ref(false)
 const showFolderDropdown = ref(false)
@@ -1354,6 +1370,9 @@ const form = useForm({
   post_processing_action: 'mark_read',
   move_to_folder_id: '',
   move_to_folder_name: '',
+  
+  // Email retrieval settings
+  email_retrieval_mode: 'unread_only',
   
   // Email processing settings
   enable_email_to_ticket: true,
@@ -1517,47 +1536,48 @@ const applyProviderDefaults = (type) => {
 
 const saveConfiguration = async () => {
   saving.value = true
+  console.log('Starting email configuration save...')
   try {
-    const response = await fetch('/api/settings/email', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      },
-      body: JSON.stringify(form.data())
-    })
-    
-    if (response.ok) {
-      const result = await response.json()
-      saveSuccess.value = true
-      saveMessage.value = result.message
-      
-      // Update the config prop with the fresh data
-      if (result.config) {
-        Object.keys(result.config).forEach(key => {
-          if (form[key] !== undefined) {
-            form[key] = result.config[key]
+    const result = await promise(
+      fetch('/api/settings/email', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify(form.data())
+      }).then(async response => {
+        console.log('Save response status:', response.status)
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error('Save failed response:', errorData)
+          if (errorData.errors) {
+            form.setError(errorData.errors)
           }
-        })
+          throw new Error(errorData.message || 'Failed to save email configuration')
+        }
+        return response.json()
+      }).then(result => {
+        console.log('Save result:', result)
         // Mark form as clean since we just saved
         form.defaults()
+        return result
+      }),
+      {
+        loading: 'Saving email configuration...',
+        success: (result) => {
+          console.log('Success toast should show with:', result)
+          return result.message || 'Email configuration saved successfully!'
+        },
+        error: (err) => {
+          console.error('Error toast should show with:', err)
+          return `Failed to save configuration: ${err.message}`
+        }
       }
-
-      // Hide success message after 5 seconds
-      setTimeout(() => {
-        saveSuccess.value = false
-        saveMessage.value = ''
-      }, 5000)
-    } else {
-      const errorData = await response.json()
-      console.error('Save failed:', errorData)
-      // Handle validation errors
-      if (errorData.errors) {
-        form.setError(errorData.errors)
-      }
-    }
-  } catch (error) {
-    console.error('Save failed:', error)
+    )
+    console.log('Promise resolved successfully:', result)
+  } catch (err) {
+    console.error('Save failed with exception:', err)
   } finally {
     saving.value = false
   }
@@ -1617,11 +1637,49 @@ const testConfiguration = async () => {
       body: JSON.stringify(form.data())
     })
     
-    if (response.ok) {
-      testResults.value = await response.json()
+    if (!response.ok) {
+      const errorData = await response.json()
+      error(`Email test failed: ${errorData.message || 'Unknown error'}`)
+      return
     }
-  } catch (error) {
-    console.error('Test failed:', error)
+    
+    const result = await response.json()
+    testResults.value = result
+    
+    // Analyze results and show appropriate toast
+    const successMessages = []
+    const errorMessages = []
+    
+    if (result.incoming) {
+      if (result.incoming.success) {
+        successMessages.push('incoming connection')
+      } else {
+        errorMessages.push(`incoming: ${result.incoming.message}`)
+      }
+    }
+    
+    if (result.outgoing) {
+      if (result.outgoing.success) {
+        successMessages.push('outgoing connection')
+      } else {
+        errorMessages.push(`outgoing: ${result.outgoing.message}`)
+      }
+    }
+    
+    // Show appropriate toast based on results
+    if (successMessages.length > 0 && errorMessages.length === 0) {
+      success(`Email test successful: ${successMessages.join(', ')} verified`)
+    } else if (successMessages.length > 0 && errorMessages.length > 0) {
+      error(`Email test partially failed - Success: ${successMessages.join(', ')}. Errors: ${errorMessages.join(', ')}`)
+    } else if (errorMessages.length > 0) {
+      error(`Email test failed: ${errorMessages.join(', ')}`)
+    } else {
+      error('Email test completed but no results received')
+    }
+    
+  } catch (err) {
+    console.error('Test failed:', err)
+    apiError(err, 'Email configuration test failed')
   } finally {
     testing.value = false
   }
@@ -1654,13 +1712,13 @@ const testImap = async () => {
     
     const result = await response.json()
     if (response.ok && result.success) {
-      alert(`IMAP test successful! ${result.message}`)
+      success(`IMAP test successful! ${result.message}`)
     } else {
-      alert(`IMAP test failed: ${result.message}`)
+      error(`IMAP test failed: ${result.message}`)
     }
-  } catch (error) {
-    console.error('IMAP test failed:', error)
-    alert('IMAP test failed: ' + error.message)
+  } catch (err) {
+    console.error('IMAP test failed:', err)
+    apiError(err, 'IMAP test failed')
   } finally {
     testingImap.value = false
   }
@@ -1686,13 +1744,13 @@ const testM365 = async () => {
     
     const result = await response.json()
     if (response.ok && result.success) {
-      alert(`M365 test successful! ${result.message}`)
+      success(`M365 test successful! ${result.message}`)
     } else {
-      alert(`M365 test failed: ${result.message}`)
+      error(`M365 test failed: ${result.message}`)
     }
-  } catch (error) {
-    console.error('M365 test failed:', error)
-    alert('M365 test failed: ' + error.message)
+  } catch (err) {
+    console.error('M365 test failed:', err)
+    apiError(err, 'M365 test failed')
   } finally {
     testingM365.value = false
   }
@@ -1701,7 +1759,7 @@ const testM365 = async () => {
 // Load M365 folders
 const loadM365Folders = async () => {
   if (!canLoadFolders.value) {
-    alert('Please fill in all M365 credentials first')
+    error('Please fill in all M365 credentials first')
     return
   }
 
@@ -1738,11 +1796,11 @@ const loadM365Folders = async () => {
         }
       }
     } else {
-      alert(`Failed to load folders: ${result.message}`)
+      error(`Failed to load folders: ${result.message}`)
     }
-  } catch (error) {
-    console.error('Failed to load folders:', error)
-    alert('Failed to load folders: ' + error.message)
+  } catch (err) {
+    console.error('Failed to load folders:', err)
+    apiError(err, 'Failed to load folders')
   } finally {
     loadingFolders.value = false
   }
@@ -1751,7 +1809,7 @@ const loadM365Folders = async () => {
 // Test email retrieval from selected M365 folder
 const testM365EmailRetrieval = async () => {
   if (!canTestEmailRetrieval.value) {
-    alert('Please select a folder first')
+    error('Please select a folder first')
     return
   }
 
@@ -1778,14 +1836,16 @@ const testM365EmailRetrieval = async () => {
     if (response.ok && result.success) {
       testEmails.value = result.emails
       if (result.emails.length === 0) {
-        alert('No emails found in the selected folder')
+        error('No emails found in the selected folder')
+      } else {
+        success(`Successfully retrieved ${result.emails.length} email(s) from the selected folder`)
       }
     } else {
-      alert(`Failed to retrieve emails: ${result.message}`)
+      error(`Failed to retrieve emails: ${result.message}`)
     }
-  } catch (error) {
-    console.error('Failed to retrieve emails:', error)
-    alert('Failed to retrieve emails: ' + error.message)
+  } catch (err) {
+    console.error('Failed to retrieve emails:', err)
+    apiError(err, 'Failed to retrieve emails')
   } finally {
     testingEmailRetrieval.value = false
   }

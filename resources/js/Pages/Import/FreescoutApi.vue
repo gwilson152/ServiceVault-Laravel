@@ -545,9 +545,9 @@
 
   <!-- Import Configuration Dialog -->
   <FreescoutImportConfigDialog
-    v-if="showImportConfig && selectedProfile && previewData"
+    v-if="showImportConfig && selectedProfile"
     :profile="selectedProfile"
-    :preview-data="previewData"
+    :preview-data="previewData || {}"
     :loading-preview="loadingPreview"
     @close="closeImportConfig"
     @preview="handlePreviewImport"

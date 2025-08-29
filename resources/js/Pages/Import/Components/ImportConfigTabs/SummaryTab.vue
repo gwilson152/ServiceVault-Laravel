@@ -38,8 +38,10 @@
         <div class="flex justify-between items-center py-2 border-b border-gray-100">
           <span class="text-sm font-medium text-gray-900">Account Strategy</span>
           <span class="text-sm text-gray-600">
-            {{ config.account_strategy === 'map_mailboxes' ? 'Map mailboxes to accounts' :
-               config.account_strategy === 'domain_mapping' ? 'Use domain mapping' : 'Single account' }}
+            {{ config.account_strategy === 'mailbox_per_account' ? 'One account per mailbox' :
+               config.account_strategy === 'single_account' ? 'Single account for all data' :
+               config.account_strategy === 'domain_mapping' ? 'Domain-based user matching' :
+               config.account_strategy === 'domain_mapping_strict' ? 'Domain-based strict matching' : 'Unknown strategy' }}
           </span>
         </div>
         
@@ -135,27 +137,28 @@ const props = defineProps({
 const emit = defineEmits(['preview', 'execute'])
 
 const estimatedCounts = computed(() => {
-  const conversationLimit = props.config.limits.conversations || props.statistics.conversations
-  const customerLimit = props.config.limits.customers || props.statistics.customers
-  const timeEntriesLimit = props.config.limits.time_entries || props.statistics.time_entries
+  // With simplified approach - no limits, all data determined by date range and dependencies
+  const conversationCount = props.statistics?.conversations || 0
+  const customerCount = props.statistics?.customers || 0
+  const timeEntriesCount = props.statistics?.time_entries || 0
+  const mailboxCount = props.statistics?.mailboxes || 0
   
   // Estimate accounts based on strategy
   let accountCount = 1
-  if (props.config.account_strategy === 'map_mailboxes') {
-    accountCount = props.statistics.mailboxes - (props.config.excluded_mailboxes?.length || 0)
-  } else if (props.config.account_strategy === 'domain_mapping') {
-    // Estimate unique domains from sample data
-    const uniqueDomains = new Set(
-      (props.previewData.customers || []).map(c => c.email?.split('@')[1]).filter(Boolean)
-    )
-    accountCount = uniqueDomains.size || 1
+  if (props.config.account_strategy === 'mailbox_per_account') {
+    accountCount = mailboxCount - (props.config.excluded_mailboxes?.length || 0)
+  } else if (props.config.account_strategy === 'single_account') {
+    accountCount = 1
+  } else if (props.config.account_strategy === 'domain_mapping' || props.config.account_strategy === 'domain_mapping_strict') {
+    // For domain mapping, show that existing accounts will be used
+    accountCount = 'Uses existing accounts'
   }
 
   return {
-    conversations: Math.min(conversationLimit, props.statistics.conversations).toLocaleString(),
-    customers: Math.min(customerLimit, props.statistics.customers).toLocaleString(),
-    time_entries: Math.min(timeEntriesLimit, props.statistics.time_entries).toLocaleString(),
-    accounts: accountCount.toLocaleString()
+    conversations: conversationCount.toLocaleString(),
+    customers: customerCount.toLocaleString(),
+    time_entries: timeEntriesCount.toLocaleString(),
+    accounts: typeof accountCount === 'string' ? accountCount : accountCount.toLocaleString()
   }
 })
 </script>

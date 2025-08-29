@@ -1297,7 +1297,7 @@ class EmailAdminController extends Controller
             $emails = $query->paginate($perPage);
 
             // Transform the data to provide the expected fields for frontend
-            $transformedEmails = $emails->items()->map(function ($log) {
+            $transformedEmails = collect($emails->items())->map(function ($log) {
                 return [
                     'email_id' => $log->email_id,
                     'from_address' => $log->from_address,

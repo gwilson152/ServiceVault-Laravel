@@ -54,10 +54,8 @@ class ProcessFreescoutImportJob implements ShouldQueue
             $this->importJob->markAsStarted();
             $this->importJob->updateProgress(0, 'Starting FreeScout import...');
 
-            // Process the import in a database transaction
-            DB::transaction(function () use ($freescoutImportService) {
-                $freescoutImportService->processFreescoutImport($this->importJob, $this->profile, $this->config);
-            });
+            // Process the import (transactions handled internally by the service)
+            $freescoutImportService->processFreescoutImport($this->importJob, $this->profile, $this->config);
 
             // Mark job as completed
             $this->importJob->markAsCompleted();
@@ -83,7 +81,20 @@ class ProcessFreescoutImportJob implements ShouldQueue
             event(new ImportJobStatusChanged($this->importJob, 'completed'));
 
         } catch (Exception $e) {
-            $this->importJob->markAsFailed($e->getMessage());
+            // Ensure the import job is marked as failed even if there are issues
+            try {
+                $this->importJob->markAsFailed($e->getMessage());
+                
+                // Broadcast failure event
+                event(new ImportJobStatusChanged($this->importJob, 'failed'));
+            } catch (Exception $statusException) {
+                // If we can't update the job status, log the error but continue
+                Log::error('Failed to update import job status during error handling', [
+                    'job_id' => $this->importJob->id,
+                    'original_error' => $e->getMessage(),
+                    'status_error' => $statusException->getMessage()
+                ]);
+            }
             
             // Comprehensive error logging
             Log::error('Async FreeScout import failed', [
@@ -93,9 +104,6 @@ class ProcessFreescoutImportJob implements ShouldQueue
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-
-            // Broadcast failure event
-            event(new ImportJobStatusChanged($this->importJob, 'failed'));
 
             // Re-throw the exception to mark the job as failed in the queue
             throw $e;
@@ -113,10 +121,27 @@ class ProcessFreescoutImportJob implements ShouldQueue
             'error' => $exception->getMessage()
         ]);
 
-        // Ensure the import job is marked as failed
-        $this->importJob->markAsFailed($exception->getMessage());
-        
-        // Broadcast failure event
-        event(new ImportJobStatusChanged($this->importJob, 'failed'));
+        // Ensure the import job is marked as failed (with additional protection)
+        try {
+            $this->importJob->markAsFailed($exception->getMessage());
+            
+            // Broadcast failure event
+            event(new ImportJobStatusChanged($this->importJob, 'failed'));
+        } catch (Exception $e) {
+            // Last resort - force update the status directly
+            Log::error('Failed to mark import job as failed in failed() method', [
+                'job_id' => $this->importJob->id,
+                'failed_error' => $e->getMessage()
+            ]);
+            
+            // Direct database update as fallback
+            DB::table('import_jobs')
+                ->where('id', $this->importJob->id)
+                ->update([
+                    'status' => 'failed',
+                    'completed_at' => now(),
+                    'errors' => json_encode([$exception->getMessage(), 'Status update failed, forced via direct DB update'])
+                ]);
+        }
     }
 }

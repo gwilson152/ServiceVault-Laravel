@@ -208,3 +208,89 @@ php artisan system:nuclear-reset --user-id=1
 ```
 
 **⚠️ WARNING**: This destroys ALL data permanently.
+
+## Configuration Management
+
+Service Vault includes a comprehensive configuration backup and restore system for managing settings across environments.
+
+### Configuration Backup Best Practices
+
+1. **Regular Backups**: Export configuration weekly or after major changes
+2. **Environment-Specific Backups**: Maintain separate backups for dev/staging/production
+3. **Pre-Migration Backups**: Always backup before system upgrades
+4. **Category-Specific Backups**: Use selective exports for targeted configuration changes
+
+### Initial Configuration Backup
+
+After completing setup, create your first configuration backup:
+
+1. **Login as Super Administrator** (created during seeding)
+2. **Navigate to Settings** → **Configuration Tab** 
+3. **Select Categories**: Choose all relevant categories for your environment:
+   - ✅ **System** - Basic system settings
+   - ✅ **Email** - Email system configuration
+   - ✅ **Timer** - Timer preferences  
+   - ✅ **Advanced** - Debug and system options
+   - ✅ **Tax** - Tax rates and settings
+   - ✅ **Tickets** - Workflow configuration
+   - ✅ **Billing** - Billing rates and templates
+   - ✅ **Import Profiles** - Import templates and profiles
+4. **Export Configuration** and save the JSON file securely
+
+### Environment Migration Workflow
+
+**Development → Staging**:
+```bash
+# 1. Export from development
+# Navigate to Settings → Configuration → Export (select relevant categories)
+
+# 2. Import to staging  
+# Navigate to Settings → Configuration → Import
+# Upload JSON file, preview changes, confirm with password
+```
+
+**Staging → Production**:
+```bash
+# 1. Backup production configuration first
+# Export current production config as fallback
+
+# 2. Import from staging
+# Use selective import - exclude development-specific settings
+# Test thoroughly before confirming
+```
+
+### Configuration Categories Guide
+
+**System Settings**:
+- Company information
+- Timezone and locale preferences  
+- Currency settings
+- Date/time formats
+
+**Email Configuration**:
+- SMTP/IMAP connection settings
+- Email processing rules
+- Domain mappings
+- User creation policies
+
+**Import Profiles** (Security Note):
+- Templates and profiles are exported
+- **Credentials are masked** - must be reconfigured after import
+- Connection settings need manual update
+
+### Backup Security
+
+**Credential Protection**:
+- Passwords and API keys are automatically masked in exports
+- Import profiles require manual credential reconfiguration
+- Never store backup files in public repositories
+
+**Access Control**:
+- Only Super Administrators can backup/restore configurations  
+- Password confirmation required for all import operations
+- All operations are logged with user attribution
+
+**File Management**:
+- Store backup files in secure, encrypted storage
+- Use descriptive filenames with timestamps
+- Maintain retention policies (e.g., keep last 10 backups)
